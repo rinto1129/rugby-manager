@@ -62,21 +62,19 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 <div id="loading-screen" style="position:fixed;inset:0;background:var(--bg-primary);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column"><div style="font-size:40px;margin-bottom:16px">🏉</div><div style="font-size:16px;font-weight:600;margin-bottom:8px">Rugby Manager</div><div style="color:var(--text-secondary);font-size:13px">読み込み中...</div></div>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script>
-firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
-var db=firebase.firestore();
-</script>
 <div class="nav-bottom" id="nav-bar">
 <div class="nav-btn ac" onclick="go('home')"><span class="nav-btn-icon">🏠</span>ホーム</div>
 <div class="nav-btn" onclick="go('mypage')"><span class="nav-btn-icon">👤</span>マイページ</div>
 </div>
 <script>
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel'};
+firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
+var db=firebase.firestore();
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot'};
 var STG=['ウォーキング','ランニング','スプリント','ジャンプ','コンタクト以外の練習','フルコンタクト','完全復帰'];
 var PARTS=['頭部','頸部','肩','鎖骨','肘','手首','指','腰','股関節','大腿','膝','すね','足首','踵','アキレス腱','ふくらはぎ','足の甲','足趾','その他'];
 var INJ_TYPES=['捻挫','肉離れ','骨折','脱臼','打撲','靭帯損傷','半月板損傷','脳震盪','裂傷','腱炎','疲労骨折','その他'];
 var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
-var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[]};
+var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[]};
 var myPid=null,curTab='home',charts={},subView=null;
 
 function ld(){
@@ -84,8 +82,21 @@ var INIT=[{id:1700000000000,name:"瀧田 雅公",position:"LO",year:4,note:"キ�
 INIT.forEach(function(p){['dob','height','weight','school','note'].forEach(function(k){if(!p[k])p[k]='';});});
 D.p=INIT;
 var keys=Object.keys(SK);
-var promises=keys.map(function(k){return db.collection('appdata').doc(k).get().then(function(doc){if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(k==='p'&&parsed.length>0)D[k]=parsed;else if(k!=='p')D[k]=parsed;}catch(e){}}}).catch(function(e){console.log('Load error:',k,e);});});
-return Promise.all(promises);
+var promises=keys.map(function(k){
+  return db.collection('appdata').doc(k).get().then(function(doc){
+    if(doc.exists){
+      try{
+        var parsed=JSON.parse(doc.data().data);
+        if(k==='p'&&Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
+        else if(k!=='p'&&parsed!==undefined)D[k]=parsed;
+      }catch(e){console.log('Parse error:',k,e);}
+    }
+  }).catch(function(e){console.log('Load error:',k,e);});
+});
+return Promise.all(promises).then(function(){
+  if(!D.tape)D.tape=[];
+  if(!D.tapeslot)D.tapeslot=[];
+});
 }
 function sv(k){db.collection('appdata').doc(k).set({data:JSON.stringify(D[k])}).catch(function(e){console.error('Save error:',k,e);});}
 function startListeners(){Object.keys(SK).forEach(function(k){db.collection('appdata').doc(k).onSnapshot(function(doc){if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(k==='p'&&parsed.length>0)D[k]=parsed;else if(k!=='p')D[k]=parsed;}catch(e){}}});});}
@@ -96,6 +107,8 @@ function rc(v){return v<=3?'var(--green)':v<=6?'var(--amber)':'var(--red)';}
 function sc(v){return v>=7?'var(--green)':v>=5?'var(--amber)':'var(--red)';}
 function getBest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null;});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
 function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
+function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
+function broncoFromInputs(minId,secId){var m=parseInt(document.getElementById(minId).value)||0,s=parseInt(document.getElementById(secId).value)||0;return m*60+s||null;}
 function dC(k){if(charts[k]){charts[k].destroy();delete charts[k];}}
 function dCA(){for(var k in charts){charts[k].destroy();}charts={};}
 function $m(){return document.getElementById('main');}
@@ -177,7 +190,9 @@ mypage:function(){
   var bcDone=D.bc.some(function(r){return r.pid===myPid&&r.date===todayStr();});
   var bSQ=getBest(myPid,'squat'),bBP=getBest(myPid,'bench'),bDL=getBest(myPid,'deadlift'),bBR=getBest(myPid,'bronco');
   var myAnns=D.ann.filter(function(a){return a.targetPid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,5);
+  var myTapeRsvs=(D.tape||[]).filter(function(t){return t.pid===myPid;}).filter(function(t){return t.date>=todayStr();}).sort(function(a,b){return a.date.localeCompare(b.date);}).slice(0,3);
   var h='<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">'+avH(p,50)+'<div><div style="font-size:17px;font-weight:600">'+p.name+'</div><div style="color:var(--text-secondary);font-size:12px">'+p.position+' / '+p.year+'年'+(p.note?' / '+p.note:'')+'</div></div></div>';
+  if(myTapeRsvs.length){h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--purple)"><div style="font-weight:600;margin-bottom:6px;color:var(--purple)">🩻 テーピング予約</div>';myTapeRsvs.forEach(function(rsv){h+='<div class="log-row"><div style="flex:1"><div style="font-weight:600">'+fmt(rsv.date)+' '+rsv.startTime+'〜'+rsv.endTime+'</div><div style="font-size:12px;color:var(--text-secondary)">'+rsv.parts.join('・')+(rsv.staff?' / 担当: '+rsv.staff:'')+'</div></div></div>';});h+='<button class="btn" style="width:100%;margin-top:6px;font-size:12px" onclick="go(\'tape\')">予約を管理する</button></div>';}
   // Individual announcements
   if(myAnns.length){h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--blue)"><div style="font-weight:600;margin-bottom:6px;color:var(--blue)">📩 あなたへのお知らせ</div>';myAnns.forEach(function(a){h+='<div style="margin-bottom:6px"><div style="font-size:11px;color:var(--text-secondary)">'+fmt(a.date)+'</div><div style="font-size:13px;white-space:pre-wrap">'+a.text+'</div></div>';});h+='</div>';}
   // Current injuries
@@ -197,9 +212,12 @@ mypage:function(){
   h+='<div class="card card-click" onclick="T.injury()" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">🩹</div><div style="font-weight:600;font-size:13px">怪我・リハビリ</div>'+(pInj.length?'<div style="font-size:11px;color:var(--red);margin-top:4px">治療中: '+pInj.length+'件</div>':'')+'</div>';
   // Match
   h+='<div class="card card-click" onclick="T.match()" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">🏟️</div><div style="font-weight:600;font-size:13px">試合日チェック</div></div>';
+  // Taping
+  var myNextTape=(D.tape||[]).filter(function(t){return t.pid===myPid&&t.date>=todayStr();}).sort(function(a,b){return a.date.localeCompare(b.date);})[0];
+  h+='<div class="card card-click" onclick="T.tape()" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">🩻</div><div style="font-weight:600;font-size:13px">テーピング予約</div>'+(myNextTape?'<div style="font-size:11px;color:var(--purple);margin-top:4px">'+fmt(myNextTape.date)+' '+myNextTape.startTime+'</div>':'<div style="font-size:11px;color:var(--text-secondary);margin-top:4px">予約する</div>')+'</div>';
   h+='</div>';
   // Physical bests
-  h+='<div style="font-weight:600;margin:4px 0 8px">📊 フィジカルベスト</div><div class="grid3"><div class="mc"><div class="v" style="font-size:16px">'+(bSQ||'-')+'</div><div class="l">SQ</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bBP||'-')+'</div><div class="l">BP</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bDL||'-')+'</div><div class="l">DL</div></div></div><div class="grid2" style="margin-top:8px"><div class="mc"><div class="v" style="font-size:16px">'+(bBR||'-')+'</div><div class="l">Bronco</div></div><div class="mc"><div class="v" style="font-size:16px">'+((bSQ||0)+(bBP||0)+(bDL||0)||'-')+'</div><div class="l">BIG3合計</div></div></div>';
+  h+='<div style="font-weight:600;margin:4px 0 8px">📊 フィジカルベスト</div><div class="grid3"><div class="mc"><div class="v" style="font-size:16px">'+(bSQ||'-')+'</div><div class="l">SQ</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bBP||'-')+'</div><div class="l">BP</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bDL||'-')+'</div><div class="l">DL</div></div></div><div class="grid2" style="margin-top:8px"><div class="mc"><div class="v" style="font-size:16px">'+broncoFmt(bBR)+'</div><div class="l">Bronco</div></div><div class="mc"><div class="v" style="font-size:16px">'+((bSQ||0)+(bBP||0)+(bDL||0)||'-')+'</div><div class="l">BIG3合計</div></div></div>';
   // Latest condition
   if(latestF){h+='<div style="font-weight:600;margin:12px 0 8px">最新コンディション <span style="font-weight:400;color:var(--text-secondary);font-size:12px">'+fmt(latestF.date)+'</span></div><div class="grid3"><div class="mc"><div class="v" style="color:'+rc(latestF.rpe)+'">'+latestF.rpe+'</div><div class="l">RPE</div></div><div class="mc"><div class="v" style="color:'+sc(latestF.sleep)+'">'+latestF.sleep+'h</div><div class="l">睡眠</div></div><div class="mc"><div class="v" style="color:var(--purple)">'+(latestF.rpe*(latestF.duration||0))+'</div><div class="l">sRPE</div></div></div>';}
   $m().innerHTML=h;
@@ -225,7 +243,7 @@ physical:function(){
   var recs=D.ph.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
   var bSQ=getBest(myPid,'squat'),bBP=getBest(myPid,'bench'),bDL=getBest(myPid,'deadlift'),bBR=getBest(myPid,'bronco');
   $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">フィジカル記録</div>'+
-  '<div class="grid2" style="margin-bottom:12px"><div class="mc"><div class="v" style="font-size:16px">'+(bSQ||'-')+'</div><div class="l">SQ Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bBP||'-')+'</div><div class="l">BP Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bDL||'-')+'</div><div class="l">DL Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bBR||'-')+'</div><div class="l">Bronco Best</div></div></div>'+
+  '<div class="grid2" style="margin-bottom:12px"><div class="mc"><div class="v" style="font-size:16px">'+(bSQ||'-')+'</div><div class="l">SQ Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bBP||'-')+'</div><div class="l">BP Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bDL||'-')+'</div><div class="l">DL Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+broncoFmt(bBR)+'</div><div class="l">Bronco Best</div></div></div>'+
   '<button class="btn btn-p" style="margin-bottom:10px" onclick="showPhysForm()">💪 BIG3 / ブロンコを記録</button>'+
   (recs.length>=2?'<div class="chart-wrap"><canvas id="ch-ph"></canvas></div>':'')+
   (recs.length?recs.map(function(r){return'<div class="log-row"><span style="min-width:60px;color:var(--text-secondary)">'+fmt(r.date)+'</span><span>SQ:'+(r.squat||'-')+'</span><span>BP:'+(r.bench||'-')+'</span><span>DL:'+(r.deadlift||'-')+'</span><span style="font-weight:600;color:var(--blue)">BIG3:'+big3(r)+'</span><span>B:'+(r.bronco||'-')+'s</span></div>';}).join(''):'<div class="no">記録なし</div>');
@@ -262,8 +280,8 @@ function updSrpe(){var r=parseInt(document.getElementById('cf-rpe').value)||0,d=
 function doCondition(){var rpe=parseFloat(document.getElementById('cf-rpe').value);if(!rpe)return alert('RPEを入力');D.f.push({id:Date.now(),pid:myPid,date:document.getElementById('cf-date').value,rpe:rpe,sleep:parseFloat(document.getElementById('cf-sleep').value)||0,duration:parseInt(document.getElementById('cf-dur').value)||0,note:document.getElementById('cf-note').value});sv('f');alert('記録しました ✓');go('mypage');}
 
 // Physical input
-function showPhysForm(){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">BIG3 / ブロンコ 記録</div><div class="form-box"><div class="form-title">測定データ</div><div class="fl"><label>測定日</label><input class="ipt" type="date" id="pf-date" value="'+td+'"></div><div class="fl"><label>スクワット MAX（kg）</label><input class="ipt" type="number" id="pf-sq" placeholder="例: 150"></div><div class="fl"><label>ベンチプレス MAX（kg）</label><input class="ipt" type="number" id="pf-bp" placeholder="例: 100"></div><div class="fl"><label>デッドリフト MAX（kg）</label><input class="ipt" type="number" id="pf-dl" placeholder="例: 180"></div><div class="fl"><label>ブロンコテスト（秒）</label><input class="ipt" type="number" step="0.1" id="pf-br" placeholder="例: 280"></div><button class="btn btn-p" onclick="doPhys()">記録する</button></div>');}
-function doPhys(){var sq=parseFloat(document.getElementById('pf-sq').value)||null,bp=parseFloat(document.getElementById('pf-bp').value)||null,dl=parseFloat(document.getElementById('pf-dl').value)||null,br=parseFloat(document.getElementById('pf-br').value)||null;if(!sq&&!bp&&!dl&&!br)return alert('少なくとも1つ入力してください');D.ph.push({id:Date.now(),pid:myPid,date:document.getElementById('pf-date').value,squat:sq,bench:bp,deadlift:dl,bronco:br});sv('ph');var m=[];var pSQ=getBest(myPid,'squat'),pBP=getBest(myPid,'bench'),pDL=getBest(myPid,'deadlift');if(sq&&pSQ&&sq>=pSQ)m.push('🎉 SQ自己ベスト更新！');if(bp&&pBP&&bp>=pBP)m.push('🎉 BP自己ベスト更新！');if(dl&&pDL&&dl>=pDL)m.push('🎉 DL自己ベスト更新！');alert(m.length?m.join('\n'):'記録しました ✓');go('mypage');}
+function showPhysForm(){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">BIG3 / ブロンコ 記録</div><div class="form-box"><div class="form-title">測定データ</div><div class="fl"><label>測定日</label><input class="ipt" type="date" id="pf-date" value="'+td+'"></div><div class="fl"><label>スクワット MAX（kg）</label><input class="ipt" type="number" id="pf-sq" placeholder="例: 150"></div><div class="fl"><label>ベンチプレス MAX（kg）</label><input class="ipt" type="number" id="pf-bp" placeholder="例: 100"></div><div class="fl"><label>デッドリフト MAX（kg）</label><input class="ipt" type="number" id="pf-dl" placeholder="例: 180"></div><div class="fl"><label>ブロンコテスト</label><div style="display:flex;align-items:center;gap:8px"><input class="ipt" type="number" id="pf-br-m" placeholder="分" min="0" style="width:90px"><span style="font-weight:600">分</span><input class="ipt" type="number" id="pf-br-s" placeholder="秒" min="0" max="59" style="width:90px"><span style="font-weight:600">秒</span></div></div><button class="btn btn-p" onclick="doPhys()">記録する</button></div>');}
+function doPhys(){var sq=parseFloat(document.getElementById('pf-sq').value)||null,bp=parseFloat(document.getElementById('pf-bp').value)||null,dl=parseFloat(document.getElementById('pf-dl').value)||null,br=broncoFromInputs('pf-br-m','pf-br-s');if(!sq&&!bp&&!dl&&!br)return alert('少なくとも1つ入力してください');D.ph.push({id:Date.now(),pid:myPid,date:document.getElementById('pf-date').value,squat:sq,bench:bp,deadlift:dl,bronco:br});sv('ph');var m=[];var pSQ=getBest(myPid,'squat'),pBP=getBest(myPid,'bench'),pDL=getBest(myPid,'deadlift');if(sq&&pSQ&&sq>=pSQ)m.push('🎉 SQ自己ベスト更新！');if(bp&&pBP&&bp>=pBP)m.push('🎉 BP自己ベスト更新！');if(dl&&pDL&&dl>=pDL)m.push('🎉 DL自己ベスト更新！');alert(m.length?m.join('\n'):'記録しました ✓');go('mypage');}
 
 // Rehab log
 function showRehabForm(rid){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">リハビリログ</div><div class="form-box"><div class="form-title">今日のリハビリ</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="rl-date" value="'+td+'"></div><div class="fl"><label>痛みレベル（1-10）</label>'+numStepHTML('rl-pain',1,10,'')+'</div><div class="fl"><label>可動域 ROM（%）</label><input class="ipt" type="number" id="rl-rom" min="0" max="100"></div><div class="fl"><label>実施内容</label><textarea class="ipt" id="rl-ct" placeholder="今日のリハビリ内容..."></textarea></div><button class="btn btn-p" onclick="doRehab('+rid+')">記録する</button></div>');}
@@ -365,6 +383,165 @@ function doInjuryReport(){
   D.i.push({id:injId,pid:myPid,side:side,part:part,partOther:'',type:type,typeOther:'',date:dt,returnDate:'',hospitalVisited:false,hospitalDate:'',note:'【選手報告】'+how+(note?' / '+note:'')+' / 痛み:'+pain+'/10 / 来週練習:'+canprac,resolved:false,source:'player',canPractice:canprac,painLevel:pain,approved:null});
   D.r.push({id:injId+1,injId:injId,pid:myPid,stage:0,logs:[],stageDates:[]});
   sv('i');sv('r');alert('報告しました ✓ スタッフが確認後、怪我人リストに追加されます。');go('mypage');
+}
+
+// === TAPING RESERVATION (選手側) ===
+var TAPE_PARTS=['肩','肘','手首','指','腰','ハムストリングス','膝','足首','踵'];
+var tapePartsSelected={};
+
+T.tape=function(){
+  if(!myPid)return;
+  if(!D.tapeslot)D.tapeslot=[];
+  if(!D.tape)D.tape=[];
+  var today=todayStr();
+  // 今週〜来週の枠を表示
+  var now=new Date();
+  var monDt=new Date(now);monDt.setDate(now.getDate()-now.getDay()+1);
+  var twoWeekLater=new Date(monDt);twoWeekLater.setDate(monDt.getDate()+13);
+  var fromS=monDt.toISOString().split('T')[0];
+  var toS=twoWeekLater.toISOString().split('T')[0];
+  // 自分の予約
+  var myRsvs=D.tape.filter(function(t){return t.pid===myPid;}).sort(function(a,b){return a.date.localeCompare(b.date);});
+  // 予約可能な日付
+  var availDates=[...new Set(D.tapeslot.filter(function(s){return s.date>=fromS&&s.date<=toS;}).map(function(s){return s.date;}))].sort();
+  var h='<div style="font-size:18px;font-weight:600;margin:12px 0 14px">🩻 テーピング予約</div>';
+  // 自分の予約
+  if(myRsvs.length){
+    h+='<div class="form-box"><div class="form-title">あなたの予約</div>';
+    myRsvs.forEach(function(rsv){
+      var slot=(D.tapeslot||[]).find(function(s){return s.id===rsv.slotId;});
+      h+='<div class="log-row"><div style="flex:1"><div style="font-weight:600">'+fmt(rsv.date)+' '+rsv.startTime+'〜'+rsv.endTime+'</div>'+
+      '<div style="font-size:12px;color:var(--text-secondary)">'+rsv.parts.join('・')+'</div>'+
+      (rsv.assignedTo?'<div style="font-size:11px;color:var(--blue)">担当: '+rsv.assignedTo+'</div>':'')+'</div>'+
+      (rsv.date>=today?'<button class="btn btn-sm btn-d" onclick="cancelTapeRsv('+rsv.id+')">キャンセル</button>':'<span class="bd bd-g">完了</span>')+'</div>';
+    });
+    h+='</div>';
+  }
+  // 予約可能な日
+  h+='<div class="form-box"><div class="form-title">予約する</div>';
+  if(availDates.length){
+    h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">予約可能な日を選んでください（今週・来週）</div>';
+    h+=availDates.map(function(date){
+      var slots=(D.tapeslot||[]).filter(function(s){return s.date===date;});
+      var totalCap=slots.reduce(function(c,s){return c+s.capacity;},0);
+      var totalBooked=D.tape.filter(function(t){return t.date===date;}).reduce(function(c,t){return c+t.slots;},0);
+      var remaining=totalCap-totalBooked;
+      return'<div class="card card-click" style="margin-bottom:8px" onclick="showTapeBookForm(\''+date+'\')">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between">'+
+      '<div><div style="font-weight:600">'+fmt(date)+'</div>'+
+      '<div style="font-size:12px;color:var(--text-secondary)">'+(slots[0].type==='match'?'試合前':'練習前')+'</div></div>'+
+      '<span class="bd '+(remaining>0?'bd-g':'bd-r')+'">'+(remaining>0?'予約可能':'満員')+'</span></div></div>';
+    }).join('');
+  } else {
+    h+='<div class="no">予約可能な枠がありません</div>';
+  }
+  h+='</div>';
+  $m().innerHTML=h;
+};
+
+function showTapeBookForm(date){
+  tapePartsSelected={};
+  if(!D.tapeslot)D.tapeslot=[];
+  if(!D.tape)D.tape=[];
+  var slots=(D.tapeslot||[]).filter(function(s){return s.date===date;}).sort(function(a,b){return a.startTime.localeCompare(b.startTime);});
+  var staffs=[...new Set(slots.map(function(s){return s.staff;}))];
+  var staffSelH='<div class="fl" style="margin-bottom:14px"><label>担当者を選択</label>'+
+  '<div style="display:flex;flex-wrap:wrap;gap:8px" id="tape-staff-sel">'+
+  staffs.map(function(s,i){return'<div id="tss-'+i+'" onclick="selectTapeStaff(\''+s+'\','+i+')" style="padding:8px 14px;border-radius:99px;border:1.5px solid var(--border-secondary);cursor:pointer;font-size:13px;font-weight:500">'+s+'</div>';}).join('')+
+  '</div></div>';
+  var h='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button>'+
+  '<div style="font-size:18px;font-weight:600;margin:10px 0 14px">'+fmt(date)+' テーピング予約</div>'+
+  '<div class="form-box">'+staffSelH+
+  '<div class="form-title" style="margin-top:8px">部位を選択（複数可）</div>'+
+  '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">'+
+  TAPE_PARTS.map(function(part){var id='tp-'+part.replace(/[^a-zA-Z0-9]/g,'_');return'<div id="'+id+'" onclick="toggleTapePart(this,\''+part+'\')" style="padding:8px 14px;border-radius:99px;border:1.5px solid var(--border-secondary);cursor:pointer;font-size:13px;font-weight:500;transition:all .15s">'+part+'</div>';}).join('')+
+  '</div>'+
+  '<div style="font-size:12px;color:var(--text-secondary)">部位数 × 5分 = 必要時間</div></div>'+
+  '<div class="form-box" id="tape-slot-list"><div class="form-title">時間枠を選択</div>'+
+  '<div id="tape-slots-wrap"><div style="color:var(--text-secondary);font-size:13px">担当者と部位を先に選択してください</div></div></div>'+
+  '<button class="btn btn-p" onclick="doTapeBook(\''+date+'\')" style="margin-top:8px;width:100%">予約を確定する</button>';
+  $m().innerHTML=h;
+  window._tapeCurrentDate=date;
+  window._tapeCurrentStaff=null;
+}
+
+
+function selectTapeStaff(staff,idx){
+  window._tapeCurrentStaff=staff;
+  document.querySelectorAll('[id^="tss-"]').forEach(function(e){e.style.background='';e.style.color='';e.style.borderColor='';});
+  var el=document.getElementById('tss-'+idx);
+  if(el){el.style.background='var(--blue)';el.style.color='#fff';el.style.borderColor='var(--blue)';}
+  updateTapeSlots();
+}
+
+function toggleTapePart(el,part){
+  tapePartsSelected[part]=!tapePartsSelected[part];
+  if(tapePartsSelected[part]){el.style.background='var(--blue)';el.style.color='#fff';el.style.borderColor='var(--blue)';}
+  else{el.style.background='';el.style.color='';el.style.borderColor='';}
+  updateTapeSlots();
+}
+
+function updateTapeSlots(){
+  var wrap=document.getElementById('tape-slots-wrap');if(!wrap)return;
+  var parts=Object.keys(tapePartsSelected).filter(function(k){return tapePartsSelected[k];});
+  var needed=parts.length;
+  var staff=window._tapeCurrentStaff;
+  var date=window._tapeCurrentDate;
+  if(!staff){wrap.innerHTML='<div style="color:var(--text-secondary);font-size:13px">担当者を先に選択してください</div>';return;}
+  if(!needed){wrap.innerHTML='<div style="color:var(--text-secondary);font-size:13px">部位を選択してください</div>';return;}
+  var slots=(D.tapeslot||[]).filter(function(s){return s.date===date&&s.staff===staff;}).sort(function(a,b){return a.startTime.localeCompare(b.startTime);});
+  // 連続したneeded枠が空いている時間帯を探す
+  var available=[];
+  for(var i=0;i<=slots.length-needed;i++){
+    var ok=true;
+    for(var j=0;j<needed;j++){
+      var s=slots[i+j];
+      var booked=D.tape.filter(function(t){return t.slotId===s.id;}).length;
+      if(booked>=s.capacity){ok=false;break;}
+      if(j>0&&slots[i+j-1].endTime!==s.startTime){ok=false;break;}
+    }
+    if(ok){available.push({startTime:slots[i].startTime,endTime:slots[i+needed-1].endTime,slotIds:slots.slice(i,i+needed).map(function(s){return s.id;})});}
+  }
+  if(!available.length){wrap.innerHTML='<div class="alert-card alert-down">'+needed+'部位（'+(needed*5)+'分）の空き枠がありません</div>';return;}
+  var availSlotsData=[];
+  wrap.innerHTML='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">'+needed+'部位 → '+(needed*5)+'分。時間を選択：</div>'+
+  available.map(function(av,idx){
+    availSlotsData.push(av);
+    return'<div class="select-card" id="tslt-'+idx+'" onclick="selectTapeSlot('+idx+')" style="margin-bottom:6px;text-align:left;padding:10px 14px">'+
+    '<span style="font-weight:600">'+av.startTime+' 〜 '+av.endTime+'</span></div>';
+  }).join('');
+  window._tapeAvailSlots=availSlotsData;
+}
+
+
+var selectedTapeSlot=null;
+function selectTapeSlot(idx){
+  var slots=window._tapeAvailSlots||[];
+  selectedTapeSlot=slots[idx]||null;
+  document.querySelectorAll('[id^="tslt-"]').forEach(function(e){e.style.borderColor='';e.style.background='';});
+  var el=document.getElementById('tslt-'+idx);
+  if(el){el.style.borderColor='var(--blue)';el.style.background='var(--blue-bg)';}
+}
+
+function doTapeBook(date){
+  if(!D.tape)D.tape=[];
+  var parts=Object.keys(tapePartsSelected).filter(function(k){return tapePartsSelected[k];});
+  if(!parts.length)return alert('部位を選択してください');
+  if(!selectedTapeSlot)return alert('時間枠を選択してください');
+  // 重複チェック（同日に既に予約がないか）
+  var already=D.tape.find(function(t){return t.pid===myPid&&t.date===date;});
+  if(already)return alert('この日はすでに予約があります。キャンセルしてから再予約してください。');
+  var rsv={id:Date.now(),pid:myPid,date:date,slotId:selectedTapeSlot.slotIds[0],slotIds:selectedTapeSlot.slotIds,startTime:selectedTapeSlot.startTime,endTime:selectedTapeSlot.endTime,parts:parts,slots:parts.length,staff:window._tapeCurrentStaff||'',assignedTo:null,tapeNote:''};
+  D.tape.push(rsv);sv('tape');
+  alert('予約しました ✓\n'+fmt(date)+' '+rsv.startTime+'〜'+rsv.endTime+'\n部位: '+parts.join('・'));
+  selectedTapeSlot=null;tapePartsSelected={};
+  T.tape();
+}
+
+function cancelTapeRsv(rid){
+  if(!confirm('この予約をキャンセルしますか？'))return;
+  D.tape=(D.tape||[]).filter(function(t){return t.id!==rid;});
+  sv('tape');T.tape();
 }
 
 // Init
