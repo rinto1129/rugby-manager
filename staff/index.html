@@ -90,6 +90,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 <div class="ni" onclick="nav('physical')"><span style="width:20px;text-align:center">📈</span><span>フィジカル</span></div>
 <div class="ni" onclick="nav('bodycomp')"><span style="width:20px;text-align:center">⚖️</span><span>体組成</span></div>
 <div class="ni" onclick="nav('matchview')"><span style="width:20px;text-align:center">🏟️</span><span>試合日レポート</span></div>
+<div class="ni" onclick="nav('calendar')"><span style="width:20px;text-align:center">📅</span><span>カレンダー</span></div>
 <div class="ni" onclick="nav('rank')"><span style="width:20px;text-align:center">🏆</span><span>ランキング</span></div>
 <div class="ni" onclick="nav('export')"><span style="width:20px;text-align:center">📥</span><span>CSV出力</span></div>
 </div></div>
@@ -105,13 +106,13 @@ firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDom
 var db=firebase.firestore();
 </script>
 <script>
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday'};
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel'};
 var STG=['ウォーキング','ランニング','スプリント','ジャンプ','コンタクト以外の練習','フルコンタクト','完全復帰'];
 var POS=['PR','HO','LO','FL','No.8','SH','SO','CTB','WTB','FB'];
-var PARTS=['膝','足首','肩','腰','首','肘','大腿','ふくらはぎ','手首','その他'];
-var INJ_TYPES=['捻挫','肉離れ','骨折','脱臼','打撲','靭帯損傷','半月板損傷','脳震盪','その他'];
+var PARTS=['頭部','頸部','肩','鎖骨','肘','手首','指','腰','股関節','大腿','膝','すね','足首','踵','アキレス腱','ふくらはぎ','足の甲','足趾','その他'];
+var INJ_TYPES=['捻挫','肉離れ','骨折','脱臼','打撲','靭帯損傷','半月板損傷','脳震盪','裂傷','腱炎','疲労骨折','その他'];
 var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
-var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[]};
+var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[]};
 var curPage='dash',charts={},viewStack=[];
 
 function ld(){
@@ -156,11 +157,11 @@ document.addEventListener('click',function(e){document.querySelectorAll('.p-sear
 
 function nav(pg){
   curPage=pg;viewStack=[];dCA();
-  var pages=['dash','players','injury','rehab','fatigue','absence','physical','bodycomp','matchview','rank','export'];
+  var pages=['dash','players','injury','rehab','fatigue','absence','physical','bodycomp','matchview','calendar','rank','export'];
   document.querySelectorAll('.ni').forEach(function(e,i){e.classList.toggle('ac',pages[i]===pg);});
-  var t={dash:'ダッシュボード',players:'選手一覧',injury:'怪我管理',rehab:'リハビリ記録',fatigue:'疲労度管理',absence:'欠席管理',bodycomp:'体組成',physical:'フィジカル記録',matchview:'試合日レポート',rank:'ランキング',export:'CSV出力'};
+  var t={dash:'ダッシュボード',players:'選手一覧',injury:'怪我管理',rehab:'リハビリ記録',fatigue:'疲労度管理',absence:'欠席管理',bodycomp:'体組成',physical:'フィジカル記録',matchview:'試合日レポート',calendar:'カレンダー',rank:'ランキング',export:'CSV出力'};
   document.getElementById('pg-title').textContent=t[pg]||pg;
-  var acts={players:'<button class="btn btn-p" onclick="goAddPlayer()">+ 選手追加</button>',injury:'<button class="btn btn-p" onclick="goAddInjury()">+ 怪我登録</button>',absence:'<button class="btn btn-p" onclick="goRecordAbsence()">+ 欠席記録</button>',bodycomp:'<button class="btn btn-p" onclick="goAddBC()">+ 体組成記録</button>',physical:'<button class="btn btn-p" onclick="goAddPhys()">+ 記録追加</button> <button class="btn" onclick="goBulkPhys()" style="margin-left:6px">一括入力</button>',fatigue:'<button class="btn btn-p" onclick="goAddFatigue()">+ コンディション入力</button>'};
+  var acts={players:'<button class="btn btn-p" onclick="goAddPlayer()">+ 選手追加</button>',injury:'<button class="btn btn-p" onclick="goAddInjury()">+ 怪我登録</button>',absence:'<button class="btn btn-p" onclick="goRecordAbsence()">+ 欠席記録</button>',bodycomp:'<button class="btn btn-p" onclick="goAddBC()">+ 体組成記録</button>',physical:'<button class="btn btn-p" onclick="goAddPhys()">+ 記録追加</button> <button class="btn" onclick="goBulkPhys()" style="margin-left:6px">一括入力</button>',fatigue:'<button class="btn btn-p" onclick="goAddFatigue()">+ コンディション入力</button>',calendar:'<button class="btn btn-p" onclick="goAddCalEvent()">+ イベント追加</button>'};
   document.getElementById('tb-act').innerHTML=acts[pg]||'';
   V[pg]&&V[pg]();
 }
@@ -174,26 +175,41 @@ dash:function(){
   D.p.forEach(function(p){var c=absCnt(p.id,mon);if(c>=3)aa.push({n:p.name,c:c,pid:p.id});});
   D.p.forEach(function(p){var lf=getLatestFatigue(p.id);if(lf){if(lf.rpe>=8)fa.push({pid:p.id,txt:p.name+': RPE '+lf.rpe+'/10 ⚠️'});if(lf.sleep<=5)fa.push({pid:p.id,txt:p.name+': 睡眠 '+lf.sleep+'h ⚠️'});}});
   var ai=D.i.filter(function(x){return!x.resolved;}).sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,6);
-  // Next week returnees
-  var today=new Date(),nw=new Date(today);nw.setDate(nw.getDate()+7);
-  var todayS=todayStr(),nwS=nw.toISOString().split('T')[0];
-  var returning=D.i.filter(function(x){return!x.resolved&&x.returnDate&&x.returnDate>=todayS&&x.returnDate<=nwS;});
-  // New injuries from players (last 7 days)
-  var sevenAgo=new Date(today);sevenAgo.setDate(sevenAgo.getDate()-7);var sevenS=sevenAgo.toISOString().split('T')[0];
-  var newInj=D.i.filter(function(x){return!x.resolved&&x.source&&x.date>=sevenS;}).sort(function(a,b){return b.date.localeCompare(a.date);});
+  // 来週復帰予定（来週月曜〜日曜）
+  var today=new Date();
+  var todayS=todayStr();
+  var dow=today.getDay();
+  var daysToNextMon=dow===0?1:8-dow;
+  var nextMon=new Date(today);nextMon.setDate(today.getDate()+daysToNextMon);
+  var nextSun=new Date(nextMon);nextSun.setDate(nextMon.getDate()+6);
+  var nextMonS=nextMon.toISOString().split('T')[0];
+  var nextSunS=nextSun.toISOString().split('T')[0];
+  var returning=D.i.filter(function(x){return!x.resolved&&x.returnDate&&x.returnDate>=nextMonS&&x.returnDate<=nextSunS;});
+  // New injuries pending approval (source match/player, not yet approved)
+  var pendingInj=D.i.filter(function(x){return!x.resolved&&x.source&&!x.approved;}).sort(function(a,b){return b.date.localeCompare(a.date);});
   // Can't practice next week
-  var cantPrac=D.i.filter(function(x){return!x.resolved&&x.canPractice==='参加できない';});
+  var cantPrac=D.i.filter(function(x){return!x.resolved&&x.canPractice==='参加できない'&&x.approved!==false;});
+  // Match day check: find members who should check but haven't for today's match
+  var todayMatchDate=todayStr();
+  var selectedForMatch=D.matchsel||[];
+  var matchDoneToday=D.md.filter(function(m){return m.date===todayMatchDate;}).map(function(m){return m.pid;});
+  var matchNotDone=selectedForMatch.filter(function(pid){return matchDoneToday.indexOf(pid)<0;});
+  // This week's calendar events for announce
+  var thisWeekEvents=getThisWeekEvents();
   $m().innerHTML='<div class="grid g3" style="margin-bottom:1.25rem">'+[[tot,'登録選手',''],[ok,'正常','color:var(--green)'],[inj,'怪我中','color:var(--red)']].map(function(x){return'<div class="mc"><div class="v" style="'+x[2]+'">'+x[0]+'</div><div class="l">'+x[1]+'</div></div>';}).join('')+'</div>'+
-  (newInj.length?'<div style="margin-bottom:1rem"><div style="font-size:14px;font-weight:600;margin-bottom:.5rem">🚨 新着の怪我報告</div>'+newInj.map(function(x){var p=D.p.find(function(pp){return pp.id===x.pid;});if(!p)return'';return'<div class="alert-card alert-down" style="cursor:pointer" onclick="goInjuryDetail('+x.id+')">'+p.name+' — '+(x.side||'')+x.part+' '+x.type+' ('+fmt(x.date)+') '+(x.source==='match'?'【試合】':'【練習/その他】')+'</div>';}).join('')+'</div>':'')+
+  (pendingInj.length?'<div style="margin-bottom:1rem"><div style="font-size:14px;font-weight:600;margin-bottom:.5rem;color:var(--red)">🚨 新着怪我 — スタッフ確認が必要</div>'+pendingInj.map(function(x){var p=D.p.find(function(pp){return pp.id===x.pid;});if(!p)return'';return'<div class="alert-card alert-down" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><span style="flex:1">'+p.name+' — '+(x.side||'')+x.part+' '+x.type+' ('+fmt(x.date)+') '+(x.source==='match'?'【試合】':'【練習/その他】')+'</span><div style="display:flex;gap:6px"><button class="btn btn-sm btn-s" onclick="approveInjury('+x.id+')">怪我人に追加</button><button class="btn btn-sm btn-d" onclick="rejectInjury('+x.id+')">却下</button><button class="btn btn-sm" onclick="goInjuryDetail('+x.id+')">詳細</button></div></div>';}).join('')+'</div>':'')+
+  (matchNotDone.length?'<div style="margin-bottom:1rem"><div style="font-size:14px;font-weight:600;margin-bottom:.5rem;color:var(--amber)">📝 試合日チェック未提出（本日の対象選手）</div>'+matchNotDone.map(function(pid){var p=D.p.find(function(x){return x.id===pid;});return p?'<div class="alert-card alert-warn">'+p.name+' ('+p.position+')</div>':'';}).join('')+'</div>':'')+
   (cantPrac.length?'<div style="margin-bottom:1rem"><div style="font-size:14px;font-weight:600;margin-bottom:.5rem">⚠️ 来週の練習に参加できない選手</div>'+cantPrac.map(function(x){var p=D.p.find(function(pp){return pp.id===x.pid;});if(!p)return'';return'<div class="alert-card alert-warn" style="cursor:pointer" onclick="goInjuryDetail('+x.id+')">'+p.name+' — '+(x.side||'')+x.part+' '+x.type+'</div>';}).join('')+'</div>':'')+
-  (returning.length?'<div style="margin-bottom:1rem"><div style="font-size:14px;font-weight:600;margin-bottom:.5rem">📅 来週復帰予定</div>'+returning.map(function(x){var p=D.p.find(function(pp){return pp.id===x.pid;});if(!p)return'';return'<div class="alert-card alert-info" style="cursor:pointer" onclick="goInjuryDetail('+x.id+')">'+p.name+' — '+injLabel(x)+' (復帰予定: '+fmt(x.returnDate)+')</div>';}).join('')+'</div>':'')+
+  (returning.length?'<div style="margin-bottom:1rem"><div style="font-size:14px;font-weight:600;margin-bottom:.5rem">🟢 来週復帰予定（'+fmt(nextMonS)+'〜'+fmt(nextSunS)+'）</div>'+returning.map(function(x){var p=D.p.find(function(pp){return pp.id===x.pid;});if(!p)return'';var daysLeft=Math.ceil((new Date(x.returnDate)-new Date())/86400000);return'<div class="alert-card alert-info" style="cursor:pointer;justify-content:space-between" onclick="goInjuryDetail('+x.id+')"><span>'+p.name+' — '+injLabel(x)+' <span style="font-size:11px">(復帰予定: '+fmt(x.returnDate)+')</span></span><span class="bd bd-g">残り'+daysLeft+'日</span></div>';}).join('')+'</div>':'')+
   '<div class="grid g3"><div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">怪我中の選手</div>'+(ai.length?ai.map(function(i){var p=D.p.find(function(x){return x.id===i.pid;});if(!p)return'';return'<div class="log-row card-click" onclick="goInjuryDetail('+i.id+')">'+avH(p,26)+'<span style="font-weight:600;flex:1">'+p.name+'</span><span style="color:var(--text-secondary);font-size:11px">'+injLabel(i)+'</span><span class="bd '+(i.hospitalVisited?'bd-g':'bd-a')+'" style="font-size:9px">'+(i.hospitalVisited?'受診済':'未受診')+'</span></div>';}).join(''):'<div class="no">なし</div>')+'</div><div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">欠席アラート</div>'+(aa.length?aa.map(function(a){return'<div class="alert-card alert-warn" style="cursor:pointer" onclick="goPlayerDetail('+a.pid+')">'+a.n+': '+a.c+'回</div>';}).join(''):'<div class="no">該当なし</div>')+'</div><div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">疲労度アラート</div>'+(fa.length?fa.map(function(f){return'<div class="alert-card alert-down" style="cursor:pointer" onclick="goPlayerDetail('+f.pid+')">'+f.txt+'</div>';}).join(''):'<div class="no">該当なし</div>')+'</div></div>';
   // Add body comp missed alerts
   var isOff=D.offday.indexOf(todayStr())>=0;
   if(!isOff){var bcMissed=getDashBCAlerts();
   if(bcMissed.length)$m().innerHTML+='<div style="margin-top:1rem"><div style="font-size:14px;font-weight:600;margin-bottom:.5rem">⚖️ 体組成 未入力</div>'+bcMissed.map(function(n){return'<div class="alert-card alert-warn">'+n+': 未入力</div>';}).join('')+'</div>';}
-  // Announcements section
-  $m().innerHTML+='<div style="margin-top:1.25rem"><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">📢 お知らせ投稿（選手サイトに表示）</div><div class="form-box" style="margin-bottom:.75rem"><div class="fl" style="margin-bottom:10px"><label>宛先</label><select class="ipt" id="ann-target" style="width:auto"><option value="">全体へ</option>'+D.p.map(function(p){return'<option value="'+p.id+'">個人: '+p.name+'</option>';}).join('')+'</select></div><textarea class="ipt" id="ann-text" placeholder="今週の予定やお知らせを入力..." style="min-height:60px"></textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-p" onclick="postAnnounce()">投稿する</button></div></div>'+
+  // Announcements section with calendar link
+  $m().innerHTML+='<div style="margin-top:1.25rem"><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">📢 お知らせ投稿（選手サイトに表示）</div>'+
+  (thisWeekEvents.length?'<div style="margin-bottom:.75rem"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">📅 今週のカレンダー（クリックでお知らせに反映）</div>'+thisWeekEvents.map(function(ev){return'<div class="alert-card alert-info" style="cursor:pointer;justify-content:space-between" onclick="fillAnnounceFromEvent(\''+escAnn(ev.date)+'\',\''+escAnn(ev.title)+'\',\''+escAnn(ev.detail||'')+'\')">'+'<span><strong>'+fmt(ev.date)+'</strong> '+ev.title+(ev.detail?' — '+ev.detail:'')+'</span><span style="font-size:11px;opacity:.7">クリックで反映</span></div>';}).join('')+'</div>':'')+
+  '<div class="form-box" style="margin-bottom:.75rem"><div class="fl" style="margin-bottom:10px"><label>宛先</label><select class="ipt" id="ann-target" style="width:auto"><option value="">全体へ</option>'+D.p.map(function(p){return'<option value="'+p.id+'">個人: '+p.name+'</option>';}).join('')+'</select></div><textarea class="ipt" id="ann-text" placeholder="今週の予定やお知らせを入力..." style="min-height:80px"></textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-p" onclick="postAnnounce()">投稿する</button><button class="btn" onclick="postAnnounceFromCalendar()">📅 今週の予定をまとめて投稿</button></div></div>'+
   (D.ann.length?D.ann.sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,8).map(function(a){var tgt=a.targetPid?D.p.find(function(x){return x.id===a.targetPid;}):null;return'<div class="card" style="margin-bottom:6px;padding:.75rem 1rem"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">'+fmt(a.date)+(tgt?' <span class="bd bd-b">個人: '+tgt.name+'</span>':' <span class="bd bd-p">全体</span>')+'</div><div style="font-size:13px;white-space:pre-wrap">'+a.text+'</div></div><button class="btn btn-sm btn-d" onclick="delAnnounce('+a.id+')">削除</button></div></div>';}).join(''):'<div class="no" style="padding:1rem">お知らせはまだありません</div>')+'</div>';
 },
 players:function(){
@@ -206,8 +222,17 @@ players:function(){
 },
 injury:function(){
   var pf=document.getElementById('ijpf')?document.getElementById('ijpf').value:'',sf=document.getElementById('ijsf')?document.getElementById('ijsf').value:'';
-  var list=D.i.filter(function(x){if(pf&&String(x.pid)!==pf)return false;if(sf==='active'&&x.resolved)return false;if(sf==='resolved'&&!x.resolved)return false;return true;}).sort(function(a,b){return b.date.localeCompare(a.date);});
-  $m().innerHTML='<div class="srch"><select class="ipt" style="width:auto" id="ijpf" onchange="V.injury()"><option value="">全選手</option>'+D.p.map(function(p){return'<option value="'+p.id+'"'+(pf===String(p.id)?' selected':'')+'>'+p.name+'</option>';}).join('')+'</select><select class="ipt" style="width:auto" id="ijsf" onchange="V.injury()"><option value="">全ステータス</option><option value="active"'+(sf==='active'?' selected':'')+'>治療中</option><option value="resolved"'+(sf==='resolved'?' selected':'')+'>回復済</option></select></div>'+(list.length?list.map(function(i){var p=D.p.find(function(x){return x.id===i.pid;});if(!p)return'';return'<div class="card card-click" style="margin-bottom:8px;padding:1rem" onclick="goInjuryDetail('+i.id+')"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+avH(p,32)+'<div style="flex:1;min-width:140px"><div style="font-size:14px;font-weight:600">'+p.name+' — '+injLabel(i)+'</div><div style="font-size:12px;color:var(--text-secondary)">受傷: '+fmt(i.date)+(i.returnDate?' | 復帰予定: '+fmt(i.returnDate):'')+'</div></div><span class="bd '+(i.hospitalVisited?'bd-g':'bd-a')+'">'+(i.hospitalVisited?'受診済':'未受診')+'</span><span class="bd '+(i.resolved?'bd-g':'bd-r')+'">'+(i.resolved?'回復済':'治療中')+'</span></div></div>';}).join(''):'<div class="no">記録なし</div>');
+  var list=D.i.filter(function(x){
+    if(x.approved===null||x.approved===undefined){if(x.source)return false;}// pending approval hidden from main list
+    if(x.approved===false)return false;// rejected
+    if(pf&&String(x.pid)!==pf)return false;
+    if(sf==='active'&&x.resolved)return false;
+    if(sf==='resolved'&&!x.resolved)return false;
+    return true;
+  }).sort(function(a,b){return b.date.localeCompare(a.date);});
+  var pending=D.i.filter(function(x){return x.source&&(x.approved===null||x.approved===undefined)&&!x.resolved;});
+  $m().innerHTML=(pending.length?'<div style="background:var(--red-bg);border-left:3px solid var(--red);padding:.65rem .85rem;border-radius:var(--radius);margin-bottom:1rem;font-size:12px;color:var(--red);font-weight:600">🚨 確認待ちの新着怪我が '+pending.length+' 件あります → <a href="#" onclick="nav(\'dash\')" style="color:var(--red)">ダッシュボードで確認</a></div>':'')+
+  '<div class="srch"><select class="ipt" style="width:auto" id="ijpf" onchange="V.injury()"><option value="">全選手</option>'+D.p.map(function(p){return'<option value="'+p.id+'"'+(pf===String(p.id)?' selected':'')+'>'+p.name+'</option>';}).join('')+'</select><select class="ipt" style="width:auto" id="ijsf" onchange="V.injury()"><option value="">全ステータス</option><option value="active"'+(sf==='active'?' selected':'')+'>治療中</option><option value="resolved"'+(sf==='resolved'?' selected':'')+'>回復済</option></select></div>'+(list.length?list.map(function(i){var p=D.p.find(function(x){return x.id===i.pid;});if(!p)return'';return'<div class="card card-click" style="margin-bottom:8px;padding:1rem" onclick="goInjuryDetail('+i.id+')"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+avH(p,32)+'<div style="flex:1;min-width:140px"><div style="font-size:14px;font-weight:600">'+p.name+' — '+injLabel(i)+'</div><div style="font-size:12px;color:var(--text-secondary)">受傷: '+fmt(i.date)+(i.returnDate?' | 復帰予定: '+fmt(i.returnDate):'')+'</div></div><span class="bd '+(i.hospitalVisited?'bd-g':'bd-a')+'">'+(i.hospitalVisited?'受診済':'未受診')+'</span><span class="bd '+(i.resolved?'bd-g':'bd-r')+'">'+(i.resolved?'回復済':'治療中')+'</span></div></div>';}).join(''):'<div class="no">記録なし</div>');
 },
 rehab:function(){
   var active=D.r.filter(function(r){var i=D.i.find(function(x){return x.id===r.injId;});return i&&!i.resolved;});
@@ -284,6 +309,45 @@ rank:function(){
   m==='bronco'?rk.sort(function(a,b){return a.v-b.v;}):rk.sort(function(a,b){return b.v-a.v;});
   var unit=m==='bronco'?'秒':m==='big3perkg'?'倍':'kg';
   $m().innerHTML='<div class="srch"><select class="ipt" style="width:auto" id="rkm" onchange="V.rank()">'+Object.keys(labels).map(function(k){return'<option value="'+k+'"'+(m===k?' selected':'')+'>'+labels[k]+'</option>';}).join('')+'</select><select class="ipt" style="width:auto" id="rky" onchange="V.rank()"><option value="">全学年</option>'+[1,2,3,4].map(function(y){return'<option value="'+y+'"'+(yf===String(y)?' selected':'')+'>'+y+'年</option>';}).join('')+'</select><select class="ipt" style="width:auto" id="rkp" onchange="V.rank()"><option value="">全ポジション</option>'+POS.map(function(p){return'<option'+(pf===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select></div><div class="card" style="padding:0;overflow:hidden"><table class="rank-tbl"><thead><tr><th style="width:50px">#</th><th>選手名</th><th>POS</th><th>学年</th><th style="text-align:right">'+labels[m]+'</th></tr></thead><tbody>'+(rk.length?rk.map(function(r,i){return'<tr style="cursor:pointer" onclick="goPlayerDetail('+r.p.id+')"><td style="font-weight:600;'+(i===0?'color:#BA7517':i===1?'color:#888780':i===2?'color:#993C1D':'')+'">'+(["🥇","🥈","🥉"][i]||(i+1))+'</td><td><div style="display:flex;align-items:center;gap:8px">'+avH(r.p,26)+'<span style="font-weight:600">'+r.p.name+'</span></div></td><td>'+(r.p.position||'-')+'</td><td>'+(r.p.year||'-')+'年</td><td style="text-align:right;font-weight:600">'+(m==='big3perkg'?r.v.toFixed(2):r.v)+' '+unit+'</td></tr>';}).join(''):'<tr><td colspan="5" class="no">データなし</td></tr>')+'</tbody></table></div>';
+},
+calendar:function(){
+  var now=new Date();
+  var ym=document.getElementById('cal-ym')?document.getElementById('cal-ym').value:(now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'));
+  var parts=ym.split('-');var yr=parseInt(parts[0]),mo=parseInt(parts[1])-1;
+  var firstDay=new Date(yr,mo,1);var lastDay=new Date(yr,mo+1,0);
+  var eventsThisMonth=D.cal.filter(function(e){return e.date&&e.date.startsWith(ym);}).sort(function(a,b){return a.date.localeCompare(b.date);});
+  // Calendar grid
+  var DOW=['日','月','火','水','木','金','土'];
+  var calH='<div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem"><button class="btn" onclick="calNavMonth(-1,\''+ym+'\')">◀</button><input type="month" class="ipt" id="cal-ym" value="'+ym+'" style="width:auto;flex:1" onchange="V.calendar()"><button class="btn" onclick="calNavMonth(1,\''+ym+'\')">▶</button></div>';
+  calH+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:1rem">';
+  DOW.forEach(function(d,i){calH+='<div style="text-align:center;font-size:11px;font-weight:600;padding:4px;color:'+(i===0?'var(--red)':i===6?'var(--blue)':'var(--text-secondary)')+'">'+d+'</div>';});
+  // blank cells before first day
+  for(var bi=0;bi<firstDay.getDay();bi++)calH+='<div></div>';
+  var todayS=todayStr();
+  for(var d=1;d<=lastDay.getDate();d++){
+    var ds=yr+'-'+String(mo+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var dayEvts=D.cal.filter(function(e){return e.date===ds;});
+    var isToday=ds===todayS;
+    var dow=(firstDay.getDay()+d-1)%7;
+    calH+='<div onclick="calDayClick(\''+ds+'\')" style="min-height:52px;border:1px solid var(--border-tertiary);border-radius:6px;padding:4px;cursor:pointer;background:'+(isToday?'var(--blue-bg)':'var(--bg-primary)')+';transition:background .1s" onmouseover="this.style.background=\'var(--bg-secondary)\'" onmouseout="this.style.background=\''+(isToday?'var(--blue-bg)':'var(--bg-primary)')+'\'">';
+    calH+='<div style="font-size:12px;font-weight:'+(isToday?'700':'500')+';color:'+(isToday?'var(--blue)':dow===0?'var(--red)':dow===6?'var(--blue)':'var(--text-primary)')+'">'+d+'</div>';
+    dayEvts.forEach(function(e){var color=e.type==='match'?'var(--purple)':e.type==='practice'?'var(--green)':e.type==='off'?'var(--amber)':'var(--blue)';calH+='<div style="font-size:9px;background:'+color+';color:#fff;border-radius:3px;padding:1px 4px;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+e.title+'</div>';});
+    calH+='</div>';
+  }
+  calH+='</div>';
+  // Event list for month
+  calH+='<div style="font-size:14px;font-weight:600;margin-bottom:.5rem">イベント一覧</div>';
+  if(eventsThisMonth.length){
+    calH+=eventsThisMonth.map(function(e){
+      var color=e.type==='match'?'var(--purple)':e.type==='practice'?'var(--green)':e.type==='off'?'var(--amber)':'var(--blue)';
+      var typelabel=e.type==='match'?'試合':e.type==='practice'?'練習':e.type==='off'?'オフ':'その他';
+      return'<div class="card" style="margin-bottom:6px;padding:.65rem 1rem;display:flex;align-items:center;gap:10px"><div style="width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0"></div><div style="flex:1"><div style="font-weight:600;font-size:13px">'+fmt(e.date)+' '+e.title+'</div>'+(e.detail?'<div style="font-size:11px;color:var(--text-secondary)">'+e.detail+'</div>':'')+'</div><span class="bd" style="background:'+color+'20;color:'+color+'">'+typelabel+'</span>'+(e.type==='match'?'<button class="btn btn-sm" onclick="goSelectMatchMembers(\''+e.id+'\',\''+e.date+'\')">出場選手設定</button>':'')+
+      '<button class="btn btn-sm btn-d" onclick="delCalEvent(\''+e.id+'\')">削除</button></div>';
+    }).join('');
+  } else {
+    calH+='<div class="no">この月のイベントはありません</div>';
+  }
+  $m().innerHTML=calH;
 }};
 
 // === REHAB HTML ===
@@ -527,6 +591,150 @@ function goMatchDetail(mid){
   (m.cramp?'<div class="form-box"><div class="form-title">足の攣り</div><div class="detail-row"><span class="detail-label">頻度</span><span class="detail-value">'+m.crampFreq+'</span></div></div>':'')+
   '</div>');
 }
+// === INJURY APPROVAL ===
+function approveInjury(iid){
+  var inj=D.i.find(function(x){return x.id===iid;});
+  if(!inj)return;
+  inj.approved=true;
+  sv('i');
+  V.dash();
+}
+function rejectInjury(iid){
+  if(!confirm('この怪我報告を却下（非表示に）しますか？'))return;
+  var inj=D.i.find(function(x){return x.id===iid;});
+  if(!inj)return;
+  inj.approved=false;
+  inj.resolved=true; // hide from active injury list
+  sv('i');
+  V.dash();
+}
+
+// === CALENDAR FUNCTIONS ===
+function escAnn(s){return (s||'').replace(/'/g,'\\\'').replace(/\n/g,' ');}
+function getThisWeekEvents(){
+  var now=new Date();
+  var mon=new Date(now);mon.setDate(now.getDate()-now.getDay()+1);
+  var sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  var monS=mon.toISOString().split('T')[0],sunS=sun.toISOString().split('T')[0];
+  return D.cal.filter(function(e){return e.date>=monS&&e.date<=sunS;}).sort(function(a,b){return a.date.localeCompare(b.date);});
+}
+function calNavMonth(dir,ym){
+  var p=ym.split('-');var yr=parseInt(p[0]),mo=parseInt(p[1])-1+dir;
+  if(mo<0){mo=11;yr--;}if(mo>11){mo=0;yr++;}
+  var nym=yr+'-'+String(mo+1).padStart(2,'0');
+  document.getElementById('cal-ym').value=nym;
+  V.calendar();
+}
+function calDayClick(date){
+  // Show events for that day and option to add
+  var dayEvts=D.cal.filter(function(e){return e.date===date;});
+  var h='<div style="font-size:17px;font-weight:600;margin-bottom:12px">📅 '+fmt(date)+'</div>';
+  if(dayEvts.length){
+    h+='<div class="form-box"><div class="form-title">この日のイベント</div>';
+    dayEvts.forEach(function(e){
+      var typelabel=e.type==='match'?'試合':e.type==='practice'?'練習':e.type==='off'?'オフ':'その他';
+      h+='<div class="log-row"><span style="font-weight:600;flex:1">'+e.title+'</span><span class="bd bd-p">'+typelabel+'</span>'+(e.type==='match'?'<button class="btn btn-sm" onclick="goSelectMatchMembers(\''+e.id+'\',\''+e.date+'\')">出場選手</button>':'')+'<button class="btn btn-sm btn-d" onclick="delCalEvent(\''+e.id+'\');popView()">削除</button></div>';
+      if(e.detail)h+='<div style="font-size:12px;color:var(--text-secondary);padding:4px 0">'+e.detail+'</div>';
+    });
+    h+='</div>';
+  }
+  h+='<div class="form-box"><div class="form-title">イベントを追加</div>'+calEventFormHTML(date)+'<button class="btn btn-p" onclick="doAddCalEventForDate(\''+date+'\')">追加する</button></div>';
+  pushView(fmt(date)+' のイベント',h);
+}
+function calEventFormHTML(defaultDate){
+  return '<div class="grid g2" style="gap:10px;margin-bottom:10px">'+
+  '<div class="fl"><label>種別</label><select class="ipt" id="cef-type"><option value="match">試合</option><option value="practice">練習</option><option value="off">オフ</option><option value="other">その他</option></select></div>'+
+  '<div class="fl"><label>タイトル</label><input class="ipt" id="cef-title" placeholder="例: vs ○○大学"></div>'+
+  '</div><div class="fl" style="margin-bottom:10px"><label>詳細（場所・時間等）</label><input class="ipt" id="cef-detail" placeholder="例: ホーム 14:00 KO"></div>';
+}
+function goAddCalEvent(){
+  var td=todayStr();
+  pushView('イベント追加','<div style="max-width:520px"><div class="form-box"><div class="form-title">カレンダーイベント</div>'+
+  '<div class="fl" style="margin-bottom:10px"><label>日付</label><input class="ipt" type="date" id="cal-date" value="'+td+'"></div>'+
+  calEventFormHTML(td)+
+  '</div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="doAddCalEvent()">追加</button></div></div>');
+}
+function doAddCalEvent(){
+  var date=document.getElementById('cal-date').value;
+  var title=document.getElementById('cef-title').value.trim();
+  if(!date||!title)return alert('日付とタイトルを入力してください');
+  D.cal.push({id:Date.now(),date:date,type:document.getElementById('cef-type').value,title:title,detail:document.getElementById('cef-detail').value});
+  sv('cal');popView();
+}
+function doAddCalEventForDate(date){
+  var title=document.getElementById('cef-title').value.trim();
+  if(!title)return alert('タイトルを入力してください');
+  D.cal.push({id:Date.now(),date:date,type:document.getElementById('cef-type').value,title:title,detail:document.getElementById('cef-detail').value});
+  sv('cal');popView();
+}
+function delCalEvent(evid){
+  if(!confirm('このイベントを削除しますか？'))return;
+  var eid=parseInt(evid)||evid;
+  D.cal=D.cal.filter(function(e){return e.id!==eid&&e.id!==evid;});
+  sv('cal');
+  V.calendar&&V.calendar();
+}
+function fillAnnounceFromEvent(date,title,detail){
+  var el=document.getElementById('ann-text');
+  if(!el)return;
+  var line=fmt(date)+' '+title+(detail?' （'+detail+'）':'');
+  el.value=(el.value?el.value+'\n':'')+line;
+  el.focus();
+}
+function postAnnounceFromCalendar(){
+  var evts=getThisWeekEvents();
+  if(!evts.length)return alert('今週のカレンダーイベントがありません');
+  var lines=evts.map(function(e){var typelabel=e.type==='match'?'【試合】':e.type==='practice'?'【練習】':e.type==='off'?'【オフ】':'';return fmt(e.date)+' '+typelabel+e.title+(e.detail?' '+e.detail:'');});
+  var text='📅 今週の予定\n'+lines.join('\n');
+  D.ann.push({id:Date.now(),date:todayStr(),text:text,targetPid:null});
+  sv('ann');
+  alert('投稿しました ✓');
+  V.dash();
+}
+
+// === MATCH MEMBER SELECTION ===
+var matchSelTemp={};
+function goSelectMatchMembers(evid,date){
+  var eid=parseInt(evid)||evid;
+  var existing=D.matchsel||[];
+  matchSelTemp={};
+  existing.forEach(function(pid){matchSelTemp[pid]=true;});
+  var h='<div style="max-width:600px"><div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">試合当日にチェックが必要な選手を選択してください（'+fmt(date)+'）</div>';
+  h+='<div style="margin-bottom:10px;display:flex;gap:8px"><button class="btn btn-sm" onclick="matchSelAll(true)">全員選択</button><button class="btn btn-sm" onclick="matchSelAll(false)">全員解除</button></div>';
+  h+='<div style="max-height:500px;overflow-y:auto;border:1px solid var(--border-tertiary);border-radius:var(--radius)">';
+  D.p.forEach(function(p){
+    var chk=matchSelTemp[p.id]?true:false;
+    h+='<div class="cb-row" id="ms-row-'+p.id+'" onclick="toggleMatchSel('+p.id+')" style="'+(chk?'background:var(--blue-bg)':'')+'">'+
+    '<div class="cb-box'+(chk?' on':'')+'" id="ms-cb-'+p.id+'">'+(chk?'✓':'')+'</div>'+
+    avH(p,28)+'<span style="font-weight:600;flex:1">'+p.name+'</span><span style="color:var(--text-secondary);font-size:11px">'+p.position+'/'+p.year+'年</span></div>';
+  });
+  h+='</div><div style="margin-top:10px;font-size:12px;color:var(--text-secondary)">選択中: <span id="ms-cnt" style="font-weight:600;color:var(--blue)">'+existing.length+'</span>名</div>';
+  h+='<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="saveMatchSel()">保存</button></div></div>';
+  pushView('試合日チェック対象選手（'+fmt(date)+'）',h);
+}
+function toggleMatchSel(pid){
+  matchSelTemp[pid]=!matchSelTemp[pid];
+  var cb=document.getElementById('ms-cb-'+pid),row=document.getElementById('ms-row-'+pid);
+  if(matchSelTemp[pid]){cb.classList.add('on');cb.textContent='✓';row.style.background='var(--blue-bg)';}
+  else{cb.classList.remove('on');cb.textContent='';row.style.background='';}
+  var cnt=Object.values(matchSelTemp).filter(Boolean).length;
+  document.getElementById('ms-cnt').textContent=cnt;
+}
+function matchSelAll(sel){
+  D.p.forEach(function(p){
+    matchSelTemp[p.id]=sel;
+    var cb=document.getElementById('ms-cb-'+p.id),row=document.getElementById('ms-row-'+p.id);
+    if(cb&&row){if(sel){cb.classList.add('on');cb.textContent='✓';row.style.background='var(--blue-bg)';}else{cb.classList.remove('on');cb.textContent='';row.style.background='';}}
+  });
+  document.getElementById('ms-cnt').textContent=sel?D.p.length:0;
+}
+function saveMatchSel(){
+  D.matchsel=Object.keys(matchSelTemp).filter(function(k){return matchSelTemp[k];}).map(function(k){return parseInt(k);});
+  sv('matchsel');
+  alert('保存しました ✓');
+  popView();
+}
+
 ld().then(function(){document.getElementById('loading-screen').style.display='none';startListeners();V.dash();}).catch(function(e){console.error(e);document.getElementById('loading-screen').innerHTML='<div style="text-align:center"><div style="font-size:40px;margin-bottom:16px">⚠️</div><div>読み込みエラー</div><button onclick="location.reload()" style="margin-top:12px;padding:8px 16px;cursor:pointer">再試行</button></div>';});
 </script>
 </body>
