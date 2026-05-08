@@ -71,12 +71,12 @@ var db=firebase.firestore();
 <div class="nav-btn" onclick="go('mypage')"><span class="nav-btn-icon">👤</span>マイページ</div>
 </div>
 <script>
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday'};
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel'};
 var STG=['ウォーキング','ランニング','スプリント','ジャンプ','コンタクト以外の練習','フルコンタクト','完全復帰'];
-var PARTS=['膝','足首','肩','腰','首','肘','大腿','ふくらはぎ','手首','その他'];
-var INJ_TYPES=['捻挫','肉離れ','骨折','脱臼','打撲','靭帯損傷','半月板損傷','脳震盪','その他'];
+var PARTS=['頭部','頸部','肩','鎖骨','肘','手首','指','腰','股関節','大腿','膝','すね','足首','踵','アキレス腱','ふくらはぎ','足の甲','足趾','その他'];
+var INJ_TYPES=['捻挫','肉離れ','骨折','脱臼','打撲','靭帯損傷','半月板損傷','脳震盪','裂傷','腱炎','疲労骨折','その他'];
 var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
-var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[]};
+var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[]};
 var myPid=null,curTab='home',charts={},subView=null;
 
 function ld(){
@@ -127,6 +127,18 @@ home:function(){
   var isOff=D.offday.indexOf(todayStr())>=0;
   var pickup=isOff?[]:getTodayPickup();
   var teamAnns=D.ann.filter(function(a){return!a.targetPid;}).sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,5);
+  // This week calendar events
+  var now=new Date();
+  var monDt=new Date(now);monDt.setDate(now.getDate()-now.getDay()+1);
+  var sunDt=new Date(monDt);sunDt.setDate(monDt.getDate()+6);
+  var monS=monDt.toISOString().split('T')[0],sunS=sunDt.toISOString().split('T')[0];
+  var weekEvts=(D.cal||[]).filter(function(e){return e.date>=monS&&e.date<=sunS;}).sort(function(a,b){return a.date.localeCompare(b.date);});
+  // Match check alert: am I in selected players and haven't checked today?
+  var todayS=todayStr();
+  var selectedForMatch=D.matchsel||[];
+  var myMatchDoneToday=D.md.some(function(m){return m.pid===myPid&&m.date===todayS;});
+  var isSelectedForMatch=myPid&&selectedForMatch.indexOf(myPid)>=0;
+  var showMatchAlert=isSelectedForMatch&&!myMatchDoneToday;
   function getTop3(field){
     var list=D.p.map(function(pp){var rs=D.ph.filter(function(x){return x.pid===pp.id;});var v=null;
     if(field==='bronco'){var vs=rs.filter(function(x){return x.bronco;}).map(function(x){return x.bronco;});v=vs.length?Math.min.apply(null,vs):null;}
@@ -137,8 +149,12 @@ home:function(){
     return list.slice(0,3);
   }
   var h='<div style="text-align:center;margin-bottom:16px"><div style="font-size:28px;margin-bottom:4px">🏉</div><div style="font-size:18px;font-weight:600">福岡大学ラグビー部</div></div>';
+  // Match check alert
+  if(showMatchAlert){h+='<div class="alert-card alert-down" style="margin-bottom:12px;cursor:pointer" onclick="go(\'match\')">📝 本日の試合日チェックがまだ未提出です！タップして入力してください</div>';}
   // Announcements
-  if(teamAnns.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px">📢 お知らせ・今週の予定</div>';teamAnns.forEach(function(a){h+='<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:0.5px solid var(--border-tertiary)"><div style="font-size:11px;color:var(--text-secondary)">'+fmt(a.date)+'</div><div style="font-size:13px;white-space:pre-wrap;margin-top:2px">'+a.text+'</div></div>';});h+='</div>';}
+  if(teamAnns.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px">📢 お知らせ</div>';teamAnns.forEach(function(a){h+='<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:0.5px solid var(--border-tertiary)"><div style="font-size:11px;color:var(--text-secondary)">'+fmt(a.date)+'</div><div style="font-size:13px;white-space:pre-wrap;margin-top:2px">'+a.text+'</div></div>';});h+='</div>';}
+  // This week schedule
+  if(weekEvts.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px">📅 今週のスケジュール</div>';weekEvts.forEach(function(e){var dot=e.type==='match'?'🏟️':e.type==='practice'?'⚽':e.type==='off'?'😴':'📌';h+='<div class="log-row"><span style="min-width:16px">'+dot+'</span><div style="flex:1"><span style="font-weight:600;font-size:13px">'+fmt(e.date)+' '+e.title+'</span>'+(e.detail?'<div style="font-size:11px;color:var(--text-secondary)">'+e.detail+'</div>':'')+'</div></div>';});h+='</div>';}
   // Body comp targets
   if(!isOff&&pickup.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px">⚖️ 本日の体組成測定者</div>';pickup.forEach(function(pid){var p=D.p.find(function(x){return x.id===pid;});if(!p)return;var done=D.bc.some(function(r){return r.pid===pid&&r.date===todayStr();});h+='<div class="log-row">'+avH(p,24)+'<span style="font-weight:600;flex:1">'+p.name+'</span>'+(done?'<span class="bd bd-g">済</span>':'<span class="bd bd-r">未</span>')+'</div>';});h+='</div>';}
   else if(isOff){h+='<div class="alert-card alert-info" style="margin-bottom:12px">📅 本日は体組成測定オフです</div>';}
@@ -195,8 +211,8 @@ condition:function(){
   (todayDone?'<div class="alert-card alert-info">✅ 本日入力済み (RPE:'+lf[0].rpe+' / 睡眠:'+lf[0].sleep+'h)</div>':'')+
   '<div class="form-box"><div class="form-title">今日のコンディション</div>'+
   '<div class="fl"><label>日付</label><input class="ipt" type="date" id="cf-date" value="'+td+'"></div>'+
-  '<div class="fl"><label>RPE（1-10）</label><input class="ipt" type="number" id="cf-rpe" min="1" max="10" placeholder="1=楽 → 10=限界" oninput="updSrpe()"></div>'+
-  '<div class="fl"><label>睡眠時間（h）</label><input class="ipt" type="number" id="cf-sleep" step="0.5" placeholder="例: 7.5"></div>'+
+  '<div class="fl"><label>RPE（1-10）</label>'+numStepHTML('cf-rpe',1,10,'updSrpe()')+'</div>'+
+  '<div class="fl"><label>睡眠時間（h）</label><input class="ipt" type="number" id="cf-sleep" step="0.5" min="0" max="24" placeholder="例: 7.5"></div>'+
   '<div class="fl"><label>トレーニング時間（分）</label><input class="ipt" type="number" id="cf-dur" placeholder="例: 90" oninput="updSrpe()"></div>'+
   '<div class="fl"><label>メモ</label><textarea class="ipt" id="cf-note" placeholder="体調メモ..."></textarea></div>'+
   '<div id="cf-pv"></div>'+
@@ -234,6 +250,14 @@ match:function(){
 }};
 
 // === FORM FUNCTIONS ===
+function numStepHTML(id,min,max,oninput){
+  return '<div style="display:flex;align-items:center;gap:0;border:1.5px solid var(--border-secondary);border-radius:var(--radius);overflow:hidden">'+
+  '<button type="button" onclick="numStep(\''+id+'\',-1,'+min+','+max+')" style="padding:8px 14px;border:none;background:var(--bg-secondary);font-size:16px;cursor:pointer;font-weight:600">−</button>'+
+  '<input class="ipt" type="number" id="'+id+'" min="'+min+'" max="'+max+'" style="text-align:center;border:none;border-left:1px solid var(--border-tertiary);border-right:1px solid var(--border-tertiary);border-radius:0;flex:1" oninput="'+(oninput||'')+'" placeholder="'+min+'〜'+max+'">'+
+  '<button type="button" onclick="numStep(\''+id+'\',1,'+min+','+max+')" style="padding:8px 14px;border:none;background:var(--bg-secondary);font-size:16px;cursor:pointer;font-weight:600">＋</button></div>'+
+  '<div style="font-size:11px;color:var(--text-secondary);margin-top:3px">'+min+'〜'+max+'</div>';
+}
+function numStep(id,dir,min,max){var el=document.getElementById(id);var v=parseInt(el.value)||0;v=Math.min(max,Math.max(min,v+dir));el.value=v;el.dispatchEvent(new Event('input'));}
 function updSrpe(){var r=parseInt(document.getElementById('cf-rpe').value)||0,d=parseInt(document.getElementById('cf-dur').value)||0;document.getElementById('cf-pv').innerHTML=r&&d?'<div class="mc" style="margin-top:8px"><div class="v" style="color:var(--purple)">'+(r*d)+'</div><div class="l">sRPE</div></div>':'';}
 function doCondition(){var rpe=parseFloat(document.getElementById('cf-rpe').value);if(!rpe)return alert('RPEを入力');D.f.push({id:Date.now(),pid:myPid,date:document.getElementById('cf-date').value,rpe:rpe,sleep:parseFloat(document.getElementById('cf-sleep').value)||0,duration:parseInt(document.getElementById('cf-dur').value)||0,note:document.getElementById('cf-note').value});sv('f');alert('記録しました ✓');go('mypage');}
 
@@ -242,12 +266,12 @@ function showPhysForm(){var td=todayStr();showSub('<div style="font-size:18px;fo
 function doPhys(){var sq=parseFloat(document.getElementById('pf-sq').value)||null,bp=parseFloat(document.getElementById('pf-bp').value)||null,dl=parseFloat(document.getElementById('pf-dl').value)||null,br=parseFloat(document.getElementById('pf-br').value)||null;if(!sq&&!bp&&!dl&&!br)return alert('少なくとも1つ入力してください');D.ph.push({id:Date.now(),pid:myPid,date:document.getElementById('pf-date').value,squat:sq,bench:bp,deadlift:dl,bronco:br});sv('ph');var m=[];var pSQ=getBest(myPid,'squat'),pBP=getBest(myPid,'bench'),pDL=getBest(myPid,'deadlift');if(sq&&pSQ&&sq>=pSQ)m.push('🎉 SQ自己ベスト更新！');if(bp&&pBP&&bp>=pBP)m.push('🎉 BP自己ベスト更新！');if(dl&&pDL&&dl>=pDL)m.push('🎉 DL自己ベスト更新！');alert(m.length?m.join('\n'):'記録しました ✓');go('mypage');}
 
 // Rehab log
-function showRehabForm(rid){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">リハビリログ</div><div class="form-box"><div class="form-title">今日のリハビリ</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="rl-date" value="'+td+'"></div><div class="fl"><label>痛みレベル（1-10）</label><input class="ipt" type="number" id="rl-pain" min="1" max="10" placeholder="1=なし → 10=激痛"></div><div class="fl"><label>可動域 ROM（%）</label><input class="ipt" type="number" id="rl-rom" min="0" max="100"></div><div class="fl"><label>実施内容</label><textarea class="ipt" id="rl-ct" placeholder="今日のリハビリ内容..."></textarea></div><button class="btn btn-p" onclick="doRehab('+rid+')">記録する</button></div>');}
+function showRehabForm(rid){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">リハビリログ</div><div class="form-box"><div class="form-title">今日のリハビリ</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="rl-date" value="'+td+'"></div><div class="fl"><label>痛みレベル（1-10）</label>'+numStepHTML('rl-pain',1,10,'')+'</div><div class="fl"><label>可動域 ROM（%）</label><input class="ipt" type="number" id="rl-rom" min="0" max="100"></div><div class="fl"><label>実施内容</label><textarea class="ipt" id="rl-ct" placeholder="今日のリハビリ内容..."></textarea></div><button class="btn btn-p" onclick="doRehab('+rid+')">記録する</button></div>');}
 function doRehab(rid){var r=D.r.find(function(x){return x.id===rid;});if(!r)return;if(!r.logs)r.logs=[];r.logs.push({date:document.getElementById('rl-date').value,pain:parseInt(document.getElementById('rl-pain').value)||5,rom:parseInt(document.getElementById('rl-rom').value)||0,content:document.getElementById('rl-ct').value});sv('r');alert('記録しました ✓');go('mypage');}
 
 // Weekly injury check
-function showWeekCheck(injId){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">📋 週次怪我チェック</div><div class="form-box"><div class="form-title">今週の状態を教えてください</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="wc-date" value="'+td+'"></div><div class="fl"><label>現在の痛み（1-10）</label><input class="ipt" type="number" id="wc-pain" min="1" max="10" placeholder="1=なし → 10=激痛"></div><div class="fl"><label>いつ復帰できそう？</label><select class="ipt" id="wc-ret"><option value="1週間以内">1週間以内</option><option value="2週間以内">2週間以内</option><option value="1ヶ月以内">1ヶ月以内</option><option value="1ヶ月以上">1ヶ月以上</option><option value="わからない">わからない</option></select></div><div class="fl"><label>メモ（状態の変化など）</label><textarea class="ipt" id="wc-note" placeholder="先週からの変化..."></textarea></div><button class="btn btn-p" onclick="doWeekCheck('+injId+')">送信する</button></div>');}
-function doWeekCheck(injId){D.wc.push({id:Date.now(),pid:myPid,injId:injId,date:document.getElementById('wc-date').value,pain:parseInt(document.getElementById('wc-pain').value)||5,returnEst:document.getElementById('wc-ret').value,note:document.getElementById('wc-note').value});sv('wc');alert('送信しました ✓');go('mypage');}
+function showWeekCheck(injId){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">📋 週次怪我チェック</div><div class="form-box"><div class="form-title">今週の状態を教えてください</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="wc-date" value="'+td+'"></div><div class="fl"><label>現在の痛み（1-10）</label><input class="ipt" type="number" id="wc-pain" min="1" max="10" placeholder="1=なし → 10=激痛"></div><div class="fl"><label>いつ復帰できそう？</label><select class="ipt" id="wc-ret"><option value="今週中">今週中</option><option value="来週中">来週中（約1週間）</option><option value="2週間以内">2週間以内</option><option value="3週間以内">3週間以内</option><option value="1ヶ月以内">1ヶ月以内</option><option value="1.5ヶ月以内">1.5ヶ月以内</option><option value="2ヶ月以内">2ヶ月以内</option><option value="3ヶ月以内">3ヶ月以内</option><option value="3ヶ月以上">3ヶ月以上かかりそう</option><option value="わからない">わからない</option></select></div><div class="fl"><label>今週練習に参加できる？</label><select class="ipt" id="wc-prac"><option>部分的に参加できる</option><option>全体練習に参加できる</option><option>参加できない</option></select></div><div class="fl"><label>メモ（状態の変化など）</label><textarea class="ipt" id="wc-note" placeholder="先週からの変化..."></textarea></div><button class="btn btn-p" onclick="doWeekCheck('+injId+')">送信する</button></div>');}
+function doWeekCheck(injId){D.wc.push({id:Date.now(),pid:myPid,injId:injId,date:document.getElementById('wc-date').value,pain:parseInt(document.getElementById('wc-pain').value)||5,returnEst:document.getElementById('wc-ret').value,practiceStatus:document.getElementById('wc-prac').value,note:document.getElementById('wc-note').value});sv('wc');alert('送信しました ✓');go('mypage');}
 
 // === MATCH DAY FORM ===
 function showMatchForm(){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">🏟️ 試合日コンディションチェック</div>'+
@@ -255,7 +279,7 @@ function showMatchForm(){var td=todayStr();showSub('<div style="font-size:18px;f
 '<div class="fl"><label>日付</label><input class="ipt" type="date" id="md-date" value="'+td+'"></div>'+
 '<div class="fl"><label>スタート / リザーブ</label><select class="ipt" id="md-role"><option>スタート</option><option>リザーブ</option></select></div></div>'+
 '<div class="form-box"><div class="form-title">コンディション</div>'+
-'<div class="grid2"><div class="fl"><label>試合前の疲労度（1-6）</label><input class="ipt" type="number" id="md-fpre" min="1" max="6" placeholder="1=元気 → 6=疲労困憊"></div><div class="fl"><label>試合後の疲労度（1-6）</label><input class="ipt" type="number" id="md-fpost" min="1" max="6"></div></div>'+
+'<div class="grid2"><div class="fl"><label>試合前の疲労度（1-6）</label>'+numStepHTML('md-fpre',1,6,'')+'</div><div class="fl"><label>試合後の疲労度（1-6）</label>'+numStepHTML('md-fpost',1,6,'')+'</div></div>'+
 '<div class="grid2"><div class="fl"><label>就寝時刻</label><input class="ipt" type="time" id="md-stime" value="23:00"></div><div class="fl"><label>起床時刻</label><input class="ipt" type="time" id="md-wtime" value="07:00"></div></div>'+
 '<div class="fl"><label>朝食を摂ったか</label><select class="ipt" id="md-bf" onchange="document.getElementById(\'md-bf-detail\').style.display=this.value===\'はい\'?\'block\':\'none\'"><option>はい</option><option>いいえ</option></select></div>'+
 '<div class="fl" id="md-bf-detail"><label>朝食の内容</label><textarea class="ipt" id="md-bftext" placeholder="例: 白米、味噌汁、焼き魚..."></textarea></div></div>'+
@@ -266,7 +290,7 @@ function showMatchForm(){var td=todayStr();showSub('<div style="font-size:18px;f
 '<div class="fl"><label>怪我の種類</label><select class="ipt" id="md-type">'+INJ_TYPES.map(function(x){return'<option>'+x+'</option>';}).join('')+'</select></div>'+
 '<div class="fl"><label>この部位の怪我は？</label><select class="ipt" id="md-hist"><option>初めて</option><option>2回目</option><option>3回目以上</option></select></div>'+
 '<div class="fl"><label>どのように怪我をしたか</label><textarea class="ipt" id="md-how" placeholder="例: タックルの際に膝をひねった..."></textarea></div>'+
-'<div class="grid2"><div class="fl"><label>怪我した時の痛み（1-10）</label><input class="ipt" type="number" id="md-painat" min="1" max="10"></div><div class="fl"><label>現在の痛み（1-10）</label><input class="ipt" type="number" id="md-painnow" min="1" max="10"></div></div>'+
+'<div class="grid2"><div class="fl"><label>怪我した時の痛み（1-10）</label>'+numStepHTML('md-painat',1,10,'')+'</div><div class="fl"><label>現在の痛み（1-10）</label>'+numStepHTML('md-painnow',1,10,'')+'</div></div>'+
 '<div class="fl"><label>プレーを続行したか</label><select class="ipt" id="md-cont"><option>はい（続行した）</option><option>いいえ（途中退場）</option></select></div>'+
 '<div class="fl"><label>来週からの練習に参加できるか</label><select class="ipt" id="md-canprac"><option>参加できる</option><option>参加できない</option><option>わからない</option></select></div></div></div>'+
 '<div class="form-box"><div class="form-title">足の攣りについて</div>'+
@@ -279,9 +303,9 @@ function doMatch(){
   var cramp=document.getElementById('md-cramp').value==='はい';
   var rec={id:Date.now(),pid:myPid,date:document.getElementById('md-date').value,role:document.getElementById('md-role').value,fatiguePre:parseInt(document.getElementById('md-fpre').value)||0,fatiguePost:parseInt(document.getElementById('md-fpost').value)||0,sleepTime:document.getElementById('md-stime').value,wakeTime:document.getElementById('md-wtime').value,breakfast:document.getElementById('md-bf').value,breakfastDetail:document.getElementById('md-bftext').value,injured:injured,cramp:cramp};
   if(injured){rec.injSide=document.getElementById('md-side').value;rec.injPart=document.getElementById('md-part').value;rec.injType=document.getElementById('md-type').value;rec.injHistory=document.getElementById('md-hist').value;rec.injHow=document.getElementById('md-how').value;rec.injPainAt=parseInt(document.getElementById('md-painat').value)||0;rec.injPainNow=parseInt(document.getElementById('md-painnow').value)||0;rec.injContinued=document.getElementById('md-cont').value;rec.canPractice=document.getElementById('md-canprac').value;
-    // Auto-register injury to staff injury management
+    // スタッフ確認待ちとして登録（自動追加しない）
     var injId=Date.now()+100;
-    D.i.push({id:injId,pid:myPid,side:rec.injSide,part:rec.injPart,partOther:'',type:rec.injType,typeOther:'',date:rec.date,returnDate:'',hospitalVisited:false,hospitalDate:'',note:'【試合で受傷】'+rec.injHow+' / 痛み:受傷時'+rec.injPainAt+' 現在'+rec.injPainNow+' / '+rec.injHistory+' / プレー続行:'+rec.injContinued+' / 来週練習:'+rec.canPractice,resolved:false,source:'match',canPractice:rec.canPractice});
+    D.i.push({id:injId,pid:myPid,side:rec.injSide,part:rec.injPart,partOther:'',type:rec.injType,typeOther:'',date:rec.date,returnDate:'',hospitalVisited:false,hospitalDate:'',note:'【試合で受傷】'+rec.injHow+' / 痛み:受傷時'+rec.injPainAt+' 現在'+rec.injPainNow+' / '+rec.injHistory+' / プレー続行:'+rec.injContinued+' / 来週練習:'+rec.canPractice,resolved:false,source:'match',canPractice:rec.canPractice,approved:null});
     D.r.push({id:injId+1,injId:injId,pid:myPid,stage:0,logs:[],stageDates:[]});
     sv('i');sv('r');
   }
@@ -328,7 +352,7 @@ function showInjuryReport(){var td=todayStr();showSub('<div style="font-size:18p
 '<div class="grid2"><div class="fl"><label>左右</label><select class="ipt" id="ir-side"><option value="">指定なし</option><option>右</option><option>左</option><option>両</option></select></div><div class="fl"><label>部位</label><select class="ipt" id="ir-part">'+PARTS.map(function(x){return'<option>'+x+'</option>';}).join('')+'</select></div></div>'+
 '<div class="fl"><label>怪我の種類</label><select class="ipt" id="ir-type">'+INJ_TYPES.map(function(x){return'<option>'+x+'</option>';}).join('')+'</select></div>'+
 '<div class="fl"><label>どのように怪我をしたか</label><textarea class="ipt" id="ir-how" placeholder="例: 練習中のラックで肩を打った..."></textarea></div>'+
-'<div class="fl"><label>現在の痛み（1-10）</label><input class="ipt" type="number" id="ir-pain" min="1" max="10" placeholder="1=軽い → 10=激痛"></div>'+
+'<div class="fl"><label>現在の痛み（1-10）</label>'+numStepHTML('ir-pain',1,10,'')+'</div>'+
 '<div class="fl"><label>来週の練習に参加できるか</label><select class="ipt" id="ir-canprac"><option>参加できる</option><option>参加できない</option><option>わからない</option></select></div>'+
 '<div class="fl"><label>メモ</label><textarea class="ipt" id="ir-note" placeholder="その他気になること..."></textarea></div>'+
 '<button class="btn btn-p" onclick="doInjuryReport()">報告を送信する</button></div>');}
@@ -336,11 +360,11 @@ function showInjuryReport(){var td=todayStr();showSub('<div style="font-size:18p
 function doInjuryReport(){
   var pain=parseInt(document.getElementById('ir-pain').value);if(!pain)return alert('痛みレベルを入力してください');
   var dt=document.getElementById('ir-date').value,side=document.getElementById('ir-side').value,part=document.getElementById('ir-part').value,type=document.getElementById('ir-type').value,how=document.getElementById('ir-how').value,canprac=document.getElementById('ir-canprac').value,note=document.getElementById('ir-note').value;
-  // Auto-register to staff injury management
+  // スタッフ確認待ちとして登録（自動追加しない）
   var injId=Date.now();
-  D.i.push({id:injId,pid:myPid,side:side,part:part,partOther:'',type:type,typeOther:'',date:dt,returnDate:'',hospitalVisited:false,hospitalDate:'',note:'【選手報告】'+how+(note?' / '+note:'')+' / 痛み:'+pain+'/10 / 来週練習:'+canprac,resolved:false,source:'player',canPractice:canprac,painLevel:pain});
+  D.i.push({id:injId,pid:myPid,side:side,part:part,partOther:'',type:type,typeOther:'',date:dt,returnDate:'',hospitalVisited:false,hospitalDate:'',note:'【選手報告】'+how+(note?' / '+note:'')+' / 痛み:'+pain+'/10 / 来週練習:'+canprac,resolved:false,source:'player',canPractice:canprac,painLevel:pain,approved:null});
   D.r.push({id:injId+1,injId:injId,pid:myPid,stage:0,logs:[],stageDates:[]});
-  sv('i');sv('r');alert('報告しました ✓ スタッフに通知されます。');go('mypage');
+  sv('i');sv('r');alert('報告しました ✓ スタッフが確認後、怪我人リストに追加されます。');go('mypage');
 }
 
 // Init
