@@ -54,6 +54,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 </style>
 </head>
 <body>
+<div id="best-banner"></div>
 <div class="header">
 <div><h1>🏉 Rugby Manager</h1><div class="header-sub" id="hdr-name">選手を選択</div></div>
 <button class="btn-back" id="logout-btn" style="display:none" onclick="logout()">選手切替</button>
@@ -163,6 +164,26 @@ home:function(){
   var myMatchDoneToday=D.md.some(function(m){return m.pid===myPid&&m.date===todayS;});
   var isSelectedForMatch=myPid&&selectedForMatch.indexOf(myPid)>=0;
   var showMatchAlert=isSelectedForMatch&&!myMatchDoneToday;
+  // 測定日アラート（昨日の測定日で未入力だったか翌日に通知）
+  var yesterday2=new Date();yesterday2.setDate(yesterday2.getDate()-1);
+  var yesterdayS2=yesterday2.toISOString().split('T')[0];
+  var yesterdayCalEvts2=(D.cal||[]).filter(function(e){return e.date===yesterdayS2;});
+  var physMeasureYesterday2=yesterdayCalEvts2.some(function(e){return e.type==='phys_measure';});
+  var broncoMeasureYesterday2=yesterdayCalEvts2.some(function(e){return e.type==='bronco_measure';});
+  var phSkipYesterday2=myPid&&(D.phskip||[]).some(function(s){return s.pid===myPid&&s.date===yesterdayS2;});
+  var physDoneYesterday=myPid&&D.ph.some(function(r){return r.pid===myPid&&r.date===yesterdayS2&&(r.squat!=null||r.bench!=null||r.deadlift!=null||r.chinning!=null||r.clean!=null);});
+  var broncoDoneYesterday=myPid&&D.ph.some(function(r){return r.pid===myPid&&r.date===yesterdayS2&&r.bronco!=null;});
+  // 未入力者一覧（全体・昨日分）
+  var physMissedAll=physMeasureYesterday2?D.p.filter(function(p){
+    var done=D.ph.some(function(r){return r.pid===p.id&&r.date===yesterdayS2&&(r.squat!=null||r.bench!=null||r.deadlift!=null||r.chinning!=null||r.clean!=null);});
+    var skip=(D.phskip||[]).some(function(s){return s.pid===p.id&&s.date===yesterdayS2;});
+    return!done&&!skip;
+  }):[];
+  var broncoMissedAll=broncoMeasureYesterday2?D.p.filter(function(p){
+    var done=D.ph.some(function(r){return r.pid===p.id&&r.date===yesterdayS2&&r.bronco!=null;});
+    var skip=(D.phskip||[]).some(function(s){return s.pid===p.id&&s.date===yesterdayS2;});
+    return!done&&!skip;
+  }):[];
   function getTop3(field){
     var list=D.p.map(function(pp){var rs=D.ph.filter(function(x){return x.pid===pp.id;});var v=null;
     if(field==='bronco'){var vs=rs.filter(function(x){return x.bronco;}).map(function(x){return x.bronco;});v=vs.length?Math.min.apply(null,vs):null;}
@@ -175,6 +196,12 @@ home:function(){
   var h='<div style="text-align:center;margin-bottom:16px"><div style="font-size:28px;margin-bottom:4px">🏉</div><div style="font-size:18px;font-weight:600">福岡大学ラグビー部</div></div>';
   // Match check alert
   if(showMatchAlert){h+='<div class="alert-card alert-down" style="margin-bottom:12px;cursor:pointer" onclick="go(\'match\')">📝 本日の試合日チェックがまだ未提出です！タップして入力してください</div>';}
+  // 自分の未入力通知（昨日の測定日）
+  if(physMeasureYesterday2&&!phSkipYesterday2&&!physDoneYesterday){h+='<div class="alert-card alert-warn" style="margin-bottom:8px;cursor:pointer" onclick="T.physical()">📊 昨日（'+fmt(yesterdayS2)+'）のフィジカル測定が未入力です！ → タップして入力</div>';}
+  if(broncoMeasureYesterday2&&!phSkipYesterday2&&!broncoDoneYesterday){h+='<div class="alert-card alert-warn" style="margin-bottom:8px;cursor:pointer" onclick="T.physical()">🏃 昨日（'+fmt(yesterdayS2)+'）のブロンコ測定が未入力です！ → タップして入力</div>';}
+  // 全体未入力者一覧（昨日分）
+  if(physMissedAll.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--amber)">📊 昨日のフィジカル未入力 <span style="font-size:12px;font-weight:400">'+physMissedAll.length+'名</span></div>'+physMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+p.name+'</span></div>';}).join('')+'</div>';}
+  if(broncoMissedAll.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--amber)">🏃 昨日のブロンコ未入力 <span style="font-size:12px;font-weight:400">'+broncoMissedAll.length+'名</span></div>'+broncoMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+p.name+'</span></div>';}).join('')+'</div>';}
   // Announcements
   if(teamAnns.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px">📢 お知らせ</div>';teamAnns.forEach(function(a){h+='<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:0.5px solid var(--border-tertiary)"><div style="font-size:11px;color:var(--text-secondary)">'+fmt(a.date)+'</div><div style="font-size:13px;white-space:pre-wrap;margin-top:2px">'+a.text+'</div></div>';});h+='</div>';}
   // This week schedule
@@ -218,8 +245,7 @@ mypage:function(){
   else if(isPickup&&bcDone)h+='<div class="card" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">⚖️</div><div style="font-weight:600;font-size:13px">体組成</div><div style="font-size:11px;color:var(--green);margin-top:4px">✅ 入力済み</div></div>';
   else h+='<div class="card card-click" onclick="showBCForm()" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">⚖️</div><div style="font-weight:600;font-size:13px">体組成を記録</div></div>';
   // Physical
-  h+='<div class="card card-click" onclick="T.physical()" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">💪</div><div style="font-weight:600;font-size:13px">BIG3記録</div></div>'+
-  '<div class="card card-click" onclick="showBroncoFormDirect()" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">🏃</div><div style="font-weight:600;font-size:13px">ブロンコ記録</div></div>';
+  h+='<div class="card card-click" onclick="T.physical()" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">💪</div><div style="font-weight:600;font-size:13px">記録入力</div></div>';
   // Injury
   h+='<div class="card card-click" onclick="T.injury()" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">🩹</div><div style="font-weight:600;font-size:13px">怪我・リハビリ</div>'+(pInj.length?'<div style="font-size:11px;color:var(--red);margin-top:4px">治療中: '+pInj.length+'件</div>':'')+'</div>';
   // Match
@@ -255,10 +281,10 @@ physical:function(){
   var recs=D.ph.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
   var bSQ=getBest(myPid,'squat'),bBP=getBest(myPid,'bench'),bDL=getBest(myPid,'deadlift'),bBR=getBest(myPid,'bronco');
   $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">フィジカル記録</div>'+
-  '<div class="grid2" style="margin-bottom:12px"><div class="mc"><div class="v" style="font-size:16px">'+(bSQ||'-')+'</div><div class="l">SQ Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bBP||'-')+'</div><div class="l">BP Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bDL||'-')+'</div><div class="l">DL Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+broncoFmt(bBR)+'</div><div class="l">Bronco Best</div></div></div>'+
-  '<div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn btn-p" style="flex:1" onclick="showBIG3Form()">💪 BIG3を記録</button><button class="btn btn-p" style="flex:1" onclick="showBroncoForm()">🏃 ブロンコを記録</button></div>'+
+  '<div class="grid2" style="margin-bottom:12px"><div class="mc"><div class="v" style="font-size:16px">'+(bSQ||'-')+'</div><div class="l">SQ Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bBP||'-')+'</div><div class="l">BP Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bDL||'-')+'</div><div class="l">DL Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(getBest(myPid,'chinning')||'-')+'</div><div class="l">チンニング Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(getBest(myPid,'clean')||'-')+'</div><div class="l">クリーン Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+broncoFmt(bBR)+'</div><div class="l">Bronco Best</div></div></div>'+
+  '<button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="showPhysForm()">📝 記録を入力する</button>'+
   (recs.length>=2?'<div class="chart-wrap"><canvas id="ch-ph"></canvas></div>':'')+
-  (recs.length?recs.map(function(r){return'<div class="log-row"><span style="min-width:60px;color:var(--text-secondary)">'+fmt(r.date)+'</span><span>SQ:'+(r.squat||'-')+'</span><span>BP:'+(r.bench||'-')+'</span><span>DL:'+(r.deadlift||'-')+'</span><span style="font-weight:600;color:var(--blue)">BIG3:'+big3(r)+'</span><span>B:'+(r.bronco||'-')+'s</span></div>';}).join(''):'<div class="no">記録なし</div>');
+  (recs.length?recs.map(function(r){return'<div class="log-row" style="flex-wrap:wrap;gap:4px"><span style="min-width:60px;color:var(--text-secondary)">'+fmt(r.date)+'</span>'+(r.squat?'<span>SQ:'+r.squat+'</span>':'')+(r.bench?'<span>BP:'+r.bench+'</span>':'')+(r.deadlift?'<span>DL:'+r.deadlift+'</span>':'')+(r.chinning?'<span>チンニング:'+r.chinning+'</span>':'')+(r.clean?'<span>クリーン:'+r.clean+'</span>':'')+(r.bronco?'<span style="font-weight:600;color:var(--blue)">Bronco:'+broncoFmt(r.bronco)+'</span>':'')+'</div>';}).join(''):'<div class="no">記録なし</div>');
   if(recs.length>=2)setTimeout(function(){var s=recs.slice().reverse();var e=document.getElementById('ch-ph');if(!e)return;dC('ph');charts.ph=new Chart(e,{type:'line',data:{labels:s.map(function(r){return r.date.slice(5);}),datasets:[{label:'SQ',data:s.map(function(r){return r.squat||null;}),borderColor:'#185FA5',tension:.3},{label:'BP',data:s.map(function(r){return r.bench||null;}),borderColor:'#1D9E75',tension:.3},{label:'DL',data:s.map(function(r){return r.deadlift||null;}),borderColor:'#D85A30',tension:.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});},80);
 },
 injury:function(){
@@ -295,19 +321,37 @@ function doCondition(){
   svSafe('f',rec,function(){alert('記録しました ✓');go('mypage');});
 }
 
-// Physical input
-// BIG3専用フォーム
-function showBIG3Form(){
+// 統合フォーム（BIG3＋チンニング＋クリーン＋ブロンコ）
+function showPhysForm(){
   var td=todayStr();
-  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">💪 BIG3を記録</div>'+
-  '<div class="form-box"><div class="form-title">測定データ</div>'+
-  '<div class="fl"><label>測定日</label><input class="ipt" type="date" id="pf-date" value="'+td+'"></div>'+
-  '<div class="fl"><label>スクワット MAX（kg）</label><input class="ipt" type="number" id="pf-sq" placeholder="例: 150"></div>'+
-  '<div class="fl"><label>ベンチプレス MAX（kg）</label><input class="ipt" type="number" id="pf-bp" placeholder="例: 100"></div>'+
-  '<div class="fl"><label>デッドリフト MAX（kg）</label><input class="ipt" type="number" id="pf-dl" placeholder="例: 180"></div>'+
-  '<button class="btn btn-p" onclick="doBIG3()">記録する</button>'+
-  '<button class="btn" style="margin-left:8px" onclick="markPhysSkip()">本日は測定なし</button>'+
-  '</div>');
+  var today=td;
+  var skipped=(D.phskip||[]).find(function(s){return s.pid===myPid&&s.date===today;});
+  var skipBtn=skipped?
+    '<div class="alert-card alert-info" style="margin-bottom:12px">✅ 本日は測定なしとして申告済みです <button class="btn btn-sm" onclick="cancelPhysSkip()" style="margin-left:8px">取消</button></div>':
+    '<button class="btn" style="width:100%;margin-bottom:12px;color:var(--text-secondary)" onclick="markPhysSkip()">📵 本日は測定なしとして申告する</button>';
+  showSub(
+  '<div style="font-size:18px;font-weight:600;margin:12px 0 4px">📝 記録入力</div>'+
+  '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">入力した項目だけ保存されます。空欄はスキップされます。</div>'+
+  skipBtn+
+  '<div class="form-box"><div class="form-title">測定日</div>'+
+  '<input class="ipt" type="date" id="pf-date" value="'+td+'">'+
+  '</div>'+
+  '<div class="form-box"><div class="form-title">ウエイトトレーニング（kg）</div>'+
+  '<div class="fl" style="margin-bottom:10px"><label>スクワット MAX</label><input class="ipt" type="number" id="pf-sq" placeholder="例: 150"></div>'+
+  '<div class="fl" style="margin-bottom:10px"><label>ベンチプレス MAX</label><input class="ipt" type="number" id="pf-bp" placeholder="例: 100"></div>'+
+  '<div class="fl" style="margin-bottom:10px"><label>デッドリフト MAX</label><input class="ipt" type="number" id="pf-dl" placeholder="例: 180"></div>'+
+  '<div class="fl" style="margin-bottom:10px"><label>チンニング MAX</label><input class="ipt" type="number" id="pf-cn" placeholder="例: 80"></div>'+
+  '<div class="fl"><label>クリーン MAX</label><input class="ipt" type="number" id="pf-cl" placeholder="例: 90"></div>'+
+  '</div>'+
+  '<div class="form-box"><div class="form-title">ブロンコテスト</div>'+
+  '<div style="display:flex;align-items:center;gap:8px">'+
+  '<input class="ipt" type="number" id="pf-br-m" placeholder="分" min="0" style="width:80px">'+
+  '<span style="font-weight:600">分</span>'+
+  '<input class="ipt" type="number" id="pf-br-s" placeholder="秒" min="0" max="59" style="width:80px">'+
+  '<span style="font-weight:600">秒</span></div>'+
+  '</div>'+
+  '<button class="btn btn-p" style="width:100%" onclick="doPhys()">記録する</button>'
+  );
 }
 
 // ブロンコ専用フォーム（physical画面から）
@@ -373,6 +417,60 @@ function doBronco(){
     var msg=pBR&&br<pBR?'🎉 ブロンコ自己ベスト更新！\n'+broncoFmt(pBR)+' → '+broncoFmt(br):'記録しました ✓\n'+broncoFmt(br);
     alert(msg);go('mypage');
   }).catch(function(e){alert('保存に失敗しました。もう一度試してください。');console.error(e);});
+}
+
+// グラフ切り替え
+function switchPhysGraph(type){
+  var recs=D.ph.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return a.date.localeCompare(b.date);});
+  var config={
+    sq:{label:'スクワット',field:'squat',color:'#185FA5',unit:'kg',isBronco:false},
+    bp:{label:'ベンチプレス',field:'bench',color:'#1D9E75',unit:'kg',isBronco:false},
+    dl:{label:'デッドリフト',field:'deadlift',color:'#D85A30',unit:'kg',isBronco:false},
+    cn:{label:'チンニング',field:'chinning',color:'#534AB7',unit:'kg',isBronco:false},
+    cl:{label:'クリーン',field:'clean',color:'#854F0B',unit:'kg',isBronco:false},
+    br:{label:'ブロンコ',field:'bronco',color:'#A32D2D',unit:'',isBronco:true}
+  };
+  var c=config[type]||config.sq;
+  var filtered=recs.filter(function(r){return r[c.field]!=null;});
+  // タブの色を更新
+  ['sq','bp','dl','cn','cl','br'].forEach(function(t){
+    var el=document.getElementById('gt-'+t);
+    if(!el)return;
+    el.className='btn btn-sm'+(t===type?' btn-p':'');
+  });
+  var e=document.getElementById('ch-ph');if(!e)return;
+  dC('ph');
+  if(!filtered.length){new Chart(e,{type:'line',data:{labels:[],datasets:[]},options:{responsive:true,maintainAspectRatio:false}});return;}
+  charts.ph=new Chart(e,{type:'line',data:{
+    labels:filtered.map(function(r){return r.date.slice(5);}),
+    datasets:[{
+      label:c.label,
+      data:filtered.map(function(r){return c.isBronco?r[c.field]:r[c.field];}),
+      borderColor:c.color,
+      backgroundColor:c.color+'22',
+      fill:true,
+      tension:.3,
+      pointRadius:4
+    }]
+  },options:{
+    responsive:true,
+    maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{y:{
+      reverse:c.isBronco,
+      ticks:{callback:function(v){return c.isBronco?broncoFmt(v):v+c.unit;}}
+    }}
+  }});
+}
+
+// 測定なし取消
+function cancelPhysSkip(){
+  if(!confirm('測定なしの申告を取り消しますか？'))return;
+  var today=todayStr();
+  D.phskip=(D.phskip||[]).filter(function(s){return!(s.pid===myPid&&s.date===today);});
+  db.collection('appdata').doc('phskip').set({data:JSON.stringify(D.phskip)}).then(function(){
+    showPhysForm();
+  });
 }
 
 // 測定なし申告
