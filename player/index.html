@@ -870,6 +870,20 @@ function cancelTapeRsv(rid){
 ld().then(function(){
   document.getElementById('loading-screen').style.display='none';
   startListeners();
+  // 前回のログイン情報を復元
+  try{
+    var savedPid=localStorage.getItem('rm_my_pid');
+    if(savedPid){
+      var pid=parseInt(savedPid);
+      var p=D.p.find(function(x){return x.id===pid;});
+      if(p){
+        myPid=pid;
+        initUI();
+        go('home');
+        return;
+      }
+    }
+  }catch(e){}
   go('home');
 }).catch(function(e){
   console.error(e);
