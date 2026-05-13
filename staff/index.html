@@ -240,14 +240,27 @@ dash:function(){
   var isOff=D.offday.indexOf(todayStr())>=0;
   if(!isOff){var bcMissed=getDashBCAlerts();
   if(bcMissed.length)$m().innerHTML+='<div style="margin-top:1rem"><div style="font-size:14px;font-weight:600;margin-bottom:.5rem">⚖️ 体組成 未入力</div>'+bcMissed.map(function(n){return'<div class="alert-card alert-warn">'+n+': 未入力</div>';}).join('')+'</div>';}
-  // フィジカル未入力アラート
-  var today2=todayStr();
-  var phToday=D.ph.filter(function(r){return r.date===today2;}).map(function(r){return r.pid;});
-  var phSkipToday=(D.phskip||[]).filter(function(s){return s.date===today2;}).map(function(s){return s.pid;});
-  var phMissed=D.p.filter(function(p){
-    return phToday.indexOf(p.id)<0&&phSkipToday.indexOf(p.id)<0;
+  // チームフィジカル記録
+  var physFields=[
+    {f:'squat',label:'SQ',higher:true,unit:'kg'},
+    {f:'bench',label:'BP',higher:true,unit:'kg'},
+    {f:'deadlift',label:'DL',higher:true,unit:'kg'},
+    {f:'chinning',label:'チンニング',higher:true,unit:'kg'},
+    {f:'clean',label:'クリーン',higher:true,unit:'kg'},
+    {f:'bronco',label:'ブロンコ',higher:false,unit:''}
+  ];
+  var teamRecordsH='<div style="margin-top:1.25rem"><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">🏆 チームフィジカル記録</div><div class="grid g3" style="gap:8px">';
+  physFields.forEach(function(fd){
+    var best=null,bestP=null;
+    D.ph.forEach(function(r){
+      if(r[fd.f]==null)return;
+      if(best===null||(fd.higher?r[fd.f]>best:r[fd.f]<best)){best=r[fd.f];bestP=D.p.find(function(x){return x.id===r.pid;});}
+    });
+    var val=best!==null?(fd.f==='bronco'?broncoFmt(best):best+fd.unit):'-';
+    teamRecordsH+='<div class="mc"><div class="v" style="font-size:16px">'+val+'</div><div class="l">'+fd.label+(bestP?' / '+bestP.name:'')+'</div></div>';
   });
-  if(phMissed.length)$m().innerHTML+='<div style="margin-top:1rem"><div style="font-size:14px;font-weight:600;margin-bottom:.5rem;display:flex;align-items:center;justify-content:space-between">📊 フィジカル未入力 <span style="font-size:12px;color:var(--text-secondary)">'+phMissed.length+'名</span></div>'+phMissed.slice(0,5).map(function(p){return'<div class="alert-card alert-warn">'+p.name+'</div>';}).join('')+(phMissed.length>5?'<div style="font-size:12px;color:var(--text-secondary);padding:.5rem">他'+( phMissed.length-5)+'名...</div>':'')+'</div>';
+  teamRecordsH+='</div></div>';
+  $m().innerHTML+=teamRecordsH;
   // Announcements section with calendar link
   $m().innerHTML+='<div style="margin-top:1.25rem"><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">📢 お知らせ投稿（選手サイトに表示）</div>'+
   (thisWeekEvents.length?'<div style="margin-bottom:.75rem"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">📅 今週のカレンダー（クリックでお知らせに反映）</div>'+thisWeekEvents.map(function(ev){return'<div class="alert-card alert-info" style="cursor:pointer;justify-content:space-between" onclick="fillAnnounceFromEvent(\''+escAnn(ev.date)+'\',\''+escAnn(ev.title)+'\',\''+escAnn(ev.detail||'')+'\')">'+'<span><strong>'+fmt(ev.date)+'</strong> '+ev.title+(ev.detail?' — '+ev.detail:'')+'</span><span style="font-size:11px;opacity:.7">クリックで反映</span></div>';}).join('')+'</div>':'')+
@@ -389,7 +402,7 @@ calendar:function(){
     var dow=(firstDay.getDay()+d-1)%7;
     calH+='<div onclick="calDayClick(\''+ds+'\')" style="min-height:52px;border:1px solid var(--border-tertiary);border-radius:6px;padding:4px;cursor:pointer;background:'+(isToday?'var(--blue-bg)':'var(--bg-primary)')+';transition:background .1s" onmouseover="this.style.background=\'var(--bg-secondary)\'" onmouseout="this.style.background=\''+(isToday?'var(--blue-bg)':'var(--bg-primary)')+'\'">';
     calH+='<div style="font-size:12px;font-weight:'+(isToday?'700':'500')+';color:'+(isToday?'var(--blue)':dow===0?'var(--red)':dow===6?'var(--blue)':'var(--text-primary)')+'">'+d+'</div>';
-    dayEvts.forEach(function(e){var color=e.type==='match'?'var(--purple)':e.type==='practice'?'var(--green)':e.type==='off'?'var(--amber)':'var(--blue)';calH+='<div style="font-size:9px;background:'+color+';color:#fff;border-radius:3px;padding:1px 4px;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+e.title+'</div>';});
+    dayEvts.forEach(function(e){var color=e.type==='match'?'var(--purple)':e.type==='practice'?'var(--green)':e.type==='off'?'var(--amber)':e.type==='phys_measure'?'#0891B2':e.type==='bronco_measure'?'#059669':'var(--blue)';calH+='<div style="font-size:9px;background:'+color+';color:#fff;border-radius:3px;padding:1px 4px;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+e.title+'</div>';});
     calH+='</div>';
   }
   calH+='</div>';
@@ -397,8 +410,8 @@ calendar:function(){
   calH+='<div style="font-size:14px;font-weight:600;margin-bottom:.5rem">イベント一覧</div>';
   if(eventsThisMonth.length){
     calH+=eventsThisMonth.map(function(e){
-      var color=e.type==='match'?'var(--purple)':e.type==='practice'?'var(--green)':e.type==='off'?'var(--amber)':'var(--blue)';
-      var typelabel=e.type==='match'?'試合':e.type==='practice'?'練習':e.type==='off'?'オフ':'その他';
+      var color=e.type==='match'?'var(--purple)':e.type==='practice'?'var(--green)':e.type==='off'?'var(--amber)':e.type==='phys_measure'?'#0891B2':e.type==='bronco_measure'?'#059669':'var(--blue)';
+      var typelabel=e.type==='match'?'試合':e.type==='practice'?'練習':e.type==='off'?'オフ':e.type==='phys_measure'?'フィジカル測定':e.type==='bronco_measure'?'ブロンコ測定':'その他';
       return'<div class="card" style="margin-bottom:6px;padding:.65rem 1rem;display:flex;align-items:center;gap:10px"><div style="width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0"></div><div style="flex:1"><div style="font-weight:600;font-size:13px">'+fmt(e.date)+' '+e.title+'</div>'+(e.detail?'<div style="font-size:11px;color:var(--text-secondary)">'+e.detail+'</div>':'')+'</div><span class="bd" style="background:'+color+'20;color:'+color+'">'+typelabel+'</span>'+(e.type==='match'?'<button class="btn btn-sm" onclick="goSelectMatchMembers(\''+e.id+'\',\''+e.date+'\')">出場選手設定</button>':'')+
       '<button class="btn btn-sm btn-d" onclick="delCalEvent(\''+e.id+'\')">削除</button></div>';
     }).join('');
@@ -506,9 +519,11 @@ function goAddPhys(){var td=todayStr();pushView('フィジカル記録','<div st
 '<div class="fl" style="grid-column:1/-1"><label>選手 *</label>'+playerSearchHTML('nph-p')+'</div>'+
 '<div class="fl"><label>測定日</label><input class="ipt" type="date" id="nph-date" value="'+td+'"></div><div class="fl"><label>SQ MAX(kg)</label><input class="ipt" type="number" id="nph-sq"></div>'+
 '<div class="fl"><label>BP MAX(kg)</label><input class="ipt" type="number" id="nph-bp"></div><div class="fl"><label>DL MAX(kg)</label><input class="ipt" type="number" id="nph-dl"></div>'+
+'<div class="fl"><label>チンニング MAX(kg)</label><input class="ipt" type="number" id="nph-cn"></div>'+
+'<div class="fl"><label>クリーン MAX(kg)</label><input class="ipt" type="number" id="nph-cl"></div>'+
 '<div class="fl" style="grid-column:1/-1"><label>ブロンコテスト</label><div style="display:flex;align-items:center;gap:8px"><input class="ipt" type="number" id="nph-br-m" placeholder="分" min="0" style="width:80px"><span style="font-weight:600">分</span><input class="ipt" type="number" id="nph-br-s" placeholder="秒" min="0" max="59" style="width:80px"><span style="font-weight:600">秒</span></div></div>'+
 '</div></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="doAddPhys()">追加</button></div></div>');}
-function doAddPhys(){var pid=parseInt(document.getElementById('nph-p-val').value);if(!pid)return alert('選手を選択');var sq=parseFloat(document.getElementById('nph-sq').value)||null,bp=parseFloat(document.getElementById('nph-bp').value)||null,dl=parseFloat(document.getElementById('nph-dl').value)||null,br=broncoFromInputs('nph-br-m','nph-br-s');var pSQ=getBest(pid,'squat'),pBP=getBest(pid,'bench'),pDL=getBest(pid,'deadlift'),pBR=getBest(pid,'bronco');D.ph.push({id:Date.now(),pid:pid,date:document.getElementById('nph-date').value,squat:sq,bench:bp,deadlift:dl,bronco:br});sv('ph');var m=[];if(sq&&pSQ&&sq>pSQ)m.push('🎉 SQ更新！'+pSQ+'→'+sq+'kg');if(bp&&pBP&&bp>pBP)m.push('🎉 BP更新！'+pBP+'→'+bp+'kg');if(dl&&pDL&&dl>pDL)m.push('🎉 DL更新！'+pDL+'→'+dl+'kg');if(br&&pBR&&br<pBR)m.push('🎉 ブロンコ更新！'+pBR+'→'+br+'s');popView();if(m.length)setTimeout(function(){alert(m.join('\n'));},300);}
+function doAddPhys(){var pid=parseInt(document.getElementById('nph-p-val').value);if(!pid)return alert('選手を選択');var sq=parseFloat(document.getElementById('nph-sq').value)||null,bp=parseFloat(document.getElementById('nph-bp').value)||null,dl=parseFloat(document.getElementById('nph-dl').value)||null,br=broncoFromInputs('nph-br-m','nph-br-s');var cn=parseFloat(document.getElementById('nph-cn').value)||null,cl=parseFloat(document.getElementById('nph-cl').value)||null;var pSQ=getBest(pid,'squat'),pBP=getBest(pid,'bench'),pDL=getBest(pid,'deadlift'),pBR=getBest(pid,'bronco');D.ph.push({id:Date.now(),pid:pid,date:document.getElementById('nph-date').value,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br});sv('ph');var m=[];if(sq&&pSQ&&sq>pSQ)m.push('🎉 SQ更新！'+pSQ+'→'+sq+'kg');if(bp&&pBP&&bp>pBP)m.push('🎉 BP更新！'+pBP+'→'+bp+'kg');if(dl&&pDL&&dl>pDL)m.push('🎉 DL更新！'+pDL+'→'+dl+'kg');if(br&&pBR&&br<pBR)m.push('🎉 ブロンコ更新！'+pBR+'→'+br+'s');popView();if(m.length)setTimeout(function(){alert(m.join('\n'));},300);}
 
 // === ADD FATIGUE (with search) ===
 function goAddFatigue(){var td=todayStr();pushView('コンディション入力','<div style="max-width:520px"><div class="form-box"><div class="form-title">今日のコンディション</div><div class="grid g2" style="gap:14px">'+
@@ -599,7 +614,7 @@ function goBulkPhys(){var td=todayStr();var h='<div style="max-width:800px"><div
   h+='</tbody></table></div></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="doBulkPhys()">一括保存</button></div></div>';
   pushView('フィジカル一括入力',h);
 }
-function doBulkPhys(){var date=document.getElementById('bulk-date').value;if(!date)return alert('日付を入力');var cnt=0;D.p.forEach(function(p){var sq=parseFloat(document.getElementById('bk-sq-'+p.id).value)||null;var bp=parseFloat(document.getElementById('bk-bp-'+p.id).value)||null;var dl=parseFloat(document.getElementById('bk-dl-'+p.id).value)||null;var brm=parseInt(document.getElementById('bk-br-m-'+p.id).value)||0,brs=parseInt(document.getElementById('bk-br-s-'+p.id).value)||0;var br=(brm||brs)?(brm*60+brs):null;if(sq||bp||dl||br){D.ph.push({id:Date.now()+cnt,pid:p.id,date:date,squat:sq,bench:bp,deadlift:dl,bronco:br});cnt++;}});sv('ph');alert(cnt+'名分の記録を保存しました ✓');popView();}
+function doBulkPhys(){var date=document.getElementById('bulk-date').value;if(!date)return alert('日付を入力');var cnt=0;D.p.forEach(function(p){var sq=parseFloat(document.getElementById('bk-sq-'+p.id).value)||null;var bp=parseFloat(document.getElementById('bk-bp-'+p.id).value)||null;var dl=parseFloat(document.getElementById('bk-dl-'+p.id).value)||null;var brm=parseInt(document.getElementById('bk-br-m-'+p.id).value)||0,brs=parseInt(document.getElementById('bk-br-s-'+p.id).value)||0;var br=(brm||brs)?(brm*60+brs):null;var cn=parseFloat(document.getElementById('bk-cn-'+p.id).value)||null,cl=parseFloat(document.getElementById('bk-cl-'+p.id).value)||null;if(sq||bp||dl||cn||cl||br){D.ph.push({id:Date.now()+cnt,pid:p.id,date:date,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br});cnt++;}});sv('ph');alert(cnt+'名分の記録を保存しました ✓');popView();}
 
 // === CSV EXPORT ===
 function exportCSV(type){
@@ -660,8 +675,8 @@ function unmarkPhSkip(pid){
 }
 
 
-function goEditPhys(phid){var r=D.ph.find(function(x){return x.id===phid;});if(!r)return;var p=D.p.find(function(x){return x.id===r.pid;});var brM=r.bronco?Math.floor(r.bronco/60):0;var brS=r.bronco?Math.round(r.bronco%60):0;pushView('フィジカル記録を編集','<div style="max-width:520px"><div class="form-box"><div class="form-title">'+(p?p.name:'不明')+' の記録を編集</div><div class="grid g2" style="gap:14px"><div class="fl"><label>測定日</label><input class="ipt" type="date" id="eph-date" value="'+(r.date||'')+'"></div><div class="fl"><label>SQ MAX(kg)</label><input class="ipt" type="number" id="eph-sq" value="'+(r.squat||'')+'"></div><div class="fl"><label>BP MAX(kg)</label><input class="ipt" type="number" id="eph-bp" value="'+(r.bench||'')+'"></div><div class="fl"><label>DL MAX(kg)</label><input class="ipt" type="number" id="eph-dl" value="'+(r.deadlift||'')+'"></div><div class="fl" style="grid-column:1/-1"><label>ブロンコテスト</label><div style="display:flex;align-items:center;gap:8px"><input class="ipt" type="number" id="eph-br-m" value="'+brM+'" min="0" style="width:80px"><span style="font-weight:600">分</span><input class="ipt" type="number" id="eph-br-s" value="'+brS+'" min="0" max="59" style="width:80px"><span style="font-weight:600">秒</span></div></div></div></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="doEditPhys('+phid+')">保存</button></div></div>');}
-function doEditPhys(phid){var r=D.ph.find(function(x){return x.id===phid;});if(!r)return;r.date=document.getElementById('eph-date').value;r.squat=parseFloat(document.getElementById('eph-sq').value)||null;r.bench=parseFloat(document.getElementById('eph-bp').value)||null;r.deadlift=parseFloat(document.getElementById('eph-dl').value)||null;r.bronco=broncoFromInputs('eph-br-m','eph-br-s');sv('ph');alert('保存しました ✓');popView();}
+function goEditPhys(phid){var r=D.ph.find(function(x){return x.id===phid;});if(!r)return;var p=D.p.find(function(x){return x.id===r.pid;});var brM=r.bronco?Math.floor(r.bronco/60):0;var brS=r.bronco?Math.round(r.bronco%60):0;pushView('フィジカル記録を編集','<div style="max-width:520px"><div class="form-box"><div class="form-title">'+(p?p.name:'不明')+' の記録を編集</div><div class="grid g2" style="gap:14px"><div class="fl"><label>測定日</label><input class="ipt" type="date" id="eph-date" value="'+(r.date||'')+'"></div><div class="fl"><label>SQ MAX(kg)</label><input class="ipt" type="number" id="eph-sq" value="'+(r.squat||'')+'"></div><div class="fl"><label>BP MAX(kg)</label><input class="ipt" type="number" id="eph-bp" value="'+(r.bench||'')+'"></div><div class="fl"><label>DL MAX(kg)</label><input class="ipt" type="number" id="eph-dl" value="'+(r.deadlift||'')+'"></div><div class="fl"><label>チンニング MAX(kg)</label><input class="ipt" type="number" id="eph-cn" value="'+(r.chinning||'')+'"></div><div class="fl"><label>クリーン MAX(kg)</label><input class="ipt" type="number" id="eph-cl" value="'+(r.clean||'')+'"></div><div class="fl" style="grid-column:1/-1"><label>ブロンコテスト</label><div style="display:flex;align-items:center;gap:8px"><input class="ipt" type="number" id="eph-br-m" value="'+brM+'" min="0" style="width:80px"><span style="font-weight:600">分</span><input class="ipt" type="number" id="eph-br-s" value="'+brS+'" min="0" max="59" style="width:80px"><span style="font-weight:600">秒</span></div></div></div></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="doEditPhys('+phid+')">保存</button></div></div>');}
+function doEditPhys(phid){var r=D.ph.find(function(x){return x.id===phid;});if(!r)return;r.date=document.getElementById('eph-date').value;r.squat=parseFloat(document.getElementById('eph-sq').value)||null;r.bench=parseFloat(document.getElementById('eph-bp').value)||null;r.deadlift=parseFloat(document.getElementById('eph-dl').value)||null;r.chinning=parseFloat(document.getElementById('eph-cn').value)||null;r.clean=parseFloat(document.getElementById('eph-cl').value)||null;r.bronco=broncoFromInputs('eph-br-m','eph-br-s');sv('ph');alert('保存しました ✓');popView();}
 function doDelPhys(phid){if(!confirm('この記録を削除しますか？'))return;D.ph=D.ph.filter(function(x){return x.id!==phid;});sv('ph');V.physical();}
 function mvTab(i){document.querySelectorAll('#main-ct .tab').forEach(function(t,j){t.classList.toggle('ac',j===i);});document.querySelectorAll('#main-ct .tc').forEach(function(t,j){t.classList.toggle('ac',j===i);});}
 
@@ -1281,7 +1296,7 @@ function calDayClick(date){
   if(dayEvts.length){
     h+='<div class="form-box"><div class="form-title">この日のイベント</div>';
     dayEvts.forEach(function(e){
-      var typelabel=e.type==='match'?'試合':e.type==='practice'?'練習':e.type==='off'?'オフ':'その他';
+      var typelabel=e.type==='match'?'試合':e.type==='practice'?'練習':e.type==='off'?'オフ':e.type==='phys_measure'?'フィジカル測定':e.type==='bronco_measure'?'ブロンコ測定':'その他';
       h+='<div class="log-row"><span style="font-weight:600;flex:1">'+e.title+'</span><span class="bd bd-p">'+typelabel+'</span>'+(e.type==='match'?'<button class="btn btn-sm" onclick="goSelectMatchMembers(\''+e.id+'\',\''+e.date+'\')">出場選手</button>':'')+'<button class="btn btn-sm btn-d" onclick="delCalEvent(\''+e.id+'\');popView()">削除</button></div>';
       if(e.detail)h+='<div style="font-size:12px;color:var(--text-secondary);padding:4px 0">'+e.detail+'</div>';
     });
@@ -1292,7 +1307,7 @@ function calDayClick(date){
 }
 function calEventFormHTML(defaultDate){
   return '<div class="grid g2" style="gap:10px;margin-bottom:10px">'+
-  '<div class="fl"><label>種別</label><select class="ipt" id="cef-type"><option value="match">試合</option><option value="practice">練習</option><option value="off">オフ</option><option value="other">その他</option></select></div>'+
+  '<div class="fl"><label>種別</label><select class="ipt" id="cef-type"><option value="match">試合</option><option value="practice">練習</option><option value="off">オフ</option><option value="phys_measure">フィジカル測定</option><option value="bronco_measure">ブロンコ測定</option><option value="other">その他</option></select></div>'+
   '<div class="fl"><label>タイトル</label><input class="ipt" id="cef-title" placeholder="例: vs ○○大学"></div>'+
   '</div><div class="fl" style="margin-bottom:10px"><label>詳細（場所・時間等）</label><input class="ipt" id="cef-detail" placeholder="例: ホーム 14:00 KO"></div>';
 }
