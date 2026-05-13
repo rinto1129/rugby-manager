@@ -488,47 +488,97 @@ function markPhysSkip(){
 
 // 全体ランキング表示
 function showFullRanking(){
+  var FW=['PR','HO','LO','FL','No.8'];
+  var BK=['SH','SO','CTB','WTB','FB'];
   var POS_LIST=['PR','HO','LO','FL','No.8','SH','SO','CTB','WTB','FB'];
-  var fields=[{field:'squat',label:'スクワット',unit:'kg'},{field:'bench',label:'ベンチプレス',unit:'kg'},{field:'deadlift',label:'デッドリフト',unit:'kg'},{field:'big3',label:'BIG3合計',unit:'kg'},{field:'bronco',label:'ブロンコ',unit:''}];
-  var curField=fields[0].field;
-  var curPos='';
+  var fields=[
+    {field:'squat',label:'SQ',unit:'kg'},
+    {field:'bench',label:'BP',unit:'kg'},
+    {field:'deadlift',label:'DL',unit:'kg'},
+    {field:'chinning',label:'チンニング',unit:'kg'},
+    {field:'clean',label:'クリーン',unit:'kg'},
+    {field:'big3',label:'BIG3',unit:'kg'},
+    {field:'bronco',label:'ブロンコ',unit:''}
+  ];
+  var curField='squat';
+  var curGroup=''; // ''=全体, 'fw'=FW, 'bk'=BK
+  var curPos='';   // ポジション絞り込み
+  var curYear='';  // 学年絞り込み
+
+  function filterPlayers(){
+    return D.p.filter(function(p){
+      if(curGroup==='fw'&&FW.indexOf(p.position)<0)return false;
+      if(curGroup==='bk'&&BK.indexOf(p.position)<0)return false;
+      if(curPos&&p.position!==curPos)return false;
+      if(curYear&&String(p.year)!==curYear)return false;
+      return true;
+    });
+  }
+
   function renderRank(){
     var fi=fields.find(function(f){return f.field===curField;})||fields[0];
-    var players=curPos?D.p.filter(function(p){return p.position===curPos;}):D.p;
+    var players=filterPlayers();
     var rk=players.map(function(p){
       var rs=D.ph.filter(function(x){return x.pid===p.id;});
       var v=null;
       if(curField==='bronco'){var vs=rs.filter(function(x){return x.bronco;}).map(function(x){return x.bronco;});v=vs.length?Math.min.apply(null,vs):null;}
-      else if(curField==='big3'){v=rs.length?Math.max.apply(null,rs.map(function(x){return(x.squat||0)+(x.bench||0)+(x.deadlift||0);})):null;if(!v)v=null;}
+      else if(curField==='big3'){var b3=rs.map(function(x){return(x.squat||0)+(x.bench||0)+(x.deadlift||0);});v=b3.length?Math.max.apply(null,b3):null;if(!v)v=null;}
       else{var vs2=rs.filter(function(x){return x[curField];}).map(function(x){return x[curField];});v=vs2.length?Math.max.apply(null,vs2):null;}
       return{p:p,v:v};
     }).filter(function(x){return x.v!==null;});
     curField==='bronco'?rk.sort(function(a,b){return a.v-b.v;}):rk.sort(function(a,b){return b.v-a.v;});
-    var h='<div style="font-size:18px;font-weight:700;margin-bottom:12px">🏆 ランキング</div>';
+
+    var h='<div style="font-size:18px;font-weight:700;margin-bottom:14px">🏆 ランキング</div>';
+
     // 種目選択
-    h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'+
-    fields.map(function(f){return'<button class="btn btn-sm'+(curField===f.field?' btn-p':'')+'" onclick="rankSelectField(\''+f.field+'\')">'+f.label+'</button>';}).join('')+'</div>';
+    h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">種目</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+    fields.map(function(f){return'<button class="btn btn-sm'+(curField===f.field?' btn-p':'')+'" onclick="rankSF(\''+f.field+'\')">'+f.label+'</button>';}).join('')+
+    '</div></div>';
+
+    // グループ選択（全体・FW・BK）
+    h+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">グループ</div>'+
+    '<div style="display:flex;gap:6px">'+
+    '<button class="btn btn-sm'+(curGroup===''&&!curPos&&!curYear?' btn-p':'')+'" onclick="rankSG(\'\')">全体</button>'+
+    '<button class="btn btn-sm'+(curGroup==='fw'?' btn-p':'')+'" onclick="rankSG(\'fw\')">FW</button>'+
+    '<button class="btn btn-sm'+(curGroup==='bk'?' btn-p':'')+'" onclick="rankSG(\'bk\')">BK</button>'+
+    '</div></div>';
+
     // ポジション絞り込み
-    h+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">'+
-    '<button class="btn btn-sm'+(curPos===''?' btn-p':'')+'" onclick="rankSelectPos(\'\')">全体</button>'+
-    POS_LIST.map(function(pos){return'<button class="btn btn-sm'+(curPos===pos?' btn-p':'')+'" onclick="rankSelectPos(\''+pos+'\')">'+pos+'</button>';}).join('')+'</div>';
+    var posList=curGroup==='fw'?FW:curGroup==='bk'?BK:POS_LIST;
+    h+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">ポジション</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:5px">'+
+    '<button class="btn btn-sm'+(curPos===''?' btn-p':'')+'" onclick="rankSP(\'\')">全て</button>'+
+    posList.map(function(pos){return'<button class="btn btn-sm'+(curPos===pos?' btn-p':'')+'" onclick="rankSP(\''+pos+'\')">'+pos+'</button>';}).join('')+
+    '</div></div>';
+
+    // 学年絞り込み
+    h+='<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">学年</div>'+
+    '<div style="display:flex;gap:5px">'+
+    '<button class="btn btn-sm'+(curYear===''?' btn-p':'')+'" onclick="rankSY(\'\')">全学年</button>'+
+    [1,2,3,4].map(function(y){return'<button class="btn btn-sm'+(curYear===String(y)?' btn-p':'')+'" onclick="rankSY(\''+y+'\')">'+y+'年</button>';}).join('')+
+    '</div></div>';
+
     // ランキング表
     var medals=['🥇','🥈','🥉'];
     h+=rk.length?rk.map(function(t,idx){
       var isMe=myPid&&t.p.id===myPid;
       var val=curField==='bronco'?broncoFmt(t.v):t.v+(fi.unit?' '+fi.unit:'');
-      return'<div class="log-row" style="'+(isMe?'background:var(--blue-bg);border-radius:var(--radius);padding:6px 8px;':'')+'">'+
-      '<span style="min-width:28px;font-weight:600;font-size:13px">'+(idx<3?medals[idx]:(idx+1)+'位')+'</span>'+
-      avH(t.p,24)+
-      '<span style="flex:1;font-weight:'+(isMe?'700':'500')+';font-size:13px;margin-left:6px;color:'+(isMe?'var(--blue)':'')+'">'+t.p.name+'</span>'+
-      '<span style="font-size:11px;color:var(--text-secondary)">'+t.p.position+'</span>'+
-      '<span style="font-weight:600;font-size:13px;margin-left:8px">'+val+'</span></div>';
+      return'<div class="log-row" style="padding:7px 6px;'+(isMe?'background:var(--blue-bg);border-radius:var(--radius);':'')+'">'+
+      '<span style="min-width:30px;font-weight:700;font-size:13px;color:'+(idx===0?'#BA7517':idx===1?'#888780':idx===2?'#993C1D':'var(--text-secondary)')+'">'+(idx<3?medals[idx]:(idx+1)+'位')+'</span>'+
+      avH(t.p,26)+
+      '<div style="flex:1;margin-left:8px"><div style="font-weight:'+(isMe?'700':'500')+';font-size:13px;color:'+(isMe?'var(--blue)':'')+'">'+t.p.name+'</div>'+
+      '<div style="font-size:10px;color:var(--text-secondary)">'+t.p.position+' / '+t.p.year+'年</div></div>'+
+      '<span style="font-weight:700;font-size:14px">'+val+'</span></div>';
     }).join(''):'<div class="no">データがありません</div>';
+
     $m().innerHTML=h;
-    window._rankField=curField;window._rankPos=curPos;window._renderRank=renderRank;
   }
-  window.rankSelectField=function(f){curField=f;renderRank();};
-  window.rankSelectPos=function(p){curPos=p;renderRank();};
+
+  window.rankSF=function(f){curField=f;renderRank();};
+  window.rankSG=function(g){curGroup=g;curPos='';renderRank();};
+  window.rankSP=function(p){curPos=p;renderRank();};
+  window.rankSY=function(y){curYear=y;renderRank();};
   renderRank();
 }
 
