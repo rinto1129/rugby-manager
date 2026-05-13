@@ -161,9 +161,16 @@ home:function(){
   // Match check alert: am I in selected players and haven't checked today?
   var todayS=todayStr();
   var selectedForMatch=D.matchsel||[];
-  var myMatchDoneToday=D.md.some(function(m){return m.pid===myPid&&m.date===todayS;});
+  // 昨日の試合日チェック未入力通知
+  var myMatchDoneYesterday=D.md.some(function(m){return m.pid===myPid&&m.date===yesterdayS2;});
   var isSelectedForMatch=myPid&&selectedForMatch.indexOf(myPid)>=0;
-  var showMatchAlert=isSelectedForMatch&&!myMatchDoneToday;
+  // 昨日が試合日（カレンダーにmatchがある）かチェック
+  var wasMatchYesterday=(D.cal||[]).some(function(e){return e.date===yesterdayS2&&e.type==='match';});
+  var showMatchAlert=isSelectedForMatch&&wasMatchYesterday&&!myMatchDoneYesterday;
+  // 全体の未入力者（昨日の試合）
+  var matchMissedAll=wasMatchYesterday?D.p.filter(function(p){
+    return selectedForMatch.indexOf(p.id)>=0&&!D.md.some(function(m){return m.pid===p.id&&m.date===yesterdayS2;});
+  }):[];
   // 測定日アラート（昨日の測定日で未入力だったか翌日に通知）
   var yesterday2=new Date();yesterday2.setDate(yesterday2.getDate()-1);
   var yesterdayS2=yesterday2.toISOString().split('T')[0];
@@ -195,7 +202,8 @@ home:function(){
   }
   var h='<div style="text-align:center;margin-bottom:16px"><div style="font-size:28px;margin-bottom:4px">🏉</div><div style="font-size:18px;font-weight:600">福岡大学ラグビー部</div></div>';
   // Match check alert
-  if(showMatchAlert){h+='<div class="alert-card alert-down" style="margin-bottom:12px;cursor:pointer" onclick="go(\'match\')">📝 本日の試合日チェックがまだ未提出です！タップして入力してください</div>';}
+  if(showMatchAlert){h+='<div class="alert-card alert-down" style="margin-bottom:12px;cursor:pointer" onclick="T.match()">📝 昨日（'+fmt(yesterdayS2)+'）の試合日チェックが未入力です！タップして入力</div>';}
+  if(matchMissedAll.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--red)">🏟️ 試合日チェック未入力 <span style="font-size:12px;font-weight:400">'+matchMissedAll.length+'名</span></div>'+matchMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+p.name+'</span></div>';}).join('')+'</div>';}
   // 自分の未入力通知（昨日の測定日）
   if(physMeasureYesterday2&&!phSkipYesterday2&&!physDoneYesterday){h+='<div class="alert-card alert-warn" style="margin-bottom:8px;cursor:pointer" onclick="T.physical()">📊 昨日（'+fmt(yesterdayS2)+'）のフィジカル測定が未入力です！ → タップして入力</div>';}
   if(broncoMeasureYesterday2&&!phSkipYesterday2&&!broncoDoneYesterday){h+='<div class="alert-card alert-warn" style="margin-bottom:8px;cursor:pointer" onclick="T.physical()">🏃 昨日（'+fmt(yesterdayS2)+'）のブロンコ測定が未入力です！ → タップして入力</div>';}
