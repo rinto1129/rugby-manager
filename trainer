@@ -227,9 +227,9 @@ home:function(){
   }
   h+='</div>';
   // 担当リハビリ選手
-  var myRehabInj=(D.i||[]).filter(function(inj){return!inj.resolved&&inj.trainerId===myTrainer.id;});
-  // 復帰テスト状況
-  var myRtestInj=(D.i||[]).filter(function(inj){return!inj.resolved&&inj.trainerId===myTrainer.id;}).filter(function(inj){
+  var myRehabInj=(D.i||[]).filter(function(inj){return!inj.resolved;});
+  // 復帰テスト状況（全怪我人対象）
+  var myRtestInj=(D.i||[]).filter(function(inj){return!inj.resolved;}).filter(function(inj){
     var results=(D.rtest||[]).filter(function(r){return r.injId===inj.id;});
     return results.length>0;
   });
@@ -263,7 +263,7 @@ home:function(){
       '</div>';
     });
   } else {
-    h+='<div style="font-size:13px;color:var(--text-secondary)">担当選手はいません</div>';
+    h+='<div class="no">現在怪我人はいません</div>';
   }
   h+='</div>';
   $m().innerHTML=h;
@@ -319,7 +319,7 @@ tape:function(){
 
 // リハビリ
 rehab:function(){
-  var myRehabInj=(D.i||[]).filter(function(inj){return!inj.resolved&&inj.trainerId===myTrainer.id;});
+  var myRehabInj=(D.i||[]).filter(function(inj){return!inj.resolved;});
   var h='<div style="font-size:18px;font-weight:700;margin:4px 0 16px">🩹 リハビリ管理</div>';
   if(!myRehabInj.length){
     h+='<div class="no" style="margin-top:40px">担当している選手がいません<br><span style="font-size:12px">スタッフに担当割り振りを依頼してください</span></div>';
@@ -331,11 +331,13 @@ rehab:function(){
     var rh=(D.r||[]).find(function(x){return x.injId===inj.id;});
     var lastLog=(D.rlog||[]).filter(function(l){return l.injId===inj.id;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
     var tomorrowCats=plan?plan.tomorrowCats||[]:[];
+    var trainer=(D.trainers||[]).find(function(t){return t.id===inj.trainerId;});
     h+='<div class="card card-click" style="margin-bottom:10px" onclick="goRehabPlayer('+inj.id+')">'+
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'+avH(p,34)+
     '<div style="flex:1"><div style="font-weight:600;font-size:15px">'+p.name+'</div>'+
     '<div style="font-size:12px;color:var(--text-secondary)">'+(inj.side||'')+inj.part+' '+inj.type+'</div>'+
     (rh?'<div style="font-size:11px;color:var(--blue)">段階: '+STG[rh.stage]+'</div>':'')+
+    (trainer?'<div style="font-size:11px;color:var(--text-secondary)">統括: '+trainer.name+'</div>':'')+
     '</div></div>'+
     '<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">本日のメニュー</div>'+
     (tomorrowCats.length?'<div style="display:flex;flex-wrap:wrap;gap:4px">'+tomorrowCats.map(function(c){return'<span style="background:'+RCAT_BG[c]+';color:'+RCAT_COLOR[c]+';padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600">'+c+'</span>';}).join('')+'</div>':'<div style="font-size:12px;color:var(--text-secondary)">未設定</div>')+
@@ -927,4 +929,3 @@ ld().then(function(){
 </script>
 </body>
 </html>
-
