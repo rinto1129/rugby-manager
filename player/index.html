@@ -70,12 +70,15 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 <script>
 firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
 var db=firebase.firestore();
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',phskip:'rm_phskip'};
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',phskip:'rm_phskip',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest'};
+var RCATS=['ケア','ROM改善','患部外トレーニング','トレーニング','アジリティ','フィットネス','サポート','オフ'];
+var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'#0891B2',サポート:'#059669',オフ:'var(--text-secondary)'};
+var RCAT_BG={ケア:'var(--blue-bg)',ROM改善:'var(--green-bg)',患部外トレーニング:'var(--amber-bg)',トレーニング:'var(--red-bg)',アジリティ:'var(--purple-bg)',フィットネス:'#E0F2FE',サポート:'#D1FAE5',オフ:'var(--bg-tertiary)'};
 var STG=['ウォーキング','ランニング','スプリント','ジャンプ','コンタクト以外の練習','フルコンタクト','完全復帰'];
 var PARTS=['頭部','頸部','肩','鎖骨','肘','手首','指','腰','股関節','大腿','膝','すね','足首','踵','アキレス腱','ふくらはぎ','足の甲','足趾','その他'];
 var INJ_TYPES=['捻挫','肉離れ','骨折','脱臼','打撲','靭帯損傷','半月板損傷','脳震盪','裂傷','腱炎','疲労骨折','その他'];
 var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
-var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],phskip:[]};
+var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],phskip:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[]};
 var myPid=null,curTab='home',charts={},subView=null;
 
 function ld(){
@@ -98,6 +101,11 @@ return Promise.all(promises).then(function(){
   if(!D.tape)D.tape=[];
   if(!D.tapeslot)D.tapeslot=[];
   if(!D.phskip)D.phskip=[];
+  if(!D.rtpl)D.rtpl=[];
+  if(!D.rplan)D.rplan=[];
+  if(!D.rlog)D.rlog=[];
+  if(!D.rtest_tpl)D.rtest_tpl=[];
+  if(!D.rtest)D.rtest=[];
 });
 }
 function sv(k){db.collection('appdata').doc(k).set({data:JSON.stringify(D[k])}).catch(function(e){console.error('Save error:',k,e);});}
@@ -242,7 +250,28 @@ mypage:function(){
   // Individual announcements
   if(myAnns.length){h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--blue)"><div style="font-weight:600;margin-bottom:6px;color:var(--blue)">📩 あなたへのお知らせ</div>';myAnns.forEach(function(a){h+='<div style="margin-bottom:6px"><div style="font-size:11px;color:var(--text-secondary)">'+fmt(a.date)+'</div><div style="font-size:13px;white-space:pre-wrap">'+a.text+'</div></div>';});h+='</div>';}
   // Current injuries
-  if(pInj.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;color:var(--red);margin-bottom:6px">現在の怪我</div>';pInj.forEach(function(inj){var rh=D.r.find(function(x){return x.injId===inj.id;});h+='<div style="margin-bottom:4px"><span style="font-weight:600">'+(inj.side||'')+inj.part+' '+inj.type+'</span>'+(rh?' <span style="color:var(--blue);font-size:12px">'+STG[rh.stage]+'</span>':'')+'</div>';});h+='</div>';}
+  if(pInj.length){
+    h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--red)"><div style="font-weight:600;color:var(--red);margin-bottom:8px">現在の怪我・リハビリ</div>';
+    pInj.forEach(function(inj){
+      var rh=D.r.find(function(x){return x.injId===inj.id;});
+      var plan=(D.rplan||[]).find(function(x){return x.injId===inj.id;});
+      var tomorrowCats=plan?plan.tomorrowCats||[]:[];
+      h+='<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid var(--border-tertiary)">'+
+      '<div style="font-weight:600">'+(inj.side||'')+inj.part+' '+inj.type+'</div>';
+      if(rh){
+        h+='<div style="font-size:12px;color:var(--blue);font-weight:600;margin-top:4px">段階: '+STG[rh.stage]+'</div>';
+        h+='<div style="display:flex;gap:4px;margin-top:4px">'+STG.map(function(s,si){
+          return'<div style="width:20px;height:8px;border-radius:4px;background:'+(si<rh.stage?'var(--green)':si===rh.stage?'var(--blue)':'var(--border-secondary)')+'"></div>';
+        }).join('')+'</div>';
+      }
+      if(tomorrowCats.length){
+        h+='<div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-top:6px;margin-bottom:3px">本日のメニュー</div>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:3px">'+tomorrowCats.map(function(c){return'<span style="background:'+RCAT_BG[c]+';color:'+RCAT_COLOR[c]+';padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">'+c+'</span>';}).join('')+'</div>';
+      }
+      h+='</div>';
+    });
+    h+='</div>';
+  }
   // Action menu
   h+='<div style="font-weight:600;margin:4px 0 10px">📝 入力・記録</div><div class="grid2" style="margin-bottom:16px">';
   // Condition
@@ -261,10 +290,31 @@ mypage:function(){
   // Taping
   var myNextTape=(D.tape||[]).filter(function(t){return t.pid===myPid&&t.date>=todayStr();}).sort(function(a,b){return a.date.localeCompare(b.date);})[0];
   h+='<div class="card card-click" onclick="T.tape()" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">🩻</div><div style="font-weight:600;font-size:13px">テーピング予約</div>'+(myNextTape?'<div style="font-size:11px;color:var(--purple);margin-top:4px">'+fmt(myNextTape.date)+' '+myNextTape.startTime+'</div>':'<div style="font-size:11px;color:var(--text-secondary);margin-top:4px">予約する</div>')+'</div>';
+  // Absence
+  var myAbsToday=D.a.some(function(s){return s.date===todayStr()&&s.absentees.some(function(a){return a.pid===myPid;});});
+  h+='<div class="card card-click" onclick="showAbsenceForm()" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">📋</div><div style="font-weight:600;font-size:13px">欠席・遅刻申告</div>'+(myAbsToday?'<div style="font-size:11px;color:var(--amber);margin-top:4px">本日申告済み</div>':'')+'</div>';
   h+='</div>';
-  // Physical bests
-  h+='<div style="font-weight:600;margin:4px 0 8px">📊 フィジカルベスト</div><div class="grid3"><div class="mc"><div class="v" style="font-size:16px">'+(bSQ||'-')+'</div><div class="l">SQ</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bBP||'-')+'</div><div class="l">BP</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bDL||'-')+'</div><div class="l">DL</div></div></div><div class="grid2" style="margin-top:8px"><div class="mc"><div class="v" style="font-size:16px">'+broncoFmt(bBR)+'</div><div class="l">Bronco</div></div><div class="mc"><div class="v" style="font-size:16px">'+((bSQ||0)+(bBP||0)+(bDL||0)||'-')+'</div><div class="l">BIG3合計</div></div></div>';
+  h+='<div style="font-weight:600;margin:4px 0 8px">📊 フィジカルベスト</div>'+
+  '<div class="grid3">'+
+  '<div class="mc"><div class="v" style="font-size:15px">'+(bSQ||'-')+'</div><div class="l">SQ</div></div>'+
+  '<div class="mc"><div class="v" style="font-size:15px">'+(bBP||'-')+'</div><div class="l">BP</div></div>'+
+  '<div class="mc"><div class="v" style="font-size:15px">'+(bDL||'-')+'</div><div class="l">DL</div></div>'+
+  '<div class="mc"><div class="v" style="font-size:15px">'+(getBest(myPid,'chinning')||'-')+'</div><div class="l">チンニング</div></div>'+
+  '<div class="mc"><div class="v" style="font-size:15px">'+(getBest(myPid,'clean')||'-')+'</div><div class="l">クリーン</div></div>'+
+  '<div class="mc"><div class="v" style="font-size:13px">'+broncoFmt(bBR)+'</div><div class="l">Bronco</div></div>'+
+  '</div>'+
+  '<div class="mc" style="margin-top:8px"><div class="v" style="font-size:16px">'+((bSQ||0)+(bBP||0)+(bDL||0)||'-')+'</div><div class="l">BIG3合計</div></div>';
   // Latest condition
+  // 現在の体重
+  var latestBC=D.bc.filter(function(r){return r.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
+  if(latestBC&&latestBC.weight){
+    h+='<div style="font-weight:600;margin:12px 0 6px">⚖️ 体組成 <span style="font-weight:400;color:var(--text-secondary);font-size:12px">'+fmt(latestBC.date)+'</span></div>'+
+    '<div class="grid3" style="margin-bottom:8px">'+
+    '<div class="mc"><div class="v" style="font-size:16px">'+(latestBC.weight||'-')+'</div><div class="l">体重(kg)</div></div>'+
+    '<div class="mc"><div class="v" style="font-size:16px">'+(latestBC.fat||'-')+'</div><div class="l">体脂肪(%)</div></div>'+
+    '<div class="mc"><div class="v" style="font-size:16px">'+(latestBC.muscle||'-')+'</div><div class="l">筋量(kg)</div></div>'+
+    '</div>';
+  }
   if(latestF){h+='<div style="font-weight:600;margin:12px 0 8px">最新コンディション <span style="font-weight:400;color:var(--text-secondary);font-size:12px">'+fmt(latestF.date)+'</span></div><div class="grid3"><div class="mc"><div class="v" style="color:'+rc(latestF.rpe)+'">'+latestF.rpe+'</div><div class="l">RPE</div></div><div class="mc"><div class="v" style="color:'+sc(latestF.sleep)+'">'+latestF.sleep+'h</div><div class="l">睡眠</div></div><div class="mc"><div class="v" style="color:var(--purple)">'+(latestF.rpe*(latestF.duration||0))+'</div><div class="l">sRPE</div></div></div>';}
   $m().innerHTML=h;
 },
@@ -299,12 +349,69 @@ injury:function(){
   var pInj=D.i.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
   var active=pInj.filter(function(x){return!x.resolved;}),past=pInj.filter(function(x){return x.resolved;});
   var wcs=D.wc.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
-  $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">怪我・リハビリ</div>'+
+
+  // 復帰テスト目標
+  var rtestH='';
+  active.forEach(function(inj){
+    if(inj.rtestApproved){rtestH+='<div class="alert-card alert-up" style="margin-bottom:10px">🎉 復帰テスト承認済み！</div>';return;}
+    if(inj.broncoTarget){
+      rtestH+='<div class="card" style="margin-bottom:10px;border-left:3px solid var(--blue)">'+
+      '<div style="font-weight:600;color:var(--blue);margin-bottom:6px">🏁 復帰ブロンコ目標タイム</div>'+
+      '<div style="font-size:22px;font-weight:700;text-align:center;padding:8px 0">'+broncoFmt(inj.broncoTarget)+'</div>'+
+      '<div style="font-size:12px;color:var(--text-secondary);text-align:center">このタイムを切れば復帰テストのフィット基準クリア</div>'+
+      '</div>';
+    }
+  });
+
+  // 今日のリハビリメニュー
+  var menuH='';
+  active.forEach(function(inj){
+    var plan=(D.rplan||[]).find(function(x){return x.injId===inj.id;});
+    var cats=plan?plan.tomorrowCats||[]:[];
+    var tpl=plan&&plan.tplId?(D.rtpl||[]).find(function(x){return x.id===plan.tplId;}):null;
+    if(!cats.length&&!tpl)return;
+    menuH+='<div class="card" style="margin-bottom:10px;border-left:3px solid var(--blue)"><div style="font-weight:600;color:var(--blue);margin-bottom:8px">📋 本日のリハビリメニュー</div>';
+    if(cats.length){menuH+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">'+cats.map(function(c){return'<span style="background:'+RCAT_BG[c]+';color:'+RCAT_COLOR[c]+';padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600">'+c+'</span>';}).join('')+'</div>';}
+    if(tpl&&tpl.exercises){
+      var todayCatExs=tpl.exercises.filter(function(ex){return cats.length===0||cats.indexOf(ex.cat)>=0;});
+      if(todayCatExs.length){menuH+='<div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">エクササイズ</div>'+todayCatExs.map(function(ex){return'<div style="font-size:12px;padding:4px 0;border-bottom:0.5px solid var(--border-tertiary)"><span style="font-weight:600">'+ex.name+'</span> <span style="color:var(--text-secondary)">'+(ex.sets?ex.sets+'セット×':'')+(ex.reps?ex.reps+'回':'')+(ex.duration?' / '+ex.duration+'分':'')+'</span></div>';}).join('');}
+    }
+    menuH+='</div>';
+  });
+
+  // 治療中
+  var activeH=active.length?'<div style="font-weight:600;color:var(--red);margin-bottom:8px">治療中・リハビリ中</div>'+
+  active.map(function(inj){
+    var rh=D.r.find(function(x){return x.injId===inj.id;});
+    return'<div class="card" style="margin-bottom:8px"><div style="font-size:15px;font-weight:600">'+(inj.side||'')+inj.part+' '+inj.type+'</div>'+
+    '<div style="font-size:12px;color:var(--text-secondary);margin:4px 0 8px">受傷: '+fmt(inj.date)+(inj.returnDate?' | 復帰予定: '+fmt(inj.returnDate):'')+'</div>'+
+    (rh?'<div style="font-size:13px;color:var(--blue);font-weight:600;margin-bottom:6px">現在: '+STG[rh.stage]+'</div>'+
+    '<div class="stage-mini" style="justify-content:flex-start;gap:6px;margin-bottom:10px">'+
+    STG.map(function(s,si){return'<div style="display:flex;flex-direction:column;align-items:center"><div class="stage-mini-dot'+(si<rh.stage?' done':si===rh.stage?' cur':'')+'"></div></div>';}).join('')+
+    '</div><button class="btn" style="margin-bottom:6px" onclick="showRehabForm('+rh.id+')">リハビリログを記録</button>':'')+
+    '<button class="btn btn-s" onclick="showWeekCheck('+inj.id+')">📋 週次怪我チェック</button></div>';
+  }).join(''):'<div class="no" style="margin-bottom:12px">現在怪我はありません</div>';
+
+  // 週次チェック履歴
+  var wcH=wcs.length?'<div style="font-weight:600;margin:16px 0 8px">週次チェック履歴</div>'+
+  wcs.slice(0,10).map(function(w){return'<div class="log-row"><span style="min-width:60px;color:var(--text-secondary)">'+fmt(w.date)+'</span><span>痛み:</span><div class="pain-dot" style="background:'+rc(w.pain)+'">'+w.pain+'</div><span style="flex:1;color:var(--text-secondary)">'+(w.returnEst||'')+'</span></div>';}).join(''):'';
+
+  // 既往歴（折りたたみ）
+  var pastH=past.length?
+  '<div style="margin-top:16px"><div style="font-size:13px;font-weight:600;color:var(--text-secondary);cursor:pointer;margin-bottom:8px" onclick="togglePastInj()">既往歴（'+past.length+'件） <span id="past-inj-arrow">▶</span></div>'+
+  '<div id="past-inj-list" style="display:none">'+
+  past.map(function(inj){return'<div class="card" style="margin-bottom:6px;opacity:0.7">'+
+  '<div style="display:flex;align-items:center;justify-content:space-between">'+
+  '<span style="font-weight:600">'+(inj.side||'')+inj.part+' '+inj.type+'</span>'+
+  '<span class="bd bd-g">回復済</span></div>'+
+  '<div style="font-size:12px;color:var(--text-secondary);margin-top:2px">'+fmt(inj.date)+(inj.returnDate?' → 復帰: '+fmt(inj.returnDate):'')+'</div>'+
+  '</div>';}).join('')+
+  '</div></div>':'';
+
+  $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button>'+
+  '<div style="font-size:18px;font-weight:600;margin-bottom:14px">怪我・リハビリ</div>'+
   '<button class="btn" style="margin-bottom:14px;border-color:var(--red);color:var(--red)" onclick="showInjuryReport()">🚨 怪我を報告する</button>'+
-  (active.length?'<div style="font-weight:600;color:var(--red);margin-bottom:8px">治療中・リハビリ中</div>'+active.map(function(inj){var rh=D.r.find(function(x){return x.injId===inj.id;});return'<div class="card"><div style="font-size:15px;font-weight:600">'+(inj.side||'')+inj.part+' '+inj.type+'</div><div style="font-size:12px;color:var(--text-secondary);margin:4px 0 8px">受傷: '+fmt(inj.date)+(inj.returnDate?' | 復帰予定: '+fmt(inj.returnDate):'')+'</div>'+(rh?'<div style="font-size:13px;color:var(--blue);font-weight:600;margin-bottom:6px">現在: '+STG[rh.stage]+'</div><div class="stage-mini" style="justify-content:flex-start;gap:6px;margin-bottom:10px">'+STG.map(function(s,si){return'<div style="display:flex;flex-direction:column;align-items:center"><div class="stage-mini-dot'+(si<rh.stage?' done':si===rh.stage?' cur':'')+'"></div></div>';}).join('')+'</div><button class="btn" style="margin-bottom:6px" onclick="showRehabForm('+rh.id+')">リハビリログを記録</button>':'')+
-  '<button class="btn btn-s" onclick="showWeekCheck('+inj.id+')">📋 週次怪我チェック</button></div>';}).join(''):'<div class="no" style="margin-bottom:12px">現在怪我はありません</div>')+
-  (wcs.length?'<div style="font-weight:600;margin:16px 0 8px">週次チェック履歴</div>'+wcs.slice(0,10).map(function(w){return'<div class="log-row"><span style="min-width:60px;color:var(--text-secondary)">'+fmt(w.date)+'</span><span>痛み:</span><div class="pain-dot" style="background:'+rc(w.pain)+'">'+w.pain+'</div><span style="flex:1;color:var(--text-secondary)">'+(w.returnEst||'')+'</span></div>';}).join(''):'')+
-  (past.length?'<div style="font-weight:600;color:var(--text-secondary);margin:16px 0 8px">既往歴</div>'+past.map(function(inj){return'<div class="card" style="opacity:0.7"><span style="font-weight:600">'+(inj.side||'')+inj.part+' '+inj.type+'</span> <span class="bd bd-g">回復済</span><div style="font-size:12px;color:var(--text-secondary)">'+fmt(inj.date)+'</div></div>';}).join(''):'');
+  rtestH+menuH+activeH+wcH+pastH;
 },
 match:function(){
   var mds=D.md.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
@@ -471,7 +578,65 @@ function switchPhysGraph(type){
   }});
 }
 
-// 測定なし取消
+// 欠席・遅刻申告
+function showAbsenceForm(){
+  var td=todayStr();
+  var existing=D.a.find(function(s){return s.date===td&&s.absentees.some(function(a){return a.pid===myPid;});});
+  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">📋 欠席・遅刻申告</div>'+
+  (existing?'<div class="alert-card alert-info" style="margin-bottom:14px">本日の申告はすでに送信済みです</div>':'')+
+  '<div class="form-box"><div class="form-title">申告内容</div>'+
+  '<div class="fl" style="margin-bottom:10px"><label>日付</label><input class="ipt" type="date" id="abs-date" value="'+td+'"></div>'+
+  '<div class="fl" style="margin-bottom:10px"><label>種別</label>'+
+  '<select class="ipt" id="abs-type">'+
+  '<option value="欠席">欠席</option>'+
+  '<option value="遅刻">遅刻</option>'+
+  '<option value="早退">早退</option>'+
+  '<option value="部分参加">部分参加</option>'+
+  '</select></div>'+
+  '<div class="fl"><label>理由</label>'+
+  '<textarea class="ipt" id="abs-reason" placeholder="理由を入力してください（例: 発熱、授業、怪我のため）..." style="min-height:80px"></textarea></div>'+
+  '</div>'+
+  '<button class="btn btn-p" style="width:100%" onclick="doPlayerAbsence()">申告する</button>');
+}
+
+function doPlayerAbsence(){
+  var date=document.getElementById('abs-date').value;
+  var type=document.getElementById('abs-type').value;
+  var reason=document.getElementById('abs-reason').value.trim();
+  if(!date)return alert('日付を入力してください');
+  if(!reason)return alert('理由を入力してください');
+  // 既存の欠席記録に追加 or 新規作成
+  db.collection('appdata').doc('a').get().then(function(doc){
+    var latest=[];
+    if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+    // 同日の記録があれば追加、なければ新規
+    var existing=latest.find(function(s){return s.date===date;});
+    if(existing){
+      // すでに自分が申告済みか確認
+      var alreadyIn=existing.absentees.some(function(a){return a.pid===myPid;});
+      if(alreadyIn){alert('この日はすでに申告済みです');return;}
+      existing.absentees.push({pid:myPid,reason:type+'：'+reason,source:'player'});
+    } else {
+      latest.push({id:Date.now(),date:date,label:'',absentees:[{pid:myPid,reason:type+'：'+reason,source:'player'}]});
+    }
+    D.a=latest;
+    return db.collection('appdata').doc('a').set({data:JSON.stringify(latest)});
+  }).then(function(){
+    alert('申告しました ✓\nスタッフに通知されます');
+    go('mypage');
+  }).catch(function(e){alert('送信に失敗しました。もう一度試してください。');console.error(e);});
+}
+
+
+function togglePastInj(){
+  var el=document.getElementById('past-inj-list');
+  var arrow=document.getElementById('past-inj-arrow');
+  if(!el)return;
+  var open=el.style.display!=='none';
+  el.style.display=open?'none':'block';
+  if(arrow)arrow.textContent=open?'▶':'▼';
+}
+
 function cancelPhysSkip(){
   if(!confirm('測定なしの申告を取り消しますか？'))return;
   var today=todayStr();
@@ -486,6 +651,11 @@ function markPhysSkip(){
   if(!confirm('本日の測定なしとして申告しますか？'))return;
   var today=todayStr();
   if(!D.phskip)D.phskip=[];
+  if(!D.rtpl)D.rtpl=[];
+  if(!D.rplan)D.rplan=[];
+  if(!D.rlog)D.rlog=[];
+  if(!D.rtest_tpl)D.rtest_tpl=[];
+  if(!D.rtest)D.rtest=[];
   if(D.phskip.find(function(s){return s.pid===myPid&&s.date===today;})){
     alert('すでに申告済みです');return;
   }
