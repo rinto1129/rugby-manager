@@ -98,9 +98,9 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 <script>
 firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
 var db=firebase.firestore();
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest'};
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess'};
 var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
-var D={p:[],i:[],r:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[]};
+var D={p:[],i:[],r:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[]};
 var myTrainer=null;
 var RCATS=['ケア','ROM改善','患部外トレーニング','トレーニング','アジリティ','フィットネス','サポート','オフ'];
 var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'#0891B2',サポート:'#059669',オフ:'var(--text-secondary)'};
@@ -133,6 +133,7 @@ function ld(){
     if(!D.rlog)D.rlog=[];
     if(!D.rtest_tpl)D.rtest_tpl=[];
     if(!D.rtest)D.rtest=[];
+    if(!D.msess)D.msess=[];
   });
 }
 
@@ -146,7 +147,17 @@ function svSafe(k,newRec,callback){
   }).then(function(){if(callback)callback();}).catch(function(e){alert('保存に失敗しました');console.error(e);});
 }
 
-function todayStr(){return new Date().toISOString().split('T')[0];}
+function todayStr(){var d=new Date();var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
+function fmt(d){return d?d.replace(/-/g,'/'):'−';}
+function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
+function getCurrentMSess(){var today=todayStr();return(D.msess||[]).find(function(s){return s.startDate<=today&&s.endDate>=today;})||null;}
+function numStepHTML(id,min,max,oninput){
+  var dec='<button type="button" onclick="numStep(&quot;'+id+'&quot;,-1,'+min+','+max+')" style="padding:8px 14px;border:none;background:var(--bg-secondary);font-size:16px;cursor:pointer">−</button>';
+  var inp='<input class="ipt" type="number" id="'+id+'" min="'+min+'" max="'+max+'" style="text-align:center;border:none;border-left:1px solid var(--border-tertiary);border-right:1px solid var(--border-tertiary);border-radius:0;flex:1" oninput="'+(oninput||'')+'" placeholder="'+min+'〜'+max+'">';
+  var inc='<button type="button" onclick="numStep(&quot;'+id+'&quot;,1,'+min+','+max+')" style="padding:8px 14px;border:none;background:var(--bg-secondary);font-size:16px;cursor:pointer">＋</button>';
+  return'<div style="display:flex;align-items:center;gap:0;border:1.5px solid var(--border-secondary);border-radius:var(--radius);overflow:hidden">'+dec+inp+inc+'</div>';
+}
+function numStep(id,dir,min,max){var el=document.getElementById(id);var v=parseInt(el.value)||0;v=Math.min(max,Math.max(min,v+dir));el.value=v;el.dispatchEvent(new Event('input'));}
 function fmt(d){return d?d.replace(/-/g,'/'):'−';}
 function avH(p,sz){
   if(!p)return'';
@@ -159,7 +170,8 @@ function $m(){return document.getElementById('main-ct');}
 // ===== LOGIN =====
 function showLogin(){
   var listEl=document.getElementById('trainer-list');
-  listEl.innerHTML=D.trainers.map(function(t){
+  var sorted=D.trainers.slice().sort(function(a,b){return a.name.localeCompare(b.name,'ja');});
+  listEl.innerHTML=sorted.map(function(t){
     return'<button class="trainer-btn" onclick="login('+t.id+')">👤 '+t.name+'</button>';
   }).join('');
   document.getElementById('login-screen').style.display='flex';
@@ -227,9 +239,9 @@ home:function(){
   }
   h+='</div>';
   // 担当リハビリ選手
-  var myRehabInj=(D.i||[]).filter(function(inj){return!inj.resolved;});
+  var myRehabInj=(D.i||[]).filter(function(inj){return!inj.resolved&&(inj.approved===true||(!inj.source));});
   // 復帰テスト状況（全怪我人対象）
-  var myRtestInj=(D.i||[]).filter(function(inj){return!inj.resolved;}).filter(function(inj){
+  var myRtestInj=(D.i||[]).filter(function(inj){return!inj.resolved&&(inj.approved===true||(!inj.source));}).filter(function(inj){
     var results=(D.rtest||[]).filter(function(r){return r.injId===inj.id;});
     return results.length>0;
   });
@@ -276,15 +288,15 @@ tape:function(){
   var daysToNextMon=now.getDay()===0?1:8-now.getDay();
   var nextMon=new Date(now);nextMon.setDate(now.getDate()+daysToNextMon);
   var nextSun=new Date(nextMon);nextSun.setDate(nextMon.getDate()+6);
-  var fromS=today;
-  var toS=nextSun.toISOString().split('T')[0];
+  // 過去4週間〜来週まで表示
+  var pastStart=new Date(now);pastStart.setDate(now.getDate()-28);
+  var fromS=pastStart.getFullYear()+'-'+String(pastStart.getMonth()+1).padStart(2,'0')+'-'+String(pastStart.getDate()).padStart(2,'0');
+  var toS=nextSun.getFullYear()+'-'+String(nextSun.getMonth()+1).padStart(2,'0')+'-'+String(nextSun.getDate()).padStart(2,'0');
   // 自分の枠がある日
-  var mySlotDates=[...new Set((D.tapeslot||[]).filter(function(s){return s.staff===myTrainer.name&&s.date>=fromS&&s.date<=toS;}).map(function(s){return s.date;}))].sort();
+  var mySlotDates=[...new Set((D.tapeslot||[]).filter(function(s){return s.staff===myTrainer.name&&s.date>=fromS&&s.date<=toS;}).map(function(s){return s.date;}))].sort().reverse();
   var h='<div style="font-size:18px;font-weight:700;margin:4px 0 16px">🩻 テーピング管理</div>';
-  // 枠設定ボタン
   h+='<button class="btn btn-p" style="width:100%;margin-bottom:14px" onclick="showTapeSetupForm()">+ 今日/来週の枠を設定する</button>';
-  // 自分の予約一覧
-  h+='<div style="font-weight:600;margin-bottom:10px">あなたの担当枠（今週・来週）</div>';
+  h+='<div style="font-weight:600;margin-bottom:10px">あなたの担当枠（過去4週間〜来週）</div>';
   if(mySlotDates.length){
     mySlotDates.forEach(function(date){
       var slots=(D.tapeslot||[]).filter(function(s){return s.date===date&&s.staff===myTrainer.name;}).sort(function(a,b){return a.startTime.localeCompare(b.startTime);});
@@ -319,7 +331,7 @@ tape:function(){
 
 // リハビリ
 rehab:function(){
-  var myRehabInj=(D.i||[]).filter(function(inj){return!inj.resolved;});
+  var myRehabInj=(D.i||[]).filter(function(inj){return!inj.resolved&&(inj.approved===true||(!inj.source));});
   var h='<div style="font-size:18px;font-weight:700;margin:4px 0 16px">🩹 リハビリ管理</div>';
   if(!myRehabInj.length){
     h+='<div class="no" style="margin-top:40px">担当している選手がいません<br><span style="font-size:12px">スタッフに担当割り振りを依頼してください</span></div>';
@@ -706,7 +718,7 @@ function doSaveRTest(injId,physCount){
   var broncoTarget=window._rtBroncoTarget;
   var fitPassed=broncoTime&&broncoTarget?broncoTime<=broncoTarget:false;
   var note=(document.getElementById('rt-note')||{}).value||'';
-  var rec={id:Date.now(),injId:injId,date:date,implementer:myTrainer.name,physResults:physResults,physPassed:physPassed,broncoTime:broncoTime,fitPassed:fitPassed,note:note};
+  var rec={id:Date.now(),injId:injId,date:date,implementer:myTrainer.name,physResults:physResults,physPassed:physPassed,broncoTime:broncoTime,fitPassed:fitPassed,note:note,inputAt:new Date().toISOString()};
   db.collection('appdata').doc('rtest').get().then(function(doc){
     var latest=[];
     if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
@@ -777,7 +789,8 @@ function doSaveRehabLogTrainer(injId,hasTpl,exCount){
   var comment=(document.getElementById('rl-comment')||{}).value||'';
   var lastLog2=(D.rlog||[]).filter(function(l){return l.injId===injId;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0]||null;
   var preCheck=collectPreCheck(lastLog2);
-  var logRec={id:Date.now(),injId:injId,date:date,implementer:myTrainer.name,by:myTrainer.name,cats:cats,exercises:exercises,comment:comment,preCheck:preCheck};
+  var curSess=getCurrentMSess();
+  var logRec={id:Date.now(),injId:injId,date:date,implementer:myTrainer.name,by:myTrainer.name,cats:cats,exercises:exercises,comment:comment,preCheck:preCheck,msessId:curSess?curSess.id:null,inputAt:new Date().toISOString()};
   svSafe('rlog',logRec,function(){
     // D.rlogが更新されたので最新状態で再描画
     if(!hasTpl&&exercises.length&&confirm('このメニューをテンプレとして保存しますか？')){
