@@ -89,6 +89,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 <div class="ni" onclick="nav('fatigue')"><span style="width:20px;text-align:center">😴</span><span>疲労度管理</span></div>
 <div class="ni" onclick="nav('absence')"><span style="width:20px;text-align:center">📋</span><span>欠席管理</span></div>
 <div class="ni" onclick="nav('physical')"><span style="width:20px;text-align:center">📈</span><span>フィジカル</span></div>
+<div class="ni" onclick="nav('msess')"><span style="width:20px;text-align:center">📐</span><span>測定会管理</span></div>
 <div class="ni" onclick="nav('bodycomp')"><span style="width:20px;text-align:center">⚖️</span><span>体組成</span></div>
 <div class="ni" onclick="nav('matchview')"><span style="width:20px;text-align:center">🏟️</span><span>試合日レポート</span></div>
 <div class="ni" onclick="nav('tape')"><span style="width:20px;text-align:center">🩻</span><span>テーピング予約</span></div>
@@ -144,6 +145,7 @@ return Promise.all(promises).then(function(){
   if(!D.rlog)D.rlog=[];
   if(!D.rtest_tpl)D.rtest_tpl=[];
   if(!D.rtest)D.rtest=[];
+  if(!D.msess)D.msess=[];
   if(!D.phskip)D.phskip=[];
   if(D.p===INIT)sv('p');
 });
@@ -151,11 +153,41 @@ return Promise.all(promises).then(function(){
 function sv(k){db.collection('appdata').doc(k).set({data:JSON.stringify(D[k])}).catch(function(e){console.error('Save error:',k,e);});}
 function svAll(){for(var k in SK)sv(k);}
 // Real-time listener for live updates
+// ⑮ 学年チェック（4月1日以降に前回更新から1年経過していたら通知）
+function checkYearUpdate(){
+  var lastUpdate=localStorage.getItem('rm_year_update');
+  var now=new Date();
+  var thisApril=new Date(now.getFullYear(),3,1); // 4月1日
+  if(now>=thisApril&&(!lastUpdate||new Date(lastUpdate)<thisApril)){
+    if(confirm('新年度になりました！選手の学年を更新しますか？\n（4年生は自動的に削除候補としてマークされます）')){
+      doYearUpdate();
+    }
+  }
+}
+
+function doYearUpdate(){
+  var graduated=[];
+  D.p.forEach(function(p){
+    if(p.year>=4){
+      graduated.push(p.name);
+      p.graduated=true; // 卒業フラグ（削除しない）
+      p.note=(p.note?p.note+' ':'')+'[卒業]';
+    } else {
+      p.year=Math.min(4,(p.year||1)+1);
+    }
+  });
+  sv('p');
+  localStorage.setItem('rm_year_update',new Date().toISOString());
+  alert('学年を更新しました！\n卒業フラグ付与（手動削除してください）: '+graduated.join('、'));
+  V.players&&V.players();
+}
+
 function startListeners(){Object.keys(SK).forEach(function(k){db.collection('appdata').doc(k).onSnapshot(function(doc){if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(k==='p'&&parsed.length>0)D[k]=parsed;else if(k!=='p')D[k]=parsed;}catch(e){}}});});}
 function avH(p,sz){var i=p.id%AVC.length,ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';return p.photo?'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background-image:url('+p.photo+')"></div>':'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background:'+AVC[i][0]+';color:'+AVC[i][1]+';font-size:'+Math.round(sz*.35)+'px">'+ini+'</div>';}
 function fmt(d){return d?d.replace(/-/g,'/'):'-';}
 function pSt(pid){var a=D.i.find(function(x){return x.pid===pid&&!x.resolved;});if(!a)return'ok';var rh=D.r.find(function(x){return x.injId===a.id;});return(rh&&rh.stage>0)?'rehab':'inj';}
 function getBest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null;});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
+function getBestBIG3(pid){var sq=getBest(pid,'squat')||0;var bp=getBest(pid,'bench')||0;var dl=getBest(pid,'deadlift')||0;return(sq||bp||dl)?(sq+bp+dl):null;}
 function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
 function numStepHTML(id,min,max,oninput){
@@ -172,7 +204,7 @@ function dC(k){if(charts[k]){charts[k].destroy();delete charts[k];}}
 function dCA(){for(var k in charts){charts[k].destroy();}charts={};}
 function monStr(){var n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');}
 function $m(){return document.getElementById('main-ct');}
-function todayStr(){return new Date().toISOString().split('T')[0];}
+function todayStr(){var d=new Date();var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
 function absCnt(pid,mon){return D.a.filter(function(s){return s.date.startsWith(mon);}).reduce(function(c,s){return c+(s.absentees.some(function(x){return x.pid===pid;})?1:0);},0);}
 function absCntAll(pid){return D.a.reduce(function(c,s){return c+(s.absentees.some(function(x){return x.pid===pid;})?1:0);},0);}
 function totSess(mon){return D.a.filter(function(s){return s.date.startsWith(mon);}).length;}
@@ -192,12 +224,12 @@ document.addEventListener('click',function(e){document.querySelectorAll('.p-sear
 
 function nav(pg){
   curPage=pg;viewStack=[];dCA();
-  var pages=['dash','players','injury','rehab','fatigue','absence','physical','bodycomp','matchview','tape','calendar','rtest','trainer','rank','export'];
+  var pages=['dash','players','injury','rehab','fatigue','absence','physical','msess','bodycomp','matchview','tape','calendar','rtest','trainer','rank','export'];
   document.querySelectorAll('.ni').forEach(function(e,i){e.classList.toggle('ac',pages[i]===pg);});
   var t={dash:'ダッシュボード',players:'選手一覧',injury:'怪我管理',rehab:'リハビリ管理',fatigue:'疲労度管理',absence:'欠席管理',bodycomp:'体組成',physical:'フィジカル記録',matchview:'試合日レポート',tape:'テーピング予約',calendar:'カレンダー',trainer:'トレーナー管理',rank:'ランキング',export:'CSV出力'};
   document.getElementById('pg-title').textContent=t[pg]||pg;
-  var acts={players:'<button class="btn btn-p" onclick="goAddPlayer()">+ 選手追加</button>',injury:'<button class="btn btn-p" onclick="goAddInjury()">+ 怪我登録</button>',absence:'<button class="btn btn-p" onclick="goRecordAbsence()">+ 欠席記録</button>',bodycomp:'<button class="btn btn-p" onclick="goAddBC()">+ 体組成記録</button>',physical:'<button class="btn btn-p" onclick="goAddPhys()">+ 記録追加</button> <button class="btn" onclick="goBulkPhys()" style="margin-left:6px">一括入力</button>',fatigue:'<button class="btn btn-p" onclick="goAddFatigue()">+ コンディション入力</button>',rehab:'<button class="btn btn-p" onclick="goAddRTpl()">+ テンプレ作成</button>',calendar:'<button class="btn btn-p" onclick="goAddCalEvent()">+ イベント追加</button>',tape:'<button class="btn btn-p" onclick="goAddTapeSlot()">+ 枠を設定</button>',rtest:'<button class="btn btn-p" onclick="goAddRTestTpl()">+ テンプレ作成</button>',trainer:'<button class="btn btn-p" onclick="goAddTrainer()">+ トレーナー追加</button>'};
-  document.getElementById('tb-act').innerHTML=acts[pg]||'';
+  var acts={players:'<button class="btn btn-p" onclick="goAddPlayer()">+ 選手追加</button>',injury:'<button class="btn btn-p" onclick="goAddInjury()">+ 怪我登録</button>',absence:'<button class="btn btn-p" onclick="goRecordAbsence()">+ 欠席記録</button>',bodycomp:'<button class="btn btn-p" onclick="goAddBC()">+ 体組成記録</button>',physical:'<button class="btn btn-p" onclick="goAddPhys()">+ 記録追加</button> <button class="btn" onclick="goBulkPhys()" style="margin-left:6px">一括入力</button>',fatigue:'<button class="btn btn-p" onclick="goAddFatigue()">+ コンディション入力</button>',rehab:'<button class="btn btn-p" onclick="goAddRTpl()">+ テンプレ作成</button>',calendar:'<button class="btn btn-p" onclick="goAddCalEvent()">+ イベント追加</button>',tape:'<button class="btn btn-p" onclick="goAddTapeSlot()">+ 枠を設定</button>',msess:'<button class="btn btn-p" onclick="goAddMSess()">+ 測定会を作成</button>',rtest:'<button class="btn btn-p" onclick="goAddRTestTpl()">+ テンプレ作成</button>',trainer:'<button class="btn btn-p" onclick="goAddTrainer()">+ トレーナー追加</button>'};
+  document.getElementById('tb-act').innerHTML=(acts[pg]||'')+(pg==='dash'?'<button class="btn" style="margin-left:6px" onclick="checkYearUpdate()">📅 学年更新</button>':'');
   V[pg]&&V[pg]();
 }
 function pushView(title,html,fn){viewStack.push(curPage);dCA();document.getElementById('pg-title').innerHTML='<span class="btn-back" onclick="popView()">← 戻る</span> '+title;document.getElementById('tb-act').innerHTML='';$m().innerHTML=html;if(fn)setTimeout(fn,80);}
@@ -239,7 +271,8 @@ dash:function(){
   var matchNotDone=selectedForMatch.filter(function(pid){return matchDoneToday.indexOf(pid)<0;});
   // This week's calendar events for announce
   var thisWeekEvents=getThisWeekEvents();
-  $m().innerHTML='<div class="grid g3" style="margin-bottom:1.25rem">'+[[tot,'登録選手',''],[ok,'正常','color:var(--green)'],[inj,'怪我中','color:var(--red)']].map(function(x){return'<div class="mc"><div class="v" style="'+x[2]+'">'+x[0]+'</div><div class="l">'+x[1]+'</div></div>';}).join('')+'</div>'+
+  $m().innerHTML='<div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">📊 チーム状況</div>'+
+  '<div class="grid g3" style="margin-bottom:1.25rem">'+[[tot,'登録選手',''],[ok,'正常','color:var(--green)'],[inj,'怪我中','color:var(--red)']].map(function(x){return'<div class="mc"><div class="v" style="'+x[2]+'">'+x[0]+'</div><div class="l">'+x[1]+'</div></div>';}).join('')+'</div>'+
   (pendingInj.length?'<div style="margin-bottom:1rem"><div style="font-size:14px;font-weight:600;margin-bottom:.5rem;color:var(--red)">🚨 新着怪我 — スタッフ確認が必要</div>'+pendingInj.map(function(x){var p=D.p.find(function(pp){return pp.id===x.pid;});if(!p)return'';return'<div class="alert-card alert-down" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><span style="flex:1">'+p.name+' — '+(x.side||'')+x.part+' '+x.type+' ('+fmt(x.date)+') '+(x.source==='match'?'【試合】':'【練習/その他】')+'</span><div style="display:flex;gap:6px"><button class="btn btn-sm btn-s" onclick="approveInjury('+x.id+')">怪我人に追加</button><button class="btn btn-sm btn-d" onclick="rejectInjury('+x.id+')">却下</button><button class="btn btn-sm" onclick="goInjuryDetail('+x.id+')">詳細</button></div></div>';}).join('')+'</div>':'')+
   (cantPrac.length?'<div style="margin-bottom:1rem"><div style="font-size:14px;font-weight:600;margin-bottom:.5rem">⚠️ 来週の練習に参加できない選手</div>'+cantPrac.map(function(x){var p=D.p.find(function(pp){return pp.id===x.pid;});if(!p)return'';return'<div class="alert-card alert-warn" style="cursor:pointer" onclick="goInjuryDetail('+x.id+')">'+p.name+' — '+(x.side||'')+x.part+' '+x.type+'</div>';}).join('')+'</div>':'')+
   (returning.length?'<div style="margin-bottom:1rem"><div style="font-size:14px;font-weight:600;margin-bottom:.5rem">🟢 来週復帰予定（'+fmt(nextMonS)+'〜'+fmt(nextSunS)+'）</div>'+returning.map(function(x){var p=D.p.find(function(pp){return pp.id===x.pid;});if(!p)return'';var daysLeft=Math.ceil((new Date(x.returnDate)-new Date())/86400000);return'<div class="alert-card alert-info" style="cursor:pointer;justify-content:space-between" onclick="goInjuryDetail('+x.id+')"><span>'+p.name+' — '+injLabel(x)+' <span style="font-size:11px">(復帰予定: '+fmt(x.returnDate)+')</span></span><span class="bd bd-g">残り'+daysLeft+'日</span></div>';}).join('')+'</div>':'')+
@@ -284,7 +317,7 @@ dash:function(){
   $m().innerHTML+='<div style="margin-top:1.25rem"><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">📢 お知らせ投稿（選手サイトに表示）</div>'+
   (thisWeekEvents.length?'<div style="margin-bottom:.75rem"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">📅 今週のカレンダー（クリックでお知らせに反映）</div>'+thisWeekEvents.map(function(ev){return'<div class="alert-card alert-info" style="cursor:pointer;justify-content:space-between" onclick="fillAnnounceFromEvent(\''+escAnn(ev.date)+'\',\''+escAnn(ev.title)+'\',\''+escAnn(ev.detail||'')+'\')">'+'<span><strong>'+fmt(ev.date)+'</strong> '+ev.title+(ev.detail?' — '+ev.detail:'')+'</span><span style="font-size:11px;opacity:.7">クリックで反映</span></div>';}).join('')+'</div>':'')+
   '<div class="form-box" style="margin-bottom:.75rem"><div class="fl" style="margin-bottom:10px"><label>宛先</label><select class="ipt" id="ann-target" style="width:auto"><option value="">全体へ</option>'+D.p.map(function(p){return'<option value="'+p.id+'">個人: '+p.name+'</option>';}).join('')+'</select></div><textarea class="ipt" id="ann-text" placeholder="今週の予定やお知らせを入力..." style="min-height:80px"></textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-p" onclick="postAnnounce()">投稿する</button><button class="btn" onclick="postAnnounceFromCalendar()">📅 今週の予定をまとめて投稿</button></div></div>'+
-  (D.ann.length?D.ann.sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,8).map(function(a){var tgt=a.targetPid?D.p.find(function(x){return x.id===a.targetPid;}):null;return'<div class="card" style="margin-bottom:6px;padding:.75rem 1rem"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">'+fmt(a.date)+(tgt?' <span class="bd bd-b">個人: '+tgt.name+'</span>':' <span class="bd bd-p">全体</span>')+'</div><div style="font-size:13px;white-space:pre-wrap">'+a.text+'</div></div><button class="btn btn-sm btn-d" onclick="delAnnounce('+a.id+')">削除</button></div></div>';}).join(''):'<div class="no" style="padding:1rem">お知らせはまだありません</div>')+'</div>';
+  (D.ann.length?D.ann.sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,8).map(function(a){var tgt=a.targetPid?D.p.find(function(x){return x.id===a.targetPid;}):null;var readCount=(a.readBy||[]).length;var totalTarget=a.targetPid?1:D.p.length;return'<div class="card" style="margin-bottom:6px;padding:.75rem 1rem"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">'+fmt(a.date)+(tgt?' <span class="bd bd-b">個人: '+tgt.name+'</span>':' <span class="bd bd-p">全体</span>')+' <span style="color:var(--green)">既読'+readCount+'/'+totalTarget+'</span></div><div style="font-size:13px;white-space:pre-wrap">'+a.text+'</div></div><button class="btn btn-sm btn-d" onclick="delAnnounce('+a.id+')">削除</button></div></div>';}).join(''):'<div class="no" style="padding:1rem">お知らせはまだありません</div>')+'</div>';
 },
 players:function(){
   var q=(document.getElementById('ps')?document.getElementById('ps').value:'').toLowerCase(),pf=document.getElementById('pf')?document.getElementById('pf').value:'',yf=document.getElementById('yf')?document.getElementById('yf').value:'',sf=document.getElementById('sf')?document.getElementById('sf').value:'';
@@ -348,7 +381,7 @@ rehab:function(){
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'+avH(p,30)+
       '<div style="flex:1"><div style="font-weight:600">'+p.name+'</div>'+
       '<div style="font-size:12px;color:var(--text-secondary)">'+(inj.side||'')+inj.part+' '+inj.type+'</div></div>'+
-      (plan?'<span class="bd bd-g">設定済</span>':'<span class="bd bd-a">未設定</span>')+
+      (plan&&plan.tplId?'<span class="bd bd-g">設定済</span>':plan?'<span class="bd bd-b">カスタム記録中</span>':'<span style="font-size:11px;color:var(--text-tertiary)">プログラム未設定</span>')+
       '</div>'+
       '<div style="font-size:12px;display:flex;gap:10px;flex-wrap:wrap">'+
       (trainer?'<span style="color:var(--blue)">統括: '+trainer.name+'</span>':'')+
@@ -387,7 +420,7 @@ absence:function(){
   var mon=monStr();var sessions=D.a.filter(function(s){return s.date.startsWith(mon);}).sort(function(a,b){return b.date.localeCompare(a.date);});var totalS=sessions.length;
   var absData=D.p.map(function(p){var cnt=absCnt(p.id,mon);return{p:p,cnt:cnt,att:totalS-cnt};}).sort(function(a,b){return b.cnt-a.cnt;});
   var maxA=Math.max(1,Math.max.apply(null,absData.map(function(a){return a.cnt;}).concat([1])));
-  $m().innerHTML='<div class="grid g2" style="margin-bottom:1.25rem"><div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">今月の欠席状況 — 全'+totalS+'回</div><div style="max-height:350px;overflow-y:auto">'+absData.map(function(a){var c=a.cnt>=3?'var(--red)':a.cnt>=1?'var(--amber)':'var(--green)';var pct=maxA>0?Math.round(a.cnt/maxA*100):0;return'<div class="att-bar"><span style="min-width:80px;font-weight:600;cursor:pointer" onclick="goPlayerDetail('+a.p.id+')">'+a.p.name+'</span><div style="flex:1;height:8px;background:var(--border-tertiary);border-radius:4px"><div style="height:100%;width:'+pct+'%;background:'+c+';border-radius:4px"></div></div><span style="min-width:70px;text-align:right;font-size:11px"><span style="font-weight:600;color:'+c+'">欠席'+a.cnt+'</span></span></div>';}).join('')+'</div></div><div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">欠席アラート</div>'+(absData.filter(function(a){return a.cnt>=3;}).length?absData.filter(function(a){return a.cnt>=3;}).map(function(a){return'<div class="alert-card alert-warn">'+a.p.name+': '+a.cnt+'回</div>';}).join(''):'<div class="no">該当なし</div>')+'</div></div><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">記録一覧</div>'+(sessions.length?sessions.map(function(s){return'<div class="card card-click" style="margin-bottom:6px;padding:.75rem 1rem" onclick="goSessionDetail('+s.id+')"><div style="display:flex;align-items:center;justify-content:space-between"><div><span style="font-weight:600">'+fmt(s.date)+'</span><span style="color:var(--text-secondary);margin-left:10px">'+(s.label||'')+'</span></div><div><span class="bd bd-r">欠席'+s.absentees.length+'</span><span class="bd bd-g" style="margin-left:4px">出席'+(D.p.length-s.absentees.length)+'</span></div></div></div>';}).join(''):'<div class="no">記録なし</div>');
+  $m().innerHTML='<div class="grid g2" style="margin-bottom:1.25rem"><div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">今月の欠席状況 — 全'+totalS+'回</div><div style="max-height:350px;overflow-y:auto">'+absData.map(function(a){var c=a.cnt>=3?'var(--red)':a.cnt>=1?'var(--amber)':'var(--green)';var pct=maxA>0?Math.round(a.cnt/maxA*100):0;return'<div class="att-bar"><span style="min-width:80px;font-weight:600;cursor:pointer" onclick="goPlayerDetail('+a.p.id+')">'+a.p.name+'</span><div style="flex:1;height:8px;background:var(--border-tertiary);border-radius:4px"><div style="height:100%;width:'+pct+'%;background:'+c+';border-radius:4px"></div></div><span style="min-width:70px;text-align:right;font-size:11px"><span style="font-weight:600;color:'+c+'">欠席'+a.cnt+'</span></span></div>';}).join('')+'</div></div><div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">欠席アラート</div>'+(absData.filter(function(a){return a.cnt>=3;}).length?absData.filter(function(a){return a.cnt>=3;}).map(function(a){return'<div class="alert-card alert-warn">'+a.p.name+': '+a.cnt+'回</div>';}).join(''):'<div class="no">該当なし</div>')+'</div></div><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">記録一覧</div>'+(sessions.length?sessions.map(function(s){return'<div class="card card-click" style="margin-bottom:6px;padding:.75rem 1rem" onclick="goSessionDetail('+s.id+')"><div style="display:flex;align-items:center;justify-content:space-between"><div><span style="font-weight:600">'+fmt(s.date)+'</span><span style="color:var(--text-secondary);margin-left:10px">'+(s.label||'')+'</span>'+(s.absentees.some(function(a){return a.source==='player';})?' <span class="bd bd-b" style="font-size:9px">選手申告あり</span>':'')+'</div><div><span class="bd bd-r">欠席'+s.absentees.length+'</span><span class="bd bd-g" style="margin-left:4px">出席'+(D.p.length-s.absentees.length)+'</span></div></div></div>';}).join(''):'<div class="no">記録なし</div>');
 },
 physical:function(){
   var pf=document.getElementById('phypf')?document.getElementById('phypf').value:'';
@@ -399,7 +432,7 @@ physical:function(){
 },
 bodycomp:function(){
   var pf=document.getElementById('bcpf')?document.getElementById('bcpf').value:'';
-  var recs=D.bc.filter(function(r){return!pf||String(r.pid)===pf;}).sort(function(a,b){return b.date.localeCompare(a.date);});
+  var recs=D.bc.filter(function(r){return!pf||String(r.pid)===pf;}).sort(function(a,b){var dd=b.date.localeCompare(a.date);return dd!==0?dd:(b.inputAt||'').localeCompare(a.inputAt||'');});
   var today=todayStr();
   var isOff=D.offday.indexOf(today)>=0;
   var pickup=isOff?[]:getTodayPickup();
@@ -453,7 +486,7 @@ rank:function(){
   var rk=D.p.filter(function(p){if(yf&&String(p.year)!==yf)return false;if(pf&&p.position!==pf)return false;return true;}).map(function(p){var rs=D.ph.filter(function(x){return x.pid===p.id;});var v=null;
   if(m==='bronco'){var vs=rs.filter(function(x){return x.bronco;}).map(function(x){return x.bronco;});v=vs.length?Math.min.apply(null,vs):null;}
   else if(m==='big3'){v=rs.length?Math.max.apply(null,rs.map(function(x){return big3(x);})):null;}
-  else if(m==='big3perkg'){var w=parseFloat(p.weight);if(w){var b=rs.length?Math.max.apply(null,rs.map(function(x){return big3(x);})):0;v=b?Math.round(b/w*100)/100:null;}}
+  else if(m==='big3perkg'){var w=parseFloat(p.weight);if(w){var b=getBestBIG3(p.id)||0;v=b?Math.round(b/w*100)/100:null;}}
   else{var vs2=rs.filter(function(x){return x[m];}).map(function(x){return x[m];});v=vs2.length?Math.max.apply(null,vs2):null;}
   return{p:p,v:v};}).filter(function(x){return x.v!==null;});
   m==='bronco'?rk.sort(function(a,b){return a.v-b.v;}):rk.sort(function(a,b){return b.v-a.v;});
@@ -481,6 +514,8 @@ calendar:function(){
     var dow=(firstDay.getDay()+d-1)%7;
     calH+='<div onclick="calDayClick(\''+ds+'\')" style="min-height:52px;border:1px solid var(--border-tertiary);border-radius:6px;padding:4px;cursor:pointer;background:'+(isToday?'var(--blue-bg)':'var(--bg-primary)')+';transition:background .1s" onmouseover="this.style.background=\'var(--bg-secondary)\'" onmouseout="this.style.background=\''+(isToday?'var(--blue-bg)':'var(--bg-primary)')+'\'">';
     calH+='<div style="font-size:12px;font-weight:'+(isToday?'700':'500')+';color:'+(isToday?'var(--blue)':dow===0?'var(--red)':dow===6?'var(--blue)':'var(--text-primary)')+'">'+d+'</div>';
+    var msessOnDay=(D.msess||[]).filter(function(s){return s.startDate<=ds&&s.endDate>=ds;});
+    msessOnDay.forEach(function(s){calH+='<div style="font-size:8px;background:#0891B2;color:#fff;border-radius:3px;padding:1px 3px;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">📐'+s.name+'</div>';});
     dayEvts.forEach(function(e){var color=e.type==='match'?'var(--purple)':e.type==='practice'?'var(--green)':e.type==='off'?'var(--amber)':e.type==='phys_measure'?'#0891B2':e.type==='bronco_measure'?'#059669':'var(--blue)';calH+='<div style="font-size:9px;background:'+color+';color:#fff;border-radius:3px;padding:1px 4px;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+e.title+'</div>';});
     calH+='</div>';
   }
@@ -602,7 +637,16 @@ function goAddPhys(){var td=todayStr();pushView('フィジカル記録','<div st
 '<div class="fl"><label>クリーン MAX(kg)</label><input class="ipt" type="number" id="nph-cl"></div>'+
 '<div class="fl" style="grid-column:1/-1"><label>ブロンコテスト</label><div style="display:flex;align-items:center;gap:8px"><input class="ipt" type="number" id="nph-br-m" placeholder="分" min="0" style="width:80px"><span style="font-weight:600">分</span><input class="ipt" type="number" id="nph-br-s" placeholder="秒" min="0" max="59" style="width:80px"><span style="font-weight:600">秒</span></div></div>'+
 '</div></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="doAddPhys()">追加</button></div></div>');}
-function doAddPhys(){var pid=parseInt(document.getElementById('nph-p-val').value);if(!pid)return alert('選手を選択');var sq=parseFloat(document.getElementById('nph-sq').value)||null,bp=parseFloat(document.getElementById('nph-bp').value)||null,dl=parseFloat(document.getElementById('nph-dl').value)||null,br=broncoFromInputs('nph-br-m','nph-br-s');var cn=parseFloat(document.getElementById('nph-cn').value)||null,cl=parseFloat(document.getElementById('nph-cl').value)||null;var pSQ=getBest(pid,'squat'),pBP=getBest(pid,'bench'),pDL=getBest(pid,'deadlift'),pBR=getBest(pid,'bronco');D.ph.push({id:Date.now(),pid:pid,date:document.getElementById('nph-date').value,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br});sv('ph');var m=[];if(sq&&pSQ&&sq>pSQ)m.push('🎉 SQ更新！'+pSQ+'→'+sq+'kg');if(bp&&pBP&&bp>pBP)m.push('🎉 BP更新！'+pBP+'→'+bp+'kg');if(dl&&pDL&&dl>pDL)m.push('🎉 DL更新！'+pDL+'→'+dl+'kg');if(br&&pBR&&br<pBR)m.push('🎉 ブロンコ更新！'+broncoFmt(pBR)+'→'+broncoFmt(br));popView();if(m.length)setTimeout(function(){alert(m.join('\n'));},300);}
+function doAddPhys(){var pid=parseInt(document.getElementById('nph-p-val').value);if(!pid)return alert('選手を選択');var sq=parseFloat(document.getElementById('nph-sq').value)||null,bp=parseFloat(document.getElementById('nph-bp').value)||null,dl=parseFloat(document.getElementById('nph-dl').value)||null,br=broncoFromInputs('nph-br-m','nph-br-s');var cn=parseFloat(document.getElementById('nph-cn').value)||null,cl=parseFloat(document.getElementById('nph-cl').value)||null;var pSQ=getBest(pid,'squat'),pBP=getBest(pid,'bench'),pDL=getBest(pid,'deadlift'),pBR=getBest(pid,'bronco');
+  var newRec={id:Date.now(),pid:pid,date:document.getElementById('nph-date').value,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br,inputAt:new Date().toISOString()};
+  db.collection('appdata').doc('ph').get().then(function(doc){
+    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+    latest.push(newRec);D.ph=latest;
+    return db.collection('appdata').doc('ph').set({data:JSON.stringify(latest)});
+  }).then(function(){
+    var m=[];if(sq&&pSQ&&sq>pSQ)m.push('🎉 SQ更新！'+pSQ+'→'+sq+'kg');if(bp&&pBP&&bp>pBP)m.push('🎉 BP更新！'+pBP+'→'+bp+'kg');if(dl&&pDL&&dl>pDL)m.push('🎉 DL更新！'+pDL+'→'+dl+'kg');if(br&&pBR&&br<pBR)m.push('🎉 ブロンコ更新！'+broncoFmt(pBR)+'→'+broncoFmt(br));
+    popView();if(m.length)setTimeout(function(){alert(m.join('\n'));},300);
+  }).catch(function(e){alert('保存に失敗しました');console.error(e);});}
 
 // === ADD FATIGUE (with search) ===
 function goAddFatigue(){var td=todayStr();pushView('コンディション入力','<div style="max-width:520px"><div class="form-box"><div class="form-title">今日のコンディション</div><div class="grid g2" style="gap:14px">'+
@@ -612,7 +656,8 @@ function goAddFatigue(){var td=todayStr();pushView('コンディション入力'
 '<div class="fl" style="grid-column:1/-1"><label>メモ</label><textarea class="ipt" id="nf-note"></textarea></div>'+
 '</div></div><div id="srpe-pv"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="doAddFatigue()">記録</button></div></div>');}
 function updSrpe(){var r=parseInt(document.getElementById('nf-rpe').value)||0,d=parseInt(document.getElementById('nf-dur').value)||0;document.getElementById('srpe-pv').innerHTML=r&&d?'<div class="mc" style="display:inline-block;padding:.5rem 1.5rem;margin-bottom:1rem"><div class="v" style="font-size:20px;color:var(--purple)">'+(r*d)+'</div><div class="l">sRPE</div></div>':'';}
-function doAddFatigue(){var pid=parseInt(document.getElementById('nf-p-val').value);if(!pid)return alert('選手を選択');var rpe=parseFloat(document.getElementById('nf-rpe').value);if(!rpe)return alert('RPEを入力');D.f.push({id:Date.now(),pid:pid,date:document.getElementById('nf-date').value,rpe:rpe,sleep:parseFloat(document.getElementById('nf-sleep').value)||0,duration:parseInt(document.getElementById('nf-dur').value)||0,note:document.getElementById('nf-note').value});sv('f');popView();}
+function doAddFatigue(){var pid=parseInt(document.getElementById('nf-p-val').value);if(!pid)return alert('選手を選択');var rpe=parseFloat(document.getElementById('nf-rpe').value);if(!rpe)return alert('RPEを入力');var fRec={id:Date.now(),pid:pid,date:document.getElementById('nf-date').value,rpe:rpe,sleep:parseFloat(document.getElementById('nf-sleep').value)||0,duration:parseInt(document.getElementById('nf-dur').value)||0,note:document.getElementById('nf-note').value,inputAt:new Date().toISOString()};
+  db.collection('appdata').doc('f').get().then(function(doc){var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}latest.push(fRec);D.f=latest;return db.collection('appdata').doc('f').set({data:JSON.stringify(latest)});}).then(function(){popView();}).catch(function(e){alert('保存に失敗しました');console.error(e);});}
 
 // === ADD PLAYER ===
 function goAddPlayer(){pushView('選手追加','<div style="max-width:520px"><div class="form-box"><div class="form-title">選手情報</div><div class="grid g2" style="gap:14px"><div class="fl" style="grid-column:1/-1"><label>氏名 *</label><input class="ipt" id="np-name"></div><div class="fl"><label>ポジション</label><select class="ipt" id="np-pos">'+POS.map(function(p){return'<option>'+p+'</option>';}).join('')+'</select></div><div class="fl"><label>学年</label><select class="ipt" id="np-year">'+[1,2,3,4].map(function(y){return'<option value="'+y+'">'+y+'年</option>';}).join('')+'</select></div><div class="fl"><label>生年月日</label><input class="ipt" type="date" id="np-dob"></div><div class="fl"><label>身長(cm)</label><input class="ipt" type="number" id="np-h"></div><div class="fl"><label>体重(kg)</label><input class="ipt" type="number" id="np-w"></div><div class="fl"><label>出身校</label><input class="ipt" id="np-school"></div><div class="fl" style="grid-column:1/-1"><label>特記事項</label><textarea class="ipt" id="np-note"></textarea></div></div></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="doAddPlayer()">追加</button></div></div>');}
@@ -632,7 +677,7 @@ function goRecordAbsence(){var td=todayStr();absTemp={checked:{}};pushView('欠�
 function filterAbsList(){var q=document.getElementById('abs-search').value.toLowerCase();document.querySelectorAll('.abs-item').forEach(function(el){el.style.display=el.getAttribute('data-name').indexOf(q)>=0?'flex':'none';});}
 function toggleAbs(pid){absTemp.checked[pid]=!absTemp.checked[pid];var cb=document.getElementById('cb-'+pid),row=document.getElementById('cbr-'+pid),rw=document.getElementById('rw-'+pid);if(absTemp.checked[pid]){cb.classList.add('on');cb.textContent='✕';row.classList.add('checked');rw.style.display='block';}else{cb.classList.remove('on');cb.textContent='';row.classList.remove('checked');rw.style.display='none';}var cnt=Object.values(absTemp.checked).filter(Boolean).length;document.getElementById('abs-c').textContent=cnt;document.getElementById('att-c').textContent=D.p.length-cnt;}
 function doRecordAbsence(){var date=document.getElementById('abs-date').value;if(!date)return alert('日付を入力');var abs=[];D.p.forEach(function(p){if(absTemp.checked[p.id])abs.push({pid:p.id,reason:(document.getElementById('rsn-'+p.id)||{}).value||''});});D.a.push({id:Date.now(),date:date,label:document.getElementById('abs-label').value,absentees:abs});sv('a');popView();}
-function goSessionDetail(sid){var s=D.a.find(function(x){return x.id===sid;});if(!s)return;var att=D.p.filter(function(p){return!s.absentees.some(function(a){return a.pid===p.id;});});pushView(fmt(s.date),'<div style="max-width:600px"><div class="grid g2" style="margin-bottom:1rem"><div class="mc"><div class="v" style="color:var(--green)">'+att.length+'</div><div class="l">出席</div></div><div class="mc"><div class="v" style="color:var(--red)">'+s.absentees.length+'</div><div class="l">欠席</div></div></div>'+(s.absentees.length?'<div class="form-box"><div class="form-title">欠席者</div>'+s.absentees.map(function(a){var p=D.p.find(function(x){return x.id===a.pid;});return p?'<div class="log-row">'+avH(p,28)+'<span style="font-weight:600;flex:1">'+p.name+'</span><span style="color:var(--text-secondary)">'+(a.reason||'理由なし')+'</span></div>':'';}).join('')+'</div>':'')+'<div class="form-box"><div class="form-title">出席者</div>'+att.map(function(p){return'<div class="log-row">'+avH(p,28)+'<span style="font-weight:600">'+p.name+'</span></div>';}).join('')+'</div><div style="display:flex;justify-content:space-between;margin-top:1rem"><button class="btn btn-d" onclick="delSession('+sid+')">削除</button><button class="btn" onclick="popView()">戻る</button></div></div>');}
+function goSessionDetail(sid){var s=D.a.find(function(x){return x.id===sid;});if(!s)return;var att=D.p.filter(function(p){return!s.absentees.some(function(a){return a.pid===p.id;});});pushView(fmt(s.date),'<div style="max-width:600px"><div class="grid g2" style="margin-bottom:1rem"><div class="mc"><div class="v" style="color:var(--green)">'+att.length+'</div><div class="l">出席</div></div><div class="mc"><div class="v" style="color:var(--red)">'+s.absentees.length+'</div><div class="l">欠席</div></div></div>'+(s.absentees.length?'<div class="form-box"><div class="form-title">欠席者</div>'+s.absentees.map(function(a){var p=D.p.find(function(x){return x.id===a.pid;});return p?'<div class="log-row">'+avH(p,28)+'<span style="font-weight:600;flex:1">'+p.name+'</span>'+(a.source==='player'?'<span class="bd bd-b" style="font-size:9px;margin-right:4px">選手申告</span>':'')+'<span style="color:var(--text-secondary)">'+(a.reason||'理由なし')+'</span></div>':'';}).join('')+'</div>':'')+'<div class="form-box"><div class="form-title">出席者</div>'+att.map(function(p){return'<div class="log-row">'+avH(p,28)+'<span style="font-weight:600">'+p.name+'</span></div>';}).join('')+'</div><div style="display:flex;justify-content:space-between;margin-top:1rem"><button class="btn btn-d" onclick="delSession('+sid+')">削除</button><button class="btn" onclick="popView()">戻る</button></div></div>');}
 function delSession(sid){if(!confirm('削除？'))return;D.a=D.a.filter(function(x){return x.id!==sid;});sv('a');popView();}
 
 // === PLAYER DETAIL ===
@@ -663,7 +708,11 @@ function goPlayerDetail(pid){
   });
 }
 function dtTab(i){document.querySelectorAll('#main-ct .tab').forEach(function(t,j){t.classList.toggle('ac',j===i);});document.querySelectorAll('#main-ct .tc').forEach(function(t,j){t.classList.toggle('ac',j===i);});}
-function handlePhoto(input,pid){var file=input.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e){var img=new Image();img.onload=function(){var c=document.createElement('canvas');c.width=100;c.height=100;var ctx=c.getContext('2d');var mn=Math.min(img.width,img.height);ctx.drawImage(img,(img.width-mn)/2,(img.height-mn)/2,mn,mn,0,0,100,100);var d=c.toDataURL('image/jpeg',0.7);document.getElementById('photo-pv').style.backgroundImage='url('+d+')';document.getElementById('photo-pv').textContent='';var p=D.p.find(function(x){return x.id===pid;});if(p)p._tp=d;};img.src=e.target.result;};reader.readAsDataURL(file);}
+function handlePhoto(input,pid){var file=input.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e){var img=new Image();img.onload=function(){var c=document.createElement('canvas');c.width=100;c.height=100;var ctx=c.getContext('2d');var mn=Math.min(img.width,img.height);ctx.drawImage(img,(img.width-mn)/2,(img.height-mn)/2,mn,mn,0,0,100,100);var d=c.toDataURL('image/jpeg',0.7);document.getElementById('photo-pv').style.backgroundImage='url('+d+')';document.getElementById('photo-pv').textContent='';var p=D.p.find(function(x){return x.id===pid;});if(p)p._tp=d;
+// 保存忘れ警告バナーを表示
+var existing=document.getElementById('photo-save-warn');
+if(!existing){var warn=document.createElement('div');warn.id='photo-save-warn';warn.style.cssText='background:var(--amber-bg);border:1.5px solid var(--amber);color:var(--amber);padding:8px 12px;border-radius:var(--radius);font-size:12px;font-weight:600;margin-bottom:10px';warn.textContent='📸 写真を変更しました。「保存する」ボタンを押さないと反映されません！';var saveBtn=document.querySelector('#main-view .btn-p');if(saveBtn&&saveBtn.parentNode)saveBtn.parentNode.insertBefore(warn,saveBtn);}
+};img.src=e.target.result;};reader.readAsDataURL(file);}
 function doSavePlayer(pid){var p=D.p.find(function(x){return x.id===pid;});if(!p)return;p.name=document.getElementById('ep-name').value;p.position=document.getElementById('ep-pos').value;p.year=parseInt(document.getElementById('ep-year').value);p.dob=document.getElementById('ep-dob').value;p.height=document.getElementById('ep-h').value;p.weight=document.getElementById('ep-w').value;p.school=document.getElementById('ep-school').value;p.note=document.getElementById('ep-note').value;if(p._tp){p.photo=p._tp;delete p._tp;}sv('p');alert('保存しました ✓');popView();}
 function doDelPlayer(pid){if(!confirm('この選手と関連データを全て削除しますか？'))return;D.p=D.p.filter(function(x){return x.id!==pid;});D.i=D.i.filter(function(x){return x.pid!==pid;});D.r=D.r.filter(function(x){return x.pid!==pid;});D.ph=D.ph.filter(function(x){return x.pid!==pid;});D.f=D.f.filter(function(x){return x.pid!==pid;});D.a.forEach(function(s){s.absentees=s.absentees.filter(function(a){return a.pid!==pid;});});svAll();popView();}
 function resolveInj(iid){if(!confirm('回復済みにしますか？'))return;var inj=D.i.find(function(x){return x.id===iid;});if(inj)inj.resolved=true;var rh=D.r.find(function(x){return x.injId===iid;});if(rh)rh.stage=STG.length-1;sv('i');sv('r');V[curPage]&&V[curPage]();}
@@ -684,7 +733,8 @@ function getTodayPickup(){
   return pool.slice(0,5).map(function(x){return x.pid;});
 }
 function goAddBC(){var td=todayStr();pushView('体組成記録','<div style="max-width:520px"><div class="form-box"><div class="form-title">体組成データ</div><div class="grid g2" style="gap:14px"><div class="fl" style="grid-column:1/-1"><label>選手</label>'+playerSearchHTML('nbc-p')+'</div><div class="fl"><label>測定日</label><input class="ipt" type="date" id="nbc-date" value="'+td+'"></div><div class="fl"><label>体重（kg）</label><input class="ipt" type="number" step="0.1" id="nbc-w" placeholder="例: 85.5"></div><div class="fl"><label>体脂肪率（%）</label><input class="ipt" type="number" step="0.1" id="nbc-fat" placeholder="例: 15.2"></div><div class="fl"><label>筋量（kg）</label><input class="ipt" type="number" step="0.1" id="nbc-muscle" placeholder="例: 42.0"></div></div></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="doAddBC()">記録</button></div></div>');}
-function doAddBC(){var pid=parseInt(document.getElementById('nbc-p-val').value);if(!pid)return alert('選手を選択');D.bc.push({id:Date.now(),pid:pid,date:document.getElementById('nbc-date').value,weight:parseFloat(document.getElementById('nbc-w').value)||null,fat:parseFloat(document.getElementById('nbc-fat').value)||null,muscle:parseFloat(document.getElementById('nbc-muscle').value)||null});sv('bc');popView();}
+function doAddBC(){var pid=parseInt(document.getElementById('nbc-p-val').value);if(!pid)return alert('選手を選択');var bcRec={id:Date.now(),pid:pid,date:document.getElementById('nbc-date').value,weight:parseFloat(document.getElementById('nbc-w').value)||null,fat:parseFloat(document.getElementById('nbc-fat').value)||null,muscle:parseFloat(document.getElementById('nbc-muscle').value)||null,inputAt:new Date().toISOString()};
+  db.collection('appdata').doc('bc').get().then(function(doc){var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}latest.push(bcRec);D.bc=latest;return db.collection('appdata').doc('bc').set({data:JSON.stringify(latest)});}).then(function(){popView();}).catch(function(e){alert('保存に失敗しました');console.error(e);});}
 function renderBCChart(pid){var recs=D.bc.filter(function(x){return x.pid===pid;}).sort(function(a,b){return a.date.localeCompare(b.date);});if(recs.length<2)return;var e=document.getElementById('ch-bc');if(!e)return;dC('bc');charts.bc=new Chart(e,{type:'line',data:{labels:recs.map(function(r){return r.date.slice(5);}),datasets:[{label:'体重(kg)',data:recs.map(function(r){return r.weight;}),borderColor:'#185FA5',tension:.3,yAxisID:'y'},{label:'体脂肪(%)',data:recs.map(function(r){return r.fat;}),borderColor:'#E24B4A',tension:.3,yAxisID:'y1'},{label:'筋量(kg)',data:recs.map(function(r){return r.muscle;}),borderColor:'#1D9E75',tension:.3,yAxisID:'y'}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{position:'left',title:{display:true,text:'kg'}},y1:{position:'right',title:{display:true,text:'%'},grid:{drawOnChartArea:false}}},plugins:{legend:{position:'bottom'}}}});}
 
 // === BULK PHYSICAL INPUT ===
@@ -693,7 +743,16 @@ function goBulkPhys(){var td=todayStr();var h='<div style="max-width:800px"><div
   h+='</tbody></table></div></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="doBulkPhys()">一括保存</button></div></div>';
   pushView('フィジカル一括入力',h);
 }
-function doBulkPhys(){var date=document.getElementById('bulk-date').value;if(!date)return alert('日付を入力');var cnt=0;D.p.forEach(function(p){var sq=parseFloat(document.getElementById('bk-sq-'+p.id).value)||null;var bp=parseFloat(document.getElementById('bk-bp-'+p.id).value)||null;var dl=parseFloat(document.getElementById('bk-dl-'+p.id).value)||null;var brm=parseInt(document.getElementById('bk-br-m-'+p.id).value)||0,brs=parseInt(document.getElementById('bk-br-s-'+p.id).value)||0;var br=(brm||brs)?(brm*60+brs):null;var cn=parseFloat(document.getElementById('bk-cn-'+p.id).value)||null,cl=parseFloat(document.getElementById('bk-cl-'+p.id).value)||null;if(sq||bp||dl||cn||cl||br){D.ph.push({id:Date.now()+cnt,pid:p.id,date:date,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br});cnt++;}});sv('ph');alert(cnt+'名分の記録を保存しました ✓');popView();}
+var newBulkRecs=[];
+function doBulkPhys(){var date=document.getElementById('bulk-date').value;if(!date)return alert('日付を入力');var cnt=0;newBulkRecs=[];D.p.forEach(function(p){var sq=parseFloat(document.getElementById('bk-sq-'+p.id).value)||null;var bp=parseFloat(document.getElementById('bk-bp-'+p.id).value)||null;var dl=parseFloat(document.getElementById('bk-dl-'+p.id).value)||null;var brm=parseInt(document.getElementById('bk-br-m-'+p.id).value)||0,brs=parseInt(document.getElementById('bk-br-s-'+p.id).value)||0;var br=(brm||brs)?(brm*60+brs):null;var cn=parseFloat(document.getElementById('bk-cn-'+p.id).value)||null,cl=parseFloat(document.getElementById('bk-cl-'+p.id).value)||null;if(sq||bp||dl||cn||cl||br){newBulkRecs.push({id:Date.now()+cnt,pid:p.id,date:date,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br,inputAt:new Date().toISOString()});cnt++;}});
+  if(!cnt)return alert('入力されたデータがありません');
+  var bulkRecs=newBulkRecs.slice();
+  db.collection('appdata').doc('ph').get().then(function(doc){
+    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+    bulkRecs.forEach(function(r){latest.push(r);});
+    D.ph=latest;
+    return db.collection('appdata').doc('ph').set({data:JSON.stringify(latest)});
+  }).then(function(){newBulkRecs=[];alert(cnt+'名分の記録を保存しました ✓');popView();}).catch(function(e){alert('保存に失敗しました');console.error(e);});}
 
 // === CSV EXPORT ===
 function exportCSV(type){
@@ -754,8 +813,8 @@ function unmarkPhSkip(pid){
 }
 
 
-function goEditPhys(phid){var r=D.ph.find(function(x){return x.id===phid;});if(!r)return;var p=D.p.find(function(x){return x.id===r.pid;});var brM=r.bronco?Math.floor(r.bronco/60):0;var brS=r.bronco?Math.round(r.bronco%60):0;pushView('フィジカル記録を編集','<div style="max-width:520px"><div class="form-box"><div class="form-title">'+(p?p.name:'不明')+' の記録を編集</div><div class="grid g2" style="gap:14px"><div class="fl"><label>測定日</label><input class="ipt" type="date" id="eph-date" value="'+(r.date||'')+'"></div><div class="fl"><label>SQ MAX(kg)</label><input class="ipt" type="number" id="eph-sq" value="'+(r.squat||'')+'"></div><div class="fl"><label>BP MAX(kg)</label><input class="ipt" type="number" id="eph-bp" value="'+(r.bench||'')+'"></div><div class="fl"><label>DL MAX(kg)</label><input class="ipt" type="number" id="eph-dl" value="'+(r.deadlift||'')+'"></div><div class="fl"><label>チンニング MAX(kg)</label><input class="ipt" type="number" id="eph-cn" value="'+(r.chinning||'')+'"></div><div class="fl"><label>クリーン MAX(kg)</label><input class="ipt" type="number" id="eph-cl" value="'+(r.clean||'')+'"></div><div class="fl" style="grid-column:1/-1"><label>ブロンコテスト</label><div style="display:flex;align-items:center;gap:8px"><input class="ipt" type="number" id="eph-br-m" value="'+brM+'" min="0" style="width:80px"><span style="font-weight:600">分</span><input class="ipt" type="number" id="eph-br-s" value="'+brS+'" min="0" max="59" style="width:80px"><span style="font-weight:600">秒</span></div></div></div></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="doEditPhys('+phid+')">保存</button></div></div>');}
-function doEditPhys(phid){var r=D.ph.find(function(x){return x.id===phid;});if(!r)return;r.date=document.getElementById('eph-date').value;r.squat=parseFloat(document.getElementById('eph-sq').value)||null;r.bench=parseFloat(document.getElementById('eph-bp').value)||null;r.deadlift=parseFloat(document.getElementById('eph-dl').value)||null;r.chinning=parseFloat(document.getElementById('eph-cn').value)||null;r.clean=parseFloat(document.getElementById('eph-cl').value)||null;r.bronco=broncoFromInputs('eph-br-m','eph-br-s');sv('ph');alert('保存しました ✓');popView();}
+function goEditPhys(phid){var r=D.ph.find(function(x){return x.id===phid;});if(!r)return;var p=D.p.find(function(x){return x.id===r.pid;});var brM=r.bronco?Math.floor(r.bronco/60):0;var brS=r.bronco?Math.round(r.bronco%60):0;var msessOpts='<option value="">測定会なし（通常記録）</option>'+(D.msess||[]).slice().sort(function(a,b){return b.startDate.localeCompare(a.startDate);}).map(function(s){return'<option value="'+s.id+'"'+(r.msessId===s.id?' selected':'')+'>'+s.name+'</option>';}).join('');pushView('フィジカル記録を編集','<div style="max-width:520px"><div class="form-box"><div class="form-title">'+(p?p.name:'不明')+' の記録を編集</div><div class="grid g2" style="gap:14px"><div class="fl"><label>測定日</label><input class="ipt" type="date" id="eph-date" value="'+(r.date||'')+'"></div><div class="fl"><label>SQ MAX(kg)</label><input class="ipt" type="number" id="eph-sq" value="'+(r.squat||'')+'"></div><div class="fl"><label>BP MAX(kg)</label><input class="ipt" type="number" id="eph-bp" value="'+(r.bench||'')+'"></div><div class="fl"><label>DL MAX(kg)</label><input class="ipt" type="number" id="eph-dl" value="'+(r.deadlift||'')+'"></div><div class="fl"><label>チンニング MAX(kg)</label><input class="ipt" type="number" id="eph-cn" value="'+(r.chinning||'')+'"></div><div class="fl"><label>クリーン MAX(kg)</label><input class="ipt" type="number" id="eph-cl" value="'+(r.clean||'')+'"></div><div class="fl" style="grid-column:1/-1"><label>ブロンコテスト</label><div style="display:flex;align-items:center;gap:8px"><input class="ipt" type="number" id="eph-br-m" value="'+brM+'" min="0" style="width:80px"><span style="font-weight:600">分</span><input class="ipt" type="number" id="eph-br-s" value="'+brS+'" min="0" max="59" style="width:80px"><span style="font-weight:600">秒</span></div></div></div></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="doEditPhys('+phid+')">保存</button></div></div>');}
+function doEditPhys(phid){var r=D.ph.find(function(x){return x.id===phid;});if(!r)return;r.date=document.getElementById('eph-date').value;r.squat=parseFloat(document.getElementById('eph-sq').value)||null;r.bench=parseFloat(document.getElementById('eph-bp').value)||null;r.deadlift=parseFloat(document.getElementById('eph-dl').value)||null;r.chinning=parseFloat(document.getElementById('eph-cn').value)||null;r.clean=parseFloat(document.getElementById('eph-cl').value)||null;r.bronco=broncoFromInputs('eph-br-m','eph-br-s');var msessEl=document.getElementById('eph-msess');r.msessId=msessEl?msessEl.value||null:r.msessId;r.editedAt=new Date().toISOString();sv('ph');alert('保存しました ✓');popView();}
 function doDelPhys(phid){if(!confirm('この記録を削除しますか？'))return;D.ph=D.ph.filter(function(x){return x.id!==phid;});sv('ph');V.physical();}
 function mvTab(i){document.querySelectorAll('#main-ct .tab').forEach(function(t,j){t.classList.toggle('ac',j===i);});document.querySelectorAll('#main-ct .tc').forEach(function(t,j){t.classList.toggle('ac',j===i);});}
 
@@ -976,10 +1035,193 @@ function delTapeDay(date){
 }
 
 
-// === 復帰テスト管理 ===
+// === 測定会管理 ===
+V.msess=function(){
+  if(!D.msess)D.msess=[];
+  var today=todayStr();
+  var activeSess=D.msess.find(function(s){return s.startDate<=today&&s.endDate>=today;});
+  var h='';
+  if(activeSess){
+    h+='<div class="alert-card alert-info" style="margin-bottom:1rem">📐 現在進行中の測定会: <b>'+activeSess.name+'</b> ('+fmt(activeSess.startDate)+'〜'+fmt(activeSess.endDate)+')</div>';
+  }
+  // 測定会一覧
+  if(!D.msess.length){h+='<div class="no">測定会がまだありません</div>';$m().innerHTML=h;return;}
+  var sorted=D.msess.slice().sort(function(a,b){return b.startDate.localeCompare(a.startDate);});
+  h+=sorted.map(function(s){
+    var isPast=s.endDate<today,isActive=s.startDate<=today&&s.endDate>=today,isFuture=s.startDate>today;
+    var done=D.ph.filter(function(r){return r.msessId===s.id;}).map(function(r){return r.pid;});
+    var unique=[...new Set(done)];
+    var skipped=(D.phskip||[]).filter(function(sk){return sk.msessId===s.id;}).length;
+    var missed=D.p.length-unique.length-skipped;
+    return'<div class="card card-click" style="margin-bottom:8px" onclick="goMSessDetail(\''+s.id+'\')">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
+    '<div style="font-weight:600;font-size:15px">'+s.name+'</div>'+
+    '<span class="bd '+(isActive?'bd-b':isPast?'bd-g':'bd-a')+'">'+(isActive?'進行中':isPast?'完了':'予定')+'</span></div>'+
+    '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">'+fmt(s.startDate)+' 〜 '+fmt(s.endDate)+'</div>'+
+    '<div style="display:flex;gap:10px;font-size:12px">'+
+    '<span style="color:var(--green)">入力済: '+unique.length+'名</span>'+
+    '<span style="color:var(--amber)">測定なし: '+skipped+'名</span>'+
+    '<span style="color:var(--red)">未入力: '+Math.max(0,missed)+'名</span>'+
+    '</div></div>';
+  }).join('');
+  $m().innerHTML=h;
+};
+
+function goAddMSess(){
+  var today=todayStr();
+  pushView('測定会を作成','<div style="max-width:520px">'+
+  '<div class="form-box"><div class="form-title">測定会情報</div>'+
+  '<div class="fl" style="margin-bottom:10px"><label>測定会名</label><input class="ipt" id="ms-name" placeholder="例: 2026年 第1回MAX測定"></div>'+
+  '<div class="grid g2" style="gap:10px;margin-bottom:10px">'+
+  '<div class="fl"><label>開始日</label><input class="ipt" type="date" id="ms-start" value="'+today+'"></div>'+
+  '<div class="fl"><label>終了日</label><input class="ipt" type="date" id="ms-end"></div></div>'+
+  '<div class="fl"><label>メモ</label><textarea class="ipt" id="ms-note" style="min-height:60px" placeholder="測定内容など..."></textarea></div>'+
+  '</div>'+
+  '<div style="display:flex;gap:8px;justify-content:flex-end">'+
+  '<button class="btn" onclick="popView()">キャンセル</button>'+
+  '<button class="btn btn-p" onclick="doAddMSess()">作成</button></div></div>');
+}
+
+function doAddMSess(){
+  var name=document.getElementById('ms-name').value.trim();
+  var start=document.getElementById('ms-start').value;
+  var end=document.getElementById('ms-end').value;
+  if(!name||!start||!end)return alert('名前・開始日・終了日を入力してください');
+  if(start>end)return alert('終了日は開始日以降にしてください');
+  if(!D.msess)D.msess=[];
+  var newId='ms_'+Date.now();
+  D.msess.push({id:newId,name:name,startDate:start,endDate:end,note:document.getElementById('ms-note').value,createdAt:todayStr()});
+  sv('msess');
+  alert('測定会を作成しました ✓');
+  popView();
+}
+
+function goMSessDetail(sessId){
+  var s=(D.msess||[]).find(function(x){return x.id===sessId;});if(!s)return;
+  var today=todayStr();
+  var recs=D.ph.filter(function(r){return r.msessId===sessId;});
+  var skipped=(D.phskip||[]).filter(function(sk){
+    return sk.msessId===sessId||(sk.msessId===null&&sk.date>=s.startDate&&sk.date<=s.endDate);
+  });
+  var donePids=[...new Set(recs.map(function(r){return r.pid;}))];
+  var skippedPids=[...new Set(skipped.map(function(sk){return sk.pid;}))];
+  var missedPids=D.p.filter(function(p){return donePids.indexOf(p.id)<0&&skippedPids.indexOf(p.id)<0;}).map(function(p){return p.id;});
+
+  var h='<div class="form-box"><div class="form-title">測定会情報</div>'+
+  '<div style="font-size:16px;font-weight:600;margin-bottom:4px">'+s.name+'</div>'+
+  '<div style="font-size:13px;color:var(--text-secondary)">'+fmt(s.startDate)+' 〜 '+fmt(s.endDate)+'</div>'+
+  (s.note?'<div style="font-size:12px;margin-top:6px">'+s.note+'</div>':'')+
+  '</div>';
+
+  // 参加状況
+  h+='<div class="grid g3" style="margin-bottom:1rem">'+
+  '<div class="mc"><div class="v" style="color:var(--green)">'+donePids.length+'</div><div class="l">入力済み</div></div>'+
+  '<div class="mc"><div class="v" style="color:var(--amber)">'+skippedPids.length+'</div><div class="l">測定なし</div></div>'+
+  '<div class="mc"><div class="v" style="color:var(--red)">'+missedPids.length+'</div><div class="l">未入力</div></div>'+
+  '</div>';
+
+  // 未入力の選手に記録追加ボタン
+  if(missedPids.length){
+    h+='<div class="form-box"><div class="form-title" style="color:var(--red)">未入力の選手</div>'+
+    missedPids.map(function(pid){
+      var p=D.p.find(function(x){return x.id===pid;});if(!p)return'';
+      return'<div class="log-row">'+avH(p,24)+'<span style="font-weight:600;flex:1">'+p.name+'</span>'+
+      '<button class="btn btn-sm btn-p" onclick="goAddPhysForSess('+pid+',\''+sessId+'\')">記録入力</button>'+
+      '<button class="btn btn-sm" onclick="markSkipForSess('+pid+',\''+sessId+'\')">測定なし</button>'+
+      '</div>';
+    }).join('')+'</div>';
+  }
+  // 測定なし一覧
+  if(skippedPids.length){
+    h+='<div class="form-box"><div class="form-title" style="color:var(--amber)">測定なし</div>'+
+    skipped.map(function(sk){
+      var p=D.p.find(function(x){return x.id===sk.pid;});if(!p)return'';
+      return'<div class="log-row">'+avH(p,24)+'<span style="font-weight:600;flex:1">'+p.name+'</span>'+
+      '<span style="font-size:11px;color:var(--text-secondary)">'+(sk.reason||'理由なし')+'</span></div>';
+    }).join('')+'</div>';
+  }
+  // 入力済み一覧
+  if(donePids.length){
+    h+='<div class="form-box"><div class="form-title" style="color:var(--green)">入力済み</div>'+
+    donePids.map(function(pid){
+      var p=D.p.find(function(x){return x.id===pid;});if(!p)return'';
+      var r=recs.filter(function(x){return x.pid===pid;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
+      return'<div class="log-row">'+avH(p,24)+'<span style="font-weight:600;flex:1">'+p.name+'</span>'+
+      (r?'<span style="font-size:11px;color:var(--text-secondary)">'+fmt(r.date)+'入力</span>':'')+
+      '</div>';
+    }).join('')+'</div>';
+  }
+
+  h+='<div style="display:flex;gap:8px;margin-top:8px">'+
+  '<button class="btn btn-d" onclick="delMSess(\''+sessId+'\')">削除</button></div>';
+  pushView(s.name,h);
+}
+
+function goAddPhysForSess(pid,sessId){
+  var s=(D.msess||[]).find(function(x){return x.id===sessId;});if(!s)return;
+  var p=D.p.find(function(x){return x.id===pid;});if(!p)return;
+  var td=todayStr();
+  pushView(p.name+' の記録入力（'+s.name+'）','<div style="max-width:520px">'+
+  '<div class="form-box"><div class="form-title">'+s.name+'</div>'+
+  '<div class="fl" style="margin-bottom:10px"><label>測定日</label><input class="ipt" type="date" id="spa-date" value="'+td+'"></div>'+
+  '<div class="grid g2" style="gap:10px;margin-bottom:10px">'+
+  '<div class="fl"><label>SQ MAX(kg)</label><input class="ipt" type="number" id="spa-sq"></div>'+
+  '<div class="fl"><label>BP MAX(kg)</label><input class="ipt" type="number" id="spa-bp"></div>'+
+  '<div class="fl"><label>DL MAX(kg)</label><input class="ipt" type="number" id="spa-dl"></div>'+
+  '<div class="fl"><label>チンニング MAX(kg)</label><input class="ipt" type="number" id="spa-cn"></div>'+
+  '<div class="fl"><label>クリーン MAX(kg)</label><input class="ipt" type="number" id="spa-cl"></div>'+
+  '</div>'+
+  '<div class="fl"><label>ブロンコテスト</label>'+
+  '<div style="display:flex;align-items:center;gap:8px">'+
+  '<input class="ipt" type="number" id="spa-br-m" placeholder="分" style="width:80px">'+
+  '<span style="font-weight:600">分</span>'+
+  '<input class="ipt" type="number" id="spa-br-s" placeholder="秒" min="0" max="59" style="width:80px">'+
+  '<span style="font-weight:600">秒</span></div></div>'+
+  '</div>'+
+  '<div style="display:flex;gap:8px;justify-content:flex-end">'+
+  '<button class="btn" onclick="popView()">キャンセル</button>'+
+  '<button class="btn btn-p" onclick="doAddPhysForSess('+pid+',\''+sessId+'\')">保存</button></div></div>');
+}
+
+function doAddPhysForSess(pid,sessId){
+  var sq=parseFloat(document.getElementById('spa-sq').value)||null;
+  var bp=parseFloat(document.getElementById('spa-bp').value)||null;
+  var dl=parseFloat(document.getElementById('spa-dl').value)||null;
+  var cn=parseFloat(document.getElementById('spa-cn').value)||null;
+  var cl=parseFloat(document.getElementById('spa-cl').value)||null;
+  var br=broncoFromInputs('spa-br-m','spa-br-s');
+  if(!sq&&!bp&&!dl&&!cn&&!cl&&!br)return alert('少なくとも1つ入力してください');
+  var sessRec={id:Date.now(),pid:pid,date:document.getElementById('spa-date').value,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br,msessId:sessId,inputAt:new Date().toISOString()};
+  db.collection('appdata').doc('ph').get().then(function(doc){var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}latest.push(sessRec);D.ph=latest;return db.collection('appdata').doc('ph').set({data:JSON.stringify(latest)});}).then(function(){alert('記録しました ✓');popView();V.msess();}).catch(function(e){alert('保存に失敗しました');console.error(e);});
+}
+
+function markSkipForSess(pid,sessId){
+  var reason=prompt('測定なしの理由を入力してください：','');
+  if(reason===null)return;
+  if(!D.phskip)D.phskip=[];
+  D.phskip.push({pid:pid,date:todayStr(),msessId:sessId,reason:reason,by:'staff'});
+  sv('phskip');
+  goMSessDetail(sessId);
+}
+
+function delMSess(sessId){
+  if(!confirm('この測定会を削除しますか？\n（記録データは削除されません）'))return;
+  D.msess=(D.msess||[]).filter(function(x){return x.id!==sessId;});
+  sv('msess');
+  popView();
+}
+
+// 現在の測定会を取得するユーティリティ
+function getCurrentMSess(){
+  var today=todayStr();
+  return(D.msess||[]).find(function(s){return s.startDate<=today&&s.endDate>=today;})||null;
+}
+
+
 V.rtest=function(){
   if(!D.rtest_tpl)D.rtest_tpl=[];
   if(!D.rtest)D.rtest=[];
+  if(!D.msess)D.msess=[];
   var activeInj=D.i.filter(function(x){return!x.resolved;});
   var tabs='<div class="tabs"><div class="tab ac" id="rt-tab0" onclick="rtTab(0)">選手の復帰テスト</div><div class="tab" id="rt-tab1" onclick="rtTab(1)">テンプレ一覧</div></div>';
   // 選手一覧タブ
