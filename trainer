@@ -98,9 +98,9 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 <script>
 firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
 var db=firebase.firestore();
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess'};
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm'};
 var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
-var D={p:[],i:[],r:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[]};
+var D={p:[],i:[],r:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[]};
 var myTrainer=null;
 var RCATS=['ケア','ROM改善','患部外トレーニング','トレーニング','アジリティ','フィットネス','サポート','オフ'];
 var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'#0891B2',サポート:'#059669',オフ:'var(--text-secondary)'};
@@ -148,6 +148,100 @@ function svSafe(k,newRec,callback){
 }
 
 function todayStr(){var d=new Date();var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
+function filterRehabList(){
+  var q=(document.getElementById('rehab-search').value||'').toLowerCase().trim();
+  var cards=document.querySelectorAll('.rehab-card');
+  cards.forEach(function(card){
+    if(!q){card.style.display='';return;}
+    var txt=card.getAttribute('data-search')||'';
+    card.style.display=txt.indexOf(q)>=0?'':'none';
+  });
+}
+
+function toDateStr(d){var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
+function idEq(a,b){if(a==null||b==null)return false;return a===b||String(a)===String(b);}
+
+// ===== 怪我コメント機能（3者共有） =====
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+function getCurrentUserId(role){
+  if(role==='staff')return 'staff';
+  if(role==='player')return typeof myPid!=='undefined'?myPid:null;
+  if(role==='trainer')return (typeof myTrainer!=='undefined'&&myTrainer)?myTrainer.id:null;
+  return null;
+}
+
+function getCurrentUserName(role){
+  if(role==='staff')return 'スタッフ';
+  if(role==='player'){var p=D.p.find(function(x){return idEq(x.id,(typeof myPid!=='undefined'?myPid:null));});return p?p.name:'選手';}
+  if(role==='trainer')return (typeof myTrainer!=='undefined'&&myTrainer)?myTrainer.name:'専門学生';
+  return '';
+}
+
+function renderInjComments(iid,role){
+  var commentsH=renderInjCommentsListOnly(iid,role);
+  return'<div class="form-box" style="margin-top:16px"><div class="form-title">💬 コメント（スタッフ・選手・専門学生で共有）</div>'+
+  '<div id="injcomm-list-'+iid+'" style="max-height:300px;overflow-y:auto;margin-bottom:10px">'+commentsH+'</div>'+
+  '<textarea class="ipt" id="injcomm-input-'+iid+'" placeholder="コメントを入力..." style="min-height:60px"></textarea>'+
+  '<button class="btn btn-p" style="width:100%;margin-top:6px" onclick="postInjComment('+iid+',\''+role+'\')">📤 投稿する</button>'+
+  '</div>';
+}
+
+function renderInjCommentsListOnly(iid,role){
+  var comments=(D.injcomm||[]).filter(function(c){return idEq(c.injId,iid);}).sort(function(a,b){return (a.createdAt||'').localeCompare(b.createdAt||'');});
+  var roleLabel={staff:'スタッフ',player:'選手',trainer:'専門学生'};
+  var roleColor={staff:'var(--purple)',player:'var(--blue)',trainer:'var(--green)'};
+  if(!comments.length)return'<div style="font-size:12px;color:var(--text-secondary);text-align:center;padding:14px">まだコメントはありません</div>';
+  return comments.map(function(c){
+    var label=roleLabel[c.role]||c.role||'?';
+    var color=roleColor[c.role]||'var(--text-secondary)';
+    var dt=c.createdAt?new Date(c.createdAt):null;
+    var dateStr=dt?(toDateStr(dt)+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0')):'';
+    var canDelete=c.role===role&&String(c.authorId)===String(getCurrentUserId(role));
+    return'<div style="padding:8px 10px;border-radius:var(--radius);background:var(--bg-secondary);margin-bottom:6px">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;margin-bottom:4px">'+
+    '<span><span class="bd" style="background:'+color+';color:#fff;font-size:9px">'+label+'</span> <b style="margin-left:4px">'+(c.authorName||'')+'</b></span>'+
+    '<span style="color:var(--text-secondary)">'+dateStr+(canDelete?' <button class="btn btn-sm btn-d" onclick="delInjComment(\''+c.id+'\','+iid+',\''+role+'\')">削除</button>':'')+'</span>'+
+    '</div>'+
+    '<div style="font-size:13px;white-space:pre-wrap;word-break:break-word">'+escapeHtml(c.text||'')+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+function postInjComment(iid,role){
+  var el=document.getElementById('injcomm-input-'+iid);
+  if(!el)return;
+  var text=(el.value||'').trim();
+  if(!text){alert('コメントを入力してください');return;}
+  var newComm={
+    id:'ic_'+Date.now()+'_'+Math.floor(Math.random()*1000),
+    injId:iid,role:role,
+    authorId:getCurrentUserId(role),
+    authorName:getCurrentUserName(role),
+    text:text,createdAt:new Date().toISOString()
+  };
+  db.collection('appdata').doc('injcomm').get().then(function(doc){
+    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+    latest.push(newComm);D.injcomm=latest;
+    return db.collection('appdata').doc('injcomm').set({data:JSON.stringify(latest)});
+  }).then(function(){
+    el.value='';
+    var listEl=document.getElementById('injcomm-list-'+iid);
+    if(listEl){listEl.innerHTML=renderInjCommentsListOnly(iid,role);listEl.scrollTop=listEl.scrollHeight;}
+  }).catch(function(e){alert('投稿に失敗しました');console.error(e);});
+}
+
+function delInjComment(cid,iid,role){
+  if(!confirm('このコメントを削除しますか？'))return;
+  db.collection('appdata').doc('injcomm').get().then(function(doc){
+    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+    latest=latest.filter(function(c){return!idEq(c.id,cid);});D.injcomm=latest;
+    return db.collection('appdata').doc('injcomm').set({data:JSON.stringify(latest)});
+  }).then(function(){
+    var listEl=document.getElementById('injcomm-list-'+iid);
+    if(listEl)listEl.innerHTML=renderInjCommentsListOnly(iid,role);
+  }).catch(function(e){alert('削除に失敗しました');console.error(e);});
+}
 function fmt(d){return d?d.replace(/-/g,'/'):'−';}
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
 function getCurrentMSess(){var today=todayStr();return(D.msess||[]).find(function(s){return s.startDate<=today&&s.endDate>=today;})||null;}
@@ -158,7 +252,6 @@ function numStepHTML(id,min,max,oninput){
   return'<div style="display:flex;align-items:center;gap:0;border:1.5px solid var(--border-secondary);border-radius:var(--radius);overflow:hidden">'+dec+inp+inc+'</div>';
 }
 function numStep(id,dir,min,max){var el=document.getElementById(id);var v=parseInt(el.value)||0;v=Math.min(max,Math.max(min,v+dir));el.value=v;el.dispatchEvent(new Event('input'));}
-function fmt(d){return d?d.replace(/-/g,'/'):'−';}
 function avH(p,sz){
   if(!p)return'';
   var i=(p.id||0)%AVC.length;
@@ -172,14 +265,83 @@ function showLogin(){
   var listEl=document.getElementById('trainer-list');
   var sorted=D.trainers.slice().sort(function(a,b){return a.name.localeCompare(b.name,'ja');});
   listEl.innerHTML=sorted.map(function(t){
-    return'<button class="trainer-btn" onclick="login('+t.id+')">👤 '+t.name+'</button>';
+    return'<button class="trainer-btn" onclick="selectTrainer('+t.id+')">👤 '+t.name+'</button>';
   }).join('');
   document.getElementById('login-screen').style.display='flex';
 }
 
+function selectTrainer(tid){
+  var trainer=D.trainers.find(function(t){return t.id===tid;});
+  if(!trainer)return;
+  // PINが未設定の場合は初期設定画面へ
+  if(!trainer.pin){
+    showPINSetup(tid);
+  } else {
+    showPINEntry(tid);
+  }
+}
+
+function showPINSetup(tid){
+  var trainer=D.trainers.find(function(t){return t.id===tid;});
+  if(!trainer)return;
+  var listEl=document.getElementById('trainer-list');
+  listEl.innerHTML='<div style="text-align:center;padding:20px">'+
+    '<div style="font-size:18px;font-weight:600;margin-bottom:8px">'+trainer.name+'さん</div>'+
+    '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">初回ログイン：PIN（4桁の数字）を設定してください</div>'+
+    '<input class="ipt" type="password" id="pin-new" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="●●●●" style="text-align:center;font-size:24px;letter-spacing:8px;width:160px;margin-bottom:10px"><br>'+
+    '<input class="ipt" type="password" id="pin-new2" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="もう一度入力" style="text-align:center;font-size:24px;letter-spacing:8px;width:160px;margin-bottom:14px"><br>'+
+    '<button class="btn btn-p" style="width:160px" onclick="doSetupPIN('+tid+')">設定する</button><br>'+
+    '<button class="btn" style="margin-top:8px;font-size:12px" onclick="showLogin()">← 戻る</button>'+
+    '</div>';
+}
+
+function doSetupPIN(tid){
+  var pin1=document.getElementById('pin-new').value;
+  var pin2=document.getElementById('pin-new2').value;
+  if(!/^\d{4}$/.test(pin1)){alert('PINは4桁の数字で設定してください');return;}
+  if(pin1!==pin2){alert('PINが一致しません');return;}
+  // 保存
+  db.collection('appdata').doc('trainers').get().then(function(doc){
+    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+    var idx=latest.findIndex(function(t){return t.id===tid;});
+    if(idx>=0){latest[idx].pin=pin1;}
+    D.trainers=latest;
+    return db.collection('appdata').doc('trainers').set({data:JSON.stringify(latest)});
+  }).then(function(){
+    alert('PINを設定しました ✓');
+    showPINEntry(tid);
+  }).catch(function(e){alert('PIN設定に失敗しました');console.error(e);});
+}
+
+function showPINEntry(tid){
+  var trainer=D.trainers.find(function(t){return t.id===tid;});
+  if(!trainer)return;
+  var listEl=document.getElementById('trainer-list');
+  listEl.innerHTML='<div style="text-align:center;padding:20px">'+
+    '<div style="font-size:18px;font-weight:600;margin-bottom:8px">'+trainer.name+'さん</div>'+
+    '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">PIN（4桁の数字）を入力してください</div>'+
+    '<input class="ipt" type="password" id="pin-input" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="●●●●" style="text-align:center;font-size:24px;letter-spacing:8px;width:160px;margin-bottom:14px" onkeyup="if(event.key===\'Enter\')login('+tid+')"><br>'+
+    '<button class="btn btn-p" style="width:160px" onclick="login('+tid+')">ログイン</button><br>'+
+    '<button class="btn" style="margin-top:8px;font-size:12px" onclick="showLogin()">← 戻る</button>'+
+    '</div>';
+  setTimeout(function(){var el=document.getElementById('pin-input');if(el)el.focus();},100);
+}
+
 function login(tid){
-  myTrainer=D.trainers.find(function(t){return t.id===tid;});
-  if(!myTrainer)return;
+  var trainer=D.trainers.find(function(t){return t.id===tid;});
+  if(!trainer)return;
+  // PIN確認
+  var pinEl=document.getElementById('pin-input');
+  if(trainer.pin){
+    if(!pinEl){return;}
+    if(pinEl.value!==trainer.pin){
+      alert('PINが間違っています');
+      pinEl.value='';
+      pinEl.focus();
+      return;
+    }
+  }
+  myTrainer=trainer;
   document.getElementById('login-screen').style.display='none';
   document.getElementById('header-user').textContent=myTrainer.name+'さん | ログアウト';
   go('home');
@@ -194,8 +356,12 @@ function logout(){
 // ===== NAVIGATION =====
 function go(tab){
   curTab=tab;
-  var tabs=['home','tape','rehab'];
-  document.querySelectorAll('.nav-btn').forEach(function(e,i){e.classList.toggle('ac',tabs[i]===tab);});
+  // onclick属性からタブ名を読み取って判定（順序依存をなくす）
+  document.querySelectorAll('.nav-btn').forEach(function(e){
+    var onclickAttr=e.getAttribute('onclick')||'';
+    var m=onclickAttr.match(/go\(['"]([^'"]+)['"]\)/);
+    e.classList.toggle('ac',m&&m[1]===tab);
+  });
   T[tab]&&T[tab]();
 }
 
@@ -212,7 +378,10 @@ home:function(){
   });
   // 今日の担当リハビリ選手（今後追加予定）
   var today=todayStr();
-  var h='<div style="font-size:18px;font-weight:700;margin:4px 0 4px">'+myTrainer.name+'さん 👋</div>'+
+  var h='<div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 4px">'+
+  '<div style="font-size:18px;font-weight:700">'+myTrainer.name+'さん 👋</div>'+
+  '<button class="btn btn-sm" onclick="go(\'help\')" style="font-size:11px">📖 ガイド</button>'+
+  '</div>'+
   '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">'+fmt(today)+'</div>';
   // 今日のテーピング
   h+='<div class="card"><div style="font-weight:600;margin-bottom:10px">🩻 今日のテーピング予約</div>';
@@ -281,6 +450,64 @@ home:function(){
   $m().innerHTML=h;
 },
 
+// 使い方ガイド
+help:function(){
+  $m().innerHTML='<button class="btn-back" onclick="go(\'home\')">← ホーム</button>'+
+  '<div style="font-size:20px;font-weight:700;margin-bottom:6px">📖 使い方ガイド</div>'+
+  '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">専門学生向けの操作ガイド</div>'+
+  
+  '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--blue)">'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🏠 ホーム画面</div>'+
+  '<div style="font-size:13px;line-height:1.8">'+
+  '・今日のテーピング予約一覧<br>'+
+  '・担当リハビリ選手（治療中の全選手）<br>'+
+  '・復帰テストの状況確認<br>'+
+  '</div></div>'+
+  
+  '<div class="card" style="margin-bottom:12px;border-left:3px solid #0891B2">'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🩻 テーピング</div>'+
+  '<div style="font-size:13px;line-height:1.8">'+
+  '<b>枠を設定：</b>「+ 今日/来週の枠を設定」<br>'+
+  '・日付・時間・部位を設定<br>'+
+  '・選手がその枠を予約できる<br><br>'+
+  '<b>過去履歴：</b>過去4週間〜来週分まで表示<br>'+
+  '<b>キャンセル：</b>枠の削除ボタンから<br>'+
+  '</div></div>'+
+  
+  '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--red)">'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🩹 リハビリ記録</div>'+
+  '<div style="font-size:13px;line-height:1.8">'+
+  '<b>1. 選手を選ぶ</b><br>'+
+  '・治療中の全選手から選べる（担当外でもOK）<br>'+
+  '・統括担当（スタッフが設定）が表示される<br><br>'+
+  '<b>2. 実施前チェック</b><br>'+
+  '・痛みレベル（スライダー：前回比較できる）<br>'+
+  '・ROM（関節角度）測定<br><br>'+
+  '<b>3. 当日のメニュー</b><br>'+
+  '・スタッフが設定した種別・エクササイズを実施<br>'+
+  '・実施したものをチェック<br><br>'+
+  '<b>4. コメント</b><br>'+
+  '・気づいた点・申し送り事項を記録<br>'+
+  '・次回のスタッフ・専門学生が見られる<br>'+
+  '</div></div>'+
+  
+  '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--purple)">'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🏁 復帰テスト</div>'+
+  '<div style="font-size:13px;line-height:1.8">'+
+  '・フィジカル基準テスト（ジャンプ、片足立ちなど）<br>'+
+  '・ブロンコ目標タイム（スタッフが設定）<br>'+
+  '・両方クリアでスタッフ承認待ち<br>'+
+  '</div></div>'+
+  
+  '<div class="card" style="margin-bottom:12px">'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🔧 困ったときは</div>'+
+  '<div style="font-size:13px;line-height:1.8">'+
+  '・記録ミス → スタッフに依頼して修正<br>'+
+  '・選手の状態が悪化 → コメントに必ず記録<br>'+
+  '・分からないことはスタッフに相談<br>'+
+  '</div></div>';
+},
+
 // テーピング
 tape:function(){
   var today=todayStr();
@@ -332,11 +559,14 @@ tape:function(){
 // リハビリ
 rehab:function(){
   var myRehabInj=(D.i||[]).filter(function(inj){return!inj.resolved&&(inj.approved===true||(!inj.source));});
-  var h='<div style="font-size:18px;font-weight:700;margin:4px 0 16px">🩹 リハビリ管理</div>';
+  var h='<div style="font-size:18px;font-weight:700;margin:4px 0 12px">🩹 リハビリ管理</div>';
   if(!myRehabInj.length){
     h+='<div class="no" style="margin-top:40px">担当している選手がいません<br><span style="font-size:12px">スタッフに担当割り振りを依頼してください</span></div>';
     $m().innerHTML=h;return;
   }
+  // 検索ボックス
+  h+='<input class="ipt" id="rehab-search" placeholder="🔍 選手名・部位で検索..." oninput="filterRehabList()" style="margin-bottom:12px;font-size:14px">';
+  h+='<div id="rehab-list">';
   myRehabInj.forEach(function(inj){
     var p=D.p.find(function(x){return x.id===inj.pid;});if(!p)return;
     var plan=(D.rplan||[]).find(function(x){return x.injId===inj.id;});
@@ -344,7 +574,9 @@ rehab:function(){
     var lastLog=(D.rlog||[]).filter(function(l){return l.injId===inj.id;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
     var tomorrowCats=plan?plan.tomorrowCats||[]:[];
     var trainer=(D.trainers||[]).find(function(t){return t.id===inj.trainerId;});
-    h+='<div class="card card-click" style="margin-bottom:10px" onclick="goRehabPlayer('+inj.id+')">'+
+    // 検索対象テキスト（data属性に入れる）
+    var searchText=(p.name+' '+(p.position||'')+' '+(inj.side||'')+(inj.part||'')+' '+(inj.type||'')).toLowerCase();
+    h+='<div class="card card-click rehab-card" data-search="'+escapeHtml(searchText)+'" style="margin-bottom:10px" onclick="goRehabPlayer('+inj.id+')">'+
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'+avH(p,34)+
     '<div style="flex:1"><div style="font-weight:600;font-size:15px">'+p.name+'</div>'+
     '<div style="font-size:12px;color:var(--text-secondary)">'+(inj.side||'')+inj.part+' '+inj.type+'</div>'+
@@ -357,6 +589,7 @@ rehab:function(){
     (lastLog?'<div style="font-size:11px;color:var(--text-secondary);border-top:0.5px solid var(--border-tertiary);padding-top:6px;margin-top:4px">前回: '+fmt(lastLog.date)+' / 痛み:'+lastLog.pain+'/10'+(lastLog.comment?' / '+lastLog.comment.slice(0,20)+'...':'')+'</div>':'')+
     '</div>';
   });
+  h+='</div>';
   $m().innerHTML=h;
 }
 
@@ -530,12 +763,23 @@ function goRehabPlayer(injId){
     }).join('');
   }
 
+  // === 3者間コメント欄 ===
+  h+=renderInjComments(injId,'trainer');
+
   $m().innerHTML=h;
   window._currentRehabInjId=injId;
   window._customRehabCountT=0;
   window._romCount=0;
   window._strengthCount=0;
   window._preCheckOpen=false;
+  setTimeout(function(){
+    var el=document.getElementById('injcomm-input-'+injId);
+    if(el){
+      el.addEventListener('keydown',function(e){
+        if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();postInjComment(injId,'trainer');}
+      });
+    }
+  },50);
 }
 
 function updatePainDisplay(){
@@ -863,7 +1107,7 @@ function showTapeSetupForm(){
   var now=new Date();
   var daysToNextMon=now.getDay()===0?1:8-now.getDay();
   var nextMon=new Date(now);nextMon.setDate(now.getDate()+daysToNextMon);
-  var suggestDate=now.getDay()===0||now.getDay()===6?nextMon.toISOString().split('T')[0]:today;
+  var suggestDate=now.getDay()===0||now.getDay()===6?toDateStr(nextMon):today;
   var h='<div style="font-size:17px;font-weight:700;margin-bottom:14px">テーピング枠を設定</div>'+
   '<div class="form-box"><div class="form-title">日程・時間</div>'+
   '<div class="fl" style="margin-bottom:10px"><label>日付</label><input class="ipt" type="date" id="ts-date" value="'+suggestDate+'"></div>'+
