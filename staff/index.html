@@ -199,7 +199,34 @@ function doYearUpdate(){
   V.players&&V.players();
 }
 
-function startListeners(){Object.keys(SK).forEach(function(k){db.collection('appdata').doc(k).onSnapshot(function(doc){if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(k==='p'&&parsed.length>0)D[k]=parsed;else if(k!=='p')D[k]=parsed;}catch(e){}}});});}
+function startListeners(){
+  Object.keys(SK).forEach(function(k){
+    db.collection('appdata').doc(k).onSnapshot(function(doc){
+      if(doc.exists){
+        try{
+          var parsed=JSON.parse(doc.data().data);
+          if(k==='p'&&parsed.length>0)D[k]=parsed;
+          else if(k!=='p')D[k]=parsed;
+          // 入力中フォーム判定：input/textarea/selectがactiveElementなら再描画しない
+          var ae=document.activeElement;
+          var isInputting=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT');
+          // viewStack内（編集画面）も再描画しない
+          if(!isInputting&&curPage&&V[curPage]&&(!viewStack||viewStack.length===0)){
+            try{
+              V[curPage]();
+              // 再描画後にハイライトを再適用
+              document.querySelectorAll('.ni').forEach(function(el){
+                var oa=el.getAttribute('onclick')||'';
+                var mm=oa.match(/nav\(['"]([^'"]+)['"]\)/);
+                el.classList.toggle('ac',mm&&mm[1]===curPage);
+              });
+            }catch(e){console.error('Re-render error:',e);}
+          }
+        }catch(e){}
+      }
+    });
+  });
+}
 function avH(p,sz){var i=p.id%AVC.length,ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';return p.photo?'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background-image:url('+p.photo+')"></div>':'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background:'+AVC[i][0]+';color:'+AVC[i][1]+';font-size:'+Math.round(sz*.35)+'px">'+ini+'</div>';}
 function fmt(d){return d?d.replace(/-/g,'/'):'-';}
 function pSt(pid){var a=D.i.find(function(x){return x.pid===pid&&!x.resolved;});if(!a)return'ok';var rh=D.r.find(function(x){return x.injId===a.id;});return(rh&&rh.stage>0)?'rehab':'inj';}
