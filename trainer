@@ -23,7 +23,7 @@ body{font-family:var(--font-sans);background:var(--bg-secondary);color:var(--tex
 .btn-p{background:var(--blue);color:#fff;border-color:var(--blue)}
 .btn-d{color:var(--red);border-color:var(--red)}
 .btn-s{color:var(--green);border-color:var(--green)}
-.btn-sm{padding:4px 10px;font-size:11px}
+.btn-sm{padding:4px 10px;font-size:11px;width:auto}
 .ipt{padding:9px 12px;border:1.5px solid var(--border-secondary);border-radius:var(--radius);background:var(--bg-primary);font-size:13px;color:var(--text-primary);font-family:var(--font-sans);width:100%}
 .ipt:focus{outline:none;border-color:var(--blue)}
 select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
