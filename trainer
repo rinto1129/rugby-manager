@@ -1169,6 +1169,12 @@ function startListeners(){
           var parsed=JSON.parse(doc.data().data);
           if(Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
           else if(!Array.isArray(parsed)&&parsed!==undefined)D[k]=parsed;
+          // 入力中フォーム判定
+          var ae=document.activeElement;
+          var isInputting=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT');
+          if(!isInputting&&myTrainer&&curTab&&T[curTab]){
+            try{T[curTab]();}catch(e){console.error('Re-render error:',e);}
+          }
         }catch(e){}
       }
     });
