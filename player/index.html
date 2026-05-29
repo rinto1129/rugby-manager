@@ -122,7 +122,25 @@ function svSafe(k,newRec,callback){
     return db.collection('appdata').doc(k).set({data:JSON.stringify(latest)});
   }).then(function(){if(callback)callback();}).catch(function(e){alert('保存に失敗しました。もう一度試してください。');console.error(e);});
 }
-function startListeners(){Object.keys(SK).forEach(function(k){db.collection('appdata').doc(k).onSnapshot(function(doc){if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(k==='p'&&parsed.length>0)D[k]=parsed;else if(k!=='p')D[k]=parsed;}catch(e){}}});});}
+function startListeners(){
+  Object.keys(SK).forEach(function(k){
+    db.collection('appdata').doc(k).onSnapshot(function(doc){
+      if(doc.exists){
+        try{
+          var parsed=JSON.parse(doc.data().data);
+          if(k==='p'&&parsed.length>0)D[k]=parsed;
+          else if(k!=='p')D[k]=parsed;
+          // 入力中フォーム判定：input/textarea/selectがactiveElementなら再描画しない
+          var ae=document.activeElement;
+          var isInputting=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT');
+          if(!isInputting&&!subView&&myPid&&curTab&&T[curTab]){
+            try{T[curTab]();}catch(e){console.error('Re-render error:',e);}
+          }
+        }catch(e){}
+      }
+    });
+  });
+}
 function todayStr(){var d=new Date();var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
 function toDateStr(d){var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
 function idEq(a,b){if(a==null||b==null)return false;return a===b||String(a)===String(b);}
@@ -394,7 +412,7 @@ function showSub(html){subView=true;dCA();$m().innerHTML='<button class="btn-bac
 
 var T={
 home:function(){
-  var isOff=D.offday.indexOf(todayStr())>=0;
+  var isOff=(D.offday||[]).indexOf(todayStr())>=0;
   var pickup=isOff?[]:getTodayPickup();
   var teamAnns=D.ann.filter(function(a){return!a.targetPid;}).sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,5);
   // This week calendar events
@@ -476,8 +494,8 @@ mypage:function(){
   var lf=D.f.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
   var latestF=lf.length?lf[0]:null;var todayDone=lf.length&&lf[0].date===todayStr();
   var pInj=D.i.filter(function(x){return x.pid===myPid&&!x.resolved;});
-  var isOff=D.offday.indexOf(todayStr())>=0;
-  var pickup=isOff?[]:getTodayPickup();var isPickup=pickup.indexOf(myPid)>=0;
+  var isOff=(D.offday||[]).indexOf(todayStr())>=0;
+  var pickup=isOff?[]:getTodayPickup();var isPickup=(pickup||[]).indexOf(myPid)>=0;
   var bcDone=D.bc.some(function(r){return r.pid===myPid&&r.date===todayStr();});
   var bSQ=getBest(myPid,'squat'),bBP=getBest(myPid,'bench'),bDL=getBest(myPid,'deadlift'),bBR=getBest(myPid,'bronco');
   var lastPhysRec=D.ph.filter(function(r){return r.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
