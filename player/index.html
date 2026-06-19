@@ -61,6 +61,8 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 .cond-toggle-btn{flex:1;padding:10px;text-align:center;font-size:13px;cursor:pointer;background:var(--bg-primary);color:var(--text-secondary);border:none;font-family:var(--font-sans);font-weight:500}
 .cond-toggle-btn.ac{background:var(--blue);color:#fff;font-weight:600}
 .hidden{display:none!important}
+.detail-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid var(--border-tertiary);font-size:13px}.detail-row:last-child{border-bottom:none}
+.detail-label{color:var(--text-secondary)}.detail-value{font-weight:600;text-align:right}
 </style>
 </head>
 <body>
@@ -82,15 +84,243 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 if(window.Chart){Chart.defaults.color='#9FB0C8';Chart.defaults.borderColor='rgba(255,255,255,0.10)';Chart.defaults.scale.grid.color='rgba(255,255,255,0.08)';}
 firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
 var db=firebase.firestore();
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',phskip:'rm_phskip',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm'};
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',phskip:'rm_phskip',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec'};
 var RCATS=['ケア','ROM改善','患部外トレーニング','トレーニング','アジリティ','フィットネス','サポート','オフ'];
 var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'#0891B2',サポート:'#059669',オフ:'var(--text-secondary)'};
 var RCAT_BG={ケア:'var(--blue-bg)',ROM改善:'var(--green-bg)',患部外トレーニング:'var(--amber-bg)',トレーニング:'var(--red-bg)',アジリティ:'var(--purple-bg)',フィットネス:'#E0F2FE',サポート:'#D1FAE5',オフ:'var(--bg-tertiary)'};
 var STG=['ウォーキング','ランニング','スプリント','ジャンプ','コンタクト以外の練習','フルコンタクト','完全復帰'];
+var PAIN_TYPES=[{k:"rest",label:"安静時痛"},{k:"motion",label:"運動時痛"},{k:"night",label:"夜間痛"},{k:"press",label:"圧痛"}];
+var RTP_LEVELS=[{k:'rest',label:'完全休養',color:'#F87171',desc:'練習参加なし・リハビリのみ'},{k:'rehab',label:'リハビリのみ',color:'#F97316',desc:'別メニューでリハビリ'},{k:'partial_nocontact',label:'部分参加(接触なし)',color:'#FBBF24',desc:'走る・パスはOK、コンタクト禁止'},{k:'full_nocontact',label:'全体参加(接触なし)',color:'#3B82F6',desc:'コンタクト以外は全て参加'},{k:'full_limited',label:'全体参加(接触制限)',color:'#A78BFA',desc:'軽いコンタクトまで'},{k:'full',label:'完全復帰',color:'#34D399',desc:'制限なし'}];
+// ===== 電子カルテ：部位連動 評価項目マスター =====
+var EVAL_MASTER={
+  '頭部':{
+    rom:[],
+    mmt:[],
+    circ:[],
+    ortho:['脳震盪SCAT評価','平衡感覚テスト','眼球運動','記憶テスト'],
+    special:['頭痛','めまい','吐き気','光過敏','音過敏','集中困難']
+  },
+  '頸部':{
+    rom:[
+      {k:'cflex',label:'屈曲',unit:'°',normal:'60'},
+      {k:'cext',label:'伸展',unit:'°',normal:'50'},
+      {k:'clatR',label:'右側屈',unit:'°',normal:'50'},
+      {k:'clatL',label:'左側屈',unit:'°',normal:'50'},
+      {k:'crotR',label:'右回旋',unit:'°',normal:'80'},
+      {k:'crotL',label:'左回旋',unit:'°',normal:'80'}
+    ],
+    mmt:['頸部屈曲','頸部伸展','頸部側屈'],
+    circ:[],
+    ortho:['Spurlingテスト','Jacksonテスト','椎間孔圧迫テスト'],
+    special:['しびれ','放散痛']
+  },
+  '肩':{
+    rom:[
+      {k:'sflex',label:'屈曲',unit:'°',normal:'180'},
+      {k:'sext',label:'伸展',unit:'°',normal:'50'},
+      {k:'sabd',label:'外転',unit:'°',normal:'180'},
+      {k:'sER',label:'外旋',unit:'°',normal:'90'},
+      {k:'sIR',label:'内旋',unit:'°',normal:'70'}
+    ],
+    mmt:['屈曲','外転','外旋','内旋','棘上筋'],
+    circ:[],
+    ortho:['Neerテスト','Hawkinsテスト','Apprehensionテスト','Load&Shiftテスト','Sulcusサイン','Speedテスト','Empty canテスト'],
+    special:['夜間痛','クリック音','脱臼感']
+  },
+  '鎖骨':{
+    rom:[
+      {k:'sflex',label:'肩屈曲',unit:'°',normal:'180'},
+      {k:'sabd',label:'肩外転',unit:'°',normal:'180'}
+    ],
+    mmt:[],
+    circ:[],
+    ortho:['圧痛確認','変形確認'],
+    special:['変形','圧痛']
+  },
+  '肘':{
+    rom:[
+      {k:'eflex',label:'屈曲',unit:'°',normal:'145'},
+      {k:'eext',label:'伸展',unit:'°',normal:'0'},
+      {k:'epron',label:'回内',unit:'°',normal:'80'},
+      {k:'esup',label:'回外',unit:'°',normal:'80'}
+    ],
+    mmt:['屈曲','伸展','回内','回外','握力'],
+    circ:['肘上10cm','肘下5cm'],
+    ortho:['外反ストレステスト','内反ストレステスト','Tinelサイン'],
+    special:['ロッキング','不安定感']
+  },
+  '手首':{
+    rom:[
+      {k:'wflex',label:'掌屈',unit:'°',normal:'80'},
+      {k:'wext',label:'背屈',unit:'°',normal:'70'},
+      {k:'wrad',label:'橈屈',unit:'°',normal:'20'},
+      {k:'wuln',label:'尺屈',unit:'°',normal:'30'}
+    ],
+    mmt:['掌屈','背屈','握力'],
+    circ:[],
+    ortho:['Phalenテスト','Finkelsteinテスト','TFCC圧迫テスト'],
+    special:['しびれ','クリック音']
+  },
+  '指':{
+    rom:[
+      {k:'mp',label:'MP関節屈曲',unit:'°',normal:'90'},
+      {k:'pip',label:'PIP関節屈曲',unit:'°',normal:'100'},
+      {k:'dip',label:'DIP関節屈曲',unit:'°',normal:'80'}
+    ],
+    mmt:['屈曲','伸展'],
+    circ:[],
+    ortho:['側方ストレステスト'],
+    special:['変形','腫脹']
+  },
+  '腰':{
+    rom:[
+      {k:'lflex',label:'前屈',unit:'cm',normal:'指床間'},
+      {k:'lext',label:'後屈',unit:'°',normal:'30'},
+      {k:'llatR',label:'右側屈',unit:'°',normal:'30'},
+      {k:'llatL',label:'左側屈',unit:'°',normal:'30'}
+    ],
+    mmt:['体幹屈曲','体幹伸展'],
+    circ:[],
+    ortho:['SLRテスト','FNSテスト','Kempテスト','Newtonテスト'],
+    special:['下肢へのしびれ','放散痛','間欠性跛行']
+  },
+  '股関節':{
+    rom:[
+      {k:'hflex',label:'屈曲',unit:'°',normal:'125'},
+      {k:'hext',label:'伸展',unit:'°',normal:'15'},
+      {k:'habd',label:'外転',unit:'°',normal:'45'},
+      {k:'hadd',label:'内転',unit:'°',normal:'20'},
+      {k:'hER',label:'外旋',unit:'°',normal:'45'},
+      {k:'hIR',label:'内旋',unit:'°',normal:'45'}
+    ],
+    mmt:['屈曲','伸展','外転','内転','外旋','内旋'],
+    circ:[],
+    ortho:['Patrick(FABER)テスト','Thomasテスト','Oberテスト','FADIRテスト'],
+    special:['鼠径部痛','クリック音']
+  },
+  '大腿':{
+    rom:[
+      {k:'kflex',label:'膝屈曲',unit:'°',normal:'130'},
+      {k:'hflex',label:'股屈曲',unit:'°',normal:'125'}
+    ],
+    mmt:['膝伸展','膝屈曲','股関節屈曲'],
+    circ:['膝蓋骨上5cm','膝蓋骨上10cm','膝蓋骨上15cm'],
+    ortho:['ハムストリング柔軟性テスト','大腿四頭筋柔軟性テスト'],
+    special:['筋硬結','圧痛']
+  },
+  '膝':{
+    rom:[
+      {k:'kflex',label:'屈曲',unit:'°',normal:'130'},
+      {k:'kext',label:'伸展',unit:'°',normal:'0'}
+    ],
+    mmt:['伸展','屈曲'],
+    circ:['膝蓋骨上5cm','膝蓋骨上10cm','膝関節裂隙','膝蓋骨直上'],
+    ortho:['前方引き出しテスト','Lachmanテスト','後方引き出しテスト','McMurrayテスト','内反ストレステスト','外反ストレステスト','膝蓋跳動','N-test(pivot shift)'],
+    special:['ロッキング','膝崩れ(giving way)','腫脹']
+  },
+  'すね':{
+    rom:[
+      {k:'adf',label:'足背屈',unit:'°',normal:'20'},
+      {k:'apf',label:'足底屈',unit:'°',normal:'45'}
+    ],
+    mmt:['背屈','底屈'],
+    circ:['下腿最大膨隆部'],
+    ortho:['脛骨叩打テスト','シンスプリント圧痛確認'],
+    special:['運動時痛','安静時痛']
+  },
+  '足首':{
+    rom:[
+      {k:'adf',label:'背屈',unit:'°',normal:'20'},
+      {k:'apf',label:'底屈',unit:'°',normal:'45'},
+      {k:'ainv',label:'内反',unit:'°',normal:'30'},
+      {k:'aev',label:'外反',unit:'°',normal:'20'}
+    ],
+    mmt:['背屈','底屈','内反','外反'],
+    circ:['外果周径','8字法'],
+    ortho:['前方引き出しテスト','内反ストレステスト','外反ストレステスト','Thompsonテスト','Squeezeテスト'],
+    special:['不安定感','腫脹']
+  },
+  '踵':{
+    rom:[
+      {k:'adf',label:'背屈',unit:'°',normal:'20'},
+      {k:'apf',label:'底屈',unit:'°',normal:'45'}
+    ],
+    mmt:['底屈'],
+    circ:[],
+    ortho:['踵骨圧迫テスト','Windlassテスト'],
+    special:['歩行時痛','起床時痛']
+  },
+  'アキレス腱':{
+    rom:[
+      {k:'adf',label:'背屈',unit:'°',normal:'20'},
+      {k:'apf',label:'底屈',unit:'°',normal:'45'}
+    ],
+    mmt:['底屈'],
+    circ:['アキレス腱最細部'],
+    ortho:['Thompsonテスト','触診による断裂確認'],
+    special:['圧痛','腫脹','陥凹']
+  },
+  'ふくらはぎ':{
+    rom:[
+      {k:'adf',label:'足背屈',unit:'°',normal:'20'},
+      {k:'apf',label:'足底屈',unit:'°',normal:'45'}
+    ],
+    mmt:['底屈'],
+    circ:['下腿最大膨隆部'],
+    ortho:['筋断裂触診','Thompsonテスト'],
+    special:['筋硬結','圧痛','陥凹']
+  },
+  '足の甲':{
+    rom:[
+      {k:'adf',label:'背屈',unit:'°',normal:'20'},
+      {k:'apf',label:'底屈',unit:'°',normal:'45'}
+    ],
+    mmt:['背屈'],
+    circ:[],
+    ortho:['圧痛確認','叩打痛確認'],
+    special:['荷重時痛','腫脹']
+  },
+  '足趾':{
+    rom:[
+      {k:'mtp',label:'MTP関節屈曲',unit:'°',normal:'40'},
+      {k:'mtpe',label:'MTP関節伸展',unit:'°',normal:'70'}
+    ],
+    mmt:['屈曲','伸展'],
+    circ:[],
+    ortho:['側方ストレステスト'],
+    special:['変形','腫脹']
+  },
+  'その他':{
+    rom:[],
+    mmt:[],
+    circ:[],
+    ortho:[],
+    special:[]
+  }
+};
+// カルテデータ取得（なければ新規作成して返す）
+function getChart(injId){
+  var ch=D.chart.find(function(x){return idEq(x.injId,injId);});
+  if(!ch){
+    ch={injId:injId,injDetail:{},medical:{},evals:[],soaps:[],returnCriteria:{},images:[]};
+    D.chart.push(ch);
+  }
+  // 古いデータに項目がなければ補完
+  if(!ch.injDetail)ch.injDetail={};
+  if(!ch.medical)ch.medical={};
+  if(!ch.evals)ch.evals=[];
+  if(!ch.soaps)ch.soaps=[];
+  if(!ch.returnCriteria)ch.returnCriteria={};
+  if(!ch.images)ch.images=[];
+  return ch;
+}
+// カルテ保存（svSafe方式で安全に）
+function saveChart(){sv('chart');}
+
 var PARTS=['頭部','頸部','肩','鎖骨','肘','手首','指','腰','股関節','大腿','膝','すね','足首','踵','アキレス腱','ふくらはぎ','足の甲','足趾','その他'];
 var INJ_TYPES=['捻挫','肉離れ','骨折','脱臼','打撲','靭帯損傷','半月板損傷','脳震盪','裂傷','腱炎','疲労骨折','その他'];
 var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
-var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],phskip:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[]};
+var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],phskip:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[]};
 var myPid=null,curTab='home',charts={},subView=null;
 
 function ld(){
@@ -648,6 +878,7 @@ mypage:function(){
         h+='<div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-top:6px;margin-bottom:3px">本日のメニュー</div>'+
         '<div style="display:flex;flex-wrap:wrap;gap:3px">'+tomorrowCats.map(function(c){return'<span style="background:'+RCAT_BG[c]+';color:'+RCAT_COLOR[c]+';padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">'+c+'</span>';}).join('')+'</div>';
       }
+      h+='<button class="btn btn-p btn-sm" style="margin-top:8px" onclick="showMyChart('+inj.id+')">📋 カルテを見る・痛みを記録</button>';
       h+='</div>';
     });
     h+='</div>';
@@ -1514,6 +1745,92 @@ function doPhys(){
     alert(m.length?m.join('\n'):'記録しました ✓');go('mypage');
   }).catch(function(e){alert('保存に失敗しました。もう一度試してください。');console.error(e);});
 }
+
+// ===== 選手向け 電子カルテ閲覧画面 =====
+function showMyChart(iid){
+  var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return;
+  var ch=getChart(iid);
+  var rh=D.r.find(function(x){return idEq(x.injId,iid);});
+  var daysSince=Math.floor((new Date(todayStr())-new Date(inj.date))/86400000);
+  var evals=ch.evals.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var soaps=ch.soaps.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var h='<div style="font-size:18px;font-weight:700;margin:12px 0 14px">📋 '+(inj.side||'')+inj.part+' のカルテ</div>';
+  h+='<div class="card"><div style="display:flex;gap:8px;margin-bottom:12px">'+
+    '<div class="mc" style="flex:1"><div class="v" style="font-size:18px;color:var(--accent)">'+daysSince+'</div><div class="l">受傷から</div></div>'+
+    (rh?'<div class="mc" style="flex:1"><div class="v" style="font-size:13px;color:var(--green)">'+STG[rh.stage]+'</div><div class="l">現在の段階</div></div>':'')+
+    '</div>';
+  h+='<div class="detail-row"><span class="detail-label">部位</span><span class="detail-value">'+(inj.side||'')+inj.part+'</span></div>'+
+    '<div class="detail-row"><span class="detail-label">種類</span><span class="detail-value">'+inj.type+'</span></div>'+
+    '<div class="detail-row"><span class="detail-label">受傷日</span><span class="detail-value">'+fmt(inj.date)+'</span></div>'+
+    (inj.returnDate?'<div class="detail-row"><span class="detail-label">復帰予定</span><span class="detail-value">'+fmt(inj.returnDate)+'</span></div>':'')+
+    (ch.medical.diagnosis?'<div class="detail-row"><span class="detail-label">診断名</span><span class="detail-value">'+escapeHtml(ch.medical.diagnosis)+'</span></div>':'')+
+    '</div>';
+  h+='<button class="btn btn-p" style="width:100%;margin-bottom:14px" onclick="showPainSelfForm('+iid+')">😣 今日の痛みを記録する</button>';
+  // RTP 練習参加レベル（選手に一番大事な情報）
+  var curRtp=ch.rtpLevel||'rest';
+  var rtpObj=RTP_LEVELS.find(function(x){return x.k===curRtp;})||RTP_LEVELS[0];
+  h+='<div class="card" style="text-align:center;border:2px solid '+rtpObj.color+'"><div style="font-size:11px;color:var(--text-secondary);font-weight:600;margin-bottom:6px">今の練習参加レベル</div>'+
+    '<div style="font-size:20px;font-weight:800;color:'+rtpObj.color+'">'+rtpObj.label+'</div>'+
+    '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">'+rtpObj.desc+'</div></div>';
+  if(evals.length>=1){
+    h+='<div class="form-box"><div class="form-title">📈 痛みの推移</div><div class="chart-wrap" style="height:180px"><canvas id="my-pain-chart"></canvas></div></div>';
+  }
+  if(soaps.length){
+    h+='<div class="form-title" style="margin:14px 0 8px">🩺 トレーナーの記録</div>';
+    soaps.slice(0,5).forEach(function(s){
+      h+='<div class="card" style="margin-bottom:8px"><div style="font-weight:700;font-size:13px;margin-bottom:6px">'+fmt(s.date)+(s.author?' <span style="font-size:11px;color:var(--text-secondary);font-weight:400">'+escapeHtml(s.author)+'</span>':'')+'</div>';
+      if(s.p)h+='<div style="font-size:12px;margin-bottom:4px"><span style="color:var(--accent);font-weight:600">今後の方針</span><br>'+escapeHtml(s.p)+'</div>';
+      if(s.menu)h+='<div style="font-size:12px;color:var(--text-secondary)">メニュー: '+escapeHtml(s.menu)+'</div>';
+      h+='</div>';
+    });
+  }
+  if(evals.length){
+    var le=evals[0];
+    h+='<div class="form-box"><div class="form-title">最新の評価（'+fmt(le.date)+'）</div>';
+    if(le.pain){PAIN_TYPES.forEach(function(pt){if(le.pain[pt.k]!=null)h+='<div class="detail-row"><span class="detail-label">'+pt.label+'</span><span class="detail-value">'+le.pain[pt.k]+'/10</span></div>';});}
+    h+='</div>';
+  }
+  showSub(h);
+  setTimeout(function(){drawMyPainChart(iid);},50);
+}
+function drawMyPainChart(iid){
+  var ch=getChart(iid);
+  var evals=ch.evals.slice().sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+  if(!evals.length)return;
+  var e=document.getElementById('my-pain-chart');if(!e)return;
+  dC('mypain');
+  var labels=evals.map(function(x){return x.date?x.date.slice(5):'';});
+  var painColors={rest:'#3B82F6',motion:'#F87171',night:'#A78BFA',press:'#FBBF24'};
+  var datasets=PAIN_TYPES.map(function(pt){
+    return{label:pt.label,data:evals.map(function(x){return x.pain&&x.pain[pt.k]!=null?x.pain[pt.k]:null;}),borderColor:painColors[pt.k],backgroundColor:painColors[pt.k],tension:.3,spanGaps:true};
+  });
+  charts.mypain=new Chart(e,{type:'line',data:{labels:labels,datasets:datasets},options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:10}},plugins:{legend:{position:'bottom'}}}});
+}
+function showPainSelfForm(iid){
+  var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return;
+  var h='<div style="font-size:18px;font-weight:700;margin:12px 0 14px">😣 今日の痛みを記録</div>';
+  h+='<div class="form-box"><div class="form-title">痛みレベル（0:なし 〜 10:最大）</div>';
+  PAIN_TYPES.forEach(function(pt){
+    h+='<div class="fl" style="margin-bottom:14px"><label>'+pt.label+'</label>'+
+      '<div style="display:flex;align-items:center;gap:10px"><input type="range" class="self-pain" data-k="'+pt.k+'" min="0" max="10" value="0" style="flex:1" oninput="document.getElementById(\'sp-'+pt.k+'\').textContent=this.value">'+
+      '<span id="sp-'+pt.k+'" style="font-weight:700;min-width:24px;text-align:center">0</span></div></div>';
+  });
+  h+='</div>';
+  h+='<div class="form-box"><div class="form-title">メモ（任意）</div><textarea class="ipt" id="self-note" placeholder="気になること、調子など" style="min-height:60px"></textarea></div>';
+  h+='<button class="btn btn-p" style="width:100%" onclick="savePainSelf('+iid+')">💾 記録する</button>';
+  showSub(h);
+}
+function savePainSelf(iid){
+  var ch=getChart(iid);
+  var pain={};
+  document.querySelectorAll('.self-pain').forEach(function(e){pain[e.dataset.k]=parseFloat(e.value);});
+  var note=document.getElementById('self-note').value;
+  ch.evals.push({id:Date.now()+'_'+Math.floor(Math.random()*1000),date:todayStr(),pain:pain,rom:{},mmt:{},circ:{},ortho:{},special:[],note:note?'[選手記録] '+note:'[選手記録]',bySelf:true,inputAt:new Date().toISOString()});
+  saveChart();
+  alert('記録しました！トレーナーに共有されます。');
+  showMyChart(iid);
+}
+function saveChart(){sv('chart');}
 
 // Rehab log
 function showRehabForm(rid){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">リハビリログ</div><div class="form-box"><div class="form-title">今日のリハビリ</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="rl-date" value="'+td+'"></div><div class="fl"><label>痛みレベル（1-10）</label>'+numStepHTML('rl-pain',1,10,'')+'</div><div class="fl"><label>可動域 ROM（%）</label><input class="ipt" type="number" id="rl-rom" min="0" max="100"></div><div class="fl"><label>実施内容</label><textarea class="ipt" id="rl-ct" placeholder="今日のリハビリ内容..."></textarea></div><button class="btn btn-p" onclick="doRehab('+rid+')">記録する</button></div>');}
