@@ -1830,10 +1830,9 @@ function savePainSelf(iid){
   alert('記録しました！トレーナーに共有されます。');
   showMyChart(iid);
 }
-function saveChart(){sv('chart');}
 
 // Rehab log
-function showRehabForm(rid){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">リハビリログ</div><div class="form-box"><div class="form-title">今日のリハビリ</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="rl-date" value="'+td+'"></div><div class="fl"><label>痛みレベル（1-10）</label>'+numStepHTML('rl-pain',1,10,'')+'</div><div class="fl"><label>可動域 ROM（%）</label><input class="ipt" type="number" id="rl-rom" min="0" max="100"></div><div class="fl"><label>実施内容</label><textarea class="ipt" id="rl-ct" placeholder="今日のリハビリ内容..."></textarea></div><button class="btn btn-p" onclick="doRehab('+rid+')">記録する</button></div>');}
+function showRehabForm(rid){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">リハビリログ</div><div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">今日やったリハビリ内容を記録します。痛みは「カルテを見る・痛みを記録」から記録してください。</div><div class="form-box"><div class="form-title">今日のリハビリ</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="rl-date" value="'+td+'"></div><div class="fl"><label>実施内容</label><textarea class="ipt" id="rl-ct" placeholder="今日のリハビリ内容..." style="min-height:90px"></textarea></div><button class="btn btn-p" onclick="doRehab('+rid+')">記録する</button></div>');}
 function doRehab(rid){
   var r=D.r.find(function(x){return x.id===rid;});if(!r)return;
   var injId=r.injId;
@@ -1842,8 +1841,6 @@ function doRehab(rid){
     id:Date.now(),
     injId:injId,
     date:document.getElementById('rl-date').value,
-    pain:parseInt(document.getElementById('rl-pain').value)||5,
-    rom:parseInt(document.getElementById('rl-rom').value)||0,
     content:document.getElementById('rl-ct').value,
     implementer:me?me.name:'選手',
     by:'player',
