@@ -2160,11 +2160,8 @@ function toggleNextMenuCatT(ci){
 }
 
 function saveNextMenuT(injId){
-  if(!D.rplan)D.rplan=[];
-  var plan=D.rplan.find(function(x){return x.injId===injId;});
-  if(!plan){plan={injId:injId,tplId:null,tomorrowCats:[]};D.rplan.push(plan);}
-  plan.tomorrowCats=window._nextMenuCatsT||[];
-  sv('rplan');alert('保存しました ✓');goRehabPlayer(injId);
+  var cats=window._nextMenuCatsT||[];
+  svSafeUpdate('rplan',function(latest){var plan=latest.find(function(x){return idEq(x.injId,injId);});if(!plan){plan={injId:injId,tplId:null,tomorrowCats:[]};latest.push(plan);}plan.tomorrowCats=cats;return latest;},function(){alert('保存しました ✓');goRehabPlayer(injId);});
 }
 
 function timeOptions(sel){
@@ -2207,7 +2204,7 @@ function doTapeSetup(){
   var cap=parseInt(document.getElementById('ts-cap').value)||1;
   if(!date||startT>=endT)return alert('日付と時間を正しく入力してください（終了 > 開始）');
   if(!D.tapeslot)D.tapeslot=[];
-  var count=0;
+  var newSlots=[];
   var cur=startT;
   while(cur<endT){
     var pts=cur.split(':');var hh=parseInt(pts[0]),mm=parseInt(pts[1]);
@@ -2215,13 +2212,14 @@ function doTapeSetup(){
     if(nh>=24)break;
     var next=String(nh).padStart(2,'0')+':'+String(nm).padStart(2,'0');
     if(next>endT)break;
-    D.tapeslot.push({id:Date.now()+count*19,date:date,type:type,startTime:cur,endTime:next,capacity:cap,staff:myTrainer.name});
-    count++;cur=next;
+    newSlots.push({id:Date.now()+newSlots.length*19,date:date,type:type,startTime:cur,endTime:next,capacity:cap,staff:myTrainer.name});
+    cur=next;
   }
-  if(!count)return alert('枠が作成できませんでした。時間を確認してください。');
-  sv('tapeslot');
-  alert(count+'枠を作成しました ✓');
-  T.tape();
+  if(!newSlots.length)return alert('枠が作成できませんでした。時間を確認してください。');
+  svSafeUpdate('tapeslot',function(latest){return latest.concat(newSlots);},function(){
+    alert(newSlots.length+'枠を作成しました ✓');
+    T.tape();
+  });
 }
 
 function delMyTapeDay(date){
