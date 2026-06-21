@@ -72,6 +72,21 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 .chart-tab{flex-shrink:0;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;color:var(--text-secondary);cursor:pointer;white-space:nowrap;transition:all .15s}
 .chart-tab:hover{background:var(--bg-tertiary);color:var(--text-primary)}
 .chart-tab.ac{background:var(--accent);color:#fff}
+/* ===== タイムライン ===== */
+.tl-wrap{position:relative;padding:8px 0 8px 0}
+.tl-item{position:relative;padding:0 0 22px 38px}
+.tl-item:last-child{padding-bottom:4px}
+.tl-line{position:absolute;left:13px;top:22px;bottom:-4px;width:2px;background:linear-gradient(180deg,var(--tl-color,var(--accent)),rgba(255,255,255,.06))}
+.tl-item:last-child .tl-line{display:none}
+.tl-dot{position:absolute;left:5px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--tl-color,var(--accent));box-shadow:0 0 0 4px var(--bg-app),0 0 12px var(--tl-glow,rgba(59,130,246,.6));display:flex;align-items:center;justify-content:center;z-index:2}
+.tl-dot svg{width:10px;height:10px;fill:#fff}
+.tl-card{background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary));border:1px solid var(--border-tertiary);border-left:3px solid var(--tl-color,var(--accent));border-radius:10px;padding:11px 14px;transition:all .2s;box-shadow:var(--shadow-sm)}
+.tl-card:hover{transform:translateX(3px);box-shadow:0 4px 16px rgba(0,0,0,.25)}
+.tl-date{font-size:11px;font-weight:700;color:var(--tl-color,var(--accent));letter-spacing:.03em;text-transform:uppercase;margin-bottom:3px}
+.tl-title{font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:2px}
+.tl-desc{font-size:12.5px;color:var(--text-secondary);line-height:1.5}
+.tl-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;margin-left:6px;vertical-align:middle}
+.tl-metric{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;background:var(--bg-tertiary);padding:2px 8px;border-radius:6px;margin:4px 4px 0 0}
 .soap-line{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;font-size:13px;line-height:1.5}
 .soap-tag{flex-shrink:0;width:22px;height:22px;border-radius:6px;color:#fff;font-weight:800;font-size:12px;display:inline-flex;align-items:center;justify-content:center}
 .detail-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid var(--border-tertiary);font-size:13px}.detail-row:last-child{border-bottom:none}
@@ -119,9 +134,9 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 if(window.Chart){Chart.defaults.color='#9FB0C8';Chart.defaults.borderColor='rgba(255,255,255,0.10)';Chart.defaults.scale.grid.color='rgba(255,255,255,0.08)';}
 firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
 var db=firebase.firestore();
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec'};
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm'};
 var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
-var D={p:[],i:[],r:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[]};
+var D={p:[],i:[],r:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[]};
 var myTrainer=null;
 var RCATS=['ケア','ROM改善','患部外トレーニング','トレーニング','アジリティ','フィットネス','サポート','オフ'];
 var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'#0891B2',サポート:'#059669',オフ:'var(--text-secondary)'};
@@ -1118,6 +1133,129 @@ function delTapeRec(recId,pid){
 
 // ===== リハビリ機能 =====
 // ===== 概要タブ =====
+// ===== タイムライン（経過）タブ =====
+function renderChartTimeline(iid){
+  var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return'';
+  var p=D.p.find(function(x){return idEq(x.id,inj.pid);});
+  var rh=D.r.find(function(x){return idEq(x.injId,iid);});
+  var ch=getChart(iid);
+  var events=[];
+  // 色とアイコンの定義
+  var IC={
+    injury:'<svg viewBox="0 0 24 24"><path d="M12 2L4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3z"/></svg>',
+    hospital:'<svg viewBox="0 0 24 24"><path d="M19 8h-2V3H7v5H5c-1.1 0-2 .9-2 2v11h18V10c0-1.1-.9-2-2-2zm-7-3h2v2h2v2h-2v2h-2V9H9V7h2V5zm0 9h2v2h2v2h-2v-2h-2v2H8v-2h2v-2z"/></svg>',
+    eval:'<svg viewBox="0 0 24 24"><path d="M3.5 18.5l6-6 4 4L22 6.9l-1.4-1.4-7.1 7.9-4-4L2 17z"/></svg>',
+    soap:'<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>',
+    stage:'<svg viewBox="0 0 24 24"><path d="M13 3v6h8l-9 12v-8H4l9-10z"/></svg>',
+    rtp:'<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-2 15l-5-5 1.4-1.4L10 14.2l7.6-7.6L19 8l-9 9z"/></svg>',
+    goal:'<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm1-13h-2v6l5 3 1-1.6-4-2.4V7z"/></svg>'
+  };
+  var C={injury:'#EF4444',hospital:'#8B5CF6',eval:'#3B82F6',soap:'#10B981',stage:'#F59E0B',rtp:'#06B6D4',goal:'#EC4899'};
+  var G={injury:'rgba(239,68,68,.6)',hospital:'rgba(139,92,246,.6)',eval:'rgba(59,130,246,.6)',soap:'rgba(16,185,129,.6)',stage:'rgba(245,158,11,.6)',rtp:'rgba(6,182,212,.6)',goal:'rgba(236,72,153,.6)'};
+
+  // 1. 受傷
+  events.push({date:inj.date,type:'injury',title:'受傷',desc:(inj.side||'')+inj.part+' '+inj.type+(inj.note?'<br>'+escapeHtml(inj.note):'')});
+  // 2. 病院受診・診断
+  if(ch.medical){
+    if(ch.medical.hospital||ch.medical.diagnosis){
+      var ddate=ch.medical.diagnosisDate||inj.hospitalDate||inj.date;
+      var dtxt=[];
+      if(ch.medical.hospital)dtxt.push(escapeHtml(ch.medical.hospital));
+      if(ch.medical.diagnosis)dtxt.push('診断: '+escapeHtml(ch.medical.diagnosis));
+      if(ch.medical.imgFindings&&ch.medical.imgFindings.length)dtxt.push(ch.medical.imgFindings.join('・'));
+      events.push({date:ddate,type:'hospital',title:'病院受診・診断',desc:dtxt.join('<br>')});
+    }
+    if(ch.medical.surgery&&ch.medical.surgeryDate){
+      events.push({date:ch.medical.surgeryDate,type:'hospital',title:'手術',desc:escapeHtml(ch.medical.surgeryName||'手術実施')});
+    }
+  }
+  // 3. 評価（痛み・ROMの推移をメトリクスで）
+  (ch.evals||[]).forEach(function(ev){
+    var metrics='';
+    if(ev.pain){
+      var maxP=Math.max(ev.pain.rest||0,ev.pain.motion||0,ev.pain.night||0,ev.pain.press||0);
+      var pc=maxP>=7?'#EF4444':maxP>=4?'#F59E0B':'#10B981';
+      metrics+='<span class="tl-metric" style="color:'+pc+'">😣 痛み '+maxP+'/10</span>';
+    }
+    if(ev.rom){var romKeys=Object.keys(ev.rom);if(romKeys.length){var r0=ev.rom[romKeys[0]];if(r0)metrics+='<span class="tl-metric">📐 ROM '+r0+'°</span>';}}
+    if(ev.mmt){var mk=Object.keys(ev.mmt);if(mk.length){var m0=ev.mmt[mk[0]];if(m0)metrics+='<span class="tl-metric">💪 MMT '+m0+'</span>';}}
+    events.push({date:ev.date,type:'eval',title:'評価',desc:(ev.note?escapeHtml(ev.note):'')+(metrics?'<div style="margin-top:2px">'+metrics+'</div>':'')});
+  });
+  // 4. SOAP
+  (ch.soaps||[]).forEach(function(s){
+    var parts=[];
+    if(s.a)parts.push('<b>A:</b> '+escapeHtml(s.a));
+    if(s.p)parts.push('<b>P:</b> '+escapeHtml(s.p));
+    var d=parts.join('<br>');
+    if(!d&&s.s)d='<b>S:</b> '+escapeHtml(s.s);
+    events.push({date:s.date,type:'soap',title:'SOAP記録'+(s.author?' ('+escapeHtml(s.author)+')':''),desc:d||'記録あり'});
+  });
+  // 5. リハビリ段階の開始日
+  if(rh&&rh.stageDates){
+    Object.keys(rh.stageDates).forEach(function(stg){
+      var d=rh.stageDates[stg];
+      if(d&&STG[stg])events.push({date:d,type:'stage',title:'リハビリ '+STG[stg],desc:'ステージ'+stg+'に移行'});
+    });
+  }
+  // 6. RTP（現在のレベル。履歴がないので「設定」として表示）
+  if(ch.rtpLevel){
+    var rtpObj=RTP_LEVELS.find(function(x){return x.k===ch.rtpLevel;});
+    if(rtpObj&&ch.rtpLevel!=='rest'){
+      // RTP変更日が記録されていればそれを、なければ最終評価日あたりを使う
+      var rtpDate=ch.rtpLevelDate||(ch.evals&&ch.evals.length?ch.evals[ch.evals.length-1].date:inj.date);
+      events.push({date:rtpDate,type:'rtp',title:'練習参加レベル',desc:'<b style="color:'+rtpObj.color+'">'+rtpObj.label+'</b> '+rtpObj.desc});
+    }
+  }
+  // 7. 復帰予定（未来のイベント）
+  var isFuture=false;
+  if(inj.returnDate&&!inj.resolved){
+    var dl=Math.ceil((new Date(inj.returnDate)-new Date(todayStr()))/86400000);
+    events.push({date:inj.returnDate,type:'goal',title:'復帰予定',desc:dl>0?'あと'+dl+'日':dl===0?'本日予定':(-dl)+'日超過',_future:true});
+  }
+  // 8. 回復済み
+  if(inj.resolved){
+    events.push({date:inj.resolvedDate||todayStr(),type:'goal',title:'復帰・回復',desc:'競技復帰しました 🎉'});
+  }
+
+  // 日付順にソート（同日は受傷→診断→評価→SOAPの優先度）
+  var typeOrder={injury:0,hospital:1,stage:2,eval:3,soap:4,rtp:5,goal:6};
+  events.sort(function(a,b){
+    var dc=(a.date||'').localeCompare(b.date||'');
+    if(dc!==0)return dc;
+    return (typeOrder[a.type]||9)-(typeOrder[b.type]||9);
+  });
+
+  if(!events.length)return'<div class="no">まだ記録がありません</div>';
+
+  // ヘッダー統計
+  var daysSince=Math.floor((new Date(todayStr())-new Date(inj.date))/86400000);
+  var h='<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">'+
+    '<div style="flex:1;min-width:90px;background:linear-gradient(135deg,#3B82F6,#2563EB);border-radius:12px;padding:12px 14px;color:#fff;box-shadow:0 4px 14px rgba(59,130,246,.3)"><div style="font-size:24px;font-weight:800;line-height:1">'+daysSince+'</div><div style="font-size:11px;opacity:.9;margin-top:2px">受傷からの日数</div></div>'+
+    '<div style="flex:1;min-width:90px;background:linear-gradient(135deg,#10B981,#059669);border-radius:12px;padding:12px 14px;color:#fff;box-shadow:0 4px 14px rgba(16,185,129,.3)"><div style="font-size:24px;font-weight:800;line-height:1">'+events.filter(function(e){return e.type==='eval';}).length+'</div><div style="font-size:11px;opacity:.9;margin-top:2px">評価回数</div></div>'+
+    '<div style="flex:1;min-width:90px;background:linear-gradient(135deg,#F59E0B,#D97706);border-radius:12px;padding:12px 14px;color:#fff;box-shadow:0 4px 14px rgba(245,158,11,.3)"><div style="font-size:24px;font-weight:800;line-height:1">'+events.length+'</div><div style="font-size:11px;opacity:.9;margin-top:2px">記録イベント</div></div>'+
+    '</div>';
+
+  // タイムライン本体
+  h+='<div class="tl-wrap">';
+  events.forEach(function(ev){
+    var col=C[ev.type]||'#3B82F6';
+    var glow=G[ev.type]||'rgba(59,130,246,.6)';
+    var futureStyle=ev._future?'opacity:.75;border-style:dashed':'';
+    h+='<div class="tl-item" style="--tl-color:'+col+';--tl-glow:'+glow+'">'+
+      '<div class="tl-line"></div>'+
+      '<div class="tl-dot">'+(IC[ev.type]||'')+'</div>'+
+      '<div class="tl-card" style="'+futureStyle+'">'+
+        '<div class="tl-date">'+fmt(ev.date)+(ev._future?' ・ 予定':'')+'</div>'+
+        '<div class="tl-title">'+ev.title+'</div>'+
+        (ev.desc?'<div class="tl-desc">'+ev.desc+'</div>':'')+
+      '</div>'+
+    '</div>';
+  });
+  h+='</div>';
+  return h;
+}
+
+
 function renderChartOverview(iid){
   var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return'';
   var p=D.p.find(function(x){return idEq(x.id,inj.pid);});
@@ -1637,6 +1775,7 @@ function openChart(iid){window._subViewActive=true;
     '</div></div>';
   var tabs='<div class="chart-tabs">'+
     '<div class="chart-tab ac" onclick="chartTab(\'overview\')">📋 概要</div>'+
+    '<div class="chart-tab" onclick="chartTab(\'timeline\')">🕐 経過</div>'+
     '<div class="chart-tab" onclick="chartTab(\'diagnosis\')">🩺 受傷・診断</div>'+
     '<div class="chart-tab" onclick="chartTab(\'eval\')">📊 評価</div>'+
     '<div class="chart-tab" onclick="chartTab(\'soap\')">📝 SOAP</div>'+
@@ -1661,6 +1800,7 @@ function renderChartTab(){
   var body=document.getElementById('chart-body');
   if(!body)return;
   if(curChartTab==='overview')body.innerHTML=renderChartOverview(iid);
+  else if(curChartTab==='timeline')body.innerHTML=renderChartTimeline(iid);
   else if(curChartTab==='diagnosis')body.innerHTML=renderChartDiagnosis(iid);
   else if(curChartTab==='eval'){body.innerHTML=renderChartEval(iid);setTimeout(function(){drawEvalCharts(iid);},50);}
   else if(curChartTab==='soap')body.innerHTML=renderChartSOAP(iid);
