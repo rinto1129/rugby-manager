@@ -432,6 +432,13 @@ function svSafe(k,newRec,callback){
     return db.collection('appdata').doc(k).set({data:JSON.stringify(latest)});
   }).then(function(){if(callback)callback();}).catch(function(e){alert('保存に失敗しました。もう一度試してください。');console.error(e);});
 }
+function svSafeUpdate(k,updateFn,onDone){
+  db.collection('appdata').doc(k).get().then(function(doc){
+    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+    latest=updateFn(latest);D[k]=latest;
+    return db.collection('appdata').doc(k).set({data:JSON.stringify(latest)});
+  }).then(function(){if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);alert('保存に失敗しました');});
+}
 function startListeners(){
   Object.keys(SK).forEach(function(k){
     db.collection('appdata').doc(k).onSnapshot(function(doc){
