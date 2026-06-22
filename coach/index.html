@@ -119,7 +119,7 @@ var _allKeys=Object.keys(SK);
 // データ読み込み（全キーをリッスン）
 function loadData(){
   _allKeys.forEach(function(k){
-    db.collection('appdata').doc(SK[k]).onSnapshot(function(doc){
+    db.collection('appdata').doc(k).onSnapshot(function(doc){
       if(doc.exists){try{var p=JSON.parse(doc.data().data);if(Array.isArray(p))D[k]=p;}catch(e){}}
       _loaded[k]=true;
       maybeRender();
