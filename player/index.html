@@ -424,20 +424,27 @@ return Promise.all(promises).then(function(){
 function sv(k){db.collection('appdata').doc(k).set({data:JSON.stringify(D[k])}).catch(function(e){console.error('Save error:',k,e);});}
 // Firestoreから最新を取得してpushしてから保存（上書き防止）
 function svSafe(k,newRec,callback){
-  db.collection('appdata').doc(k).get().then(function(doc){
-    var latest=[];
-    if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    latest.push(newRec);
-    D[k]=latest;
-    return db.collection('appdata').doc(k).set({data:JSON.stringify(latest)});
-  }).then(function(){if(callback)callback();}).catch(function(e){alert('保存に失敗しました。もう一度試してください。');console.error(e);});
+  var ref=db.collection('appdata').doc(k);
+  db.runTransaction(function(tx){
+    return tx.get(ref).then(function(doc){
+      var latest=[];
+      if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+      latest.push(newRec);
+      tx.set(ref,{data:JSON.stringify(latest)});
+      return latest;
+    });
+  }).then(function(latest){D[k]=latest;if(callback)callback();}).catch(function(e){alert('保存に失敗しました。もう一度試してください。');console.error(e);});
 }
 function svSafeUpdate(k,updateFn,onDone){
-  db.collection('appdata').doc(k).get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    latest=updateFn(latest);D[k]=latest;
-    return db.collection('appdata').doc(k).set({data:JSON.stringify(latest)});
-  }).then(function(){if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);alert('保存に失敗しました');});
+  var ref=db.collection('appdata').doc(k);
+  db.runTransaction(function(tx){
+    return tx.get(ref).then(function(doc){
+      var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+      latest=updateFn(latest);
+      tx.set(ref,{data:JSON.stringify(latest)});
+      return latest;
+    });
+  }).then(function(latest){D[k]=latest;if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);alert('保存に失敗しました');});
 }
 function startListeners(){
   Object.keys(SK).forEach(function(k){
@@ -2220,14 +2227,51 @@ function showTrainingAbsent(menuId){
 function saveTrainingAbsent(menuId,reason){
   var log={id:Date.now(),pid:myPid,menuId:menuId,date:todayStr(),ts:new Date().toISOString(),absent:true,absentReason:reason,results:[],totalVolume:0};
   svSafe('tlog',log,function(){
+    clearTDraft();
     var h='<div style="text-align:center;padding:30px 10px"><div style="font-size:40px;margin-bottom:10px">📝</div><div style="font-size:16px;font-weight:700;margin-bottom:8px">欠席を記録しました</div><div style="font-size:13px;color:var(--text-secondary)">理由: '+escapeHtml(reason)+'</div>';
     if(reason==='痛み・怪我')h+='<div style="font-size:12px;color:var(--text-secondary);margin-top:10px">スタッフに共有されました。お大事に。</div>';
     h+='</div><button class="btn btn-p" style="width:100%;margin-top:16px" onclick="go(\'training\')">完了</button>';
     showSub(h);
   });
 }
-// 実際の実施開始（出欠確認で「する」を選んだ後）
+// ===== トレーニング入力の下書き（端末内に自動保存。記録ボタン前に離脱しても復元できる。選手ごと1件）=====
+function tDraftKey(){return 'rm_tdraft_'+myPid;}
+function saveTDraft(){if(!_curTLog)return;try{localStorage.setItem(tDraftKey(),JSON.stringify(_curTLog));localStorage.setItem(tDraftKey()+'_t',new Date().toISOString());}catch(e){}}
+function clearTDraft(){try{localStorage.removeItem(tDraftKey());localStorage.removeItem(tDraftKey()+'_t');}catch(e){}}
+function loadTDraft(){try{var s=localStorage.getItem(tDraftKey());if(!s)return null;var d=JSON.parse(s);return(d&&d.results)?d:null;}catch(e){return null;}}
+function loadTDraftTime(){try{return localStorage.getItem(tDraftKey()+'_t');}catch(e){return null;}}
+
+// 実際の実施開始（出欠確認で「する」を選んだ後）。当日・同メニューの下書きがあれば復元を提案
 function beginTrainingExec(menuId){
+  var mn=getMyMenus().find(function(x){return idEq(x.id,menuId);});
+  if(!mn)return;
+  var draft=loadTDraft();
+  if(draft&&idEq(draft.menuId,menuId)&&draft.date===todayStr()){
+    var savedT=loadTDraftTime();
+    var h='<div style="text-align:center;padding:24px 10px">'+
+      '<div style="font-size:40px;margin-bottom:10px">📝</div>'+
+      '<div style="font-size:16px;font-weight:700;margin-bottom:6px">入力途中のデータがあります</div>'+
+      '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">'+escapeHtml(mn.name)+'</div>'+
+      (savedT?'<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:18px">最終保存: '+fmtDateTime(savedT)+'</div>':'<div style="margin-bottom:18px"></div>')+
+      '<button class="btn btn-p" style="width:220px;padding:14px;font-size:15px;margin-bottom:10px" onclick="resumeTDraft('+menuId+')">▶ 続きから入力する</button><br>'+
+      '<button class="btn" style="width:220px;padding:10px;font-size:13px" onclick="startTrainingFresh('+menuId+')">最初からやり直す</button>'+
+      '</div>';
+    showSub(h);
+    return;
+  }
+  startTrainingFresh(menuId);
+}
+function resumeTDraft(menuId){
+  var mn=getMyMenus().find(function(x){return idEq(x.id,menuId);});
+  if(!mn)return;
+  var draft=loadTDraft();
+  if(!draft){startTrainingFresh(menuId);return;}
+  _curTLog=draft;
+  resetRestTimer();
+  renderTrainingExec(mn);
+}
+function startTrainingFresh(menuId){
+  clearTDraft();
   var mn=getMyMenus().find(function(x){return idEq(x.id,menuId);});
   if(!mn)return;
   var disabled=getMyDisabledEx();
@@ -2253,7 +2297,7 @@ function beginTrainingExec(menuId){
 function renderTrainingExec(mn){
   var compareMode=window._trCompareMode||'prev'; // prev | week
   var h='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><div style="font-size:17px;font-weight:700">'+escapeHtml(mn.name)+'</div></div>';
-  h+='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">'+fmt(todayStr())+'</div>';
+  h+='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">'+fmt(todayStr())+' <span style="color:var(--green)">・自動保存中（途中で閉じても復元できます）</span></div>';
 
   // 比較モード切替
   h+='<div style="display:flex;gap:6px;margin-bottom:12px"><button class="btn btn-sm'+(compareMode==='prev'?' btn-p':'')+'" onclick="setTrCompare(\'prev\')">前回と比較</button><button class="btn btn-sm'+(compareMode==='week'?' btn-p':'')+'" onclick="setTrCompare(\'week\')">先週と比較</button></div>';
@@ -2402,10 +2446,10 @@ function refreshTrainingLive(){
     box.innerHTML='<div style="font-size:11px;color:var(--text-secondary)">総ボリューム</div><div style="font-size:30px;font-weight:800;color:var(--blue);line-height:1.1">'+totalVol.toLocaleString()+'<span style="font-size:13px;color:var(--text-secondary)"> kg</span></div>'+sub;
   }
 }
-function toggleSkip(ri,checked){_curTLog.results[ri].skipped=checked;if(checked&&!_curTLog.results[ri].skipReason)_curTLog.results[ri].skipReason='時間の都合';var mn=getMyMenus().find(function(x){return idEq(x.id,_curTLog.menuId);});renderTrainingExec(mn);}
-function setSkipReason(ri,v){_curTLog.results[ri].skipReason=v;}
-function updTSet(ri,si,f,v){_curTLog.results[ri].sets[si][f]=v;refreshTrainingLive();}
-function addTSet(ri){_curTLog.results[ri].sets.push({weight:'',reps:'',rir:'',done:false});var mn=getMyMenus().find(function(x){return idEq(x.id,_curTLog.menuId);});renderTrainingExec(mn);}
+function toggleSkip(ri,checked){_curTLog.results[ri].skipped=checked;if(checked&&!_curTLog.results[ri].skipReason)_curTLog.results[ri].skipReason='時間の都合';saveTDraft();var mn=getMyMenus().find(function(x){return idEq(x.id,_curTLog.menuId);});renderTrainingExec(mn);}
+function setSkipReason(ri,v){_curTLog.results[ri].skipReason=v;saveTDraft();}
+function updTSet(ri,si,f,v){_curTLog.results[ri].sets[si][f]=v;saveTDraft();refreshTrainingLive();}
+function addTSet(ri){_curTLog.results[ri].sets.push({weight:'',reps:'',rir:'',done:false});saveTDraft();var mn=getMyMenus().find(function(x){return idEq(x.id,_curTLog.menuId);});renderTrainingExec(mn);}
 
 // ===== 休憩タイマー（3分カウントダウン）=====
 var _restTimer={interval:null,seconds:180,running:false,done:false};
@@ -2558,6 +2602,7 @@ function finishTraining(){
 
   // 保存（tlog→必要ならe1rmも）
   svSafe('tlog',log,function(){
+    clearTDraft();
     if(Object.keys(e1rmValues).length){
       var e1rec={id:Date.now()+1,pid:myPid,date:todayStr(),inputAt:new Date().toISOString(),values:e1rmValues};
       svSafe('e1rm',e1rec,function(){showTrainingResult(log,alerts,injurySkips,e1rmValues);});

@@ -504,19 +504,27 @@ function ld(){
 
 function sv(k){db.collection('appdata').doc(k).set({data:JSON.stringify(D[k])}).catch(function(e){console.error('save error:',k,e);});}
 function svSafe(k,newRec,callback){
-  db.collection('appdata').doc(k).get().then(function(doc){
-    var latest=[];
-    if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    latest.push(newRec);D[k]=latest;
-    return db.collection('appdata').doc(k).set({data:JSON.stringify(latest)});
-  }).then(function(){if(callback)callback();}).catch(function(e){alert('保存に失敗しました');console.error(e);});
+  var ref=db.collection('appdata').doc(k);
+  db.runTransaction(function(tx){
+    return tx.get(ref).then(function(doc){
+      var latest=[];
+      if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+      latest.push(newRec);
+      tx.set(ref,{data:JSON.stringify(latest)});
+      return latest;
+    });
+  }).then(function(latest){D[k]=latest;if(callback)callback();}).catch(function(e){alert('保存に失敗しました');console.error(e);});
 }
 function svSafeUpdate(k,updateFn,onDone){
-  db.collection('appdata').doc(k).get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    latest=updateFn(latest);D[k]=latest;
-    return db.collection('appdata').doc(k).set({data:JSON.stringify(latest)});
-  }).then(function(){if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);alert('保存に失敗しました');});
+  var ref=db.collection('appdata').doc(k);
+  db.runTransaction(function(tx){
+    return tx.get(ref).then(function(doc){
+      var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+      latest=updateFn(latest);
+      tx.set(ref,{data:JSON.stringify(latest)});
+      return latest;
+    });
+  }).then(function(latest){D[k]=latest;if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);alert('保存に失敗しました');});
 }
 
 function todayStr(){var d=new Date();var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
