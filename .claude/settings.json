@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=/Users/nakayamarinnin/Documents/rugby-manager/HANDOFF.md; [ -f \"$f\" ] && printf '=== 引き継ぎ書 (HANDOFF.md) ===\\n' && cat \"$f\" || true",
+            "statusMessage": "引き継ぎ書を読み込み中..."
+          }
+        ]
+      }
+    ]
+  }
+}
