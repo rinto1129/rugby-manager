@@ -2229,17 +2229,38 @@ function startTrainingFresh(menuId){
   var mn=getMyMenus().find(function(x){return idEq(x.id,menuId);});
   if(!mn)return;
   var disabled=getMyDisabledEx();
+  // 前回セッション検索用: 当日より前のログを新しい順に並べる
+  var today=todayStr();
+  var sortedPrevLogs=(D.tlog||[]).filter(function(l){
+    return idEq(l.pid,myPid)&&!l.absent&&l.results&&l.date<today;
+  }).sort(function(a,b){
+    var at=a.ts||a.date,bt=b.ts||b.date;return bt.localeCompare(at);
+  });
   _curTLog={
-    id:Date.now(),pid:myPid,menuId:menuId,date:todayStr(),ts:new Date().toISOString(),
+    id:Date.now(),pid:myPid,menuId:menuId,date:today,ts:new Date().toISOString(),
     results:(mn.exercises||[]).map(function(ex){
       var oneRM=ex.estBase?getPlayer1RM(myPid,ex.estBase):null;
       var estW=oneRM?estimateWeight(oneRM,ex.reps||1,ex.rir!=null?ex.rir:2):null;
       var isDisabled=disabled.some(function(d){return d.name===ex.name;});
+      // 前回実績を取得
+      var prevEx=null,prevExDate='';
+      for(var k=0;k<sortedPrevLogs.length;k++){
+        var found=(sortedPrevLogs[k].results||[]).find(function(x){return x.exName===ex.name&&!x.skipped&&x.sets&&x.sets.length>0;});
+        if(found){prevEx=found;prevExDate=sortedPrevLogs[k].date;break;}
+      }
       var sets=[];
-      for(var s=0;s<(ex.sets||1);s++){sets.push({weight:estW||'',reps:(ex.reps!=null?ex.reps:''),rir:'',done:false});}
+      for(var s=0;s<(ex.sets||1);s++){
+        var prev=prevEx?(prevEx.sets[s]||prevEx.sets[prevEx.sets.length-1]):null;
+        sets.push({
+          weight:prev&&(prev.weight!==''&&prev.weight!=null)?prev.weight:(estW||''),
+          reps:prev&&(prev.reps!==''&&prev.reps!=null)?prev.reps:(ex.reps!=null?ex.reps:''),
+          rir:'',done:false
+        });
+      }
       return{
         exName:ex.name,estBase:ex.estBase,targetSets:ex.sets,targetReps:ex.reps,targetRir:ex.rir,
         note:ex.note,videoUrl:ex.videoUrl,estWeight:estW,oneRM:oneRM,
+        prevEx:prevEx?{sets:prevEx.sets,date:prevExDate}:null,
         sets:sets,skipped:isDisabled,skipReason:isDisabled?'申告済み（できない種目）':''
       };
     }),
@@ -2280,6 +2301,10 @@ function renderTrainingExec(mn){
       '</div>';
     if(r.note)h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;padding:6px 8px;background:var(--bg-primary);border-radius:6px;white-space:pre-wrap">💡 '+escapeHtml(r.note)+'</div>';
     if(r.videoUrl)h+='<a href="'+escapeHtml(r.videoUrl)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-bottom:8px;font-size:12px;color:var(--blue);text-decoration:none;font-weight:600">▶ 参考動画</a>';
+    if(r.prevEx&&r.prevEx.sets&&!r.skipped){
+      var prevSetsStr=(r.prevEx.sets||[]).map(function(s){return(s.weight||'?')+'kg×'+(s.reps||'?');}).join(' / ');
+      h+='<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px;padding:5px 8px;background:var(--bg-primary);border-radius:6px">📋 前回'+(r.prevEx.date?' ('+r.prevEx.date+')':'')+': '+escapeHtml(prevSetsStr)+'</div>';
+    }
 
     if(r.skipped){
       h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">できなかった理由</label><select class="ipt" onchange="setSkipReason('+ri+',this.value)">'+
