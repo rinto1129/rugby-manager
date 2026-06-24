@@ -368,7 +368,7 @@ var EVAL_MASTER={
 var curChartTab="overview";var _chartIid=null;
 // 専門学生サイトではケガの編集・削除・解決はスタッフ権限（スタブ）
 function goEditInjury(iid){alert('ケガ基本情報の編集はスタッフ画面から行ってください。');}
-function resolveInj(iid){if(!confirm('この怪我を回復済みにしますか？'))return;var inj=D.i.find(function(x){return idEq(x.id,iid);});if(inj){inj.resolved=true;inj.resolvedDate=todayStr();sv('i');}}
+function resolveInj(iid){if(!confirm('この怪我を回復済みにしますか？'))return;var inj=D.i.find(function(x){return idEq(x.id,iid);});if(inj){inj.resolved=true;inj.resolvedDate=todayStr();svRec('i',inj);}}
 function deleteInjury(iid){alert('ケガの削除はスタッフ画面から行ってください。');}
 // カルテデータ取得（なければ新規作成して返す）
 function getChart(injId){
@@ -386,8 +386,17 @@ function getChart(injId){
   if(!ch.images)ch.images=[];
   return ch;
 }
-// カルテ保存（svSafe方式で安全に）
-function saveChart(){sv('chart');}
+// カルテ保存（トランザクションでinjId一致のカルテだけを安全にupsert）
+function saveChart(ch,onDone){
+  if(ch&&ch.injId!=null){
+    return svSafeUpdate('chart',function(latest){
+      var i=latest.findIndex(function(x){return idEq(x.injId,ch.injId);});
+      if(i>=0)latest[i]=ch;else latest.push(ch);
+      return latest;
+    },onDone);
+  }
+  sv('chart');
+}
 
 // RTP（Return To Play）練習参加レベル
 var RTP_LEVELS=[
@@ -455,7 +464,7 @@ function renderInjHistoryBox(pid,excludeIid,currentPart){
 function setRtpLevel(iid,level){
   var ch=getChart(iid);
   ch.rtpLevel=level;
-  saveChart();
+  saveChart(ch);
   renderChartTab();
 }
 
@@ -505,7 +514,7 @@ function ld(){
 function sv(k){db.collection('appdata').doc(k).set({data:JSON.stringify(D[k])}).catch(function(e){console.error('save error:',k,e);});}
 function svSafe(k,newRec,callback){
   var ref=db.collection('appdata').doc(k);
-  db.runTransaction(function(tx){
+  return db.runTransaction(function(tx){
     return tx.get(ref).then(function(doc){
       var latest=[];
       if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
@@ -517,7 +526,7 @@ function svSafe(k,newRec,callback){
 }
 function svSafeUpdate(k,updateFn,onDone){
   var ref=db.collection('appdata').doc(k);
-  db.runTransaction(function(tx){
+  return db.runTransaction(function(tx){
     return tx.get(ref).then(function(doc){
       var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
       latest=updateFn(latest);
@@ -525,6 +534,18 @@ function svSafeUpdate(k,updateFn,onDone){
       return latest;
     });
   }).then(function(latest){D[k]=latest;if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);alert('保存に失敗しました');});
+}
+// 単一レコードをトランザクションで安全にupsert（id一致で置換、なければ追加）
+function svRec(k,rec,onDone){
+  return svSafeUpdate(k,function(latest){
+    var i=latest.findIndex(function(x){return idEq(x.id,rec.id);});
+    if(i>=0)latest[i]=rec;else latest.push(rec);
+    return latest;
+  },onDone);
+}
+// 単一レコードをトランザクションで安全に削除（id一致）
+function svDel(k,id,onDone){
+  return svSafeUpdate(k,function(latest){return latest.filter(function(x){return!idEq(x.id,id);});},onDone);
 }
 
 function todayStr(){var d=new Date();var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
@@ -601,27 +622,24 @@ function postInjComment(iid,role){
     authorName:getCurrentUserName(role),
     text:text,createdAt:new Date().toISOString()
   };
-  db.collection('appdata').doc('injcomm').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    latest.push(newComm);D.injcomm=latest;
-    return db.collection('appdata').doc('injcomm').set({data:JSON.stringify(latest)});
-  }).then(function(){
+  svSafeUpdate('injcomm',function(latest){
+    latest.push(newComm);
+    return latest;
+  },function(){
     el.value='';
     var listEl=document.getElementById('injcomm-list-'+iid);
     if(listEl){listEl.innerHTML=renderInjCommentsListOnly(iid,role);listEl.scrollTop=listEl.scrollHeight;}
-  }).catch(function(e){alert('投稿に失敗しました');console.error(e);});
+  });
 }
 
 function delInjComment(cid,iid,role){
   if(!confirm('このコメントを削除しますか？'))return;
-  db.collection('appdata').doc('injcomm').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    latest=latest.filter(function(c){return!idEq(c.id,cid);});D.injcomm=latest;
-    return db.collection('appdata').doc('injcomm').set({data:JSON.stringify(latest)});
-  }).then(function(){
+  svSafeUpdate('injcomm',function(latest){
+    return latest.filter(function(c){return!idEq(c.id,cid);});
+  },function(){
     var listEl=document.getElementById('injcomm-list-'+iid);
     if(listEl)listEl.innerHTML=renderInjCommentsListOnly(iid,role);
-  }).catch(function(e){alert('削除に失敗しました');console.error(e);});
+  });
 }
 function fmt(d){return d?d.replace(/-/g,'/'):'−';}
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
@@ -637,7 +655,7 @@ function avH(p,sz){
   if(!p)return'';
   var i=(p.id||0)%AVC.length;
   var ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';
-  return p.photo?'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background-image:url('+p.photo+')"></div>':'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background:'+AVC[i][0]+';color:'+AVC[i][1]+';font-size:'+Math.round(sz*.35)+'px">'+ini+'</div>';
+  return p.photo?'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background-image:url('+p.photo+')"></div>':'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background:'+AVC[i][0]+';color:'+AVC[i][1]+';font-size:'+Math.round(sz*.35)+'px">'+escapeHtml(ini)+'</div>';
 }
 function $m(){return document.getElementById('main-ct');}
 
@@ -646,7 +664,7 @@ function showLogin(){
   var listEl=document.getElementById('trainer-list');
   var sorted=D.trainers.slice().sort(function(a,b){return a.name.localeCompare(b.name,'ja');});
   listEl.innerHTML=sorted.map(function(t){
-    return'<button class="trainer-btn" onclick="selectTrainer('+t.id+')">👤 '+t.name+'</button>';
+    return'<button class="trainer-btn" onclick="selectTrainer('+t.id+')">👤 '+escapeHtml(t.name)+'</button>';
   }).join('');
   document.getElementById('login-screen').style.display='flex';
 }
@@ -667,7 +685,7 @@ function showPINSetup(tid){
   if(!trainer)return;
   var listEl=document.getElementById('trainer-list');
   listEl.innerHTML='<div style="text-align:center;padding:20px">'+
-    '<div style="font-size:18px;font-weight:600;margin-bottom:8px">'+trainer.name+'さん</div>'+
+    '<div style="font-size:18px;font-weight:600;margin-bottom:8px">'+escapeHtml(trainer.name)+'さん</div>'+
     '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">初回ログイン：PIN（4桁の数字）を設定してください</div>'+
     '<input class="ipt" type="password" id="pin-new" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="●●●●" style="text-align:center;font-size:24px;letter-spacing:8px;width:160px;margin-bottom:10px"><br>'+
     '<input class="ipt" type="password" id="pin-new2" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="もう一度入力" style="text-align:center;font-size:24px;letter-spacing:8px;width:160px;margin-bottom:14px"><br>'+
@@ -682,16 +700,14 @@ function doSetupPIN(tid){
   if(!/^\d{4}$/.test(pin1)){alert('PINは4桁の数字で設定してください');return;}
   if(pin1!==pin2){alert('PINが一致しません');return;}
   // 保存
-  db.collection('appdata').doc('trainers').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    var idx=latest.findIndex(function(t){return t.id===tid;});
+  svSafeUpdate('trainers',function(latest){
+    var idx=latest.findIndex(function(t){return idEq(t.id,tid);});
     if(idx>=0){latest[idx].pin=pin1;}
-    D.trainers=latest;
-    return db.collection('appdata').doc('trainers').set({data:JSON.stringify(latest)});
-  }).then(function(){
+    return latest;
+  },function(){
     alert('PINを設定しました ✓');
     showPINEntry(tid);
-  }).catch(function(e){alert('PIN設定に失敗しました');console.error(e);});
+  });
 }
 
 function showPINEntry(tid){
@@ -699,7 +715,7 @@ function showPINEntry(tid){
   if(!trainer)return;
   var listEl=document.getElementById('trainer-list');
   listEl.innerHTML='<div style="text-align:center;padding:20px">'+
-    '<div style="font-size:18px;font-weight:600;margin-bottom:8px">'+trainer.name+'さん</div>'+
+    '<div style="font-size:18px;font-weight:600;margin-bottom:8px">'+escapeHtml(trainer.name)+'さん</div>'+
     '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">PIN（4桁の数字）を入力してください</div>'+
     '<input class="ipt" type="password" id="pin-input" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="●●●●" style="text-align:center;font-size:24px;letter-spacing:8px;width:160px;margin-bottom:14px" onkeyup="if(event.key===\'Enter\')login('+tid+')"><br>'+
     '<button class="btn btn-p" style="width:160px" onclick="login('+tid+')">ログイン</button><br>'+
@@ -761,7 +777,7 @@ home:function(){
   // 今日の担当リハビリ選手（今後追加予定）
   var today=todayStr();
   var h='<div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 4px">'+
-  '<div style="font-size:18px;font-weight:700">'+myTrainer.name+'さん 👋</div>'+
+  '<div style="font-size:18px;font-weight:700">'+escapeHtml(myTrainer.name)+'さん 👋</div>'+
   '<button class="btn btn-sm" onclick="go(\'help\')" style="font-size:11px">📖 ガイド</button>'+
   '</div>'+
   '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">'+fmt(today)+'</div>';
@@ -804,7 +820,7 @@ home:function(){
       var last=results[0];
       var status=inj.rtestApproved?'🎉 承認済み':last.physPassed&&last.fitPassed?'✅ クリア（承認待ち）':'テスト中';
       var color=inj.rtestApproved?'var(--green)':last.physPassed&&last.fitPassed?'var(--blue)':'var(--amber)';
-      h+='<div class="log-row">'+avH(p,24)+'<span style="font-weight:600;flex:1">'+p.name+'</span>'+
+      h+='<div class="log-row">'+avH(p,24)+'<span style="font-weight:600;flex:1">'+escapeHtml(p.name)+'</span>'+
       '<span style="font-size:12px;font-weight:600;color:'+color+'">'+status+'</span></div>';
     });
     h+='</div>';
@@ -818,7 +834,7 @@ home:function(){
       var tomorrowCats=plan?plan.tomorrowCats||[]:[];
       h+='<div class="card card-click" style="margin-bottom:8px" onclick="goRehabPlayer('+inj.id+')">'+
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'+avH(p,30)+
-      '<div style="flex:1"><div style="font-weight:600">'+p.name+'</div>'+
+      '<div style="flex:1"><div style="font-weight:600">'+escapeHtml(p.name)+'</div>'+
       '<div style="font-size:12px;color:var(--text-secondary)">'+(inj.side||'')+inj.part+' '+inj.type+'</div></div>'+
       (lastLog?'<span style="font-size:11px;color:var(--text-secondary)">最終: '+fmt(lastLog.date)+'</span>':'')+
       '</div>'+
@@ -962,10 +978,10 @@ rehab:function(){
     var searchText=(p.name+' '+(p.position||'')+' '+(inj.side||'')+(inj.part||'')+' '+(inj.type||'')).toLowerCase();
     h+='<div class="card card-click rehab-card" data-search="'+escapeHtml(searchText)+'" style="margin-bottom:10px" onclick="goRehabPlayer('+inj.id+')">'+
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'+avH(p,34)+
-    '<div style="flex:1"><div style="font-weight:600;font-size:15px">'+p.name+'</div>'+
+    '<div style="flex:1"><div style="font-weight:600;font-size:15px">'+escapeHtml(p.name)+'</div>'+
     '<div style="font-size:12px;color:var(--text-secondary)">'+(inj.side||'')+inj.part+' '+inj.type+'</div>'+
     (rh?'<div style="font-size:11px;color:var(--blue)">段階: '+STG[rh.stage]+'</div>':'')+
-    (trainer?'<div style="font-size:11px;color:var(--text-secondary)">統括: '+trainer.name+'</div>':'')+
+    (trainer?'<div style="font-size:11px;color:var(--text-secondary)">統括: '+escapeHtml(trainer.name)+'</div>':'')+
     '</div></div>'+
     '<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">本日のメニュー</div>'+
     (tomorrowCats.length?'<div style="display:flex;flex-wrap:wrap;gap:4px">'+tomorrowCats.map(function(c){return'<span style="background:'+RCAT_BG[c]+';color:'+RCAT_COLOR[c]+';padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600">'+c+'</span>';}).join('')+'</div>':'<div style="font-size:12px;color:var(--text-secondary)">未設定</div>')+
@@ -1117,9 +1133,7 @@ function saveTapeRec(recId){
   var tapeTypes=Array.prototype.slice.call(document.querySelectorAll('.tr-tape:checked')).map(function(e){return e.value;});
   var g=function(id){var e=document.getElementById(id);return e?e.value:'';};
   var data={pid:pid,date:g('tr-date')||todayStr(),side:g('tr-side'),part:g('tr-part'),tapeTypes:tapeTypes,method:g('tr-method'),caution:g('tr-caution'),videoUrl:g('tr-video').trim(),author:g('tr-author'),inputAt:new Date().toISOString()};
-  // svSafe方式
-  db.collection('appdata').doc('taperec').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+  svSafeUpdate('taperec',function(latest){
     if(recId){
       var idx=latest.findIndex(function(x){return idEq(x.id,recId);});
       if(idx>=0){data.id=recId;latest[idx]=data;}else{data.id=recId;latest.push(data);}
@@ -1127,21 +1141,17 @@ function saveTapeRec(recId){
       data.id=Date.now()+'_'+Math.floor(Math.random()*1000);
       latest.push(data);
     }
-    D.taperec=latest;
-    return db.collection('appdata').doc('taperec').set({data:JSON.stringify(latest)});
-  }).then(function(){
+    return latest;
+  },function(){
     alert('保存しました');
     showPlayerTapeRecs(pid);
-  }).catch(function(e){alert('保存に失敗しました');console.error(e);});
+  });
 }
 function delTapeRec(recId,pid){
   if(!confirm('このテーピング記録を削除しますか？'))return;
-  db.collection('appdata').doc('taperec').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    latest=latest.filter(function(x){return!idEq(x.id,recId);});
-    D.taperec=latest;
-    return db.collection('appdata').doc('taperec').set({data:JSON.stringify(latest)});
-  }).then(function(){showPlayerTapeRecs(pid);}).catch(function(e){alert('削除に失敗しました');});
+  svSafeUpdate('taperec',function(latest){
+    return latest.filter(function(x){return!idEq(x.id,recId);});
+  },function(){showPlayerTapeRecs(pid);});
 }
 
 
@@ -1261,8 +1271,8 @@ function renderChartTimeline(iid){
       '<div class="tl-dot">'+(IC[ev.type]||'')+'</div>'+
       '<div class="tl-card" style="'+futureStyle+'">'+
         '<div class="tl-date">'+fmt(ev.date)+(ev._future?' ・ 予定':'')+'</div>'+
-        '<div class="tl-title">'+ev.title+'</div>'+
-        (ev.desc?'<div class="tl-desc">'+ev.desc+'</div>':'')+
+        '<div class="tl-title">'+escapeHtml(ev.title)+'</div>'+
+        (ev.desc?'<div class="tl-desc">'+escapeHtml(ev.desc)+'</div>':'')+
       '</div>'+
     '</div>';
   });
@@ -1288,8 +1298,8 @@ function renderChartOverview(iid){
     '</div>';
   // 基本情報
   h+='<div class="form-box"><div class="form-title">基本情報</div>'+
-    '<div class="detail-row"><span class="detail-label">部位</span><span class="detail-value">'+(inj.side||'')+inj.part+(inj.partOther?'('+inj.partOther+')':'')+'</span></div>'+
-    '<div class="detail-row"><span class="detail-label">種類</span><span class="detail-value">'+inj.type+(inj.typeOther?'('+inj.typeOther+')':'')+'</span></div>'+
+    '<div class="detail-row"><span class="detail-label">部位</span><span class="detail-value">'+(inj.side||'')+inj.part+(inj.partOther?'('+escapeHtml(inj.partOther)+')':'')+'</span></div>'+
+    '<div class="detail-row"><span class="detail-label">種類</span><span class="detail-value">'+inj.type+(inj.typeOther?'('+escapeHtml(inj.typeOther)+')':'')+'</span></div>'+
     '<div class="detail-row"><span class="detail-label">受傷日</span><span class="detail-value">'+fmt(inj.date)+'（'+daysSince+'日経過）</span></div>'+
     '<div class="detail-row"><span class="detail-label">復帰予定</span><span class="detail-value">'+(inj.returnDate?fmt(inj.returnDate)+(function(){if(inj.resolved)return'';var dl=Math.ceil((new Date(inj.returnDate)-new Date(todayStr()))/86400000);if(dl>0)return' <span class="bd bd-b" style="font-size:10px">あと'+dl+'日</span>';else if(dl===0)return' <span class="bd bd-a" style="font-size:10px">本日予定</span>';else return' <span class="bd bd-r" style="font-size:10px">'+(-dl)+'日超過</span>';})():'未設定')+'</span></div>'+
     (ch.injDetail.severity?'<div class="detail-row"><span class="detail-label">重症度</span><span class="detail-value">'+ch.injDetail.severity+'</span></div>':'')+
@@ -1377,7 +1387,7 @@ function saveChartDiagnosis(iid){
   ch.medical.imgFindings=g('cd-imgfind');ch.medical.treatment=g('cd-treatment');
   ch.medical.surgery=document.getElementById('cd-surgery')?document.getElementById('cd-surgery').checked:false;
   ch.medical.surgeryDate=g('cd-surgdate');ch.medical.surgeryName=g('cd-surgname');
-  saveChart();alert('保存しました');
+  saveChart(ch);alert('保存しました');
 }
 
 // ===== 評価タブ（部位連動） =====
@@ -1468,7 +1478,7 @@ function showEvalForm(iid,evalId){
     h+='<div class="form-box"><div class="form-title">📐 ROM 関節可動域</div>';
     em.rom.forEach(function(r){
       var v=ev.rom&&ev.rom[r.k]!=null?ev.rom[r.k]:'';
-      h+='<div class="fl" style="margin-bottom:10px"><label>'+r.label+(r.normal?' <span style="color:var(--text-tertiary);font-weight:400">(正常≒'+r.normal+r.unit+')</span>':'')+'</label><input type="text" class="ipt ev-rom" data-k="'+r.k+'" value="'+v+'" placeholder="'+r.unit+'"></div>';
+      h+='<div class="fl" style="margin-bottom:10px"><label>'+r.label+(r.normal?' <span style="color:var(--text-tertiary);font-weight:400">(正常≒'+r.normal+r.unit+')</span>':'')+'</label><input type="text" class="ipt ev-rom" data-k="'+r.k+'" value="'+escapeHtml(v)+'" placeholder="'+r.unit+'"></div>';
     });
     h+='</div>';
   }
@@ -1536,14 +1546,14 @@ function saveEval(iid,evalId){
   }else{
     ch.evals.push({id:Date.now()+'_'+Math.floor(Math.random()*1000),date:date,pain:pain,rom:rom,mmt:mmt,circ:circ,ortho:ortho,special:special,note:note,inputAt:new Date().toISOString()});
   }
-  saveChart();
+  saveChart(ch);
   chartTab('eval');
 }
 function delEval(iid,evalId){
   if(!confirm('この評価記録を削除しますか？'))return;
   var ch=getChart(iid);
   ch.evals=ch.evals.filter(function(x){return!idEq(x.id,evalId);});
-  saveChart();
+  saveChart(ch);
   chartTab('eval');
 }
 
@@ -1633,14 +1643,14 @@ function saveSOAP(iid,soapId){
     data.id=Date.now()+'_'+Math.floor(Math.random()*1000);
     ch.soaps.push(data);
   }
-  saveChart();
+  saveChart(ch);
   chartTab('soap');
 }
 function delSOAP(iid,soapId){
   if(!confirm('この記録を削除しますか？'))return;
   var ch=getChart(iid);
   ch.soaps=ch.soaps.filter(function(x){return!idEq(x.id,soapId);});
-  saveChart();
+  saveChart(ch);
   chartTab('soap');
 }
 
@@ -1700,19 +1710,19 @@ function changeStage(iid,delta){
   rh.stage=ns;
   if(!rh.stageDates)rh.stageDates=[];
   rh.stageDates[ns]=todayStr();
-  sv('r');
+  svRec('r',rh);
   chartTab('return');
 }
 function toggleReturnCriteria(iid,el){
   var ch=getChart(iid);
   if(!ch.returnCriteria)ch.returnCriteria={};
   ch.returnCriteria[el.dataset.k]=el.checked;
-  saveChart();
+  saveChart(ch);
 }
 function unresolveInj(iid){
   var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return;
   inj.resolved=false;
-  sv('i');
+  svRec('i',inj);
   renderChartTab();
 }
 
@@ -1757,22 +1767,13 @@ function trDoAddInjury(){
   var type=document.getElementById('tri-type').value;
   var injId=Date.now();
   var inj={id:injId,pid:pid,side:document.getElementById('tri-side').value,part:part,partOther:part==='その他'?document.getElementById('tri-partOther').value:'',type:type,typeOther:type==='その他'?document.getElementById('tri-typeOther').value:'',date:document.getElementById('tri-date').value,returnDate:document.getElementById('tri-ret').value,note:document.getElementById('tri-note').value,resolved:false,source:'trainer',approved:true};
-  // svSafe方式でD.iに追加
-  db.collection('appdata').doc('i').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    latest.push(inj);D.i=latest;
-    return db.collection('appdata').doc('i').set({data:JSON.stringify(latest)});
-  }).then(function(){
-    // リハビリも同時作成
-    return db.collection('appdata').doc('r').get();
-  }).then(function(doc){
-    var latestR=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latestR=parsed;}catch(e){}}
-    latestR.push({id:injId+1,injId:injId,pid:pid,stage:0,logs:[],stageDates:[]});D.r=latestR;
-    return db.collection('appdata').doc('r').set({data:JSON.stringify(latestR)});
-  }).then(function(){
-    alert('ケガを登録しました。リハビリ管理を開始します。');
-    openChart(injId);
-  }).catch(function(e){alert('保存に失敗しました');console.error(e);});
+  // svSafe方式でi・rを順にトランザクション追加（同時保存でも記録を失わない）
+  svSafe('i',inj,function(){
+    svSafe('r',{id:injId+1,injId:injId,pid:pid,stage:0,logs:[],stageDates:[]},function(){
+      alert('ケガを登録しました。リハビリ管理を開始します。');
+      openChart(injId);
+    });
+  });
 }
 
 function openChart(iid){window._subViewActive=true;
@@ -1833,7 +1834,7 @@ function goRehabPlayer(injId){window._subViewActive=true;
   var rh=(D.r||[]).find(function(x){return x.injId===injId;});
 
   var h='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'+avH(p,38)+
-  '<div><div style="font-size:17px;font-weight:600">'+p.name+'</div>'+
+  '<div><div style="font-size:17px;font-weight:600">'+escapeHtml(p.name)+'</div>'+
   '<div style="font-size:12px;color:var(--text-secondary)">'+(inj.side||'')+inj.part+' '+inj.type+'</div>'+
   (rh?'<div style="font-size:12px;color:var(--green);font-weight:600">段階: '+STG[rh.stage]+'</div>':'')+
   '</div></div>';
@@ -1874,8 +1875,8 @@ function goRehabPlayer(injId){window._subViewActive=true;
       h+='<div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">評価</div>';
       if(pc.pain!=null)h+='<div style="font-size:13px;margin-bottom:4px">痛み: <b style="color:'+(pc.pain<=3?'var(--green)':pc.pain<=6?'var(--amber)':'var(--red)')+'">'+pc.pain+'/10</b></div>';
       if(pc.roms&&pc.roms.length)pc.roms.forEach(function(r){h+='<div style="font-size:13px;margin-bottom:2px">'+r.joint+': <b>'+r.angle+'°</b></div>';});
-      if(pc.strengths&&pc.strengths.length)pc.strengths.forEach(function(s){h+='<div style="font-size:13px;margin-bottom:2px">'+s.name+': <b>'+s.value+'</b></div>';});
-      if(pc.feeling)h+='<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;border-top:0.5px solid var(--border-tertiary);padding-top:4px">感覚: '+pc.feeling+'</div>';
+      if(pc.strengths&&pc.strengths.length)pc.strengths.forEach(function(s){h+='<div style="font-size:13px;margin-bottom:2px">'+escapeHtml(s.name)+': <b>'+s.value+'</b></div>';});
+      if(pc.feeling)h+='<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;border-top:0.5px solid var(--border-tertiary);padding-top:4px">感覚: '+escapeHtml(pc.feeling)+'</div>';
       h+='</div>';
     }
     // 前回の種目
@@ -1886,11 +1887,11 @@ function goRehabPlayer(injId){window._subViewActive=true;
         '<span style="color:'+(e.done?'var(--green)':'var(--text-tertiary)')+'">'+(e.done?'✓':'✗')+'</span>'+
         '<span style="flex:1">'+(e.done?'<b>':'<span style="color:var(--text-tertiary)">')+e.name+(e.done?'</b>':'</span>')+
         (e.sets?' '+e.sets+'セット':'')+( e.reps?' × '+e.reps+'回':'')+'</span>'+
-        (e.comment?'<span style="font-size:11px;color:var(--text-secondary)">'+e.comment+'</span>':'')+
+        (e.comment?'<span style="font-size:11px;color:var(--text-secondary)">'+escapeHtml(e.comment)+'</span>':'')+
         '</div>';
       });
     }
-    if(lastLog.comment)h+='<div style="font-size:12px;color:var(--text-secondary);margin-top:8px;padding-top:6px;border-top:0.5px solid var(--border-tertiary)">💬 '+lastLog.comment+'</div>';
+    if(lastLog.comment)h+='<div style="font-size:12px;color:var(--text-secondary);margin-top:8px;padding-top:6px;border-top:0.5px solid var(--border-tertiary)">💬 '+escapeHtml(lastLog.comment)+'</div>';
     h+='</div>';
   } else {
     h+='<div class="alert-card alert-info" style="margin-bottom:10px">📋 前回の記録はまだありません</div>';
@@ -1899,7 +1900,7 @@ function goRehabPlayer(injId){window._subViewActive=true;
   // テンプレ・次回メニュー表示
   if(tpl||tomorrowCats.length){
     h+='<div class="form-box">';
-    if(tpl)h+='<div style="font-size:13px;font-weight:600;margin-bottom:6px">📋 '+tpl.name+'</div>';
+    if(tpl)h+='<div style="font-size:13px;font-weight:600;margin-bottom:6px">📋 '+escapeHtml(tpl.name)+'</div>';
     if(tomorrowCats.length){
       h+='<div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">本日のメニュー</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:4px">'+
@@ -1936,7 +1937,7 @@ function goRehabPlayer(injId){window._subViewActive=true;
   '<button class="btn btn-sm" onclick="addStrengthItem()">+ 追加</button></div>'+
   '<div id="pc-str-wrap"></div></div>'+
   // 感覚
-  '<div class="fl"><label>感覚・コメント'+(lastLog&&lastLog.preCheck&&lastLog.preCheck.feeling?'<span style="font-size:11px;font-weight:400;color:var(--text-secondary)"> 前回: '+lastLog.preCheck.feeling+'</span>':'')+'</label>'+
+  '<div class="fl"><label>感覚・コメント'+(lastLog&&lastLog.preCheck&&lastLog.preCheck.feeling?'<span style="font-size:11px;font-weight:400;color:var(--text-secondary)"> 前回: '+escapeHtml(lastLog.preCheck.feeling)+'</span>':'')+'</label>'+
   '<textarea class="ipt" id="pc-feeling" style="min-height:60px" placeholder="選手の主観的な感覚、気になる点など..."></textarea></div>'+
   '</div></div>';
 
@@ -1952,7 +1953,7 @@ function goRehabPlayer(injId){window._subViewActive=true;
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
       '<input type="checkbox" id="rl-chk-'+ei+'" style="width:18px;height:18px;cursor:pointer">'+
       '<span style="background:'+RCAT_BG[ex.cat]+';color:'+RCAT_COLOR[ex.cat]+';padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600">'+ex.cat+'</span>'+
-      '<span style="font-weight:600;font-size:13px;flex:1">'+ex.name+'</span></div>'+
+      '<span style="font-weight:600;font-size:13px;flex:1">'+escapeHtml(ex.name)+'</span></div>'+
       '<div class="grid g2" style="gap:8px;margin-bottom:6px">'+
       '<div class="fl"><label>セット数</label><input class="ipt" type="number" id="rl-sets-'+ei+'" value="'+(ex.sets||'')+'" placeholder="'+(ex.sets||'-')+'"></div>'+
       '<div class="fl"><label>回数</label><input class="ipt" type="number" id="rl-reps-'+ei+'" value="'+(ex.reps||'')+'" placeholder="'+(ex.reps||'-')+'"></div></div>'+
@@ -1986,8 +1987,8 @@ function goRehabPlayer(injId){window._subViewActive=true;
       '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">'+
       (l.cats||[]).map(function(c){return'<span style="background:'+RCAT_BG[c]+';color:'+RCAT_COLOR[c]+';padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">'+c+'</span>';}).join('')+
       '</div>'+
-      (l.exercises&&l.exercises.length?'<div style="font-size:12px">'+l.exercises.filter(function(e){return e.done;}).map(function(e){return'<span style="color:var(--green)">✓'+e.name+'</span>';}).join(' ')+(l.exercises.filter(function(e){return!e.done;}).length?'<span style="color:var(--text-tertiary)"> 未:'+l.exercises.filter(function(e){return!e.done;}).map(function(e){return e.name;}).join(',')+'</span>':'')+'</div>':'')+
-      (l.comment?'<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">'+l.comment+'</div>':'')+
+      (l.exercises&&l.exercises.length?'<div style="font-size:12px">'+l.exercises.filter(function(e){return e.done;}).map(function(e){return'<span style="color:var(--green)">✓'+escapeHtml(e.name)+'</span>';}).join(' ')+(l.exercises.filter(function(e){return!e.done;}).length?'<span style="color:var(--text-tertiary)"> 未:'+l.exercises.filter(function(e){return!e.done;}).map(function(e){return e.name;}).join(',')+'</span>':'')+'</div>':'')+
+      (l.comment?'<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">'+escapeHtml(l.comment)+'</div>':'')+
       '</div>';
     }).join('');
   }
@@ -2096,7 +2097,7 @@ function goRTestRecord(injId){window._subViewActive=true;
   var broncoTarget=inj.broncoTarget||null;
 
   var h='<div style="font-size:17px;font-weight:600;margin-bottom:4px">🏁 復帰テスト</div>'+
-  '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">'+p.name+' / '+(inj.side||'')+inj.part+'</div>';
+  '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">'+escapeHtml(p.name)+' / '+(inj.side||'')+inj.part+'</div>';
 
   if(!tpl){
     h+='<div class="alert-card alert-warn">スタッフ側で復帰テストテンプレを設定してもらってください</div>';
@@ -2111,7 +2112,7 @@ function goRTestRecord(injId){window._subViewActive=true;
     tpl.physTests.map(function(t,ti){
       if(t.type==='sidediff'){
         return'<div style="padding:10px;background:var(--bg-primary);border:1px solid var(--border-tertiary);border-radius:var(--radius);margin-bottom:8px">'+
-        '<div style="font-weight:600;margin-bottom:8px">'+t.name+'<span style="font-size:11px;color:var(--text-secondary);margin-left:6px">左右差（健側比85%以上）</span></div>'+
+        '<div style="font-weight:600;margin-bottom:8px">'+escapeHtml(t.name)+'<span style="font-size:11px;color:var(--text-secondary);margin-left:6px">左右差（健側比85%以上）</span></div>'+
         '<div class="grid g2" style="gap:8px;margin-bottom:6px">'+
         '<div class="fl"><label>健側 ('+(t.unit||'')+')</label><input class="ipt" type="number" id="rt-healthy-'+ti+'" placeholder="健側の値" oninput="calcSideDiff('+ti+')"></div>'+
         '<div class="fl"><label>患側 ('+(t.unit||'')+')</label><input class="ipt" type="number" id="rt-affected-'+ti+'" placeholder="患側の値" oninput="calcSideDiff('+ti+')"></div></div>'+
@@ -2121,8 +2122,8 @@ function goRTestRecord(injId){window._subViewActive=true;
         return'<div style="padding:10px;background:var(--bg-primary);border:1px solid var(--border-tertiary);border-radius:var(--radius);margin-bottom:8px">'+
         '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'+
         '<input type="checkbox" id="rt-action-'+ti+'" style="width:20px;height:20px;cursor:pointer">'+
-        '<span style="font-weight:600">'+t.name+'</span></div>'+
-        (t.criteria?'<div style="font-size:12px;color:var(--text-secondary)">基準: '+t.criteria+'</div>':'')+
+        '<span style="font-weight:600">'+escapeHtml(t.name)+'</span></div>'+
+        (t.criteria?'<div style="font-size:12px;color:var(--text-secondary)">基準: '+escapeHtml(t.criteria)+'</div>':'')+
         '<div class="fl" style="margin-top:6px"><label>コメント</label><input class="ipt" id="rt-action-cmt-'+ti+'" placeholder="所見など..."></div>'+
         '</div>';
       }
@@ -2192,17 +2193,12 @@ function doSaveRTest(injId,physCount){
   var fitPassed=broncoTime&&broncoTarget?broncoTime<=broncoTarget:false;
   var note=(document.getElementById('rt-note')||{}).value||'';
   var rec={id:Date.now(),injId:injId,date:date,implementer:myTrainer.name,physResults:physResults,physPassed:physPassed,broncoTime:broncoTime,fitPassed:fitPassed,note:note,inputAt:new Date().toISOString()};
-  db.collection('appdata').doc('rtest').get().then(function(doc){
-    var latest=[];
-    if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    latest.push(rec);D.rtest=latest;
-    return db.collection('appdata').doc('rtest').set({data:JSON.stringify(latest)});
-  }).then(function(){
+  svSafe('rtest',rec,function(){
     var msg='保存しました ✓\n患部テスト: '+(physPassed?'✓ クリア':'✗ 未クリア')+'\nフィットテスト: '+(fitPassed?'✓ クリア':'✗ 未クリア');
     if(physPassed&&fitPassed)msg+='\n\n🎉 全テストクリア！スタッフに承認をもらいましょう！';
     alert(msg);
     goRehabPlayer(injId);
-  }).catch(function(e){alert('保存に失敗しました');console.error(e);});
+  });
 }
 
 function addCustomRehabItemT(){
@@ -2279,10 +2275,9 @@ function goSaveAsTemplateT(injId,exercises,cats){window._subViewActive=true;
   if(!name)return goSetNextMenuT(injId);
   if(!D.rtpl)D.rtpl=[];
   var newId=D.rtpl.length?Math.max.apply(null,D.rtpl.map(function(t){return t.id;}))+1:1;
-  D.rtpl.push({id:newId,name:name,part:inj.part,stage:'',cats:cats,exercises:exercises,createdBy:myTrainer.name,createdAt:todayStr()});
-  db.collection('appdata').doc('rtpl').set({data:JSON.stringify(D.rtpl)}).then(function(){
+  svSafe('rtpl',{id:newId,name:name,part:inj.part,stage:'',cats:cats,exercises:exercises,createdBy:myTrainer.name,createdAt:todayStr()},function(){
     alert('テンプレを保存しました ✓');goSetNextMenuT(injId);
-  }).catch(function(e){console.error(e);goSetNextMenuT(injId);});
+  });
 }
 
 function goSetNextMenuT(injId){window._subViewActive=true;
@@ -2290,7 +2285,7 @@ function goSetNextMenuT(injId){window._subViewActive=true;
   var p=D.p.find(function(x){return x.id===inj.pid;});if(!p)return;
   var plan=(D.rplan||[]).find(function(x){return x.injId===injId;});
   var cur=plan?plan.tomorrowCats||[]:[];
-  var h='<div style="font-size:17px;font-weight:600;margin-bottom:8px">📅 '+p.name+' の次回メニュー</div>'+
+  var h='<div style="font-size:17px;font-weight:600;margin-bottom:8px">📅 '+escapeHtml(p.name)+' の次回メニュー</div>'+
   '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">今日の状況を踏まえて次回のメニューを選択してください</div>'+
   '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">'+
   RCATS.map(function(c,ci){
@@ -2379,12 +2374,13 @@ function doTapeSetup(){
 
 function delMyTapeDay(date){
   if(!confirm(fmt(date)+'の自分の枠を全て削除しますか？'))return;
-  // 自分の枠だけ削除
+  // 自分の枠だけ削除（tapeslot→tapeの順にトランザクション）
   var mySlotIds=(D.tapeslot||[]).filter(function(s){return s.date===date&&s.staff===myTrainer.name;}).map(function(s){return s.id;});
-  D.tapeslot=(D.tapeslot||[]).filter(function(s){return!(s.date===date&&s.staff===myTrainer.name);});
-  D.tape=(D.tape||[]).filter(function(t){return!mySlotIds.includes(t.slotId);});
-  sv('tapeslot');sv('tape');
-  T.tape();
+  svSafeUpdate('tapeslot',function(latest){return latest.filter(function(s){return!(s.date===date&&s.staff===myTrainer.name);});},function(){
+    svSafeUpdate('tape',function(latest){return latest.filter(function(t){return mySlotIds.indexOf(t.slotId)<0;});},function(){
+      T.tape();
+    });
+  });
 }
 
 // ===== LOAD =====

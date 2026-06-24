@@ -384,8 +384,6 @@ function getChart(injId){
   if(!ch.images)ch.images=[];
   return ch;
 }
-// カルテ保存（svSafe方式で安全に）
-function saveChart(){sv('chart');}
 
 var PARTS=['頭部','頸部','肩','鎖骨','肘','手首','指','腰','股関節','大腿','膝','すね','足首','踵','アキレス腱','ふくらはぎ','足の甲','足趾','その他'];
 var INJ_TYPES=['捻挫','肉離れ','骨折','脱臼','打撲','靭帯損傷','半月板損傷','脳震盪','裂傷','腱炎','疲労骨折','その他'];
@@ -470,7 +468,7 @@ function toDateStr(d){var y=d.getFullYear();var m=String(d.getMonth()+1).padStar
 function idEq(a,b){if(a==null||b==null)return false;return a===b||String(a)===String(b);}
 function fmtDateTime(iso){if(!iso)return'';var d=new Date(iso);if(isNaN(d))return'';var now=new Date();var ys=d.getFullYear()!==now.getFullYear()?(d.getFullYear()+'/'):'';return ys+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function fmt(d){return d?d.replace(/-/g,'/'):'-';}
-function avH(p,sz){var i=p.id%AVC.length,ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';return p.photo?'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background-image:url('+p.photo+')"></div>':'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background:'+AVC[i][0]+';color:'+AVC[i][1]+';font-size:'+Math.round(sz*.35)+'px">'+ini+'</div>';}
+function avH(p,sz){var i=p.id%AVC.length,ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';return p.photo?'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background-image:url('+p.photo+')"></div>':'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background:'+AVC[i][0]+';color:'+AVC[i][1]+';font-size:'+Math.round(sz*.35)+'px">'+escapeHtml(ini)+'</div>';}
 function rc(v){return v<=3?'var(--green)':v<=6?'var(--amber)':'var(--red)';}
 function sc(v){return v>=7?'var(--green)':v>=5?'var(--amber)':'var(--red)';}
 function getCurrentMSess(){
@@ -492,7 +490,7 @@ function showAutoLoginConfirm(pid){
   $m().innerHTML='<div style="text-align:center;margin:3rem 1rem">'+
     '<div style="font-size:36px;margin-bottom:8px">👤</div>'+
     '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">あなたは下記の選手ですか？</div>'+
-    '<div style="font-size:22px;font-weight:700;margin-bottom:4px">'+p.name+'</div>'+
+    '<div style="font-size:22px;font-weight:700;margin-bottom:4px">'+escapeHtml(p.name)+'</div>'+
     '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:20px">'+p.position+' / '+p.year+'年</div>'+
     '<button class="btn btn-p" style="width:200px;padding:14px;font-size:15px;margin-bottom:10px" onclick="confirmAutoLogin('+pid+')">✅ はい、私です</button><br>'+
     '<button class="btn" style="width:200px;padding:10px;font-size:13px" onclick="rejectAutoLogin()">❌ 違う選手で入る</button>'+
@@ -513,13 +511,11 @@ function rejectAutoLogin(){
 }
 
 function markInjNotifRead(iid){
-  db.collection('appdata').doc('i').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+  svSafeUpdate('i',function(latest){
     var inj=latest.find(function(x){return idEq(x.id,iid);});
     if(inj){inj.notifyPlayer=false;}
-    D.i=latest;
-    return db.collection('appdata').doc('i').set({data:JSON.stringify(latest)});
-  }).then(function(){go('mypage');}).catch(function(e){console.error(e);});
+    return latest;
+  },function(){go('mypage');});
 }
 
 // ===== 怪我コメント機能（3者共有） =====
@@ -604,29 +600,19 @@ function postInjComment(iid,role){
     text:text,
     createdAt:new Date().toISOString()
   };
-  db.collection('appdata').doc('injcomm').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    latest.push(newComm);
-    D.injcomm=latest;
-    return db.collection('appdata').doc('injcomm').set({data:JSON.stringify(latest)});
-  }).then(function(){
+  svSafeUpdate('injcomm',function(latest){latest.push(newComm);return latest;},function(){
     el.value='';
     var listEl=document.getElementById('injcomm-list-'+iid);
     if(listEl){listEl.innerHTML=renderInjCommentsListOnly(iid,role);listEl.scrollTop=listEl.scrollHeight;}
-  }).catch(function(e){alert('投稿に失敗しました');console.error(e);});
+  });
 }
 
 function delInjComment(cid,iid,role){
   if(!confirm('このコメントを削除しますか？'))return;
-  db.collection('appdata').doc('injcomm').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    latest=latest.filter(function(c){return!idEq(c.id,cid);});
-    D.injcomm=latest;
-    return db.collection('appdata').doc('injcomm').set({data:JSON.stringify(latest)});
-  }).then(function(){
+  svSafeUpdate('injcomm',function(latest){return latest.filter(function(c){return!idEq(c.id,cid);});},function(){
     var listEl=document.getElementById('injcomm-list-'+iid);
     if(listEl)listEl.innerHTML=renderInjCommentsListOnly(iid,role);
-  }).catch(function(e){alert('削除に失敗しました');console.error(e);});
+  });
 }
 
 function selectPlayer(pid){
@@ -644,7 +630,7 @@ function showPINSetup(pid){
   var p=D.p.find(function(x){return x.id===pid;});if(!p)return;
   var gel=document.getElementById('psel-g');
   var html='<div style="text-align:center;padding:20px">'+
-    '<div style="font-size:18px;font-weight:600;margin-bottom:4px">'+p.name+'</div>'+
+    '<div style="font-size:18px;font-weight:600;margin-bottom:4px">'+escapeHtml(p.name)+'</div>'+
     '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">'+p.position+' / '+p.year+'年</div>'+
     '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">初回ログイン：PIN（4桁の数字）を設定してください</div>'+
     '<input class="ipt" type="password" id="pin-new" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="●●●●" style="text-align:center;font-size:24px;letter-spacing:8px;width:180px;margin-bottom:10px"><br>'+
@@ -663,23 +649,21 @@ function doSetupPIN(pid){
   if(!/^\d{4}$/.test(pin1)){alert('PINは4桁の数字で設定してください');return;}
   if(pin1!==pin2){alert('PINが一致しません');return;}
   // 保存
-  db.collection('appdata').doc('p').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+  svSafeUpdate('p',function(latest){
     var idx=latest.findIndex(function(x){return x.id===pid;});
     if(idx>=0){latest[idx].pin=pin1;}
-    D.p=latest;
-    return db.collection('appdata').doc('p').set({data:JSON.stringify(latest)});
-  }).then(function(){
+    return latest;
+  },function(){
     alert('PINを設定しました ✓\n次回からはPINだけで素早くログインできます');
     doLogin(pid);
-  }).catch(function(e){alert('PIN設定に失敗しました');console.error(e);});
+  });
 }
 
 function showPINEntry(pid){
   var p=D.p.find(function(x){return x.id===pid;});if(!p)return;
   var gel=document.getElementById('psel-g');
   var html='<div style="text-align:center;padding:20px">'+
-    '<div style="font-size:18px;font-weight:600;margin-bottom:4px">'+p.name+'</div>'+
+    '<div style="font-size:18px;font-weight:600;margin-bottom:4px">'+escapeHtml(p.name)+'</div>'+
     '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">'+p.position+' / '+p.year+'年</div>'+
     '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">PIN（4桁の数字）を入力してください</div>'+
     '<input class="ipt" type="password" id="pin-input" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="●●●●" style="text-align:center;font-size:24px;letter-spacing:8px;width:180px;margin-bottom:14px" onkeyup="if(event.key===\'Enter\')checkPIN('+pid+')"><br>'+
@@ -743,7 +727,7 @@ function showPlayerSelect(){
   });
   var q=(document.getElementById('psel-s')?document.getElementById('psel-s').value:'').toLowerCase();
   var list=D.p.filter(function(p){return!q||p.name.toLowerCase().indexOf(q)>=0;});
-  var gh=list.map(function(p){return'<div class="select-card" onclick="selectPlayer('+p.id+')">'+avH(p,36)+'<div style="font-size:13px;font-weight:600;margin-top:4px">'+p.name+'</div><div style="font-size:11px;color:var(--text-secondary)">'+p.position+'/'+p.year+'年</div></div>';}).join('');
+  var gh=list.map(function(p){return'<div class="select-card" onclick="selectPlayer('+p.id+')">'+avH(p,36)+'<div style="font-size:13px;font-weight:600;margin-top:4px">'+escapeHtml(p.name)+'</div><div style="font-size:11px;color:var(--text-secondary)">'+p.position+'/'+p.year+'年</div></div>';}).join('');
   var gel=document.getElementById('psel-g');
   if(gel){gel.innerHTML=gh;}else{$m().innerHTML='<div style="text-align:center;margin:1.5rem 0"><div style="font-size:36px;margin-bottom:6px">👤</div><h2 style="font-size:17px">選手を選択してください</h2></div><input class="ipt" id="psel-s" placeholder="名前で検索..." oninput="showPlayerSelect()" style="margin-bottom:10px"><div class="select-grid" id="psel-g">'+gh+'</div>';}
 }
@@ -805,19 +789,19 @@ home:function(){
   var h='<div style="text-align:center;margin-bottom:16px"><div style="font-size:28px;margin-bottom:4px">🏉</div><div style="font-size:18px;font-weight:600">福岡大学ラグビー部</div></div>';
   // Match check alert
   if(showMatchAlert){h+='<div class="alert-card alert-down" style="margin-bottom:12px;cursor:pointer" onclick="T.match()">📝 昨日（'+fmt(yesterdayS2)+'）の試合日チェックが未入力です！タップして入力</div>';}
-  if(matchMissedAll.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--red)">🏟️ 試合日チェック未入力 <span style="font-size:12px;font-weight:400">'+matchMissedAll.length+'名</span></div>'+matchMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+p.name+'</span></div>';}).join('')+'</div>';}
+  if(matchMissedAll.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--red)">🏟️ 試合日チェック未入力 <span style="font-size:12px;font-weight:400">'+matchMissedAll.length+'名</span></div>'+matchMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';}
   // 自分の未入力通知（昨日の測定日）
   if(physMeasureYesterday2&&!phSkipYesterday2&&!physDoneYesterday){h+='<div class="alert-card alert-warn" style="margin-bottom:8px;cursor:pointer" onclick="T.physical()">📊 昨日（'+fmt(yesterdayS2)+'）のフィジカル測定が未入力です！ → タップして入力</div>';}
   if(broncoMeasureYesterday2&&!phSkipYesterday2&&!broncoDoneYesterday){h+='<div class="alert-card alert-warn" style="margin-bottom:8px;cursor:pointer" onclick="T.physical()">🏃 昨日（'+fmt(yesterdayS2)+'）のブロンコ測定が未入力です！ → タップして入力</div>';}
   // 全体未入力者一覧（昨日分）
-  if(physMissedAll.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--amber)">📊 昨日のフィジカル未入力 <span style="font-size:12px;font-weight:400">'+physMissedAll.length+'名</span></div>'+physMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+p.name+'</span></div>';}).join('')+'</div>';}
-  if(broncoMissedAll.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--amber)">🏃 昨日のブロンコ未入力 <span style="font-size:12px;font-weight:400">'+broncoMissedAll.length+'名</span></div>'+broncoMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+p.name+'</span></div>';}).join('')+'</div>';}
+  if(physMissedAll.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--amber)">📊 昨日のフィジカル未入力 <span style="font-size:12px;font-weight:400">'+physMissedAll.length+'名</span></div>'+physMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';}
+  if(broncoMissedAll.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--amber)">🏃 昨日のブロンコ未入力 <span style="font-size:12px;font-weight:400">'+broncoMissedAll.length+'名</span></div>'+broncoMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';}
   // Announcements
-  if(teamAnns.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px">📢 お知らせ</div>';teamAnns.forEach(function(a){h+='<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:0.5px solid var(--border-tertiary)"><div style="font-size:11px;color:var(--text-secondary)">'+fmt(a.date)+'</div><div style="font-size:13px;white-space:pre-wrap;margin-top:2px">'+a.text+'</div></div>';});h+='</div>';}
+  if(teamAnns.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px">📢 お知らせ</div>';teamAnns.forEach(function(a){h+='<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:0.5px solid var(--border-tertiary)"><div style="font-size:11px;color:var(--text-secondary)">'+fmt(a.date)+'</div><div style="font-size:13px;white-space:pre-wrap;margin-top:2px">'+escapeHtml(a.text)+'</div></div>';});h+='</div>';}
   // This week schedule
-  if(weekEvts.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px">📅 今週のスケジュール</div>';weekEvts.forEach(function(e){var dot=e.type==='match'?'🏟️':e.type==='practice'?'⚽':e.type==='off'?'😴':'📌';h+='<div class="log-row"><span style="min-width:16px">'+dot+'</span><div style="flex:1"><span style="font-weight:600;font-size:13px">'+fmt(e.date)+' '+e.title+'</span>'+(e.detail?'<div style="font-size:11px;color:var(--text-secondary)">'+e.detail+'</div>':'')+'</div></div>';});h+='</div>';}
+  if(weekEvts.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px">📅 今週のスケジュール</div>';weekEvts.forEach(function(e){var dot=e.type==='match'?'🏟️':e.type==='practice'?'⚽':e.type==='off'?'😴':'📌';h+='<div class="log-row"><span style="min-width:16px">'+dot+'</span><div style="flex:1"><span style="font-weight:600;font-size:13px">'+fmt(e.date)+' '+escapeHtml(e.title)+'</span>'+(e.detail?'<div style="font-size:11px;color:var(--text-secondary)">'+escapeHtml(e.detail)+'</div>':'')+'</div></div>';});h+='</div>';}
   // Body comp targets
-  if(!isOff&&pickup.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px">⚖️ 本日の体組成測定者</div>';pickup.forEach(function(pid){var p=D.p.find(function(x){return x.id===pid;});if(!p)return;var done=D.bc.some(function(r){return r.pid===pid&&r.date===todayStr();});h+='<div class="log-row">'+avH(p,24)+'<span style="font-weight:600;flex:1">'+p.name+'</span>'+(done?'<span class="bd bd-g">済</span>':'<span class="bd bd-r">未</span>')+'</div>';});h+='</div>';}
+  if(!isOff&&pickup.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px">⚖️ 本日の体組成測定者</div>';pickup.forEach(function(pid){var p=D.p.find(function(x){return x.id===pid;});if(!p)return;var done=D.bc.some(function(r){return r.pid===pid&&r.date===todayStr();});h+='<div class="log-row">'+avH(p,24)+'<span style="font-weight:600;flex:1">'+escapeHtml(p.name)+'</span>'+(done?'<span class="bd bd-g">済</span>':'<span class="bd bd-r">未</span>')+'</div>';});h+='</div>';}
   else if(isOff){h+='<div class="alert-card alert-info" style="margin-bottom:12px">📅 本日は体組成測定オフです</div>';}
   // Rankings
   var rankItems=[{field:'squat',label:'スクワット',unit:'kg'},{field:'bench',label:'ベンチプレス',unit:'kg'},{field:'deadlift',label:'デッドリフト',unit:'kg'},{field:'big3',label:'BIG3合計',unit:'kg'},{field:'bronco',label:'ブロンコ',unit:''}];
@@ -825,7 +809,7 @@ home:function(){
   var medals=['🥇','🥈','🥉'];
   rankItems.forEach(function(ri){var top=getTop3(ri.field);if(!top.length)return;
   h+='<div class="card" style="margin-bottom:8px;padding:.75rem 1rem"><div style="font-weight:600;font-size:12px;color:var(--text-secondary);margin-bottom:6px">'+ri.label+'</div>';
-  top.forEach(function(t,idx){var isMe=myPid&&t.p.id===myPid;var val=ri.field==='bronco'?broncoFmt(t.v):t.v+(ri.unit?' '+ri.unit:'');h+='<div style="display:flex;align-items:center;gap:8px;padding:3px 0;'+(isMe?'font-weight:600;color:var(--blue)':'')+'"><span style="min-width:22px">'+medals[idx]+'</span>'+avH(t.p,20)+'<span style="flex:1;font-size:13px">'+t.p.name+'</span><span style="font-weight:600;font-size:13px">'+val+'</span></div>';});h+='</div>';});
+  top.forEach(function(t,idx){var isMe=myPid&&t.p.id===myPid;var val=ri.field==='bronco'?broncoFmt(t.v):t.v+(ri.unit?' '+ri.unit:'');h+='<div style="display:flex;align-items:center;gap:8px;padding:3px 0;'+(isMe?'font-weight:600;color:var(--blue)':'')+'"><span style="min-width:22px">'+medals[idx]+'</span>'+avH(t.p,20)+'<span style="flex:1;font-size:13px">'+escapeHtml(t.p.name)+'</span><span style="font-weight:600;font-size:13px">'+val+'</span></div>';});h+='</div>';});
   $m().innerHTML=h;
 },
 mypage:function(){
@@ -898,13 +882,13 @@ mypage:function(){
   if(myAnns.length){
     h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--blue)"><div style="font-weight:600;margin-bottom:6px;color:var(--blue)">📩 あなたへのお知らせ</div>';
     myAnns.forEach(function(a){
-      h+='<div style="margin-bottom:6px"><div style="font-size:11px;color:var(--text-secondary)">'+fmt(a.date)+'</div><div style="font-size:13px;white-space:pre-wrap">'+a.text+'</div></div>';
+      h+='<div style="margin-bottom:6px"><div style="font-size:11px;color:var(--text-secondary)">'+fmt(a.date)+'</div><div style="font-size:13px;white-space:pre-wrap">'+escapeHtml(a.text)+'</div></div>';
       // 既読登録
       if(myPid&&(!a.readBy||a.readBy.indexOf(myPid)<0)){
-        db.collection('appdata').doc('ann').get().then(function(doc){
-          var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+        svSafeUpdate('ann',function(latest){
           var ann=latest.find(function(x){return idEq(x.id,a.id);});
-          if(ann){if(!ann.readBy)ann.readBy=[];if(ann.readBy.indexOf(myPid)<0){ann.readBy.push(myPid);db.collection('appdata').doc('ann').set({data:JSON.stringify(latest)});}}
+          if(ann){if(!ann.readBy)ann.readBy=[];if(ann.readBy.indexOf(myPid)<0)ann.readBy.push(myPid);}
+          return latest;
         });
       }
     });
@@ -1157,7 +1141,7 @@ injury:function(){
     if(cats.length){menuH+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">'+cats.map(function(c){return'<span style="background:'+RCAT_BG[c]+';color:'+RCAT_COLOR[c]+';padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600">'+c+'</span>';}).join('')+'</div>';}
     if(tpl&&tpl.exercises){
       var todayCatExs=tpl.exercises.filter(function(ex){return cats.length===0||cats.indexOf(ex.cat)>=0;});
-      if(todayCatExs.length){menuH+='<div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">エクササイズ</div>'+todayCatExs.map(function(ex){return'<div style="font-size:12px;padding:4px 0;border-bottom:0.5px solid var(--border-tertiary)"><span style="font-weight:600">'+ex.name+'</span> <span style="color:var(--text-secondary)">'+(ex.sets?ex.sets+'セット×':'')+(ex.reps?ex.reps+'回':'')+(ex.duration?' / '+ex.duration+'分':'')+'</span></div>';}).join('');}
+      if(todayCatExs.length){menuH+='<div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">エクササイズ</div>'+todayCatExs.map(function(ex){return'<div style="font-size:12px;padding:4px 0;border-bottom:0.5px solid var(--border-tertiary)"><span style="font-weight:600">'+escapeHtml(ex.name)+'</span> <span style="color:var(--text-secondary)">'+(ex.sets?ex.sets+'セット×':'')+(ex.reps?ex.reps+'回':'')+(ex.duration?' / '+ex.duration+'分':'')+'</span></div>';}).join('');}
     }
     menuH+='</div>';
   });
@@ -1304,19 +1288,14 @@ function doBIG3(){
   var dl=parseFloat(document.getElementById('pf-dl').value)||null;
   if(!sq&&!bp&&!dl)return alert('少なくとも1つ入力してください');
   var newRec={id:Date.now(),pid:myPid,date:document.getElementById('pf-date').value,squat:sq,bench:bp,deadlift:dl,bronco:null};
-  db.collection('appdata').doc('ph').get().then(function(doc){
-    var latest=[];
-    if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    latest.push(newRec);D.ph=latest;
-    return db.collection('appdata').doc('ph').set({data:JSON.stringify(latest)});
-  }).then(function(){
+  svSafe('ph',newRec,function(){
     var m=[];
     var pSQ=getBest(myPid,'squat'),pBP=getBest(myPid,'bench'),pDL=getBest(myPid,'deadlift');
     if(sq&&pSQ&&sq>pSQ)m.push('🎉 SQ自己ベスト更新！');
     if(bp&&pBP&&bp>pBP)m.push('🎉 BP自己ベスト更新！');
     if(dl&&pDL&&dl>pDL)m.push('🎉 DL自己ベスト更新！');
     alert(m.length?m.join('\n'):'記録しました ✓');go('mypage');
-  }).catch(function(e){alert('保存に失敗しました。もう一度試してください。');console.error(e);});
+  });
 }
 
 function doBronco(){
@@ -1324,16 +1303,11 @@ function doBronco(){
   if(!br)return alert('タイムを入力してください');
   var date=document.getElementById('br-date').value;
   var newRec={id:Date.now(),pid:myPid,date:date,squat:null,bench:null,deadlift:null,bronco:br};
-  db.collection('appdata').doc('ph').get().then(function(doc){
-    var latest=[];
-    if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    latest.push(newRec);D.ph=latest;
-    return db.collection('appdata').doc('ph').set({data:JSON.stringify(latest)});
-  }).then(function(){
+  svSafe('ph',newRec,function(){
     var pBR=getBest(myPid,'bronco');
     var msg=pBR&&br<pBR?'🎉 ブロンコ自己ベスト更新！\n'+broncoFmt(pBR)+' → '+broncoFmt(br):'記録しました ✓\n'+broncoFmt(br);
     alert(msg);go('mypage');
-  }).catch(function(e){alert('保存に失敗しました。もう一度試してください。');console.error(e);});
+  });
 }
 
 // グラフ切り替え
@@ -1385,7 +1359,7 @@ function showPhysSkipForm(){
   var td=todayStr();
   var curSess=getCurrentMSess();
   showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">📵 測定なし申告</div>'+
-  (curSess?'<div class="alert-card alert-info" style="margin-bottom:14px">📐 '+curSess.name+'の測定なしとして申告します</div>':'')+
+  (curSess?'<div class="alert-card alert-info" style="margin-bottom:14px">📐 '+escapeHtml(curSess.name)+'の測定なしとして申告します</div>':'')+
   '<div class="form-box"><div class="form-title">申告内容</div>'+
   '<div class="fl" style="margin-bottom:10px"><label>理由</label>'+
   '<select class="ipt" id="skip-reason-type">'+
@@ -1423,7 +1397,7 @@ function showEditCondition(fid){
   '<div class="fl" style="margin-bottom:10px"><label>RPE（1-10）</label>'+numStepHTML('ef-rpe',1,10,'updESrpe()')+'</div>'+
   '<div class="fl" style="margin-bottom:10px"><label>睡眠時間（h）</label><input class="ipt" type="number" id="ef-sleep" step="0.5" value="'+(rec.sleep||'')+'"></div>'+
   '<div class="fl" style="margin-bottom:10px"><label>TR時間（分）</label><input class="ipt" type="number" id="ef-dur" value="'+(rec.duration||'')+'" oninput="updESrpe()"></div>'+
-  '<div class="fl"><label>メモ</label><textarea class="ipt" id="ef-note">'+(rec.note||'')+'</textarea></div>'+
+  '<div class="fl"><label>メモ</label><textarea class="ipt" id="ef-note">'+escapeHtml(rec.note||'')+'</textarea></div>'+
   '<div id="esrpe-pv" style="margin-top:8px"></div>'+
   '</div>'+
   '<button class="btn btn-p" style="width:100%" onclick="doEditCondition(\''+fid+'\')">修正する</button>');
@@ -1442,18 +1416,16 @@ function updESrpe(){
 function doEditCondition(fid){
   var rpe=parseFloat((document.getElementById('ef-rpe')||{}).value);
   if(!rpe)return alert('RPEを入力してください');
-  db.collection('appdata').doc('f').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+  svSafeUpdate('f',function(latest){
     var idx=latest.findIndex(function(r){return r.id===fid||String(r.id)===String(fid);});
-    if(idx<0)return;
+    if(idx<0)return latest;
     latest[idx].rpe=rpe;
     latest[idx].sleep=parseFloat((document.getElementById('ef-sleep')||{}).value)||0;
     latest[idx].duration=parseInt((document.getElementById('ef-dur')||{}).value)||0;
     latest[idx].note=(document.getElementById('ef-note')||{}).value||'';
     latest[idx].editedAt=new Date().toISOString();
-    D.f=latest;
-    return db.collection('appdata').doc('f').set({data:JSON.stringify(latest)});
-  }).then(function(){alert('修正しました ✓');go('mypage');}).catch(function(e){alert('保存に失敗しました');console.error(e);});
+    return latest;
+  },function(){alert('修正しました ✓');go('mypage');});
 }
 
 // 体組成編集
@@ -1469,31 +1441,26 @@ function showEditBC(bcid){
 }
 
 function doEditBC(bcid){
-  db.collection('appdata').doc('bc').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    var idx=latest.findIndex(function(r){return r.id===bcid||String(r.id)===String(bcid);});if(idx<0)return;
+  svSafeUpdate('bc',function(latest){
+    var idx=latest.findIndex(function(r){return r.id===bcid||String(r.id)===String(bcid);});if(idx<0)return latest;
     latest[idx].weight=parseFloat((document.getElementById('ebc-w')||{}).value)||null;
     latest[idx].fat=parseFloat((document.getElementById('ebc-fat')||{}).value)||null;
     latest[idx].muscle=parseFloat((document.getElementById('ebc-muscle')||{}).value)||null;
     latest[idx].editedAt=new Date().toISOString();
-    D.bc=latest;
-    return db.collection('appdata').doc('bc').set({data:JSON.stringify(latest)});
-  }).then(function(){alert('修正しました ✓');go('mypage');}).catch(function(e){alert('保存に失敗しました');console.error(e);});
+    return latest;
+  },function(){alert('修正しました ✓');go('mypage');});
 }
 
 // 欠席申告取り消し
 function cancelAbsence(){
   var td=todayStr();
   if(!confirm('本日の欠席申告を取り消しますか？'))return;
-  db.collection('appdata').doc('a').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+  svSafeUpdate('a',function(latest){
     latest.forEach(function(s){
       if(s.date===td)s.absentees=s.absentees.filter(function(a){return a.pid!==myPid;});
     });
-    latest=latest.filter(function(s){return s.absentees.length>0;});
-    D.a=latest;
-    return db.collection('appdata').doc('a').set({data:JSON.stringify(latest)});
-  }).then(function(){alert('取り消しました ✓');go('mypage');}).catch(function(e){alert('取り消しに失敗しました');console.error(e);});
+    return latest.filter(function(s){return s.absentees.length>0;});
+  },function(){alert('取り消しました ✓');go('mypage');});
 }
 
 // フィジカル記録の修正（選手側）
@@ -1517,66 +1484,61 @@ function showEditPhysRec(phid){
 function delWeekCheck(wid){
   if(!confirm('この週次チェック記録を削除しますか？\n（削除すると元に戻せません）'))return;
   var id=parseInt(wid)||wid;
-  db.collection('appdata').doc('wc').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+  var notFound=false;
+  svSafeUpdate('wc',function(latest){
     var before=latest.length;
-    latest=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(wid);});
-    if(latest.length===before){alert('記録が見つかりませんでした');return;}
-    D.wc=latest;
-    return db.collection('appdata').doc('wc').set({data:JSON.stringify(latest)});
-  }).then(function(){alert('削除しました ✓');T.injury();}).catch(function(e){alert('削除に失敗しました');console.error(e);});
+    var nx=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(wid);});
+    if(nx.length===before){notFound=true;return latest;}
+    return nx;
+  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');T.injury();});
 }
 
 function delMatchDay(mid){
   if(!confirm('この試合日チェック記録を削除しますか？\n（削除すると元に戻せません）'))return;
   var id=parseInt(mid)||mid;
-  db.collection('appdata').doc('md').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+  var notFound=false;
+  svSafeUpdate('md',function(latest){
     var before=latest.length;
-    latest=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(mid);});
-    if(latest.length===before){alert('記録が見つかりませんでした');return;}
-    D.md=latest;
-    return db.collection('appdata').doc('md').set({data:JSON.stringify(latest)});
-  }).then(function(){alert('削除しました ✓');T.match();}).catch(function(e){alert('削除に失敗しました');console.error(e);});
+    var nx=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(mid);});
+    if(nx.length===before){notFound=true;return latest;}
+    return nx;
+  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');T.match();});
 }
 
 function delCondition(fid){
   if(!confirm('このコンディション記録を削除しますか？\n（削除すると元に戻せません）'))return;
   var id=parseInt(fid)||fid;
-  db.collection('appdata').doc('f').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+  var notFound=false;
+  svSafeUpdate('f',function(latest){
     var before=latest.length;
-    latest=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(fid);});
-    if(latest.length===before){alert('記録が見つかりませんでした');return;}
-    D.f=latest;
-    return db.collection('appdata').doc('f').set({data:JSON.stringify(latest)});
-  }).then(function(){alert('削除しました ✓');go('mypage');}).catch(function(e){alert('削除に失敗しました');console.error(e);});
+    var nx=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(fid);});
+    if(nx.length===before){notFound=true;return latest;}
+    return nx;
+  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');go('mypage');});
 }
 
 function delBC(bcid){
   if(!confirm('この体組成記録を削除しますか？\n（削除すると元に戻せません）'))return;
   var id=parseInt(bcid)||bcid;
-  db.collection('appdata').doc('bc').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+  var notFound=false;
+  svSafeUpdate('bc',function(latest){
     var before=latest.length;
-    latest=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(bcid);});
-    if(latest.length===before){alert('記録が見つかりませんでした');return;}
-    D.bc=latest;
-    return db.collection('appdata').doc('bc').set({data:JSON.stringify(latest)});
-  }).then(function(){alert('削除しました ✓');go('mypage');}).catch(function(e){alert('削除に失敗しました');console.error(e);});
+    var nx=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(bcid);});
+    if(nx.length===before){notFound=true;return latest;}
+    return nx;
+  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');go('mypage');});
 }
 
 function delPhysRec(phid){
   if(!confirm('この記録を削除しますか？\n（削除すると元に戻せません）'))return;
   var pid=parseInt(phid)||phid;
-  db.collection('appdata').doc('ph').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+  var notFound=false;
+  svSafeUpdate('ph',function(latest){
     var before=latest.length;
-    latest=latest.filter(function(r){return r.id!==pid&&String(r.id)!==String(phid);});
-    if(latest.length===before){alert('記録が見つかりませんでした');return;}
-    D.ph=latest;
-    return db.collection('appdata').doc('ph').set({data:JSON.stringify(latest)});
-  }).then(function(){alert('削除しました ✓');T.physical();}).catch(function(e){alert('削除に失敗しました');console.error(e);});
+    var nx=latest.filter(function(r){return r.id!==pid&&String(r.id)!==String(phid);});
+    if(nx.length===before){notFound=true;return latest;}
+    return nx;
+  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');T.physical();});
 }
 
 function doEditPhysRec(phid){
@@ -1587,10 +1549,10 @@ function doEditPhysRec(phid){
   var cn=document.getElementById('eph-cn').value;
   var cl=document.getElementById('eph-cl').value;
   var br=broncoFromInputs('eph-br-m','eph-br-s');
-  db.collection('appdata').doc('ph').get().then(function(doc){
-    var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+  var notFound=false;
+  svSafeUpdate('ph',function(latest){
     var idx=latest.findIndex(function(r){return r.id===pid||String(r.id)===String(phid);});
-    if(idx<0){alert('記録が見つかりませんでした');return;}
+    if(idx<0){notFound=true;return latest;}
     // 空欄はnull、0も正しく保存
     latest[idx].squat=sq!==''?parseFloat(sq):null;
     latest[idx].bench=bp!==''?parseFloat(bp):null;
@@ -1599,9 +1561,8 @@ function doEditPhysRec(phid){
     latest[idx].clean=cl!==''?parseFloat(cl):null;
     latest[idx].bronco=br||null;
     latest[idx].editedAt=new Date().toISOString();
-    D.ph=latest;
-    return db.collection('appdata').doc('ph').set({data:JSON.stringify(latest)});
-  }).then(function(){alert('修正しました ✓');T.physical();}).catch(function(e){alert('保存に失敗しました');console.error(e);});
+    return latest;
+  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('修正しました ✓');T.physical();});
 }
 
 function showAbsenceForm(){
@@ -1631,29 +1592,24 @@ function doPlayerAbsence(){
   if(!date)return alert('日付を入力してください');
   if(!reason)return alert('理由を入力してください');
   // 既存の欠席記録に追加 or 新規作成
-  db.collection('appdata').doc('a').get().then(function(doc){
-    var latest=[];
-    if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+  var dupFlag=false;
+  svSafeUpdate('a',function(latest){
     // 同日の記録があれば追加、なければ新規
     var existing=latest.find(function(s){return s.date===date;});
     if(existing){
       // すでに自分が申告済みか確認
       var alreadyIn=existing.absentees.some(function(a){return a.pid===myPid;});
-      if(alreadyIn){alert('この日はすでに申告済みです');return;}
+      if(alreadyIn){dupFlag=true;return latest;}
       existing.absentees.push({pid:myPid,reason:type+'：'+reason,source:'player'});
     } else {
       latest.push({id:Date.now(),date:date,label:'',absentees:[{pid:myPid,reason:type+'：'+reason,source:'player'}]});
     }
-    D.a=latest;
-    return db.collection('appdata').doc('a').set({data:JSON.stringify(latest)});
-  }).then(function(){
-    // D.aをFirestoreから最新取得して再描画
-    db.collection('appdata').doc('a').get().then(function(doc){
-      if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))D.a=parsed;}catch(e){}}
-      alert('申告しました ✓\nスタッフに通知されます');
-      go('mypage');
-    });
-  }).catch(function(e){alert('送信に失敗しました。もう一度試してください。');console.error(e);});
+    return latest;
+  },function(){
+    if(dupFlag){alert('この日はすでに申告済みです');return;}
+    alert('申告しました ✓\nスタッフに通知されます');
+    go('mypage');
+  });
 }
 
 
@@ -1669,10 +1625,9 @@ function togglePastInj(){
 function cancelPhysSkip(){
   if(!confirm('測定なしの申告を取り消しますか？'))return;
   var today=todayStr();
-  D.phskip=(D.phskip||[]).filter(function(s){return!(s.pid===myPid&&s.date===today);});
-  db.collection('appdata').doc('phskip').set({data:JSON.stringify(D.phskip)}).then(function(){
-    showPhysForm();
-  });
+  svSafeUpdate('phskip',function(latest){
+    return latest.filter(function(s){return!(s.pid===myPid&&s.date===today);});
+  },function(){showPhysForm();});
 }
 
 // 測定なし申告
@@ -1763,7 +1718,7 @@ function showFullRanking(){
     h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">測定会</div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
     '<button class="btn btn-sm'+(curSessId==='all'?' btn-p':'')+'" onclick="rankSSess(0)">全期間</button>'+
-    sortedSess.map(function(s,si){return'<button class="btn btn-sm'+(curSessId===s.id?' btn-p':'')+'" onclick="rankSSessIdx('+si+')">'+s.name+'</button>';}).join('')+
+    sortedSess.map(function(s,si){return'<button class="btn btn-sm'+(curSessId===s.id?' btn-p':'')+'" onclick="rankSSessIdx('+si+')">'+escapeHtml(s.name)+'</button>';}).join('')+
     '</div></div>';
 
     // 種目選択
@@ -1887,18 +1842,11 @@ function doPhys(){
   if(!sq&&!bp&&!dl&&!cn&&!cl&&!br)return alert('少なくとも1つ入力してください');
   var curSess=getCurrentMSess();
   var newRec={id:Date.now(),pid:myPid,date:document.getElementById('pf-date').value,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br,msessId:curSess?curSess.id:null,inputAt:new Date().toISOString()};
-  // Firestoreから最新データを取得してからpushして保存
-  db.collection('appdata').doc('ph').get().then(function(doc){
-    var latest=[];
-    if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
-    latest.push(newRec);
-    D.ph=latest;
-    return db.collection('appdata').doc('ph').set({data:JSON.stringify(latest)});
-  }).then(function(){
+  svSafe('ph',newRec,function(){
     var m=[];var pSQ=getBest(myPid,'squat'),pBP=getBest(myPid,'bench'),pDL=getBest(myPid,'deadlift');
     if(sq&&pSQ&&sq>=pSQ)m.push('🎉 SQ自己ベスト更新！');if(bp&&pBP&&bp>=pBP)m.push('🎉 BP自己ベスト更新！');if(dl&&pDL&&dl>=pDL)m.push('🎉 DL自己ベスト更新！');
     alert(m.length?m.join('\n'):'記録しました ✓');go('mypage');
-  }).catch(function(e){alert('保存に失敗しました。もう一度試してください。');console.error(e);});
+  });
 }
 
 // ===== 選手向け 電子カルテ閲覧画面 =====
@@ -1976,14 +1924,20 @@ function showPainSelfForm(iid){
   showSub(h);
 }
 function savePainSelf(iid){
-  var ch=getChart(iid);
   var pain={};
   document.querySelectorAll('.self-pain').forEach(function(e){pain[e.dataset.k]=parseFloat(e.value);});
   var note=document.getElementById('self-note').value;
-  ch.evals.push({id:Date.now()+'_'+Math.floor(Math.random()*1000),date:todayStr(),pain:pain,rom:{},mmt:{},circ:{},ortho:{},special:[],note:note?'[選手記録] '+note:'[選手記録]',bySelf:true,inputAt:new Date().toISOString()});
-  saveChart();
-  alert('記録しました！トレーナーに共有されます。');
-  showMyChart(iid);
+  var newEval={id:Date.now()+'_'+Math.floor(Math.random()*1000),date:todayStr(),pain:pain,rom:{},mmt:{},circ:{},ortho:{},special:[],note:note?'[選手記録] '+note:'[選手記録]',bySelf:true,inputAt:new Date().toISOString()};
+  svSafeUpdate('chart',function(latest){
+    var ch=latest.find(function(x){return idEq(x.injId,iid);});
+    if(!ch){ch={injId:iid,injDetail:{},medical:{},evals:[],soaps:[],returnCriteria:{},images:[]};latest.push(ch);}
+    if(!ch.evals)ch.evals=[];
+    ch.evals.push(newEval);
+    return latest;
+  },function(){
+    alert('記録しました！トレーナーに共有されます。');
+    showMyChart(iid);
+  });
 }
 
 // Rehab log
@@ -2935,16 +2889,19 @@ function doTapeBook(date){
   var already=D.tape.find(function(t){return t.pid===myPid&&t.date===date;});
   if(already)return alert('この日はすでに予約があります。キャンセルしてから再予約してください。');
   var rsv={id:Date.now(),pid:myPid,date:date,slotId:selectedTapeSlot.slotIds[0],slotIds:selectedTapeSlot.slotIds,startTime:selectedTapeSlot.startTime,endTime:selectedTapeSlot.endTime,parts:parts,slots:parts.length,staff:window._tapeCurrentStaff||'',assignedTo:null,tapeNote:''};
-  db.collection('appdata').doc('tape').get().then(function(doc){var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}latest.push(rsv);D.tape=latest;return db.collection('appdata').doc('tape').set({data:JSON.stringify(latest)});}).then(function(){alert('予約しました ✓');T.tape();}).catch(function(e){alert('保存に失敗しました');console.error(e);});return;
-  alert('予約しました ✓\n'+fmt(date)+' '+rsv.startTime+'〜'+rsv.endTime+'\n部位: '+parts.join('・'));
-  selectedTapeSlot=null;tapePartsSelected={};
-  T.tape();
+  var dup=false;
+  svSafeUpdate('tape',function(latest){
+    if(latest.find(function(t){return t.pid===myPid&&t.date===date;})){dup=true;return latest;}
+    latest.push(rsv);return latest;
+  },function(){
+    if(dup){alert('この日はすでに予約があります。キャンセルしてから再予約してください。');return;}
+    alert('予約しました ✓');T.tape();
+  });
 }
 
 function cancelTapeRsv(rid){
   if(!confirm('この予約をキャンセルしますか？'))return;
-  D.tape=(D.tape||[]).filter(function(t){return t.id!==rid;});
-  sv('tape');T.tape();
+  svSafeUpdate('tape',function(latest){return latest.filter(function(t){return t.id!==rid;});},function(){T.tape();});
 }
 
 // Init
