@@ -444,6 +444,55 @@ function svSafeUpdate(k,updateFn,onDone){
     });
   }).then(function(latest){D[k]=latest;if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);alert('保存に失敗しました');});
 }
+// ===== 共通の安全土台（フェーズ1ステップ1） =====
+// 0をはじかない必須チェック。空文字・null・undefined・NaNのみを「未入力」とする（0は有効値）。
+function isFilled(v){if(v===''||v==null)return false;if(typeof v==='number')return !Number.isNaN(v);if(typeof v==='string')return v.trim()!=='';return true;}
+// 複数レコードを順番に安全保存する。items=[{k:'tlog',rec:...},{k:'e1rm',rec:...}]
+// 全件成功でonAllDone、途中失敗でonError(err, doneList, item)。done/失敗を呼び出し側へ通知。
+function svSafeSeq(items,onAllDone,onError){
+  var done=[];
+  function step(i){
+    if(i>=items.length){if(onAllDone)onAllDone(done);return;}
+    var it=items[i];
+    // svSafeは失敗時に内部でalert＋catchしてしまうので、ここでは専用のトランザクションで成否を捕捉する
+    var ref=db.collection('appdata').doc(it.k);
+    db.runTransaction(function(tx){
+      return tx.get(ref).then(function(doc){
+        var latest=[];
+        if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+        latest.push(it.rec);
+        tx.set(ref,{data:JSON.stringify(latest)});
+        return latest;
+      });
+    }).then(function(latest){
+      D[it.k]=latest;done.push(it.k);step(i+1);
+    }).catch(function(e){
+      console.error('svSafeSeq error:',it.k,e);
+      if(onError)onError(e,done,it);
+    });
+  }
+  step(0);
+}
+// 二重送信ガード：保存中はボタンをdisabled＋ラベル差し替え。releaseSubmitで原状復帰。
+function guardSubmit(btnEl,label){
+  if(!btnEl)return false;
+  if(btnEl.dataset.busy==='1')return false; // 既に処理中なら弾く
+  btnEl.dataset.busy='1';
+  btnEl.dataset.prevLabel=btnEl.innerHTML;
+  btnEl.disabled=true;
+  btnEl.style.opacity='.6';
+  btnEl.style.pointerEvents='none';
+  if(label!=null)btnEl.innerHTML=escapeHtml(label);
+  return true;
+}
+function releaseSubmit(btnEl){
+  if(!btnEl)return;
+  btnEl.dataset.busy='';
+  if(btnEl.dataset.prevLabel!=null&&btnEl.dataset.prevLabel!=='')btnEl.innerHTML=btnEl.dataset.prevLabel;
+  btnEl.disabled=false;
+  btnEl.style.opacity='';
+  btnEl.style.pointerEvents='';
+}
 function startListeners(){
   Object.keys(SK).forEach(function(k){
     db.collection('appdata').doc(k).onSnapshot(function(doc){
@@ -2188,32 +2237,94 @@ function saveTrainingAbsent(menuId,reason){
     showSub(h);
   });
 }
-// ===== トレーニング入力の下書き（端末内に自動保存。記録ボタン前に離脱しても復元できる。選手ごと1件）=====
+// ===== トレーニング入力の下書き（二層保存：localStorage即時＋Firestore tdraft間引き同期。選手ごと1件）=====
+// localStorageが信頼層。Firestoreは端末跨ぎ復元用の保険なので、同期失敗は静かに無視する（入力中にalertを出さない）。
 function tDraftKey(){return 'rm_tdraft_'+myPid;}
-function saveTDraft(){if(!_curTLog)return;try{localStorage.setItem(tDraftKey(),JSON.stringify(_curTLog));localStorage.setItem(tDraftKey()+'_t',new Date().toISOString());}catch(e){}}
-function clearTDraft(){try{localStorage.removeItem(tDraftKey());localStorage.removeItem(tDraftKey()+'_t');}catch(e){}}
+var _tdraftTimer=null;
+function saveTDraft(){
+  if(!_curTLog)return;
+  try{localStorage.setItem(tDraftKey(),JSON.stringify(_curTLog));localStorage.setItem(tDraftKey()+'_t',new Date().toISOString());}catch(e){}
+  scheduleCloudTDraft(); // Firestoreへは間引いて同期（無料枠を圧迫しない）
+}
+function scheduleCloudTDraft(){if(_tdraftTimer)clearTimeout(_tdraftTimer);_tdraftTimer=setTimeout(function(){_tdraftTimer=null;flushCloudTDraft();},3000);}
+// Firestore tdraft はリスナーを張らない（入力中に他端末から上書きされたくないため）。書き込みは静かに行う。
+function cloudTDraftWrite(updateFn){
+  try{
+    var ref=db.collection('appdata').doc('tdraft');
+    db.runTransaction(function(tx){
+      return tx.get(ref).then(function(doc){
+        var latest=[];if(doc.exists){try{var p=JSON.parse(doc.data().data);if(Array.isArray(p))latest=p;}catch(e){}}
+        latest=updateFn(latest)||[];
+        tx.set(ref,{data:JSON.stringify(latest)});
+        return latest;
+      });
+    }).then(function(latest){D.tdraft=latest;}).catch(function(e){console.error('tdraft sync skip:',e);});
+  }catch(e){}
+}
+function flushCloudTDraft(){
+  if(!_curTLog||!myPid)return;
+  var snapshot;try{snapshot=JSON.parse(JSON.stringify(_curTLog));}catch(e){return;}
+  var pid=myPid;
+  var rec={pid:pid,draft:snapshot,updatedAt:new Date().toISOString()};
+  cloudTDraftWrite(function(latest){
+    var arr=Array.isArray(latest)?latest.filter(function(x){return!idEq(x.pid,pid);}):[];
+    arr.push(rec);return arr;
+  });
+}
+function fetchCloudTDraft(cb){
+  try{
+    db.collection('appdata').doc('tdraft').get().then(function(doc){
+      var arr=[];if(doc.exists){try{var p=JSON.parse(doc.data().data);if(Array.isArray(p))arr=p;}catch(e){}}
+      var mine=arr.filter(function(x){return idEq(x.pid,myPid);})[0];
+      cb(mine||null);
+    }).catch(function(){cb(null);});
+  }catch(e){cb(null);}
+}
+function clearTDraft(){
+  if(_tdraftTimer){clearTimeout(_tdraftTimer);_tdraftTimer=null;}
+  try{localStorage.removeItem(tDraftKey());localStorage.removeItem(tDraftKey()+'_t');}catch(e){}
+  var pid=myPid;
+  cloudTDraftWrite(function(latest){return Array.isArray(latest)?latest.filter(function(x){return!idEq(x.pid,pid);}):[];});
+}
 function loadTDraft(){try{var s=localStorage.getItem(tDraftKey());if(!s)return null;var d=JSON.parse(s);return(d&&d.results)?d:null;}catch(e){return null;}}
 function loadTDraftTime(){try{return localStorage.getItem(tDraftKey()+'_t');}catch(e){return null;}}
+// アプリがバックグラウンドへ回る瞬間に下書きをクラウドへ確定（モバイルではbeforeunloadより確実）
+if(typeof document!=='undefined'&&document.addEventListener){
+  document.addEventListener('visibilitychange',function(){if(document.hidden&&_curTLog){flushCloudTDraft();}});
+}
 
 // 実際の実施開始（出欠確認で「する」を選んだ後）。当日・同メニューの下書きがあれば復元を提案
 function beginTrainingExec(menuId){
   var mn=getMyMenus().find(function(x){return idEq(x.id,menuId);});
   if(!mn)return;
+  // まずローカル下書きを優先（同期・即時）
   var draft=loadTDraft();
   if(draft&&idEq(draft.menuId,menuId)&&draft.date===todayStr()){
-    var savedT=loadTDraftTime();
-    var h='<div style="text-align:center;padding:24px 10px">'+
-      '<div style="font-size:40px;margin-bottom:10px">📝</div>'+
-      '<div style="font-size:16px;font-weight:700;margin-bottom:6px">入力途中のデータがあります</div>'+
-      '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">'+escapeHtml(mn.name)+'</div>'+
-      (savedT?'<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:18px">最終保存: '+fmtDateTime(savedT)+'</div>':'<div style="margin-bottom:18px"></div>')+
-      '<button class="btn btn-p" style="width:220px;padding:14px;font-size:15px;margin-bottom:10px" onclick="resumeTDraft('+menuId+')">▶ 続きから入力する</button><br>'+
-      '<button class="btn" style="width:220px;padding:10px;font-size:13px" onclick="startTrainingFresh('+menuId+')">最初からやり直す</button>'+
-      '</div>';
-    showSub(h);
+    promptResumeTDraft(mn,menuId,loadTDraftTime(),false);
     return;
   }
-  startTrainingFresh(menuId);
+  // ローカルに無ければクラウド下書きを確認（端末跨ぎ：別端末で入力途中→こちらで続き）
+  fetchCloudTDraft(function(cd){
+    if(cd&&cd.draft&&idEq(cd.draft.menuId,menuId)&&cd.draft.date===todayStr()){
+      // ローカルへ取り込んでから既存の復元フローに乗せる
+      try{localStorage.setItem(tDraftKey(),JSON.stringify(cd.draft));if(cd.updatedAt)localStorage.setItem(tDraftKey()+'_t',cd.updatedAt);}catch(e){}
+      promptResumeTDraft(mn,menuId,cd.updatedAt,true);
+    }else{
+      startTrainingFresh(menuId);
+    }
+  });
+}
+function promptResumeTDraft(mn,menuId,savedT,fromCloud){
+  var h='<div style="text-align:center;padding:24px 10px">'+
+    '<div style="font-size:40px;margin-bottom:10px">📝</div>'+
+    '<div style="font-size:16px;font-weight:700;margin-bottom:6px">入力途中のデータがあります</div>'+
+    '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">'+escapeHtml(mn.name)+'</div>'+
+    (fromCloud?'<div style="font-size:11px;color:var(--blue);margin-bottom:2px">📡 別の端末から引き継ぎ</div>':'')+
+    (savedT?'<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:18px">最終保存: '+fmtDateTime(savedT)+'</div>':'<div style="margin-bottom:18px"></div>')+
+    '<button class="btn btn-p" style="width:220px;padding:14px;font-size:15px;margin-bottom:10px" onclick="resumeTDraft('+menuId+')">▶ 続きから入力する</button><br>'+
+    '<button class="btn" style="width:220px;padding:10px;font-size:13px" onclick="startTrainingFresh('+menuId+')">最初からやり直す</button>'+
+    '</div>';
+  showSub(h);
 }
 function resumeTDraft(menuId){
   var mn=getMyMenus().find(function(x){return idEq(x.id,menuId);});
@@ -2328,7 +2439,7 @@ function renderTrainingExec(mn){
     }
     h+='</div>';
   });
-  h+='<button class="btn btn-p" style="width:100%;margin-top:8px" onclick="finishTraining()">✓ トレーニングを記録</button>';
+  h+='<button class="btn btn-p" style="width:100%;margin-top:8px" onclick="finishTraining(this)">✓ トレーニングを記録</button>';
   h+='<button class="btn" style="width:100%;margin-top:8px" onclick="go(\'training\')">キャンセル</button>';
   showSub(h);
   // 初回のリアルタイム表示を反映＋タイマー表示初期化
@@ -2529,36 +2640,62 @@ function getTodayCondition(){
   return{bad:bad,good:good&&!bad,reasons:reasons};
 }
 // 記録を保存（アラート判定込み）
-function finishTraining(){
+function finishTraining(btnEl){
+  if(!_curTLog)return;
+  // 1) 二重送信ガード（連打でtlog重複作成を防ぐ）。既に処理中なら何もしない。
+  if(!guardSubmit(btnEl,'記録中…'))return;
+  function abort(){releaseSubmit(btnEl);}
+
+  // 2) 片側だけ入力のセット（重量か回数の一方だけ）を検出。全空セットは無言で除外する。
+  var partialCount=0,keptSetsTotal=0,skippedCount=0;
+  _curTLog.results.forEach(function(r){
+    if(r.skipped){skippedCount++;return;}
+    (r.sets||[]).forEach(function(s){
+      var hw=isFilled(s.weight),hr=isFilled(s.reps);
+      if(hw&&hr)keptSetsTotal++;
+      else if(hw||hr)partialCount++;
+    });
+  });
+  // 片側入力は黙って捨てず、確認する（決定4：未入力セットの扱い）
+  if(partialCount>0){
+    if(!confirm('重量か回数の片方だけ入力されたセットが'+partialCount+'件あります。\nこのまま記録するとそのセットは除外されます。\n\nOK＝そのまま記録 ／ キャンセル＝戻って修正')){return abort();}
+  }
+  // 実質空の記録（記録すべきセットが1件も無く、スキップも無い）を確認
+  if(keptSetsTotal===0&&skippedCount===0){
+    if(!confirm('記録できるセットがありません。\nこのまま空の記録を保存しますか？')){return abort();}
+  }
+
   if(_restTimer.interval){clearInterval(_restTimer.interval);_restTimer.running=false;}
-  var log=_curTLog;
-  // ボリューム計算
-  var totalVol=0;
+
+  // 3) _curTLog を破壊せず、保存用のクリーンなコピーを生成する（失敗時に元データを温存）
   var alerts=[];
   var injurySkips=[];
-  log.results.forEach(function(r){
+  var totalVol=0;
+  var cleanResults=_curTLog.results.map(function(r){
+    var c={};for(var key in r){if(Object.prototype.hasOwnProperty.call(r,key))c[key]=r[key];} // 既存フィールドを維持（schema不変）
     if(r.skipped){
       if(r.skipReason==='痛み・怪我')injurySkips.push(r.exName);
-      return;
+      return c;
     }
-    // セットのうち入力があるものだけ残す
-    r.sets=r.sets.filter(function(s){return s.weight!==''&&s.reps!=='';}).map(function(s){
-      return{weight:parseFloat(s.weight)||0,reps:parseInt(s.reps)||0,rir:(s.rir!==''&&s.rir!=null)?parseInt(s.rir):null};
+    // 重量・回数の両方が入力されたセットだけを残す（0は有効値として扱う）
+    c.sets=(r.sets||[]).filter(function(s){return isFilled(s.weight)&&isFilled(s.reps);}).map(function(s){
+      return{weight:parseFloat(s.weight)||0,reps:parseInt(s.reps)||0,rir:isFilled(s.rir)?parseInt(s.rir):null};
     });
-    var exVol=r.sets.reduce(function(sum,s){return sum+(s.weight*s.reps);},0);
+    var exVol=c.sets.reduce(function(sum,s){return sum+(s.weight*s.reps);},0);
     totalVol+=exVol;
-    // アラート判定（各セット）
-    r.sets.forEach(function(s,si){
+    c.sets.forEach(function(s,si){
       if(r.targetReps&&s.reps<r.targetReps)alerts.push({type:'reps',ex:r.exName,set:si+1,msg:r.exName+' '+(si+1)+'セット目: 目標'+r.targetReps+'回→実際'+s.reps+'回'});
       if(r.targetRir!=null&&s.rir!=null&&s.rir>r.targetRir)alerts.push({type:'rir',ex:r.exName,set:si+1,msg:r.exName+' '+(si+1)+'セット目: 設定RIR'+r.targetRir+'→実際'+s.rir+'（余裕あり=強度不足かも）'});
       if(r.targetRir!=null&&s.rir!=null&&s.rir<r.targetRir)alerts.push({type:'rir_low',ex:r.exName,set:si+1,msg:r.exName+' '+(si+1)+'セット目: 設定RIR'+r.targetRir+'→実際'+s.rir+'（追い込みすぎ注意）'});
     });
-    // 前回比（保存前の記録と比較）
-    var cmp=getCompareVolume(myPid,r.exName,log.date,window._trCompareMode||'prev');
-    r.volume=exVol;
-    r.lastVolume=cmp?cmp.vol:0;
-    r.lastVolumeDate=cmp?cmp.date:null;
+    var cmp=getCompareVolume(myPid,r.exName,_curTLog.date,window._trCompareMode||'prev');
+    c.volume=exVol;
+    c.lastVolume=cmp?cmp.vol:0;
+    c.lastVolumeDate=cmp?cmp.date:null;
+    return c;
   });
+  var log={};for(var lk in _curTLog){if(Object.prototype.hasOwnProperty.call(_curTLog,lk))log[lk]=_curTLog[lk];}
+  log.results=cleanResults;
   log.totalVolume=totalVol;
   log.hasInjurySkip=injurySkips.length>0;
 
@@ -2567,11 +2704,10 @@ function finishTraining(){
   log.results.forEach(function(r){
     if(r.skipped||!r.estBase)return;
     var best=null;
-    r.sets.forEach(function(s){
+    (r.sets||[]).forEach(function(s){
       if(s.weight&&s.reps){var e=estimateOneRM(s.weight,s.reps,s.rir!=null?s.rir:0);if(e&&(!best||e>best.e1rm))best={e1rm:e,weight:s.weight,reps:s.reps,rir:s.rir};}
     });
     if(best){
-      // 既存の推定1RMより高い時だけ更新（自己ベスト方式）
       var prevE=getLatestE1RM(myPid)[r.estBase];
       if(!prevE||best.e1rm>prevE.e1rm){
         e1rmValues[r.estBase]={e1rm:best.e1rm,weight:best.weight,reps:best.reps,rir:best.rir};
@@ -2579,14 +2715,22 @@ function finishTraining(){
     }
   });
 
-  // 保存（tlog→必要ならe1rmも）
-  svSafe('tlog',log,function(){
+  // 4) tlog（必須）→ e1rm（任意）を順次安全保存。tlog成功時のみ下書きを消す。
+  var items=[{k:'tlog',rec:log}];
+  var hasE1rm=Object.keys(e1rmValues).length>0;
+  if(hasE1rm)items.push({k:'e1rm',rec:{id:Date.now()+1,pid:myPid,date:todayStr(),inputAt:new Date().toISOString(),values:e1rmValues}});
+  svSafeSeq(items,function(done){
     clearTDraft();
-    if(Object.keys(e1rmValues).length){
-      var e1rec={id:Date.now()+1,pid:myPid,date:todayStr(),inputAt:new Date().toISOString(),values:e1rmValues};
-      svSafe('e1rm',e1rec,function(){showTrainingResult(log,alerts,injurySkips,e1rmValues);});
-    }else{
+    showTrainingResult(log,alerts,injurySkips,hasE1rm?e1rmValues:null);
+  },function(err,done,item){
+    if(done.indexOf('tlog')>=0){
+      // tlogは保存済み。e1rmだけ失敗 → 記録は成立扱い（自己ベスト更新の注記のみ落とす）
+      clearTDraft();
       showTrainingResult(log,alerts,injurySkips,null);
+    }else{
+      // tlog自体が失敗 → _curTLog・下書きは温存し、ボタンを戻して再試行可能にする
+      releaseSubmit(btnEl);
+      alert('記録の保存に失敗しました。電波の良い場所でもう一度お試しください。入力内容は残っています。');
     }
   });
 }
