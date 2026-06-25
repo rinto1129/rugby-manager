@@ -2421,16 +2421,33 @@ function renderTrainingExec(mn){
       h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">できなかった理由</label><select class="ipt" onchange="setSkipReason('+ri+',this.value)">'+
         ['時間の都合','痛み・怪我','その他'].map(function(rsn){return'<option'+(r.skipReason===rsn?' selected':'')+'>'+rsn+'</option>';}).join('')+'</select></div>';
     }else{
-      h+='<div style="display:flex;flex-direction:column;gap:6px">';
-      h+='<div style="display:flex;gap:6px;font-size:10px;color:var(--text-secondary);padding:0 2px"><span style="width:28px">SET</span><span style="flex:1">重量kg</span><span style="flex:1">回数</span><span style="flex:1">RIR</span></div>';
+      h+='<div style="display:flex;flex-direction:column;gap:8px">';
       r.sets.forEach(function(st,si){
-        h+='<div style="display:flex;gap:6px;align-items:center" id="tr-set-'+ri+'-'+si+'">'+
-          '<span style="width:28px;font-weight:700;font-size:13px;color:var(--text-secondary)">'+(si+1)+'</span>'+
-          '<input class="ipt" type="number" step="2.5" style="flex:1;padding:6px" value="'+(st.weight||'')+'" placeholder="kg" oninput="updTSet('+ri+','+si+',\'weight\',this.value)">'+
-          '<input class="ipt" type="number" style="flex:1;padding:6px" value="'+(st.reps!==''&&st.reps!=null?st.reps:'')+'" placeholder="回" oninput="updTSet('+ri+','+si+',\'reps\',this.value)">'+
-          '<input class="ipt" type="number" min="0" max="10" style="flex:1;padding:6px" value="'+(st.rir!==''&&st.rir!=null?st.rir:'')+'" placeholder="RIR" oninput="updTSet('+ri+','+si+',\'rir\',this.value)">'+
+        // 前回値（このセットの前回重量。無ければ前回最終セット）。±プリセットの基準にも使う
+        var prevW=null;
+        if(r.prevEx&&r.prevEx.sets&&r.prevEx.sets.length){
+          var ps=r.prevEx.sets[si]||r.prevEx.sets[r.prevEx.sets.length-1];
+          if(ps&&ps.weight!==''&&ps.weight!=null)prevW=ps.weight;
+        }
+        var fb=(prevW!=null?prevW:(r.estWeight||0)); // 空欄から+2.5した時の基準
+        h+='<div id="tr-set-'+ri+'-'+si+'" style="background:var(--bg-primary);border:1px solid var(--bg-tertiary);border-radius:12px;padding:10px">'+
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
+            '<span style="flex:none;min-width:48px;text-align:center;font-size:12px;font-weight:800;color:var(--blue);background:var(--blue-bg);border-radius:8px;padding:7px 0">SET '+(si+1)+'</span>'+
+            '<input id="tw-'+ri+'-'+si+'" class="ipt" type="number" step="any" inputmode="decimal" data-fb="'+fb+'" style="flex:1;padding:10px;font-size:19px;font-weight:800;text-align:center;min-width:0" value="'+(st.weight!==''&&st.weight!=null?st.weight:'')+'" placeholder="kg" oninput="updTSet('+ri+','+si+',\'weight\',this.value)">'+
+            '<span style="flex:none;font-size:13px;color:var(--text-secondary);font-weight:600">kg</span>'+
           '</div>'+
-          '<div id="tr-set-alert-'+ri+'-'+si+'" style="font-size:11px;padding-left:34px"></div>';
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px">'+
+            (prevW!=null?'<button class="btn btn-sm" style="flex:1;min-height:38px;font-weight:600" onclick="setSetWeight('+ri+','+si+','+prevW+')">前回 '+prevW+'kg</button>':'')+
+            '<button class="btn btn-sm" style="flex:none;min-width:54px;min-height:38px" onclick="adjSetWeight('+ri+','+si+',-2.5)">−2.5</button>'+
+            '<button class="btn btn-sm" style="flex:none;min-width:54px;min-height:38px" onclick="adjSetWeight('+ri+','+si+',2.5)">+2.5</button>'+
+            '<button class="btn btn-sm" style="flex:none;min-width:48px;min-height:38px" onclick="adjSetWeight('+ri+','+si+',5)">+5</button>'+
+          '</div>'+
+          '<div style="display:flex;gap:8px">'+
+            trStepBlock('回数','stepSetReps','trp-'+ri+'-'+si,ri,si,'reps',(st.reps!==''&&st.reps!=null?st.reps:''),'回')+
+            trStepBlock('RIR','stepSetRir','trr-'+ri+'-'+si,ri,si,'rir',(st.rir!==''&&st.rir!=null?st.rir:''),'-')+
+          '</div>'+
+          '<div id="tr-set-alert-'+ri+'-'+si+'" style="font-size:11px;margin-top:7px"></div>'+
+        '</div>';
       });
       h+='</div>';
       h+='<button class="btn btn-sm" style="margin-top:8px" onclick="addTSet('+ri+')">＋ セット追加</button>';
@@ -2540,6 +2557,27 @@ function toggleSkip(ri,checked){_curTLog.results[ri].skipped=checked;if(checked&
 function setSkipReason(ri,v){_curTLog.results[ri].skipReason=v;saveTDraft();}
 function updTSet(ri,si,f,v){_curTLog.results[ri].sets[si][f]=v;saveTDraft();refreshTrainingLive();}
 function addTSet(ri){_curTLog.results[ri].sets.push({weight:'',reps:'',rir:'',done:false});saveTDraft();var mn=getMyMenus().find(function(x){return idEq(x.id,_curTLog.menuId);});renderTrainingExec(mn);}
+// ===== 入力部品（プリセット中心。重量=前回/±プリセット＋直接入力で小数対応、回数・RIR=±ステッパー）=====
+function setSetWeight(ri,si,val){var el=document.getElementById('tw-'+ri+'-'+si);if(!el)return;el.value=val;updTSet(ri,si,'weight',el.value);}
+function adjSetWeight(ri,si,delta){
+  var el=document.getElementById('tw-'+ri+'-'+si);if(!el)return;
+  var base=(el.value!==''&&!isNaN(parseFloat(el.value)))?parseFloat(el.value):(parseFloat(el.getAttribute('data-fb'))||0);
+  var v=Math.round((base+delta)*100)/100;if(v<0)v=0;
+  el.value=v;updTSet(ri,si,'weight',el.value);
+}
+function stepSetReps(ri,si,delta){var el=document.getElementById('trp-'+ri+'-'+si);if(!el)return;var v=(el.value!==''&&!isNaN(parseInt(el.value)))?parseInt(el.value):0;v+=delta;if(v<0)v=0;el.value=v;updTSet(ri,si,'reps',el.value);}
+function stepSetRir(ri,si,delta){var el=document.getElementById('trr-'+ri+'-'+si);if(!el)return;var v=(el.value!==''&&!isNaN(parseInt(el.value)))?parseInt(el.value):0;v+=delta;if(v<0)v=0;if(v>10)v=10;el.value=v;updTSet(ri,si,'rir',el.value);}
+// 回数・RIRの±ステッパー部品（HTML文字列を返す）
+function trStepBlock(label,fn,inputId,ri,si,field,val,placeholder){
+  return '<div style="flex:1;background:var(--bg-secondary);border-radius:10px;padding:6px 6px 7px;min-width:0">'+
+    '<div style="font-size:10px;color:var(--text-secondary);text-align:center;margin-bottom:4px">'+label+'</div>'+
+    '<div style="display:flex;align-items:center;gap:5px">'+
+      '<button class="btn" style="width:40px;height:40px;padding:0;font-size:20px;font-weight:700;flex:none" onclick="'+fn+'('+ri+','+si+',-1)">−</button>'+
+      '<input id="'+inputId+'" class="ipt" type="number" inputmode="numeric" style="flex:1;text-align:center;padding:8px 2px;font-size:17px;font-weight:700;min-width:0" value="'+val+'" placeholder="'+placeholder+'" oninput="updTSet('+ri+','+si+',\''+field+'\',this.value)">'+
+      '<button class="btn" style="width:40px;height:40px;padding:0;font-size:20px;font-weight:700;flex:none" onclick="'+fn+'('+ri+','+si+',1)">＋</button>'+
+    '</div>'+
+  '</div>';
+}
 
 // ===== 休憩タイマー（3分カウントダウン）=====
 var _restTimer={interval:null,seconds:180,running:false,done:false};
