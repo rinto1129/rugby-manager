@@ -386,16 +386,20 @@ function getChart(injId){
   if(!ch.images)ch.images=[];
   return ch;
 }
-// カルテ保存（トランザクションでinjId一致のカルテだけを安全にupsert）
+// カルテ保存（必ずsvSafeUpdateで安全に。素のsvは使わない＝他端末のカルテを巻き戻さない）
 function saveChart(ch,onDone){
-  if(ch&&ch.injId!=null){
-    return svSafeUpdate('chart',function(latest){
-      var i=latest.findIndex(function(x){return idEq(x.injId,ch.injId);});
+  if(!ch){if(onDone)onDone();return;}
+  // 一意キーは injId 優先、無ければ id。どちらかがあれば一致レコードをupsert、無ければ末尾に追加（全上書きはしない）
+  var key=(ch.injId!=null)?'injId':(ch.id!=null?'id':null);
+  return svSafeUpdate('chart',function(latest){
+    if(key){
+      var i=latest.findIndex(function(x){return idEq(x[key],ch[key]);});
       if(i>=0)latest[i]=ch;else latest.push(ch);
-      return latest;
-    },onDone);
-  }
-  sv('chart');
+    }else{
+      latest.push(ch);
+    }
+    return latest;
+  },onDone);
 }
 
 // RTP（Return To Play）練習参加レベル

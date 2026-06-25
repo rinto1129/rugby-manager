@@ -10,6 +10,19 @@
           }
         ]
       }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "agent",
+            "prompt": "コンテキスト圧縮の直前です。$ARGUMENTS に含まれる transcript_path から会話履歴を読み、/Users/nakayamarinnin/Documents/rugby-manager/HANDOFF.md を最新の状態に更新してください。更新する見出し: 「最終更新」の日時を今日に、「いま何をしているか（現在地）」「直近で完了したこと」「次の一手（候補）」を会話の内容に合わせて書き換える。既存のフォーマットと「運用ルール」セクションは保持すること。",
+            "timeout": 120,
+            "statusMessage": "HANDOFF.mdを更新中..."
+          }
+        ]
+      }
     ]
   }
 }

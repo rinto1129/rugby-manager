@@ -1586,17 +1586,20 @@ function getChart(injId){
   if(!ch.images)ch.images=[];
   return ch;
 }
-// カルテ保存（svSafe方式で安全に）
+// カルテ保存（必ずsvSafeUpdateで安全に。素のsvは使わない＝他端末のカルテを巻き戻さない）
 function saveChart(ch,onDone){
-  if(ch&&ch.injId!=null){
-    svSafeUpdate('chart',function(latest){
-      var i=latest.findIndex(function(x){return idEq(x.injId,ch.injId);});
+  if(!ch){if(onDone)onDone();return;}
+  // 一意キーは injId 優先、無ければ id。どちらかがあれば一致レコードをupsert、無ければ末尾に追加（全上書きはしない）
+  var key=(ch.injId!=null)?'injId':(ch.id!=null?'id':null);
+  return svSafeUpdate('chart',function(latest){
+    if(key){
+      var i=latest.findIndex(function(x){return idEq(x[key],ch[key]);});
       if(i>=0)latest[i]=ch;else latest.push(ch);
-      return latest;
-    },onDone);
-    return;
-  }
-  sv('chart');
+    }else{
+      latest.push(ch);
+    }
+    return latest;
+  },onDone);
 }
 // 受傷機転の選択肢
 var INJ_MECHANISM=['コンタクト（タックル）','コンタクト（被タックル）','コンタクト（ラック/モール）','コンタクト（スクラム）','コンタクト（その他）','非コンタクト（ランニング）','非コンタクト（ステップ/方向転換）','非コンタクト（ジャンプ着地）','非コンタクト（キック）','オーバーユース（使い過ぎ）','不明'];
