@@ -433,7 +433,8 @@ function svSafe(k,newRec,callback){
     });
   }).then(function(latest){D[k]=latest;if(callback)callback();}).catch(function(e){alert('保存に失敗しました。もう一度試してください。');console.error(e);});
 }
-function svSafeUpdate(k,updateFn,onDone){
+// onError(任意・第4引数): 指定時は失敗を呼び出し側へ委譲（既定の保存失敗alertは出さない）。未指定なら従来どおりalert。
+function svSafeUpdate(k,updateFn,onDone,onError){
   var ref=db.collection('appdata').doc(k);
   db.runTransaction(function(tx){
     return tx.get(ref).then(function(doc){
@@ -442,7 +443,7 @@ function svSafeUpdate(k,updateFn,onDone){
       tx.set(ref,{data:JSON.stringify(latest)});
       return latest;
     });
-  }).then(function(latest){D[k]=latest;if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);alert('保存に失敗しました');});
+  }).then(function(latest){D[k]=latest;if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);if(onError)onError(e);else alert('保存に失敗しました');});
 }
 // ===== 共通の安全土台（フェーズ1ステップ1） =====
 // 0をはじかない必須チェック。空文字・null・undefined・NaNのみを「未入力」とする（0は有効値）。
@@ -1137,7 +1138,7 @@ condition:function(){
   '<div class="fl"><label>トレーニング時間（分）</label><input class="ipt" type="number" id="cf-dur" placeholder="例: 90" oninput="updSrpe()"></div>'+
   '<div class="fl"><label>メモ</label><textarea class="ipt" id="cf-note" placeholder="体調メモ..."></textarea></div>'+
   '<div id="cf-pv"></div>'+
-  '<button class="btn btn-p" onclick="doCondition()">記録する</button></div>'+
+  '<button class="btn btn-p" onclick="doCondition(this)">記録する</button></div>'+
   (lf.length>=2?'<div class="chart-wrap"><canvas id="ch-cf"></canvas></div>':'')+
   (lf.length?'<div style="font-weight:600;margin:8px 0">過去の記録</div>'+lf.slice(0,15).map(function(r){return'<div class="log-row"><span style="min-width:60px;color:var(--text-secondary)">'+fmt(r.date)+'</span><div class="pain-dot" style="background:'+rc(r.rpe)+'">'+r.rpe+'</div><span style="color:'+sc(r.sleep)+'">'+r.sleep+'h</span><span style="color:var(--purple);font-weight:600">sRPE:'+(r.rpe*(r.duration||0))+'</span></div>';}).join(''):'');
   if(lf.length>=2)setTimeout(function(){var recs=lf.slice().reverse().slice(-20);var e=document.getElementById('ch-cf');if(!e)return;dC('cf');charts.cf=new Chart(e,{type:'line',data:{labels:recs.map(function(r){return r.date.slice(5);}),datasets:[{label:'RPE',data:recs.map(function(r){return r.rpe;}),borderColor:'#E24B4A',tension:.3},{label:'睡眠',data:recs.map(function(r){return r.sleep;}),borderColor:'#185FA5',tension:.3}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:10}},plugins:{legend:{position:'bottom'}}}});},80);
@@ -1265,10 +1266,21 @@ function numStepHTML(id,min,max,oninput){
 }
 function numStep(id,dir,min,max){var el=document.getElementById(id);var v=parseInt(el.value)||0;v=Math.min(max,Math.max(min,v+dir));el.value=v;el.dispatchEvent(new Event('input'));}
 function updSrpe(){var r=parseInt(document.getElementById('cf-rpe').value)||0,d=parseInt(document.getElementById('cf-dur').value)||0;document.getElementById('cf-pv').innerHTML=r&&d?'<div class="mc" style="margin-top:8px"><div class="v" style="color:var(--purple)">'+(r*d)+'</div><div class="l">sRPE</div></div>':'';}
-function doCondition(){
-  var rpe=parseFloat(document.getElementById('cf-rpe').value);if(!rpe)return alert('RPEを入力');
+function doCondition(btnEl){
+  // RPEは1〜10の必須項目（isFilledで空のみ未入力扱い→範囲チェックで0や範囲外を弾く）
+  var rpe=parseFloat(document.getElementById('cf-rpe').value);
+  if(!isFilled(rpe)||rpe<1||rpe>10)return alert('RPE（1〜10）を入力してください');
+  // 二重送信ガード（連打で f レコードが重複作成されるのを防ぐ）
+  if(!guardSubmit(btnEl,'記録中…'))return;
   var rec={id:Date.now(),pid:myPid,date:document.getElementById('cf-date').value,inputAt:new Date().toISOString(),rpe:rpe,sleep:parseFloat(document.getElementById('cf-sleep').value)||0,duration:parseInt(document.getElementById('cf-dur').value)||0,note:document.getElementById('cf-note').value};
-  svSafe('f',rec,function(){alert('記録しました ✓');go('mypage');});
+  // svSafeSeqで成否を捕捉（svSafeは失敗時に内部alert＋ボタン固着するため使わない）
+  svSafeSeq([{k:'f',rec:rec}],function(){
+    alert('記録しました ✓');go('mypage');
+  },function(){
+    // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+  });
 }
 
 // 統合フォーム（BIG3＋チンニング＋クリーン＋ブロンコ）
@@ -1449,7 +1461,7 @@ function showEditCondition(fid){
   '<div class="fl"><label>メモ</label><textarea class="ipt" id="ef-note">'+escapeHtml(rec.note||'')+'</textarea></div>'+
   '<div id="esrpe-pv" style="margin-top:8px"></div>'+
   '</div>'+
-  '<button class="btn btn-p" style="width:100%" onclick="doEditCondition(\''+fid+'\')">修正する</button>');
+  '<button class="btn btn-p" style="width:100%" onclick="doEditCondition(\''+fid+'\',this)">修正する</button>');
   setTimeout(function(){
     var el=document.getElementById('ef-rpe');if(el){el.value=rec.rpe||0;updESrpe();}
   },50);
@@ -1462,9 +1474,10 @@ function updESrpe(){
   if(el&&r&&d)el.innerHTML='<div class="mc" style="display:inline-block;padding:.4rem 1rem"><div class="v" style="font-size:18px;color:var(--purple)">'+(r*d)+'</div><div class="l">sRPE</div></div>';
 }
 
-function doEditCondition(fid){
+function doEditCondition(fid,btnEl){
   var rpe=parseFloat((document.getElementById('ef-rpe')||{}).value);
-  if(!rpe)return alert('RPEを入力してください');
+  if(!isFilled(rpe)||rpe<1||rpe>10)return alert('RPE（1〜10）を入力してください');
+  if(!guardSubmit(btnEl,'修正中…'))return; // 二重送信ガード
   svSafeUpdate('f',function(latest){
     var idx=latest.findIndex(function(r){return r.id===fid||String(r.id)===String(fid);});
     if(idx<0)return latest;
@@ -1474,7 +1487,11 @@ function doEditCondition(fid){
     latest[idx].note=(document.getElementById('ef-note')||{}).value||'';
     latest[idx].editedAt=new Date().toISOString();
     return latest;
-  },function(){alert('修正しました ✓');go('mypage');});
+  },function(){alert('修正しました ✓');go('mypage');},function(){
+    // 失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+  });
 }
 
 // 体組成編集
