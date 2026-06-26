@@ -11,23 +11,29 @@
 - 更新者: Claude
 
 ## いま何をしているか（現在地）
-- **task1（素の `sv()` 掃討）完了・push済み**（commit dd4d415, 2026-06-26）。
-  - staff/trainer の `saveChart` から素の `sv('chart')` フォールバックを撤去 → `svSafeUpdate` の upsert（injId優先→idフォールバック→末尾追加）に統一。両ファイルJXAで構文チェックOK。
-  - 同コミットで `.claude/settings.json` に PreCompactフック（HANDOFF.md自動更新）も追加。
-  - これで実運用コード上の素の `sv()` は staff:492 の意図的な種まき（`if(D.p===INIT&&pDocPresent===false)sv('p')`／ガード済）のみ。`svAll`(staff:520) は呼び出し元の無いデッドコード（掃除候補）。
-- **フェーズ1（player/index.html トレーニング入力ツールの作り替え）完了・全push済み**（commit 4517acf / 74c44d0）。
-  - 検証は `osascript -l JavaScript`（JXA/JavaScriptCore）で実コード抽出しモック模擬実行。当環境にnodeは無い。
-  - ステップ4の重量入力は「プリセット中心」採用（前回値/±2.5/+5ワンタップ＋直接入力で小数対応、回数・RIRは±ステッパー）。
+- **今セッションの一連の信頼性改善＋UIバグ修正が一区切り。進行中の必須タスクは無し**（最新コミット `78ebfbd`, 2026-06-26。`main`はorigin同期済み）。
+- **直近: 「明日のリハビリ予定が永遠に残る」バグを修正（`78ebfbd`）**。`rplan.tomorrowCats`に対象日が無く、設定すると怪我が回復済になるまで毎日「明日の予定」に出続けていた（リハビリ記録とは別データなので記録削除でも消えない）。staff `saveNextMenu`/trainer `saveNextMenuT` に対象日`tomorrowDate`(設定日の翌日)を付与し、staffダッシュボードのパネルを「本日分/明日分」に振り分け＋対象日を過ぎた分・日付の無い旧データは非表示に。旧データは無害に非表示、再設定で正常化。
+- 完了サマリ（すべてpush＋実機確認済み）:
+  - **player の主要入力4画面に共通の安全土台を適用**（トレーニング実施 / コンディション / 怪我報告 / フィジカル・体組成）。`guardSubmit`(二重送信ガード)＋`svSafeSeq`/`svSafeUpdate(onError)`(失敗時ボタン復帰＆内容温存)＋`isFilled`(0を弾かない必須チェック)。
+  - **0誤検知バグの掃討**: 全サイト調査の結果、数値必須入力を0で誤検知する保存は staff `doAddFatigue` の RPE 1箇所のみ→修正（`commit e54949e`）。trainer/coachは該当なし。
+  - **デッドコード削除**: player `doBIG3` / staff `svAll`（全キーblind上書きの火種）（`commit 2f6fd48`）。
+  - 過去フェーズ: 素の`sv()`掃討（saveChart, `dd4d415`）／トレーニング入力ツール刷新（`4517acf`/`74c44d0`）。
+  - 検証手法: 当環境にnodeが無いため `osascript -l JavaScript`（JXA）で実コード抽出→モック模擬実行＋テスト選手で実機スモーク。
 - テスト用選手「テスト選手」(CTB/1年, note=動作確認用) を本番に1名追加済み（削除可）。
 
-## 次にやること（ユーザー合意済み）
-1. ~~素の `sv()` 掃討~~ → **完了（dd4d415）**。task_c3a91936 のチップは解消済み。
-2. ~~実機スモーク~~ → **完了（2026-06-26）**。テスト選手でA〜E全項目パス（プリセット入力・0kg/0回保存・連打ガード・通信断時の温存＆ボタン復帰・端末跨ぎ下書き復元）。フェーズ1の信頼性は実機確認済み。
-3. **次フェーズ＝他入力画面の刷新（進行中）** — 同じ安全土台で コンディション入力 → 怪我報告 → フィジカル/体組成 を順次。共通ヘルパー(`isFilled`/`svSafeSeq`/`guardSubmit`)を staff/trainer/coach へ横展開し4サイトの一貫性回復。
+## 完了タスクの記録（このフェーズの足跡）
+- ~~素の `sv()` 掃討~~ → **完了（dd4d415）**。task_c3a91936 のチップは解消済み。
+- ~~実機スモーク（フェーズ1）~~ → **完了（2026-06-26）**。テスト選手でA〜E全項目パス（プリセット入力・0kg/0回保存・連打ガード・通信断時の温存＆ボタン復帰・端末跨ぎ下書き復元）。
+- ~~他入力画面の刷新~~ → **完了**。同じ安全土台で コンディション入力 → 怪我報告 → フィジカル/体組成 を順次適用（下記✅群）。共通ヘルパー(`isFilled`/`svSafeSeq`/`guardSubmit`)はplayerに整備済み。staff/trainer/coachへのフルセット横展開はユーザー判断で**保留**。
    - ✅ **コンディション入力（player）完了・push済み（commit b9fb119, 2026-06-26）**: `doCondition`(新規)・`doEditCondition`(修正)に guardSubmit＋失敗時ボタン復帰＆内容温存＋`isFilled`範囲(1〜10)チェックを適用。`svSafeUpdate`に後方互換のオプション第4引数`onError`を追加（既存3引数呼び出しは挙動不変）。`delCondition`は既に安全。モック新規16/16・修正12/12パス。
-   - **【次はこれ】怪我報告** — 痛み0が入力できない `if(!pain)` バグ修正＋同じ安全土台適用。
-   - その後: フィジカル/体組成。
-   - 横展開: player で固めた `svSafeUpdate(onError)` 等を staff/trainer/coach にも反映して4サイト一貫化。
+   - ✅ **怪我報告（player）完了・push済み（commit f3c3569, 2026-06-26）**: `doInjuryReport`(player:2124)の `if(!pain)` を `isFilled+範囲(1〜10)`チェックへ（0/空の誤検知を解消）。guardSubmit/releaseSubmitで二重送信ガード、`svSafe`ネスト→`svSafeSeq([i,r])`で失敗捕捉＆ボタン復帰＆内容温存。ボタンは`doInjuryReport(this)`。JXAモック6ケース全パス（空/0/11弾く・1/5成功でi→r保存・失敗でボタン復帰＆温存）。**実機スモーク未実施**。
+   - ✅ **フィジカル/体組成入力（player）完了・push済み（commit ec3c2f5, 2026-06-26）**: 新規保存`doPhys`/`doBronco`/`doBCInput`を`svSafe`→`svSafeSeq`＋guardSubmit＋失敗onError(ボタン復帰＆温存)へ。編集`doEditPhysRec`/`doEditBC`の`svSafeUpdate`にguardSubmit＋onError追加（doEditPhysRecの記録不在分岐もボタン復帰）。`doBCInput`の`if(!w)`→`isFilled(w)&&w>0`。全ボタンに`this`付与。JXAモック14/14パス。**実機スモーク未実施**。
+     - 補足: `doBIG3`(player:1346, svSafe残存)はonclickの無い**デッドコード**。今回未着手＝掃除候補。
+   - ✅ **4サイト横展開＝0誤検知バグのみ修正で完了・push済み（commit e54949e, 2026-06-26）**。**ユーザー判断でフルセット横展開（guardSubmit/svSafeSeq/onError）は保留**、0誤検知バグのみピンポイント修正する方針に決定。
+     - 調査結論: 数値必須入力を0で誤検知する保存バリデーションは **staff `doAddFatigue`(2533) の RPE 1箇所のみ**。`if(!rpe)`→`if(Number.isNaN(rpe)||rpe<1||rpe>10)`（staffにisFilled無いためNumber.isNaNでインライン）。JXAモック6/6パス。**実機スモーク未実施**。
+     - trainer/coachには該当0誤検知なし。coachは保存処理ゼロ＝閲覧専用で対象外。staffの他`if(!x)`はpid/date/name等の文字列・ID系で誤検知ではない。
+     - 保留メモ: staff(保存74箇所)/trainer(15箇所)に共通安全土台(guardSubmit等)を入れる横展開は未着手。必要になれば再開（trainer→staffの順、機能グループ単位推奨）。
+   - ✅ **デッドコード削除・push済み（commit 2f6fd48, 2026-06-26）**: player `doBIG3`（onclick参照ゼロ）／staff `svAll`（全キーblind上書きの事故の火種・呼び出し元ゼロ）を削除。両ファイル構文OK。staff:2665のコメントにsvAll廃止理由が残る（履歴として温存）。
 
 ## ⚠️ 重大バグを発見・修正（2026-06-25）— 選手名簿の全消し事故
 - 症状: REST APIでテスト選手を追加(74名)→約2分後に72名へ巻き戻り（既存「確認用」も巻き添え）。
@@ -72,30 +78,34 @@
 - 🟠 リマインド/通知ゼロ＝そもそも開かない問題。LINE運用等で別途明記。
 - ◎ 良い点: 信頼性＞見た目の明言／データ層不触／破壊的変換をやめてクリーンコピー保存(2545地雷を撃ち抜く)／段階反映。
 
-## 現状調査で判明した実コードの不具合源（player/index.html）
-- `finishTraining`(2532〜): 二重送信ガード無し→連打でtlog重複。
-- 2545: 片方だけ入力のセットを無言で破棄＋`r.sets=`で`_curTLog`をその場破壊(失敗時に中間状態)。
-- 下書きはlocalStorageのみ(2192-2196)。`tdraft`スキーマがあるのに未使用。
-- 共通根本: `if(!rpe)`(1220)/`if(!pain)`(2059)/`if(!w)`(2042)が0をfalse扱い→0が入力できない。
-- 良い箇所(壊さず活かす): リスナーは入力中フォーム/サブビュー保護(447-464)。保存はほぼsvSafe/svSafeUpdate済み。
+## 現状調査で判明した実コードの不具合源（player/index.html）→ **全て対応済み**
+- かつての不具合源（`finishTraining`連打でtlog重複／片側入力セットの無言破棄＋`_curTLog`破壊／下書きlocalStorageのみ＋`tdraft`未使用／`if(!rpe)`/`if(!pain)`/`if(!w)`の0誤検知）は、上記✅群（フェーズ1＋安全土台適用＋0誤検知掃討）で**すべて修正済み**。
+- 残す教訓: 数値必須入力は `if(!x)` ではなく `isFilled`（player）/ `Number.isNaN`＋範囲チェック（staff）で判定する。リスナーは入力中フォーム/サブビュー保護(447-464)を壊さないこと。
 
 ## 直近で完了したこと（新しい順）
-- **コンディション入力に安全土台を適用（player）→ push済み（commit b9fb119, 2026-06-26）**。
-- **task1 素の `sv()` 掃討（saveChart）→ push済み（commit dd4d415, 2026-06-26）**。同コミットでPreCompactフック追加。
-- 実機スモーク（フェーズ1）全項目パス（2026-06-26）。
-- フェーズ1（トレーニング入力ツール刷新）完了・push済み（4517acf / 74c44d0）。
-- grill-me / grilling スキル導入（`~/.claude/skills/`、全プロジェクト共通。SKILL.md手動コピー）。
+- `78ebfbd` 「明日のリハビリ予定が永遠に残る」バグ修正（staff/trainer、tomorrowDateで日付振り分け）。
+- `2f6fd48` デッドコード削除（player `doBIG3` / staff `svAll`）。
+- `e54949e` staff `doAddFatigue` の RPE 0誤検知バグ修正。
+- `ec3c2f5` フィジカル/体組成入力（player）に安全土台適用。
+- `f3c3569` 怪我報告（player）に安全土台適用（pain0誤検知修正含む）。
+- `b9fb119` コンディション入力（player）に安全土台適用。
+- `dd4d415` 素の `sv()` 掃討（saveChart）＋PreCompactフック追加。
+- `4517acf`/`74c44d0` フェーズ1（トレーニング入力ツール刷新）。
 
 ## リポジトリの状態
-- ブランチ: main（origin/main と同期済み。最新 `b9fb119`）。
-- 作業ツリー: クリーン（未追跡の `.DS_Store` のみ・無視してよい）。
-- 直近push: `dd4d415`(task1 sv掃討) → `b9fb119`(コンディション安全土台)。
+- ブランチ: main（origin/main と同期済み。最新 `78ebfbd`）。
+- 作業ツリー: `HANDOFF.md` がこの更新で未コミット。ほかは未追跡の `.DS_Store` のみ（無視してよい）。
+- 直近push: `2f6fd48`(デッドコード削除) → `78ebfbd`(明日のリハビリ予定バグ修正)。
 
 ## 次の一手
-1. 【次】**怪我報告のバグ修正（player）** — 痛みレベル0が入力できない `if(!pain)`（2059付近）を `isFilled` ベースへ。あわせて `guardSubmit`＋失敗時ボタン復帰＆内容温存（コンディションと同じ作法）を適用。保存関数を特定 → 構文チェック → JXAモック模擬実行 → ユーザー確認の上でpush。
-2. その後: フィジカル/体組成入力に同じ安全土台。
-3. 横展開: player で固めた `svSafeUpdate(onError)` 等を staff/trainer/coach に反映して4サイト一貫化。
-4. 機能完了ごとに、ユーザー確認の上で git push。
+- **進行中の必須タスクは無し**。一連の信頼性改善は一区切り。以下は任意の候補:
+  1. （任意・保留中）フルセット横展開 — player で固めた `guardSubmit`/`svSafeSeq`/`svSafeUpdate(onError)` を staff/trainer に反映して一貫化。trainer(15箇所)→staff(74箇所)の順、機能グループ単位で段階的に。**ユーザー判断で現在は保留**。
+  2. 実利用フィードバックでの細かい改善・新機能追加。
+  3. 定期的な手動JSONバックアップの継続（staff「CSV出力」画面下部 `exportAllJSON`。PIN消失事故の再発防止）。
+- 着手時の作法: 1機能ずつ → 構文チェック → JXAモック模擬実行 → ユーザー確認の上で git push。
+- 残課題メモ（明日のリハビリ予定バグ `78ebfbd` 関連、任意）:
+  - **選手ごとの表示**（staff:1036 の「次回:」/ trainer:845「本日のメニュー」等）は今も `tomorrowCats` を日付フィルタ無しで表示する。単一選手の文脈なので実害は小さく今回はスコープ外。気になれば対象日表示や期限切れ非表示を検討。
+  - 旧 `rplan`（`tomorrowDate` 無し）はDBに残るが**非表示なだけで無害**。実際に予定を出したい選手は「次回メニュー」を再設定すれば翌日分として正しく出る。
 
 ## 運用ルール（このプロジェクト固有）
 - データは「短いキー」で読む。保存は `svSafe` / `svSafeUpdate` を使う。
