@@ -866,21 +866,29 @@ dash:function(){
     todayPlanItems+='<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:5px">🩹 テーピング予約（'+todayTapeBookings.length+'件）</div>'+
       todayTapeBookings.map(function(b){return'<div class="log-row" style="cursor:pointer;padding:5px 0" onclick="goPlayerDetail('+b.pid+')"><span style="min-width:48px;font-weight:600;font-size:12px">'+b.time+'</span><span style="flex:1;font-size:13px">'+escapeHtml(b.name)+'</span><span style="font-size:11px;color:var(--text-secondary)">'+escapeHtml(b.parts)+(b.staff?' / '+escapeHtml(b.staff):'')+'</span></div>';}).join('')+'</div>';
   }
-  // 明日のリハビリ予定（事前登録されたtomorrowCatsベース。「サポート」「オフ」のみの人は除外）
-  var tomorrowRehab=[];
+  // リハビリ予定（rplan.tomorrowCatsベース。対象日tomorrowDateで本日分/明日分に振り分け。
+  // 対象日を過ぎた分・日付の無い旧データは非表示＝「明日の予定が永遠に残る」旧バグの修正）
+  // 「サポート」「オフ」のみの人は除外。
+  var _tm=new Date();_tm.setDate(_tm.getDate()+1);var tomorrowS=toDateStr(_tm);
+  var todayRehab=[],tomorrowRehab=[];
   D.i.filter(function(x){return!x.resolved;}).forEach(function(inj){
     var plan=(D.rplan||[]).find(function(pl){return idEq(pl.injId,inj.id);});
     if(!plan||!plan.tomorrowCats||!plan.tomorrowCats.length)return;
-    // 「サポート」「オフ」以外のカテゴリが含まれているか
+    if(!plan.tomorrowDate)return; // 日付の無い旧データは表示しない（要再設定）
+    var bucket=plan.tomorrowDate===todayS?todayRehab:(plan.tomorrowDate===tomorrowS?tomorrowRehab:null);
+    if(!bucket)return; // 対象日が過去（または翌日より先）なら非表示
     var meaningfulCats=plan.tomorrowCats.filter(function(c){return c!=='サポート'&&c!=='オフ';});
     if(!meaningfulCats.length)return; // サポート・オフのみなら表示しない
     var p=D.p.find(function(x){return idEq(x.id,inj.pid);});
     var rh=D.r.find(function(rr){return idEq(rr.injId,inj.id);});
-    if(p)tomorrowRehab.push({pid:p.id,name:p.name,injId:inj.id,part:(inj.side||'')+inj.part,cats:meaningfulCats,stage:rh?STG[rh.stage]:''});
+    if(p)bucket.push({pid:p.id,name:p.name,injId:inj.id,part:(inj.side||'')+inj.part,cats:meaningfulCats,stage:rh?STG[rh.stage]:''});
   });
+  var rehabRowsHTML=function(list){return list.map(function(r){return'<div class="log-row" style="cursor:pointer;padding:5px 0" onclick="goInjuryDetail('+r.injId+')"><span style="font-size:13px;font-weight:600;min-width:90px">'+escapeHtml(r.name)+'</span><div style="flex:1;display:flex;flex-wrap:wrap;gap:3px;justify-content:flex-end">'+r.cats.map(function(c){return'<span style="background:'+(RCAT_BG[c]||'var(--bg-tertiary)')+';color:'+(RCAT_COLOR[c]||'var(--text-secondary)')+';padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">'+c+'</span>';}).join('')+'</div></div>';}).join('');};
+  if(todayRehab.length){
+    todayPlanItems+='<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:5px">🏃 本日のリハビリ予定（'+todayRehab.length+'名）</div>'+rehabRowsHTML(todayRehab)+'</div>';
+  }
   if(tomorrowRehab.length){
-    todayPlanItems+='<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:5px">🏃 明日のリハビリ予定（'+tomorrowRehab.length+'名）</div>'+
-      tomorrowRehab.map(function(r){return'<div class="log-row" style="cursor:pointer;padding:5px 0" onclick="goInjuryDetail('+r.injId+')"><span style="font-size:13px;font-weight:600;min-width:90px">'+escapeHtml(r.name)+'</span><div style="flex:1;display:flex;flex-wrap:wrap;gap:3px;justify-content:flex-end">'+r.cats.map(function(c){return'<span style="background:'+(RCAT_BG[c]||'var(--bg-tertiary)')+';color:'+(RCAT_COLOR[c]||'var(--text-secondary)')+';padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">'+c+'</span>';}).join('')+'</div></div>';}).join('')+'</div>';
+    todayPlanItems+='<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:5px">🏃 明日のリハビリ予定（'+tomorrowRehab.length+'名）</div>'+rehabRowsHTML(tomorrowRehab)+'</div>';
   }
   // 今日の測定会
   var todayMSess=(D.msess||[]).filter(function(m){return m.date===todayS;});
@@ -4086,7 +4094,9 @@ function toggleNextMenuCat(ci){
 
 function saveNextMenu(injId){
   var cats=window._nextMenuCats||[];
-  svSafeUpdate('rplan',function(latest){var plan=latest.find(function(x){return idEq(x.injId,injId);});if(!plan){plan={injId:injId,tplId:null,tomorrowCats:[]};latest.push(plan);}plan.tomorrowCats=cats;return latest;},function(){alert('保存しました ✓');popView();});
+  // 対象日（設定日の翌日）を持たせる。これが無いと「明日の予定」が日付不明で永遠に残る（旧バグ）
+  var _tm=new Date();_tm.setDate(_tm.getDate()+1);var tomorrowDate=toDateStr(_tm);
+  svSafeUpdate('rplan',function(latest){var plan=latest.find(function(x){return idEq(x.injId,injId);});if(!plan){plan={injId:injId,tplId:null,tomorrowCats:[]};latest.push(plan);}plan.tomorrowCats=cats;plan.tomorrowDate=cats.length?tomorrowDate:null;return latest;},function(){alert('保存しました ✓');popView();});
 }
 
 function goSaveAsTemplate(injId,exercises,cats){

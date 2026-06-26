@@ -2315,7 +2315,9 @@ function toggleNextMenuCatT(ci){
 
 function saveNextMenuT(injId){
   var cats=window._nextMenuCatsT||[];
-  svSafeUpdate('rplan',function(latest){var plan=latest.find(function(x){return idEq(x.injId,injId);});if(!plan){plan={injId:injId,tplId:null,tomorrowCats:[]};latest.push(plan);}plan.tomorrowCats=cats;return latest;},function(){alert('保存しました ✓');goRehabPlayer(injId);});
+  // 対象日（設定日の翌日）を持たせる。staffダッシュボードの「明日の予定」が日付で振り分けされるため必須
+  var _tm=new Date();_tm.setDate(_tm.getDate()+1);var tomorrowDate=toDateStr(_tm);
+  svSafeUpdate('rplan',function(latest){var plan=latest.find(function(x){return idEq(x.injId,injId);});if(!plan){plan={injId:injId,tplId:null,tomorrowCats:[]};latest.push(plan);}plan.tomorrowCats=cats;plan.tomorrowDate=cats.length?tomorrowDate:null;return latest;},function(){alert('保存しました ✓');goRehabPlayer(injId);});
 }
 
 function timeOptions(sel){
