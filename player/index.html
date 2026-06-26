@@ -1312,7 +1312,7 @@ function showPhysForm(){
   '<input class="ipt" type="number" id="pf-br-s" placeholder="秒" min="0" max="59" style="width:80px">'+
   '<span style="font-weight:600">秒</span></div>'+
   '</div>'+
-  '<button class="btn btn-p" style="width:100%" onclick="doPhys()">記録する</button>'
+  '<button class="btn btn-p" style="width:100%" onclick="doPhys(this)">記録する</button>'
   );
 }
 
@@ -1324,7 +1324,7 @@ function showBroncoForm(){
   '<div class="fl"><label>測定日</label><input class="ipt" type="date" id="br-date" value="'+td+'"></div>'+
   '<div class="fl"><label>ブロンコテスト</label>'+
   '<div style="display:flex;align-items:center;gap:8px"><input class="ipt" type="number" id="br-m" placeholder="分" min="0" style="width:90px"><span style="font-weight:600">分</span><input class="ipt" type="number" id="br-s" placeholder="秒" min="0" max="59" style="width:90px"><span style="font-weight:600">秒</span></div></div>'+
-  '<button class="btn btn-p" onclick="doBronco()">記録する</button>'+
+  '<button class="btn btn-p" onclick="doBronco(this)">記録する</button>'+
   '<button class="btn" style="margin-left:8px" onclick="markPhysSkip()">本日は測定なし</button>'+
   '</div>');
 }
@@ -1338,7 +1338,7 @@ function showBroncoFormDirect(){
   '<div class="fl"><label>測定日</label><input class="ipt" type="date" id="br-date" value="'+td+'"></div>'+
   '<div class="fl"><label>ブロンコテスト</label>'+
   '<div style="display:flex;align-items:center;gap:8px"><input class="ipt" type="number" id="br-m" placeholder="分" min="0" style="width:90px"><span style="font-weight:600">分</span><input class="ipt" type="number" id="br-s" placeholder="秒" min="0" max="59" style="width:90px"><span style="font-weight:600">秒</span></div></div>'+
-  '<button class="btn btn-p" onclick="doBronco()">記録する</button>'+
+  '<button class="btn btn-p" onclick="doBronco(this)">記録する</button>'+
   '<button class="btn" style="margin-left:8px" onclick="markPhysSkip()">本日は測定なし</button>'+
   '</div>';
 }
@@ -1359,15 +1359,20 @@ function doBIG3(){
   });
 }
 
-function doBronco(){
+function doBronco(btnEl){
   var br=broncoFromInputs('br-m','br-s');
   if(!br)return alert('タイムを入力してください');
+  if(!guardSubmit(btnEl,'記録中…'))return; // 二重送信ガード
   var date=document.getElementById('br-date').value;
   var newRec={id:Date.now(),pid:myPid,date:date,squat:null,bench:null,deadlift:null,bronco:br};
-  svSafe('ph',newRec,function(){
+  svSafeSeq([{k:'ph',rec:newRec}],function(){
     var pBR=getBest(myPid,'bronco');
     var msg=pBR&&br<pBR?'🎉 ブロンコ自己ベスト更新！\n'+broncoFmt(pBR)+' → '+broncoFmt(br):'記録しました ✓\n'+broncoFmt(br);
     alert(msg);go('mypage');
+  },function(){
+    // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
   });
 }
 
@@ -1503,10 +1508,11 @@ function showEditBC(bcid){
   '<div class="fl" style="margin-bottom:10px"><label>体脂肪率（%）</label><input class="ipt" type="number" step="0.1" id="ebc-fat" value="'+(rec.fat||'')+'"></div>'+
   '<div class="fl"><label>筋量（kg）</label><input class="ipt" type="number" step="0.1" id="ebc-muscle" value="'+(rec.muscle||'')+'"></div>'+
   '</div>'+
-  '<button class="btn btn-p" style="width:100%" onclick="doEditBC(\''+bcid+'\')">修正する</button>');
+  '<button class="btn btn-p" style="width:100%" onclick="doEditBC(\''+bcid+'\',this)">修正する</button>');
 }
 
-function doEditBC(bcid){
+function doEditBC(bcid,btnEl){
+  if(!guardSubmit(btnEl,'修正中…'))return; // 二重送信ガード
   svSafeUpdate('bc',function(latest){
     var idx=latest.findIndex(function(r){return r.id===bcid||String(r.id)===String(bcid);});if(idx<0)return latest;
     latest[idx].weight=parseFloat((document.getElementById('ebc-w')||{}).value)||null;
@@ -1514,7 +1520,11 @@ function doEditBC(bcid){
     latest[idx].muscle=parseFloat((document.getElementById('ebc-muscle')||{}).value)||null;
     latest[idx].editedAt=new Date().toISOString();
     return latest;
-  },function(){alert('修正しました ✓');go('mypage');});
+  },function(){alert('修正しました ✓');go('mypage');},function(){
+    // 失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+  });
 }
 
 // 欠席申告取り消し
@@ -1544,7 +1554,7 @@ function showEditPhysRec(phid){
   '<input class="ipt" type="number" id="eph-br-m" value="'+brM+'" style="width:80px"><span style="font-weight:600">分</span>'+
   '<input class="ipt" type="number" id="eph-br-s" value="'+brS+'" min="0" max="59" style="width:80px"><span style="font-weight:600">秒</span></div></div>'+
   '</div>'+
-  '<button class="btn btn-p" style="width:100%" onclick="doEditPhysRec(\''+phid+'\')">修正する</button>');
+  '<button class="btn btn-p" style="width:100%" onclick="doEditPhysRec(\''+phid+'\',this)">修正する</button>');
 }
 
 function delWeekCheck(wid){
@@ -1607,7 +1617,8 @@ function delPhysRec(phid){
   },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');T.physical();});
 }
 
-function doEditPhysRec(phid){
+function doEditPhysRec(phid,btnEl){
+  if(!guardSubmit(btnEl,'修正中…'))return; // 二重送信ガード
   var pid=parseInt(phid)||phid;
   var sq=document.getElementById('eph-sq').value;
   var bp=document.getElementById('eph-bp').value;
@@ -1628,7 +1639,11 @@ function doEditPhysRec(phid){
     latest[idx].bronco=br||null;
     latest[idx].editedAt=new Date().toISOString();
     return latest;
-  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('修正しました ✓');T.physical();});
+  },function(){if(notFound){releaseSubmit(btnEl);alert('記録が見つかりませんでした');return;}alert('修正しました ✓');T.physical();},function(){
+    // 失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+  });
 }
 
 function showAbsenceForm(){
@@ -1902,16 +1917,21 @@ function showFullRanking(){
 }
 
 
-function doPhys(){
+function doPhys(btnEl){
   var sq=parseFloat(document.getElementById('pf-sq').value)||null,bp=parseFloat(document.getElementById('pf-bp').value)||null,dl=parseFloat(document.getElementById('pf-dl').value)||null,br=broncoFromInputs('pf-br-m','pf-br-s');
   var cn=parseFloat(document.getElementById('pf-cn').value)||null,cl=parseFloat(document.getElementById('pf-cl').value)||null;
   if(!sq&&!bp&&!dl&&!cn&&!cl&&!br)return alert('少なくとも1つ入力してください');
+  if(!guardSubmit(btnEl,'記録中…'))return; // 二重送信ガード
   var curSess=getCurrentMSess();
   var newRec={id:Date.now(),pid:myPid,date:document.getElementById('pf-date').value,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br,msessId:curSess?curSess.id:null,inputAt:new Date().toISOString()};
-  svSafe('ph',newRec,function(){
+  svSafeSeq([{k:'ph',rec:newRec}],function(){
     var m=[];var pSQ=getBest(myPid,'squat'),pBP=getBest(myPid,'bench'),pDL=getBest(myPid,'deadlift');
     if(sq&&pSQ&&sq>=pSQ)m.push('🎉 SQ自己ベスト更新！');if(bp&&pBP&&bp>=pBP)m.push('🎉 BP自己ベスト更新！');if(dl&&pDL&&dl>=pDL)m.push('🎉 DL自己ベスト更新！');
     alert(m.length?m.join('\n'):'記録しました ✓');go('mypage');
+  },function(){
+    // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
   });
 }
 
@@ -2103,11 +2123,20 @@ function getTodayPickup(){
   for(var si=pool.length-1;si>0;si--){var j=(seed+si)%si;var tmp=pool[si];pool[si]=pool[j];pool[j]=tmp;}
   return pool.slice(0,5).map(function(x){return x.pid;});
 }
-function showBCForm(){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">⚖️ 体組成を記録</div><div class="form-box"><div class="form-title">測定データ</div><div class="fl"><label>測定日</label><input class="ipt" type="date" id="bc-date" value="'+td+'"></div><div class="fl"><label>体重（kg）</label><input class="ipt" type="number" step="0.1" id="bc-w" placeholder="例: 85.5"></div><div class="fl"><label>体脂肪率（%）</label><input class="ipt" type="number" step="0.1" id="bc-fat" placeholder="例: 15.2"></div><div class="fl"><label>筋量（kg）</label><input class="ipt" type="number" step="0.1" id="bc-muscle" placeholder="例: 42.0"></div><button class="btn btn-p" style="margin-top:8px" onclick="doBCInput()">記録する</button></div>');}
-function doBCInput(){
-  var w=parseFloat(document.getElementById('bc-w').value);if(!w)return alert('体重を入力してください');
+function showBCForm(){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">⚖️ 体組成を記録</div><div class="form-box"><div class="form-title">測定データ</div><div class="fl"><label>測定日</label><input class="ipt" type="date" id="bc-date" value="'+td+'"></div><div class="fl"><label>体重（kg）</label><input class="ipt" type="number" step="0.1" id="bc-w" placeholder="例: 85.5"></div><div class="fl"><label>体脂肪率（%）</label><input class="ipt" type="number" step="0.1" id="bc-fat" placeholder="例: 15.2"></div><div class="fl"><label>筋量（kg）</label><input class="ipt" type="number" step="0.1" id="bc-muscle" placeholder="例: 42.0"></div><button class="btn btn-p" style="margin-top:8px" onclick="doBCInput(this)">記録する</button></div>');}
+function doBCInput(btnEl){
+  // 体重は必須。体重0は無効なのでisFilled＋>0で弾く（素の!wでも0は弾けるが意図を明示）
+  var w=parseFloat(document.getElementById('bc-w').value);
+  if(!isFilled(w)||w<=0)return alert('体重を入力してください');
+  if(!guardSubmit(btnEl,'記録中…'))return; // 二重送信ガード
   var rec={id:Date.now(),pid:myPid,date:document.getElementById('bc-date').value,inputAt:new Date().toISOString(),weight:w,fat:parseFloat(document.getElementById('bc-fat').value)||null,muscle:parseFloat(document.getElementById('bc-muscle').value)||null};
-  svSafe('bc',rec,function(){alert('記録しました ✓');go('mypage');});
+  svSafeSeq([{k:'bc',rec:rec}],function(){
+    alert('記録しました ✓');go('mypage');
+  },function(){
+    // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+  });
 }
 
 function showInjuryReport(){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">🚨 怪我を報告する</div>'+
