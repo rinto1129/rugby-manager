@@ -343,7 +343,7 @@ function hexA(hex,a){
   var r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
   return 'rgba('+r+','+g+','+b+','+a+')';
 }
-function openPlayer(pid){_detailPid=pid;render();window.scrollTo(0,0);}
+function openPlayer(pid){window._trEx=null;window._trMetric='top';_detailPid=pid;render();window.scrollTo(0,0);}
 
 // ========================================================
 // ② フィジカルビュー
@@ -576,16 +576,9 @@ function renderPlayerReport(pid){
   }
   h+='</div>';
 
-  // トレーニング状況
-  var tlogs=D.tlog.filter(function(x){return idEq(x.pid,pid)&&!x.absent;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
-  if(tlogs.length){
-    h+='<div class="card" style="margin-top:12px"><div style="font-size:13px;font-weight:700;margin-bottom:10px">🏋️ トレーニング（直近）</div>';
-    tlogs.slice(0,5).forEach(function(lg){
-      var mn=D.tmenu.find(function(x){return idEq(x.id,lg.menuId);});
-      h+='<div class="row"><div style="flex:1"><div style="font-size:12px;font-weight:600">'+(mn?escapeHtml(mn.name):'メニュー')+'</div><div style="font-size:10px;color:var(--txt-2)">'+fmt(lg.date)+'</div></div><div style="font-weight:700;color:var(--accent);font-size:13px">'+(lg.totalVolume||0).toLocaleString()+'kg</div></div>';
-    });
-    h+='</div>';
-  }
+  // トレーニング（種目推移＋セッション履歴）
+  h+=buildTrendCoach(pid);
+  h+=buildHistCoach(pid);
 
   // コンディション（直近7日の平均）
   var recent7=toDateStr(new Date(new Date(today).getTime()-7*86400000));
@@ -625,6 +618,8 @@ function renderPlayerReport(pid){
       ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#93A4BC',usePointStyle:true,pointStyle:'circle',boxWidth:7,padding:12,font:{size:11}}},tooltip:{backgroundColor:'rgba(10,16,25,.95)',padding:10,cornerRadius:10,callbacks:{label:function(c){return c.dataset.label+': '+(c.parsed.y!=null?c.parsed.y+'kg':'-');}}}},scales:{y:{grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#93A4BC',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#93A4BC',font:{size:10}}}}}});
     },60);
   }
+  // トレーニング種目推移グラフ描画（常時表示＝display:none問題なし）
+  setTimeout(function(){drawTrChartC(pid,window._trEx,window._trMetric);},60);
 }
 function miniStat(label,val,color){
   return '<div style="background:var(--bg-elev);border-radius:10px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:800;color:'+(color||'var(--txt)')+'">'+(val!=null&&val!==''?val:'-')+'</div><div style="font-size:10px;color:var(--txt-2);margin-top:2px">'+label+'</div></div>';
@@ -636,6 +631,203 @@ function getLatestE1RMReport(pid){
     for(var i=0;i<recs.length;i++){if(recs[i].values&&recs[i].values[b.k]){result[b.k]=recs[i].values[b.k].e1rm;break;}}
   });
   return result;
+}
+// ===== トレーニング把握（staffと定義一致。閲覧専用） =====
+// 単一resultのセット群から指標を算出（トップ重量・ボリューム・最大推定1RM＋そのレップ数）
+function exMetrics(sets){
+  var topW=0,vol=0,e1=null,e1reps=null;
+  (sets||[]).forEach(function(s){
+    var w=parseFloat(s.weight)||0,rp=parseInt(s.reps)||0;
+    if(w>topW)topW=w;vol+=w*rp;
+    var hasRir=s.rir!=null&&s.rir!=='';
+    if(hasRir&&rp>0&&rp<=6&&w>0){var e=estimateOneRM(w,rp,parseInt(s.rir));if(e&&(e1==null||e>e1)){e1=e;e1reps=rp;}}
+  });
+  return{topW:topW,vol:vol,e1:e1,e1reps:e1reps};
+}
+// 種目の時系列（同日集約: トップ重量=最大 / 推定1RM=最大 / ボリューム=合算）
+function getExSeries(pid,exName){
+  var byDate={};
+  (D.tlog||[]).filter(function(l){return idEq(l.pid,pid)&&!l.absent;}).forEach(function(l){
+    var r=(l.results||[]).find(function(x){return (x.exName||'').trim()===exName&&!x.skipped;});
+    if(!r||!r.sets||!r.sets.length)return;
+    var m=exMetrics(r.sets);var d=l.date;
+    if(!byDate[d])byDate[d]={date:d,topW:0,vol:0,e1:null,e1reps:null};
+    if(m.topW>byDate[d].topW)byDate[d].topW=m.topW;
+    byDate[d].vol+=m.vol;
+    if(m.e1!=null&&(byDate[d].e1==null||m.e1>byDate[d].e1)){byDate[d].e1=m.e1;byDate[d].e1reps=m.e1reps;}
+  });
+  return Object.keys(byDate).sort().map(function(k){return byDate[k];});
+}
+// 比較セッション（player getCompareVolume を _curTLog非依存に引数化＋全指標化）。mode: prev / week(6日前以前の直近)
+function getCompareEx(pid,exName,beforeDate,mode,curTs,curId){
+  var logs=(D.tlog||[]).filter(function(l){
+    if(!idEq(l.pid,pid))return false;
+    if(curId!=null&&idEq(l.id,curId))return false;
+    if(l.ts&&curTs)return l.ts<curTs;
+    return l.date<beforeDate;
+  }).sort(function(a,b){var at=a.ts||a.date,bt=b.ts||b.date;return bt.localeCompare(at);});
+  if(mode==='week'){var wkAgo=new Date(beforeDate);wkAgo.setDate(wkAgo.getDate()-6);var wkStr=toDateStr(wkAgo);logs=logs.filter(function(l){return l.date<=wkStr;});}
+  for(var i=0;i<logs.length;i++){
+    var r=(logs[i].results||[]).find(function(x){return (x.exName||'').trim()===exName&&!x.skipped;});
+    if(r&&r.sets){var m=exMetrics(r.sets);m.date=logs[i].date;return m;}
+  }
+  return null;
+}
+// 種目のestBase（最初に見つかったもの）
+function getExEstBase(pid,exName){
+  var eb=null;
+  (D.tlog||[]).filter(function(l){return idEq(l.pid,pid);}).forEach(function(l){(l.results||[]).forEach(function(r){if(!eb&&(r.exName||'').trim()===exName&&r.estBase)eb=r.estBase;});});
+  return eb;
+}
+// 実測1RM（ph）のベスト値＋測定日
+function getBestPh(pid,field){
+  var rs=(D.ph||[]).filter(function(x){return idEq(x.pid,pid)&&x[field]!=null;});
+  if(!rs.length)return null;
+  var best=null;rs.forEach(function(x){if(best==null||x[field]>best.val)best={val:x[field],date:x.date};});
+  return best;
+}
+// 差分の矢印（色付き）
+function diffArrow(d){return d>0?'<span style="color:var(--green)">↑</span>':d<0?'<span style="color:var(--red)">↓</span>':'<span style="color:var(--txt-2)">→</span>';}
+// 前回比/7日比の一行（トップセット重量差＋実日付）
+function trCmpLine(label,cur,cmp){
+  if(!cmp)return '<span style="color:var(--txt-3)">'+label+' 比較なし</span>';
+  var d=cur.topW-cmp.topW;
+  return '<span>'+label+' '+diffArrow(d)+' '+(d>0?'+':'')+d+'kg <span style="color:var(--txt-3)">('+fmt(cmp.date).slice(5)+'比)</span></span>';
+}
+// セッション展開のトグル
+function toggleTrSess(id){
+  var el=document.getElementById('trsess-'+id);if(!el)return;
+  var open=el.style.display==='none';
+  el.style.display=open?'block':'none';
+  var arw=document.getElementById('trsess-arw-'+id);if(arw)arw.textContent=open?'▾':'▸';
+}
+// 種目セレクタ／指標トグル変更 → レポート全再構築（スクロール位置を保つ）
+function setTrExC(v){window._trEx=(v||'').trim();var y=window.scrollY;renderPlayerReport(_detailPid);window.scrollTo(0,y);}
+function setTrMetricC(m){window._trMetric=m;var y=window.scrollY;renderPlayerReport(_detailPid);window.scrollTo(0,y);}
+// 種目推移カードのHTML
+function buildTrendCoach(pid){
+  var logs=D.tlog.filter(function(l){return idEq(l.pid,pid)&&!l.absent;}).sort(function(a,b){return (b.ts||b.date||'').localeCompare(a.ts||a.date||'');});
+  var exAgg={};
+  logs.forEach(function(l){(l.results||[]).forEach(function(r){if(r.skipped)return;var nm=(r.exName||'').trim();if(!nm)return;if(!exAgg[nm])exAgg[nm]={name:nm,count:0,estBase:null};exAgg[nm].count++;if(!exAgg[nm].estBase&&r.estBase)exAgg[nm].estBase=r.estBase;});});
+  var exList=Object.keys(exAgg).map(function(k){return exAgg[k];}).sort(function(a,b){return b.count-a.count;});
+  if(!exList.length)return'';
+  var def=exList.find(function(e){return e.estBase;})||exList[0];
+  var sel=(window._trEx&&exAgg[window._trEx])?window._trEx:def.name;
+  window._trEx=sel;
+  var estBase=exAgg[sel].estBase;
+  var metric=window._trMetric||'top';
+  if(metric==='e1rm'&&!estBase)metric='top';
+  window._trMetric=metric;
+  var metricBtns=[['top','トップセット重量'],['e1rm','推定1RM'],['vol','ボリューム']];
+  var togHtml=metricBtns.map(function(mb){
+    var disabled=mb[0]==='e1rm'&&!estBase;var active=mb[0]===metric;
+    return '<span style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--line-2);'+(active?'background:var(--blue);color:#0A1019;border-color:var(--blue);font-weight:700':'color:var(--txt-2)')+(disabled?';opacity:.35':';cursor:pointer')+'"'+(disabled?' title="実測1RM基準なし＝推定1RM不可"':' onclick="setTrMetricC(\''+mb[0]+'\')"')+'>'+mb[1]+'</span>';
+  }).join('');
+  var h='<div class="card" style="margin-top:12px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px"><div style="font-size:13px;font-weight:700">📈 種目推移</div>'+
+    '<select class="sel" onchange="setTrExC(this.value)">'+exList.map(function(e){return'<option'+(e.name===sel?' selected':'')+'>'+escapeHtml(e.name)+(e.estBase?'':' (手入力)')+'</option>';}).join('')+'</select></div>'+
+    '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">'+togHtml+'</div>';
+  var series=getExSeries(pid,sel);
+  if(!series.length)return h+'<div style="color:var(--txt-2);font-size:12px">この種目の記録がありません</div></div>';
+  h+='<div style="position:relative;height:200px;margin-bottom:8px"><canvas id="ch-tr1rm"></canvas></div>';
+  if(metric==='e1rm')h+='<div style="font-size:10px;color:var(--txt-3);margin-bottom:6px">● 濃い点=信頼度高(≤3レップ) / ● 薄い点=参考(4〜6レップ)。候補(RIR記録あり・6レップ以下)が無い日は点を打ちません。</div>';
+  var curLog=null;
+  logs.forEach(function(l){var r=(l.results||[]).find(function(x){return (x.exName||'').trim()===sel&&!x.skipped;});if(r&&r.sets&&r.sets.length){var t=l.ts||l.date;if(!curLog||t>(curLog.ts||curLog.date))curLog=l;}});
+  if(curLog){
+    var curR=(curLog.results||[]).find(function(x){return (x.exName||'').trim()===sel&&!x.skipped;});
+    var curM=exMetrics(curR.sets);
+    var prev=getCompareEx(pid,sel,curLog.date,'prev',curLog.ts,curLog.id);
+    var wk=getCompareEx(pid,sel,curLog.date,'week',curLog.ts,curLog.id);
+    var phBest=estBase?getBestPh(pid,estBase):null;
+    if(phBest&&phBest.val>0){
+      var eff=Math.round(curM.topW/phBest.val*100);var over=eff>100;
+      h+='<div style="font-size:12px;margin-bottom:6px;color:var(--txt)">実効強度 <b style="color:'+(over?'var(--txt-3)':'var(--blue)')+'">'+eff+'%</b>'+(over?' <span style="color:var(--amber);font-size:11px">⚠ 100%超＝ph更新推奨</span>':'')+' <span style="color:var(--txt-3);font-size:11px">(実測1RM '+phBest.val+'kg・'+fmt(phBest.date).slice(5)+'測定)</span></div>';
+    }
+    if(prev){
+      var sp=[];
+      var td=curM.topW-prev.topW;sp.push('<span>トップ '+diffArrow(td)+' '+(td>0?'+':'')+td+'kg</span>');
+      if(curM.e1!=null&&prev.e1!=null){var ed=curM.e1-prev.e1;sp.push('<span>推定1RM '+diffArrow(ed)+' '+(ed>0?'+':'')+ed+'kg</span>');}
+      var vd=curM.vol-prev.vol;sp.push('<span style="color:var(--txt-3)">ボリューム '+diffArrow(vd)+'</span>');
+      h+='<div style="font-size:12px;display:flex;flex-wrap:wrap;gap:12px;margin-bottom:5px;color:var(--txt)">'+sp.join('')+'</div>';
+    }
+    h+='<div style="font-size:11px;color:var(--txt-2);display:flex;flex-wrap:wrap;gap:14px">'+trCmpLine('前回比',curM,prev)+trCmpLine('7日比',curM,wk)+'</div>';
+  }
+  h+='<div style="font-size:10px;color:var(--txt-3);margin-top:6px">※判断は トップセット重量＞推定1RM＞＞ボリューム の順。ボリュームはウォームアップ込みの参考値。</div>';
+  return h+'</div>';
+}
+// セッション履歴カードのHTML（折りたたみ展開）
+function buildHistCoach(pid){
+  var logs=D.tlog.filter(function(l){return idEq(l.pid,pid);}).sort(function(a,b){return (b.ts||b.date||'').localeCompare(a.ts||a.date||'');});
+  if(!logs.length)return'';
+  var h='<div class="card" style="margin-top:12px"><div style="font-size:13px;font-weight:700;margin-bottom:10px">🏋️ セッション履歴</div>';
+  logs.slice(0,20).forEach(function(lg){
+    if(lg.absent){
+      h+='<div class="row"><span style="min-width:60px;color:var(--txt-2);font-size:12px">'+fmt(lg.date)+'</span><span class="chip" style="'+(lg.absentReason==='痛み・怪我'?'background:var(--red-bg);color:var(--red)':'')+'">欠席</span><span style="flex:1;color:var(--txt-2);font-size:11px">'+escapeHtml(lg.absentReason||'-')+'</span></div>';
+      return;
+    }
+    var mn=D.tmenu.find(function(x){return idEq(x.id,lg.menuId);});
+    var exCount=(lg.results||[]).length;
+    var hasInjury=(lg.results||[]).some(function(r){return r.skipped&&r.skipReason==='痛み・怪我';});
+    h+='<div class="row row-click" onclick="toggleTrSess('+lg.id+')"><span style="min-width:14px;color:var(--txt-3)" id="trsess-arw-'+lg.id+'">▸</span><span style="min-width:58px;color:var(--txt-2);font-size:12px">'+fmt(lg.date)+'</span><span style="flex:1;font-size:12px;font-weight:600">'+(mn?escapeHtml(mn.name):'メニュー')+(hasInjury?' <span class="chip" style="background:var(--red-bg);color:var(--red)">怪我</span>':'')+'</span><span style="font-size:11px;color:var(--txt-2);margin-right:8px">'+exCount+'種目</span><span style="font-weight:700;color:var(--accent);font-size:13px">'+(lg.totalVolume||0).toLocaleString()+'kg</span></div>';
+    h+='<div id="trsess-'+lg.id+'" style="display:none">'+trSessDetailC(lg,pid)+'</div>';
+  });
+  if(logs.length>20)h+='<div style="font-size:11px;color:var(--txt-2);margin-top:6px">ほか '+(logs.length-20)+'件</div>';
+  h+='<div style="font-size:10px;color:var(--txt-3);margin-top:8px">※ボリュームはウォームアップ込み</div>';
+  return h+'</div>';
+}
+// 1セッションの展開内容（全セット・目標差・スキップ理由・当日コンディション）
+function trSessDetailC(lg,pid){
+  var cond=(D.f||[]).filter(function(r){return idEq(r.pid,pid)&&r.date===lg.date;})[0];
+  var h='<div style="background:var(--bg-panel-2);border-radius:10px;padding:8px 12px;margin:2px 0 8px">';
+  if(cond)h+='<div style="font-size:11px;color:var(--txt-2);margin-bottom:8px">当日コンディション: RPE <b style="color:var(--txt)">'+cond.rpe+'</b> / 睡眠 <b style="color:var(--txt)">'+cond.sleep+'h</b></div>';
+  (lg.results||[]).forEach(function(r){
+    if(r.skipped){
+      var inj=r.skipReason==='痛み・怪我';
+      h+='<div style="padding:6px 0;border-bottom:1px solid var(--line);opacity:.75"><span style="font-weight:600;font-size:12px;color:var(--txt-2)">'+escapeHtml(r.exName)+'</span> <span style="font-size:11px;color:'+(inj?'var(--red)':'var(--txt-3)')+';font-weight:'+(inj?'700':'400')+'">⊘ スキップ'+(r.skipReason?'（'+escapeHtml(r.skipReason)+'）':'')+'</span></div>';
+      return;
+    }
+    h+='<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div style="font-weight:600;font-size:12px;margin-bottom:4px;color:var(--txt)">'+escapeHtml(r.exName)+(r.targetReps?'<span style="font-size:10px;color:var(--txt-3);font-weight:400;margin-left:6px">目標 '+r.targetReps+'回'+(r.targetRir!=null?' / RIR'+r.targetRir:'')+'</span>':'')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
+    (r.sets||[]).forEach(function(s){
+      var hasW=s.weight!=null&&s.weight!=='',hasR=s.reps!=null&&s.reps!=='';
+      var w=hasW?s.weight:'-',rp=hasR?s.reps:'-';
+      var rir=(s.rir!=null&&s.rir!=='')?s.rir:null;
+      var col='var(--txt)';
+      if(r.targetReps&&hasR&&parseInt(s.reps)<r.targetReps)col='var(--red)';
+      var rirCol='var(--txt-2)';
+      if(r.targetRir!=null&&rir!=null&&parseInt(rir)>r.targetRir)rirCol='var(--amber)';
+      h+='<span style="font-size:12px;background:var(--bg-elev);border-radius:6px;padding:3px 8px"><b style="color:'+col+'">'+w+'kg×'+rp+'</b>'+(rir!=null?' <span style="color:'+rirCol+'">RIR'+rir+'</span>':'')+'</span>';
+    });
+    h+='</div></div>';
+  });
+  return h+'</div>';
+}
+// 種目推移グラフ（coach配色。指標ごとに毎回 dC→new Chart で作り直す）
+function drawTrChartC(pid,exName,metric){
+  dC('tr1rm');
+  var e=document.getElementById('ch-tr1rm');if(!e)return;
+  var series=getExSeries(pid,exName);if(!series.length)return;
+  var labels=series.map(function(p){return p.date.slice(5);});
+  var estBase=getExEstBase(pid,exName);
+  var phBest=(metric!=='vol'&&estBase)?getBestPh(pid,estBase):null;
+  var datasets=[],maxV=0;
+  if(metric==='vol'){
+    datasets.push({label:'ボリューム(kg)',data:series.map(function(p){return p.vol;}),borderColor:'#4D9FFF',backgroundColor:'rgba(77,159,255,.15)',borderWidth:2.5,fill:true,tension:.35,spanGaps:true,pointRadius:4,pointBackgroundColor:'#16243A',pointBorderColor:'#4D9FFF',pointBorderWidth:2});
+  }else if(metric==='e1rm'){
+    series.forEach(function(p){if(p.e1!=null&&p.e1>maxV)maxV=p.e1;});
+    datasets.push({label:'推定1RM(kg)',data:series.map(function(p){return p.e1;}),borderColor:'#4D9FFF',borderWidth:2.5,tension:.35,spanGaps:true,
+      pointRadius:series.map(function(p){return p.e1==null?0:(p.e1reps<=3?5:4);}),
+      pointBackgroundColor:series.map(function(p){return p.e1==null?'transparent':(p.e1reps<=3?'#4D9FFF':'rgba(77,159,255,.45)');}),
+      pointBorderColor:series.map(function(p){return p.e1==null?'transparent':'#4D9FFF';}),pointBorderWidth:1.5});
+  }else{
+    series.forEach(function(p){if(p.topW>maxV)maxV=p.topW;});
+    datasets.push({label:'トップセット重量(kg)',data:series.map(function(p){return p.topW||null;}),borderColor:'#4D9FFF',backgroundColor:'rgba(77,159,255,.15)',borderWidth:2.5,fill:true,tension:.35,spanGaps:true,pointRadius:4,pointBackgroundColor:'#16243A',pointBorderColor:'#4D9FFF',pointBorderWidth:2});
+  }
+  if(phBest&&phBest.val>0){
+    if(phBest.val>maxV)maxV=phBest.val;
+    datasets.push({label:'実測1RM '+phBest.val+'kg',data:labels.map(function(){return phBest.val;}),borderColor:'#5E708A',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false,tension:0});
+  }
+  var yBase={grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#93A4BC',font:{size:10}}};
+  if(metric==='vol'){yBase.beginAtZero=true;}else{yBase.beginAtZero=false;yBase.suggestedMax=Math.ceil(maxV*1.05);}
+  charts.tr1rm=new Chart(e,{type:'line',data:{labels:labels,datasets:datasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#93A4BC',usePointStyle:true,pointStyle:'circle',boxWidth:7,padding:10,font:{size:10}}},tooltip:{backgroundColor:'rgba(10,16,25,.95)',padding:10,cornerRadius:10}},scales:{y:yBase,x:{grid:{display:false},ticks:{color:'#93A4BC',font:{size:10}}}}}});
 }
 function backFromReport(){_detailPid=null;render();window.scrollTo(0,0);}
 

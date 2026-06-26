@@ -7,20 +7,25 @@
 ---
 
 ## 最終更新
-- 日時: 2026-06-26
+- 日時: 2026-06-27
 - 更新者: Claude
 
 ## いま何をしているか（現在地）
-- **新機能「トレーニング内容の把握」staff側の実装が完了（段階1〜4）・JXAモック全検証パス。push前のユーザー確認＋テスト選手での実機スモーク待ち。** まだ未コミット（作業ツリーに staff/index.html の変更あり）。
-  - 実装内容（staff `goPlayerDetail` に6つ目のタブ「トレーニング」dt5を新設）:
-    - **段階1**: `goPlayerDetail(pid,openTab)` 2引数化＋冒頭で `_dtPid/_trEx/_trMetric` リセット。`dtTab(5)`→`renderTrainTab()` 描画フック（display:none回避でタブを開いた瞬間に描く）。`renderTrainingStatus` の行クリック4箇所を `goPlayerDetail(pid,5)` に変更。
-    - **段階2**: セッション履歴の折りたたみ展開（`toggleTrSess`/`trSessDetail`）。全セット `重量×回数(RIR)`＋目標差色付け（未達=赤/RIR余裕=黄）＋スキップ理由（痛み・怪我=赤強調）＋当日コンディション(RPE/睡眠)。
-    - **段階3**: 種目セレクタ＋ボリューム推移グラフ（canvas `ch-tr1rm`/charts key `tr1rm`）。`getCompareVolume`を`_curTLog`非依存に引数化移植→`getCompareEx`（全指標化）。同日集約（トップ重量=最大/推定1RM=最大/ボリューム=合算）`getExSeries`/`exMetrics`。
-    - **段階4**: 指標トグル3種（トップセット重量[既定]/推定1RM/ボリューム、estBase無し種目は推定1RM無効化）。推定1RMはtlogから再計算（候補=RIR記録あり&reps≤6&w>0&rp>0の最大e1RM、候補無し日は点なし）。信頼度マーカー（reps≤3=濃radius5/4〜6=淡radius4、pointRadius配列）。ph実測1RM水平線（borderDash、軸maxに含める）。実効強度%（トップ÷getBest×100、0除算ガード、100%超=グレー＋ph更新推奨、測定日併記）。一行サマリー＋前回比/7日比（実日付併記、判断軸=トップ重量＞推定1RM＞＞ボリューム）。
-  - 追加した主な関数（staff、`renderTrainTab`周辺）: `renderTrainTab`/`toggleTrSess`/`trSessDetail`/`setTrEx`/`setTrMetric`/`exMetrics`/`getExSeries`/`getCompareEx`/`getExEstBase`/`getBestPh`/`diffArrow`/`trCmpLine`/`drawTrChart`。
-  - 検証: JXA構文OK＋実関数を抽出しモック環境(Chart/document/D)でrenderTrainTabをエンドツーエンド実行。3指標・estBase無し種目・同日集約・e1RM候補フィルタ・信頼度radii・ph水平線・実効強度・前回比/7日比 すべて期待通り。
-- **次の一手（このセッションの続き or 次セッション）**: ①テスト選手で実機スモーク → ②ユーザー確認の上 staff をpush → ③**coachへ書き直し移植**（タブ無し・既存トレ節coach:580-588差し替え・`$M`/`ava`/`setTimeout(...,60)`/ダーク配色ハードコード）。
-- リポジトリ: 最新コミット `78ebfbd`, 2026-06-26。`main`はorigin同期済み。作業ツリーに staff/index.html（トレーニングタブ実装）＋このHANDOFF更新＋未追跡`.DS_Store`。
+- **新機能「トレーニング内容の把握」＝staff・coach両方push済み＝完成。** staff（`085ea04`）／coach（このコミット）。構文チェック(JXA UTF-8で全blockOK)＋JXAモック検証(19/19)パス。ユーザー判断で「今すぐpush（実機確認は本番で実施）」を選択しpush。
+- **実機スモーク用ローカルサーバ**（必要時）: `python3 -m http.server 8765 --bind 127.0.0.1`（リポジトリ直下で・Bash権限必要）→ Chromeで `http://127.0.0.1:8765/coach/index.html`。本番Firebaseに繋がり実データで確認できる。確認点: 記録のある選手の個人レポートで 種目推移/指標トグル(トップ重量/推定1RM/ボリューム)/セッション展開/ph破線。
+- **staff実装内容（push済み `085ea04`）**: `goPlayerDetail` に6つ目のタブ「トレーニング」dt5を新設。
+  - 段階1: `goPlayerDetail(pid,openTab)` 2引数化＋冒頭で `_dtPid/_trEx/_trMetric` リセット。`dtTab(5)`→`renderTrainTab()` 描画フック（display:none回避）。`renderTrainingStatus` 行クリック4箇所を `goPlayerDetail(pid,5)` に。
+  - 段階2: セッション履歴の折りたたみ展開（`toggleTrSess`/`trSessDetail`）。全セット`重量×回数(RIR)`＋目標差色付け（未達=赤/RIR余裕=黄）＋スキップ理由（痛み怪我=赤）＋当日コンディション。
+  - 段階3: 種目セレクタ＋推移グラフ（canvas `ch-tr1rm`/charts key `tr1rm`）。`getCompareVolume`を`_curTLog`非依存に引数化移植→`getCompareEx`。同日集約（トップ=最大/推定1RM=最大/ボリューム=合算）`getExSeries`/`exMetrics`。
+  - 段階4: 指標トグル3種（トップセット重量[既定]/推定1RM/ボリューム、estBase無し種目は推定1RM無効）。推定1RMはtlog再計算（候補=RIR記録あり&reps≤6&w>0&rp>0の最大e1RM、候補無し日は点なし）。信頼度マーカー（≤3rep濃radius5/4〜6淡radius4、pointRadius配列）。ph実測1RM水平線（borderDash・軸maxに含める）。実効強度%（トップ÷getBest×100、0除算ガード、100%超=ph更新推奨、測定日併記）。一行サマリー＋前回比/7日比（実日付併記、判断軸=トップ重量＞推定1RM＞＞ボリューム）。
+  - staff追加関数（`renderTrainTab`周辺, staff:2652以降）: `renderTrainTab`/`toggleTrSess`/`trSessDetail`/`setTrEx`/`setTrMetric`/`exMetrics`/`getExSeries`/`getCompareEx`/`getExEstBase`/`getBestPh`/`diffArrow`/`trCmpLine`/`drawTrChart`。
+- **coach実装内容（未push・検証済み）**: タブ無し縦スクロール構成に合わせて書き直し移植。
+  - 既存トレ節（旧coach:580-588「🏋️トレーニング（直近）」）を `buildTrendCoach(pid)`＋`buildHistCoach(pid)` の2カードに差し替え。
+  - 入口 `openPlayer(pid)`(coach:346) で `window._trEx=null;window._trMetric='top'` リセット（renderPlayerReportは再描画先でもあるのでここでリセット）。セレクタ/トグル変更は `setTrExC`/`setTrMetricC` が `renderPlayerReport(_detailPid)` 全再構築＋スクロール位置復元。グラフは `renderPlayerReport` 末尾に追加した `setTimeout(...,60)` で `drawTrChartC` 描画（常時表示＝display:none問題なし）。
+  - coach配色（青ライン`#4D9FFF`/ph破線`#5E708A`/軸`#93A4BC`/凡例usePointStyle）。当日コンディションは`rpeColor`がcoachに無いため色なしtxt表示。
+  - coach追加関数（`backFromReport`直前, coach:640付近）: `exMetrics`/`getExSeries`/`getCompareEx`/`getExEstBase`/`getBestPh`/`diffArrow`/`trCmpLine`/`toggleTrSess`/`setTrExC`/`setTrMetricC`/`buildTrendCoach`/`buildHistCoach`/`trSessDetailC`/`drawTrChartC`。名前衝突なしを確認済み。
+- **検証手法**: 当環境にnodeが無いため JXA(`osascript -l JavaScript`)で構文チェック＋実関数をPythonでbrace抽出→Chart/document/Dをモックしてエンドツーエンド実行。staff・coach両方で3指標・estBase無し種目・同日集約・e1RM候補フィルタ・信頼度radii・ph水平線・実効強度・前回比/7日比 すべて期待通り。
+- リポジトリ: 最新コミット `085ea04`(staffトレーニングタブ), 2026-06-27。`main`はorigin同期済み。**作業ツリーに coach/index.html（未コミット・本機能の移植）＋このHANDOFF更新＋未追跡`.DS_Store`**。
 - （前フェーズ）**一連の信頼性改善＋UIバグ修正は一区切り済み**。
 - **直近: 「明日のリハビリ予定が永遠に残る」バグを修正（`78ebfbd`）**。`rplan.tomorrowCats`に対象日が無く、設定すると怪我が回復済になるまで毎日「明日の予定」に出続けていた（リハビリ記録とは別データなので記録削除でも消えない）。staff `saveNextMenu`/trainer `saveNextMenuT` に対象日`tomorrowDate`(設定日の翌日)を付与し、staffダッシュボードのパネルを「本日分/明日分」に振り分け＋対象日を過ぎた分・日付の無い旧データは非表示に。旧データは無害に非表示、再設定で正常化。
 - 完了サマリ（すべてpush＋実機確認済み）:
@@ -161,18 +166,12 @@
 - `4517acf`/`74c44d0` フェーズ1（トレーニング入力ツール刷新）。
 
 ## リポジトリの状態
-- ブランチ: main（origin/main と同期済み。最新 `78ebfbd`）。
-- 作業ツリー: `HANDOFF.md` がこの更新で未コミット。ほかは未追跡の `.DS_Store` のみ（無視してよい）。
-- 直近push: `2f6fd48`(デッドコード削除) → `78ebfbd`(明日のリハビリ予定バグ修正)。
+- ブランチ: main（origin/main と同期済み）。
+- 作業ツリー: クリーン（未追跡の `.DS_Store` のみ。無視してよい）。
+- 直近push: `085ea04`(staffトレーニングタブ) → coach移植(本機能完成)。
 
 ## 次の一手
-- **最優先: 上記「🆕 トレーニング内容の把握（staff/coach）」の実装着手**。設計＆2巡レビュー完了済み＝あとは作るだけ。staff先行で段階的に。推奨の刻み:
-  1. staffにトレーニングタブ(dt5)＋セッション履歴一覧（展開なし）＋`goPlayerDetail(pid,openTab)`2引数化＋`dtTab(5)`描画フック → 構文/JXA → 確認
-  2. セッション展開（全セット＋目標差＋スキップ理由＋当日コンディション）
-  3. 推移グラフ（ボリューム）＋種目セレクタ＋`getCompareVolume`移植(引数化)
-  4. トップセット重量／推定1RM(tlog再計算)トグル＋信頼度マーカー＋ph水平線＋実効強度%＋一行サマリー
-  5. テスト選手で実機スモーク → push前にユーザー確認 → push
-  6. coachへ書き直し移植（タブ無し・既存トレ節580-588差し替え・$M/ava/ダーク配色）→ 確認 → push
+- **「トレーニング内容の把握」は staff/coach 両方push済み＝完成。** 残るは実機での目視確認（本番URLまたはローカルサーバ）。気になる挙動があれば微修正フェーズへ。
 - その他（任意・保留中の候補）:
   - （任意・保留中）フルセット横展開 — player で固めた `guardSubmit`/`svSafeSeq`/`svSafeUpdate(onError)` を staff/trainer に反映。trainer(15箇所)→staff(74箇所)の順。**ユーザー判断で現在は保留**。
   - 定期的な手動JSONバックアップの継続（staff「CSV出力」画面下部 `exportAllJSON`。PIN消失事故の再発防止）。
