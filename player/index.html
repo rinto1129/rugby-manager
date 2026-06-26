@@ -2119,15 +2119,26 @@ function showInjuryReport(){var td=todayStr();showSub('<div style="font-size:18p
 '<div class="fl"><label>現在の痛み（1-10）</label>'+numStepHTML('ir-pain',1,10,'')+'</div>'+
 '<div class="fl"><label>来週の練習に参加できるか</label><select class="ipt" id="ir-canprac"><option>参加できる</option><option>参加できない</option><option>わからない</option></select></div>'+
 '<div class="fl"><label>メモ</label><textarea class="ipt" id="ir-note" placeholder="その他気になること..."></textarea></div>'+
-'<button class="btn btn-p" onclick="doInjuryReport()">報告を送信する</button></div>');}
+'<button class="btn btn-p" onclick="doInjuryReport(this)">報告を送信する</button></div>');}
 
-function doInjuryReport(){
-  var pain=parseInt(document.getElementById('ir-pain').value);if(!pain)return alert('痛みレベルを入力してください');
+function doInjuryReport(btnEl){
+  // 痛みは1〜10の必須項目（isFilledで空のみ未入力扱い→範囲チェックで範囲外を弾く。素の!painは0や空を区別できず誤検知するため不可）
+  var pain=parseInt(document.getElementById('ir-pain').value);
+  if(!isFilled(pain)||pain<1||pain>10)return alert('痛みレベル（1〜10）を入力してください');
+  // 二重送信ガード（連打で i/r レコードが重複作成されるのを防ぐ）
+  if(!guardSubmit(btnEl,'送信中…'))return;
   var dt=document.getElementById('ir-date').value,side=document.getElementById('ir-side').value,part=document.getElementById('ir-part').value,type=document.getElementById('ir-type').value,how=document.getElementById('ir-how').value,canprac=document.getElementById('ir-canprac').value,note=document.getElementById('ir-note').value;
   var injId=Date.now();
   var injRec={id:injId,pid:myPid,side:side,part:part,partOther:'',type:type,typeOther:'',date:dt,returnDate:'',hospitalVisited:false,hospitalDate:'',note:'【選手報告】'+how+(note?' / '+note:'')+' / 痛み:'+pain+'/10 / 来週練習:'+canprac,resolved:false,source:'player',canPractice:canprac,painLevel:pain,approved:null};
   var rehabRec={id:injId+1,injId:injId,pid:myPid,stage:0,logs:[],stageDates:[]};
-  svSafe('i',injRec,function(){svSafe('r',rehabRec,function(){alert('報告しました ✓ スタッフが確認後、怪我人リストに追加されます。');go('mypage');});});
+  // i(怪我)→r(リハビリ)を順次安全保存。svSafeSeqで成否を捕捉（svSafeは失敗時に内部alert＋ボタン固着するため使わない）
+  svSafeSeq([{k:'i',rec:injRec},{k:'r',rec:rehabRec}],function(){
+    alert('報告しました ✓ スタッフが確認後、怪我人リストに追加されます。');go('mypage');
+  },function(){
+    // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+  });
 }
 
 // === TAPING RESERVATION (選手側) ===
