@@ -517,7 +517,6 @@ function svSafeUpdate(k,updateFn,onDone){
     });
   }).then(function(latest){D[k]=latest;if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);alert('保存に失敗しました');});
 }
-function svAll(){for(var k in SK)sv(k);}
 // 単一レコードをトランザクションで安全にupsert（id一致で置換、なければ追加）
 function svRec(k,rec,onDone){
   svSafeUpdate(k,function(latest){

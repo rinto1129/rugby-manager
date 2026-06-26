@@ -1343,22 +1343,6 @@ function showBroncoFormDirect(){
   '</div>';
 }
 
-function doBIG3(){
-  var sq=parseFloat(document.getElementById('pf-sq').value)||null;
-  var bp=parseFloat(document.getElementById('pf-bp').value)||null;
-  var dl=parseFloat(document.getElementById('pf-dl').value)||null;
-  if(!sq&&!bp&&!dl)return alert('少なくとも1つ入力してください');
-  var newRec={id:Date.now(),pid:myPid,date:document.getElementById('pf-date').value,squat:sq,bench:bp,deadlift:dl,bronco:null};
-  svSafe('ph',newRec,function(){
-    var m=[];
-    var pSQ=getBest(myPid,'squat'),pBP=getBest(myPid,'bench'),pDL=getBest(myPid,'deadlift');
-    if(sq&&pSQ&&sq>pSQ)m.push('🎉 SQ自己ベスト更新！');
-    if(bp&&pBP&&bp>pBP)m.push('🎉 BP自己ベスト更新！');
-    if(dl&&pDL&&dl>pDL)m.push('🎉 DL自己ベスト更新！');
-    alert(m.length?m.join('\n'):'記録しました ✓');go('mypage');
-  });
-}
-
 function doBronco(btnEl){
   var br=broncoFromInputs('br-m','br-s');
   if(!br)return alert('タイムを入力してください');
