@@ -644,7 +644,7 @@ function nav(pg){
   });
   var t={dash:'ダッシュボード',players:'選手一覧',injury:'怪我管理',rehab:'リハビリ管理',training:'トレーニング',fatigue:'疲労度管理',absence:'欠席管理',bodycomp:'体組成',physical:'フィジカル記録',matchview:'試合日レポート',tape:'テーピング予約',calendar:'カレンダー',trainer:'トレーナー管理',rank:'ランキング',export:'CSV出力',msess:'測定会管理',rtest:'復帰テスト',help:'使い方ガイド'};
   document.getElementById('pg-title').textContent=t[pg]||pg;
-  var acts={players:'<button class="btn btn-p" onclick="goAddPlayer()">+ 選手追加</button>',injury:'<button class="btn btn-p" onclick="goAddInjury()">+ 怪我登録</button>',absence:'<button class="btn btn-p" onclick="goRecordAbsence()">+ 欠席記録</button>',bodycomp:'<button class="btn btn-p" onclick="goAddBC()">+ 体組成記録</button>',physical:'<button class="btn btn-p" onclick="goAddPhys()">+ 記録追加</button> <button class="btn" onclick="goBulkPhys()" style="margin-left:6px">一括入力</button>',fatigue:'<button class="btn btn-p" onclick="goAddFatigue()">+ コンディション入力</button>',rehab:'<button class="btn btn-p" onclick="goAddRTpl()">+ テンプレ作成</button>',calendar:'<button class="btn btn-p" onclick="goAddCalEvent()">+ イベント追加</button>',tape:'<button class="btn btn-p" onclick="goAddTapeSlot()">+ 枠を設定</button>',msess:'<button class="btn btn-p" onclick="goAddMSess()">+ 測定会を作成</button>',rtest:'<button class="btn btn-p" onclick="goAddRTestTpl()">+ テンプレ作成</button>',trainer:'<button class="btn btn-p" onclick="goAddTrainer()">+ トレーナー追加</button>'};
+  var acts={players:'<button class="btn btn-p" onclick="goAddPlayer()">+ 選手追加</button>',injury:'<button class="btn btn-p" onclick="goAddInjury()">+ 怪我登録</button>',absence:'<button class="btn btn-p" onclick="goRecordAbsence()">+ 欠席記録</button>',bodycomp:'<button class="btn btn-p" onclick="goAddBC()">+ 体組成記録</button>',physical:'<button class="btn btn-p" onclick="goAddPhys()">+ 記録追加</button> <button class="btn" onclick="goBulkPhys()" style="margin-left:6px">一括入力</button>',fatigue:'<button class="btn btn-p" onclick="goAddFatigue()">+ コンディション入力</button>',rehab:'<button class="btn btn-p" onclick="goAddRTpl()">+ テンプレ作成</button>',calendar:'<button class="btn btn-p" onclick="goAddCalEvent()">+ イベント追加</button> <button class="btn" onclick="goImportCal()" style="margin-left:6px">📋 一括インポート</button>',tape:'<button class="btn btn-p" onclick="goAddTapeSlot()">+ 枠を設定</button>',msess:'<button class="btn btn-p" onclick="goAddMSess()">+ 測定会を作成</button>',rtest:'<button class="btn btn-p" onclick="goAddRTestTpl()">+ テンプレ作成</button>',trainer:'<button class="btn btn-p" onclick="goAddTrainer()">+ トレーナー追加</button>'};
   document.getElementById('tb-act').innerHTML=(acts[pg]||'')+(pg==='dash'?'<button class="btn" style="margin-left:6px" onclick="checkYearUpdate()">📅 学年更新</button>':'');
   V[pg]&&V[pg]();
 }
@@ -1342,7 +1342,7 @@ calendar:function(){
     calH+='<div style="font-size:12px;font-weight:'+(isToday?'700':'500')+';color:'+(isToday?'var(--blue)':dow===0?'var(--red)':dow===6?'var(--blue)':'var(--text-primary)')+'">'+d+'</div>';
     var msessOnDay=(D.msess||[]).filter(function(s){return s.startDate<=ds&&s.endDate>=ds;});
     msessOnDay.forEach(function(s){calH+='<div style="font-size:8px;background:#0891B2;color:#fff;border-radius:3px;padding:1px 3px;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">📐'+escapeHtml(s.name)+'</div>';});
-    dayEvts.forEach(function(e){var color=e.type==='match'?'var(--purple)':e.type==='practice'?'var(--green)':e.type==='off'?'var(--amber)':e.type==='phys_measure'?'#0891B2':e.type==='bronco_measure'?'#059669':'var(--blue)';calH+='<div style="font-size:9px;background:'+color+';color:#fff;border-radius:3px;padding:1px 4px;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+escapeHtml(e.title)+'</div>';});
+    dayEvts.forEach(function(e){var color=e.type==='match'?'var(--purple)':e.type==='practice'?'var(--green)':e.type==='off'?'var(--amber)':e.type==='weight'?'#F97316':e.type==='phys_measure'?'#0891B2':e.type==='bronco_measure'?'#059669':'var(--blue)';calH+='<div style="font-size:9px;background:'+color+';color:#fff;border-radius:3px;padding:1px 4px;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+escapeHtml(e.title)+'</div>';});
     calH+='</div>';
   }
   calH+='</div>';
@@ -1350,8 +1350,8 @@ calendar:function(){
   calH+='<div style="font-size:14px;font-weight:600;margin-bottom:.5rem">イベント一覧</div>';
   if(eventsThisMonth.length){
     calH+=eventsThisMonth.map(function(e){
-      var color=e.type==='match'?'var(--purple)':e.type==='practice'?'var(--green)':e.type==='off'?'var(--amber)':e.type==='phys_measure'?'#0891B2':e.type==='bronco_measure'?'#059669':'var(--blue)';
-      var typelabel=e.type==='match'?'試合':e.type==='practice'?'練習':e.type==='off'?'オフ':e.type==='phys_measure'?'フィジカル測定':e.type==='bronco_measure'?'ブロンコ測定':'その他';
+      var color=e.type==='match'?'var(--purple)':e.type==='practice'?'var(--green)':e.type==='off'?'var(--amber)':e.type==='weight'?'#F97316':e.type==='phys_measure'?'#0891B2':e.type==='bronco_measure'?'#059669':'var(--blue)';
+      var typelabel=e.type==='match'?'試合':e.type==='practice'?'練習':e.type==='off'?'オフ':e.type==='weight'?'ウエイト':e.type==='phys_measure'?'フィジカル測定':e.type==='bronco_measure'?'ブロンコ測定':'その他';
       return'<div class="card" style="margin-bottom:6px;padding:.65rem 1rem;display:flex;align-items:center;gap:10px"><div style="width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0"></div><div style="flex:1"><div style="font-weight:600;font-size:13px">'+fmt(e.date)+' '+escapeHtml(e.title)+'</div>'+(e.detail?'<div style="font-size:11px;color:var(--text-secondary)">'+escapeHtml(e.detail)+'</div>':'')+'</div><span class="bd" style="background:'+color+'20;color:'+color+'">'+typelabel+'</span>'+(e.type==='match'?'<button class="btn btn-sm" onclick="goSelectMatchMembers(\''+e.id+'\',\''+e.date+'\')">出場選手設定</button>':'')+
       '<button class="btn btn-sm btn-d" onclick="delCalEvent(\''+e.id+'\')">削除</button></div>';
     }).join('');
@@ -4677,7 +4677,7 @@ function calDayClick(date){
   if(dayEvts.length){
     h+='<div class="form-box"><div class="form-title">この日のイベント</div>';
     dayEvts.forEach(function(e){
-      var typelabel=e.type==='match'?'試合':e.type==='practice'?'練習':e.type==='off'?'オフ':e.type==='phys_measure'?'フィジカル測定':e.type==='bronco_measure'?'ブロンコ測定':'その他';
+      var typelabel=e.type==='match'?'試合':e.type==='practice'?'練習':e.type==='off'?'オフ':e.type==='weight'?'ウエイト':e.type==='phys_measure'?'フィジカル測定':e.type==='bronco_measure'?'ブロンコ測定':'その他';
       h+='<div class="log-row"><span style="font-weight:600;flex:1">'+escapeHtml(e.title)+'</span><span class="bd bd-p">'+typelabel+'</span>'+(e.type==='match'?'<button class="btn btn-sm" onclick="goSelectMatchMembers(\''+e.id+'\',\''+e.date+'\')">出場選手</button>':'')+'<button class="btn btn-sm btn-d" onclick="delCalEvent(\''+e.id+'\');popView()">削除</button></div>';
       if(e.detail)h+='<div style="font-size:12px;color:var(--text-secondary);padding:4px 0">'+escapeHtml(e.detail)+'</div>';
     });
@@ -4688,7 +4688,7 @@ function calDayClick(date){
 }
 function calEventFormHTML(defaultDate){
   return '<div class="grid g2" style="gap:10px;margin-bottom:10px">'+
-  '<div class="fl"><label>種別</label><select class="ipt" id="cef-type"><option value="match">試合</option><option value="practice">練習</option><option value="off">オフ</option><option value="phys_measure">フィジカル測定</option><option value="bronco_measure">ブロンコ測定</option><option value="other">その他</option></select></div>'+
+  '<div class="fl"><label>種別</label><select class="ipt" id="cef-type"><option value="match">試合</option><option value="practice">練習</option><option value="off">オフ</option><option value="weight">ウエイト</option><option value="phys_measure">フィジカル測定</option><option value="bronco_measure">ブロンコ測定</option><option value="other">その他</option></select></div>'+
   '<div class="fl"><label>タイトル</label><input class="ipt" id="cef-title" placeholder="例: vs ○○大学"></div>'+
   '</div><div class="fl" style="margin-bottom:10px"><label>詳細（場所・時間等）</label><input class="ipt" id="cef-detail" placeholder="例: ホーム 14:00 KO"></div>';
 }
@@ -4752,11 +4752,120 @@ function fillAnnounceFromEvent(date,title,detail){
 function postAnnounceFromCalendar(){
   var evts=getThisWeekEvents();
   if(!evts.length)return alert('今週のカレンダーイベントがありません');
-  var lines=evts.map(function(e){var typelabel=e.type==='match'?'【試合】':e.type==='practice'?'【練習】':e.type==='off'?'【オフ】':'';return fmt(e.date)+' '+typelabel+e.title+(e.detail?' '+e.detail:'');});
+  var lines=evts.map(function(e){var typelabel=e.type==='match'?'【試合】':e.type==='practice'?'【練習】':e.type==='off'?'【オフ】':e.type==='weight'?'【ウエイト】':'';return fmt(e.date)+' '+typelabel+e.title+(e.detail?' '+e.detail:'');});
   var text='📅 今週の予定\n'+lines.join('\n');
   svSafe('ann',{id:Date.now(),date:todayStr(),text:text,targetPid:null},function(){});
   alert('投稿しました ✓');
   V.dash();
+}
+
+// === 予定の一括インポート（TimeTreeスクショ起点・貼り付け式） ===
+var _calImport=[];
+var CAL_IMP_TYPES=[['match','試合'],['practice','練習'],['off','オフ'],['weight','ウエイト'],['phys_measure','フィジカル測定'],['bronco_measure','ブロンコ測定'],['other','その他']];
+function _normCalDate(s){
+  s=(s||'').trim().replace(/[\/.]/g,'-');
+  var m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(!m)return null;
+  var mo=parseInt(m[2],10),da=parseInt(m[3],10);
+  if(mo<1||mo>12||da<1||da>31)return null;
+  return m[1]+'-'+('0'+mo).slice(-2)+'-'+('0'+da).slice(-2);
+}
+function detectCalType(title){
+  var t=(title||'').toLowerCase();
+  if(t.indexOf('vs')>=0||title.indexOf('ｖｓ')>=0||title.indexOf('対')>=0)return 'match';
+  if(t.indexOf('off')>=0||title.indexOf('オフ')>=0)return 'off';
+  if(title.indexOf('ウエイト')>=0||title.indexOf('ウェイト')>=0||t.indexOf('weight')>=0)return 'weight';
+  if(t.indexOf('at')>=0||t.indexOf('df')>=0||t.indexOf('fit')>=0||t.indexOf('unit')>=0||t.indexOf('mtg')>=0||title.indexOf('ラン')>=0||title.indexOf('練習')>=0||title.indexOf('ミーティング')>=0)return 'practice';
+  return 'other';
+}
+function goImportCal(){
+  var ph='2026-06-06 | match | vs文理(AB) | \n2026-06-08 | weight | ウエイト① | 7:30\n2026-06-08 | weight | ウエイト② | 16:30\n2026-06-08 | off | OFF | ';
+  var known=CAL_IMP_TYPES.map(function(o){return o[0]+'('+o[1]+')';}).join(' / ');
+  var h='<div style="max-width:760px">'+
+    '<div class="form-box"><div class="form-title">📋 予定を一括インポート</div>'+
+    '<div style="font-size:12px;color:var(--text-secondary);line-height:1.7;margin-bottom:10px">TimeTreeのスクショから起こした予定を貼り付けてください。<b>1行＝1予定</b>。<br>形式: <code>日付 | 種別 | タイトル | 時間</code>（種別・時間は省略可。種別を空にするとタイトルから自動判定）<br>種別: '+known+'<br>※同じ日付・同じタイトルの予定は二重登録されません。</div>'+
+    '<textarea class="ipt" id="cal-imp-txt" style="min-height:240px;font-family:monospace;font-size:12px;white-space:pre" placeholder="'+ph+'"></textarea>'+
+    '<div style="display:flex;gap:8px;margin-top:12px"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" style="flex:1" onclick="parseCalImport()">解析してプレビュー →</button></div>'+
+    '</div><div id="cal-imp-preview"></div></div>';
+  pushView('予定インポート',h);
+}
+function parseCalImport(){
+  var raw=(document.getElementById('cal-imp-txt')||{}).value||'';
+  var rows=[];
+  raw.split(/\r?\n/).forEach(function(ln){
+    var s=ln.trim();
+    if(!s||s.charAt(0)==='#')return;
+    var parts=s.split('|').map(function(x){return x.trim();});
+    var date,type,title,time;
+    var isType=function(v){v=(v||'').toLowerCase();for(var i=0;i<CAL_IMP_TYPES.length;i++){if(CAL_IMP_TYPES[i][0]===v)return true;}return false;};
+    if(parts.length>=4){date=parts[0];type=parts[1];title=parts[2];time=parts.slice(3).join(' ').trim();}
+    else if(parts.length===3){
+      // 3カラムは曖昧: 中央が既知の種別かつ右にタイトルがある場合のみ date|種別|タイトル、そうでなければ date|タイトル|時間
+      if(isType(parts[1])&&parts[2]!==''){date=parts[0];type=parts[1];title=parts[2];time='';}
+      else{date=parts[0];type='';title=parts[1];time=parts[2];}
+    }
+    else if(parts.length===2){date=parts[0];type='';title=parts[1];time='';}
+    else{rows.push({raw:s,err:true});return;}
+    var nd=_normCalDate(date);
+    if(!nd||!title){rows.push({raw:s,err:true});return;}
+    type=(type||'').toLowerCase();
+    if(!isType(type))type=detectCalType(title);
+    rows.push({date:nd,type:type,title:title,time:time,err:false});
+  });
+  rows.forEach(function(r){
+    if(r.err)return;
+    r.dup=(D.cal||[]).some(function(e){return e.date===r.date&&(e.title||'').trim()===r.title;});
+    r.include=!r.dup;
+  });
+  _calImport=rows;
+  renderCalImportPreview();
+}
+function renderCalImportPreview(){
+  var el=document.getElementById('cal-imp-preview');if(!el)return;
+  var rows=_calImport||[];
+  var errN=rows.filter(function(r){return r.err;}).length;
+  var dupN=rows.filter(function(r){return!r.err&&r.dup;}).length;
+  var newN=rows.filter(function(r){return!r.err&&!r.dup;}).length;
+  var h='<div class="form-box" style="margin-top:14px"><div class="form-title">プレビュー（新規 '+newN+' ／ 既存重複 '+dupN+' ／ エラー '+errN+'）</div>';
+  if(!rows.length){h+='<div class="no">解析できる行がありませんでした</div></div>';el.innerHTML=h;return;}
+  h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
+    '<tr style="text-align:left;color:var(--text-secondary)"><th style="padding:4px">登録</th><th style="padding:4px">日付</th><th style="padding:4px">種別</th><th style="padding:4px">タイトル</th><th style="padding:4px">時間</th><th style="padding:4px">状態</th></tr>';
+  rows.forEach(function(r,i){
+    if(r.err){h+='<tr style="background:rgba(239,68,68,.12)"><td colspan="6" style="padding:5px;color:#B91C1C">⚠️ 解析エラー: '+escapeHtml(r.raw||'')+'</td></tr>';return;}
+    var sel='<select class="ipt" style="padding:2px 4px;font-size:12px;width:auto" onchange="setCalImpType('+i+',this.value)">'+CAL_IMP_TYPES.map(function(o){return'<option value="'+o[0]+'"'+(r.type===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>';
+    h+='<tr style="border-top:1px solid var(--border)'+(r.dup?';opacity:.45':'')+'">'+
+      '<td style="padding:4px;text-align:center"><input type="checkbox" '+(r.include?'checked':'')+' onchange="toggleCalImpRow('+i+',this.checked)"></td>'+
+      '<td style="padding:4px;white-space:nowrap">'+fmt(r.date)+'</td>'+
+      '<td style="padding:4px">'+sel+'</td>'+
+      '<td style="padding:4px">'+escapeHtml(r.title)+'</td>'+
+      '<td style="padding:4px;white-space:nowrap">'+escapeHtml(r.time||'')+'</td>'+
+      '<td style="padding:4px;white-space:nowrap">'+(r.dup?'<span style="color:var(--amber)">既存</span>':'<span style="color:var(--green)">新規</span>')+'</td></tr>';
+  });
+  h+='</table></div>';
+  h+='<div style="font-size:11px;color:var(--text-secondary);margin-top:8px">チェックを外すと登録しません（私用の予定などを除外できます）。種別はその場で直せます。</div>';
+  h+='<div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-p" style="flex:1" onclick="doCalImport()">✓ チェックした予定を登録</button></div></div>';
+  el.innerHTML=h;
+}
+function setCalImpType(i,v){if(_calImport[i])_calImport[i].type=v;}
+function toggleCalImpRow(i,c){if(_calImport[i])_calImport[i].include=c;}
+function doCalImport(){
+  var rows=(_calImport||[]).filter(function(r){return!r.err&&r.include;});
+  if(!rows.length)return alert('登録する予定が選択されていません');
+  var added=0,skipped=0,base=Date.now();
+  svSafeUpdate('cal',function(latest){
+    latest=latest||[];
+    rows.forEach(function(r){
+      var exists=latest.some(function(e){return e.date===r.date&&(e.title||'').trim()===r.title;});
+      if(exists){skipped++;return;}
+      latest.push({id:base+added*1000+Math.floor(Math.random()*1000),date:r.date,type:r.type,title:r.title,detail:r.time||''});
+      added++;
+    });
+    return latest;
+  },function(){
+    alert('✓ '+added+'件を登録しました'+(skipped?'（重複 '+skipped+'件はスキップ）':''));
+    popView();
+    nav('calendar');
+  });
 }
 
 // === MATCH MEMBER SELECTION ===
