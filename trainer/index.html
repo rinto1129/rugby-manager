@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rugby Manager - トレーナー</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -144,6 +145,41 @@ var RCAT_BG={ケア:'var(--blue-bg)',ROM改善:'var(--green-bg)',患部外トレ
 var STG=['ウォーキング','ランニング','スプリント','ジャンプ','コンタクト以外の練習','フルコンタクト','完全復帰'];
 var PARTS=['頭部','頸部','肩','鎖骨','肘','手首','指','腰','股関節','大腿','膝','すね','足首','踵','アキレス腱','ふくらはぎ','足の甲','足趾','その他'];
 var INJ_TYPES=['捻挫','肉離れ','骨折','脱臼','打撲','靭帯損傷','半月板損傷','脳震盪','裂傷','腱炎','疲労骨折','その他'];
+// === METRIC定数 (4ファイル同期: staff/trainer/player/coach) ===
+// MMTは順序型。文字列比較不可→このindexで段階判定する（例:'4+'>'4'）
+var MMT_ORDER=['0','1','2','3-','3','3+','4-','4','4+','5'];
+// 不足指標(kind)→提案カテゴリ(RCATS)へのマッピング
+var METRIC_CAT_MAP={rom:'ROM改善',circ:'ケア',strength:'患部外トレーニング',fitness:'フィットネス'};
+// 怪我種別テンプレ（⚠️最小雛形＝臨床コンテンツ。凛人と精緻化する。勝手に確定しない）
+//  sys:系統(下肢/上肢/体幹/脳震盪) part:対応部位 metrics:追跡指標の雛形 contra:禁忌期間メモ concussion:脳震盪フラグ
+var INJ_TEMPLATES={
+  'ACL':{sys:'下肢',part:'膝',concussion:false,contra:'術後初期はオープンキネティック深屈曲(前方剪断)を避ける',metrics:[
+    {name:'膝屈曲',kind:'rom',evalKey:'kflex',unit:'°',direction:'up'},
+    {name:'膝伸展',kind:'rom',evalKey:'kext',unit:'°',direction:'up'},
+    {name:'シングルホップ',kind:'fitness',unit:'cm',direction:'up',lsi:true}
+  ]},
+  'ハム肉離れ':{sys:'下肢',part:'大腿',concussion:false,contra:'痛みを伴う伸張・全力スプリントは段階的に',metrics:[
+    {name:'膝屈曲',kind:'rom',evalKey:'kflex',unit:'°',direction:'up'},
+    {name:'大腿周径',kind:'circ',unit:'cm',direction:'up'},
+    {name:'ノルディック耐性',kind:'fitness',unit:'回',direction:'up'}
+  ]},
+  '足関節捻挫':{sys:'下肢',part:'足首',concussion:false,contra:'急性期は内反強制を避ける',metrics:[
+    {name:'背屈',kind:'rom',evalKey:'adf',unit:'°',direction:'up'},
+    {name:'外果周径(腫脹)',kind:'circ',unit:'cm',direction:'down'},
+    {name:'片脚バランス',kind:'fitness',unit:'秒',direction:'up'}
+  ]},
+  '肩前方脱臼':{sys:'上肢',part:'肩',concussion:false,contra:'初期は外転+外旋(アプリヘンジョン肢位)を避ける',metrics:[
+    {name:'外旋',kind:'rom',evalKey:'sER',unit:'°',direction:'up'},
+    {name:'外転',kind:'rom',evalKey:'sabd',unit:'°',direction:'up'}
+  ]},
+  '脳震盪':{sys:'脳震盪',part:'頭部',concussion:true,contra:'症状再燃で前段階へ後退。24時間ルール。数値より症状基準(GRTP)。',metrics:[]}
+};
+// 系統別：各STG段階(STG index 0-6)でやるべきカテゴリ集合（⚠️最小雛形。凛人と検証）
+var STG_CAT_BY_SYS={
+  '下肢':[['ケア','ROM改善'],['ケア','ROM改善','患部外トレーニング'],['ROM改善','患部外トレーニング','フィットネス'],['患部外トレーニング','フィットネス','アジリティ'],['フィットネス','アジリティ','トレーニング'],['トレーニング','アジリティ'],['トレーニング']],
+  '上肢':[['ケア','ROM改善'],['ケア','ROM改善','患部外トレーニング'],['ROM改善','患部外トレーニング'],['患部外トレーニング','フィットネス'],['患部外トレーニング','フィットネス','トレーニング'],['トレーニング'],['トレーニング']],
+  '体幹':[['ケア','ROM改善'],['ケア','ROM改善','患部外トレーニング'],['ROM改善','患部外トレーニング','フィットネス'],['患部外トレーニング','フィットネス'],['フィットネス','トレーニング'],['トレーニング'],['トレーニング']]
+};
 // 受傷機転の選択肢
 var INJ_MECHANISM=['コンタクト（タックル）','コンタクト（被タックル）','コンタクト（ラック/モール）','コンタクト（スクラム）','コンタクト（その他）','非コンタクト（ランニング）','非コンタクト（ステップ/方向転換）','非コンタクト（ジャンプ着地）','非コンタクト（キック）','オーバーユース（使い過ぎ）','不明'];
 // 受傷場面
@@ -384,9 +420,20 @@ function getChart(injId){
   if(!ch.soaps)ch.soaps=[];
   if(!ch.returnCriteria)ch.returnCriteria={};
   if(!ch.images)ch.images=[];
+  // 怪我×リハビリ連携（Phase0）：未定義の既存カルテで落ちないよう既定値を補完
+  if(!ch.metrics)ch.metrics=[];
+  if(!ch.mmtTargets)ch.mmtTargets=[];
+  if(ch.injType==null)ch.injType='';
+  if(ch.isConcussion==null)ch.isConcussion=false;
+  if(!ch.medClearance)ch.medClearance={granted:false,date:null};
+  if(!ch.romLimit)ch.romLimit={active:false,key:null,max:null,min:null,until:null};
+  if(ch.rtpLevel==null)ch.rtpLevel='';
   return ch;
 }
 // カルテ保存（必ずsvSafeUpdateで安全に。素のsvは使わない＝他端末のカルテを巻き戻さない）
+// ⚠️ saveChart(ch)は ch 全体を server-latest に上書きする＝同一injId内のロストアップデートの火種。
+//   eval/metrics等の頻繁な編集は下の操作単位関数(saveChartMetrics/saveEval/delEval)を使うこと。
+//   低頻度のSOAP/復帰基準/rtpLevel等のみ saveChart を継続使用。
 function saveChart(ch,onDone){
   if(!ch){if(onDone)onDone();return;}
   // 一意キーは injId 優先、無ければ id。どちらかがあれば一致レコードをupsert、無ければ末尾に追加（全上書きはしない）
@@ -397,6 +444,32 @@ function saveChart(ch,onDone){
       if(i>=0)latest[i]=ch;else latest.push(ch);
     }else{
       latest.push(ch);
+    }
+    return latest;
+  },onDone);
+}
+// === METRIC-SAVE (4ファイル同期) ===
+// 操作単位の保存：server-latestの対象injIdレコードの「指定フィールドだけ」を触る。
+// evals/soaps等は一切触らないので、他端末がeval追加中でも巻き戻さない（ロストアップデート対策）。
+function _chartIdx(latest,injId){
+  var i=latest.findIndex(function(x){return idEq(x.injId,injId);});
+  if(i<0){
+    latest.push({injId:injId,injDetail:{},medical:{},evals:[],soaps:[],returnCriteria:{},images:[],metrics:[],mmtTargets:[]});
+    i=latest.length-1;
+  }
+  return i;
+}
+// 追跡指標・MMT目標・chartレベルのメタ（種別/脳震盪/医師clearance/ROM制限）の保存
+function saveChartMetrics(injId,metrics,mmtTargets,meta,onDone){
+  return svSafeUpdate('chart',function(latest){
+    var i=_chartIdx(latest,injId);
+    if(metrics!=null)latest[i].metrics=metrics;
+    if(mmtTargets!=null)latest[i].mmtTargets=mmtTargets;
+    if(meta){
+      if(meta.injType!=null)latest[i].injType=meta.injType;
+      if(meta.isConcussion!=null)latest[i].isConcussion=meta.isConcussion;
+      if(meta.medClearance!=null)latest[i].medClearance=meta.medClearance;
+      if(meta.romLimit!=null)latest[i].romLimit=meta.romLimit;
     }
     return latest;
   },onDone);
@@ -1534,31 +1607,53 @@ function showEvalForm(iid,evalId){
 }
 
 function saveEval(iid,evalId){
-  var ch=getChart(iid);
   var pain={},rom={},mmt={},circ={},ortho={},special=[];
+  var fit={},romH={},mmtH={},circH={},fitH={};
   document.querySelectorAll('.ev-pain').forEach(function(e){if(e.value!=='')pain[e.dataset.k]=parseFloat(e.value);});
   document.querySelectorAll('.ev-rom').forEach(function(e){if(e.value!=='')rom[e.dataset.k]=e.value;});
   document.querySelectorAll('.ev-mmt').forEach(function(e){if(e.value!=='')mmt[e.dataset.k]=e.value;});
   document.querySelectorAll('.ev-circ').forEach(function(e){if(e.value!=='')circ[e.dataset.k]=parseFloat(e.value);});
   document.querySelectorAll('.ev-ortho').forEach(function(e){if(e.value!=='')ortho[e.dataset.k]=e.value;});
   document.querySelectorAll('.ev-special:checked').forEach(function(e){special.push(e.value);});
+  // 健側枠(*H)・フィットネス独自指標(metric id→値)。UIは後フェーズで追加（現状は空＝無害）
+  document.querySelectorAll('.ev-romH').forEach(function(e){if(e.value!=='')romH[e.dataset.k]=e.value;});
+  document.querySelectorAll('.ev-mmtH').forEach(function(e){if(e.value!=='')mmtH[e.dataset.k]=e.value;});
+  document.querySelectorAll('.ev-circH').forEach(function(e){if(e.value!=='')circH[e.dataset.k]=parseFloat(e.value);});
+  document.querySelectorAll('.ev-fit').forEach(function(e){if(e.value!=='')fit[e.dataset.k]=parseFloat(e.value);});
+  document.querySelectorAll('.ev-fitH').forEach(function(e){if(e.value!=='')fitH[e.dataset.k]=parseFloat(e.value);});
+  // 臨床項目（提案の安全ゲートの入力源）
+  var effEl=document.getElementById('ev-effusion');var effusion=(effEl&&effEl.value!=='')?effEl.value:null;
+  var plEl=document.getElementById('ev-painLoad');var painLoad=(plEl&&plEl.value!=='')?parseFloat(plEl.value):null;
+  var rdEl=document.getElementById('ev-readiness');var readiness=(rdEl&&rdEl.value!=='')?parseFloat(rdEl.value):null;
   var date=document.getElementById('ev-date').value||todayStr();
   var note=document.getElementById('ev-note').value;
-  if(evalId){
-    var ev=ch.evals.find(function(x){return idEq(x.id,evalId);});
-    if(ev){ev.date=date;ev.pain=pain;ev.rom=rom;ev.mmt=mmt;ev.circ=circ;ev.ortho=ortho;ev.special=special;ev.note=note;ev.inputAt=new Date().toISOString();}
-  }else{
-    ch.evals.push({id:Date.now()+'_'+Math.floor(Math.random()*1000),date:date,pain:pain,rom:rom,mmt:mmt,circ:circ,ortho:ortho,special:special,note:note,inputAt:new Date().toISOString()});
-  }
-  saveChart(ch);
-  chartTab('eval');
+  var nowISO=new Date().toISOString();
+  svSafeUpdate('chart',function(latest){
+    var i=_chartIdx(latest,iid);
+    if(!latest[i].evals)latest[i].evals=[];
+    var rec=null;
+    if(evalId)rec=latest[i].evals.find(function(x){return idEq(x.id,evalId);});
+    if(!rec){rec={id:evalId||(Date.now()+'_'+Math.floor(Math.random()*1000))};latest[i].evals.push(rec);}
+    rec.date=date;rec.pain=pain;rec.rom=rom;rec.mmt=mmt;rec.circ=circ;rec.ortho=ortho;rec.special=special;rec.note=note;rec.inputAt=nowISO;
+    // 拡張フィールドは中身がある時だけ書く（空{}で既存evalを汚さない＝chart肥大も抑制）
+    if(Object.keys(fit).length)rec.fit=fit;
+    if(Object.keys(romH).length)rec.romH=romH;
+    if(Object.keys(mmtH).length)rec.mmtH=mmtH;
+    if(Object.keys(circH).length)rec.circH=circH;
+    if(Object.keys(fitH).length)rec.fitH=fitH;
+    if(effusion!=null)rec.effusion=effusion;
+    if(painLoad!=null)rec.painLoad=painLoad;
+    if(readiness!=null)rec.readiness=readiness;
+    return latest;
+  },function(){chartTab('eval');});
 }
 function delEval(iid,evalId){
   if(!confirm('この評価記録を削除しますか？'))return;
-  var ch=getChart(iid);
-  ch.evals=ch.evals.filter(function(x){return!idEq(x.id,evalId);});
-  saveChart(ch);
-  chartTab('eval');
+  svSafeUpdate('chart',function(latest){
+    var i=latest.findIndex(function(x){return idEq(x.injId,iid);});
+    if(i>=0&&latest[i].evals)latest[i].evals=latest[i].evals.filter(function(x){return!idEq(x.id,evalId);});
+    return latest;
+  },function(){chartTab('eval');});
 }
 
 // 評価グラフ描画

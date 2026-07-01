@@ -7,16 +7,24 @@
 ---
 
 ## 最終更新
-- 日時: 2026-06-27
+- 日時: 2026-07-01
 - 更新者: Claude
 
 ## いま何をしているか（現在地）
-- **🆕 TimeTree連携プロジェクト進行中（下の「TimeTree連携」節に全体設計）。フェーズ2の第一歩＝「予定の一括インポート」完成＆実機確認済み（ローカルでユーザーがテスト→OK）。** このコミットでpush。次はフェーズ1（プッシュ/プル表示）。
-  - **背景の重要事実**: TimeTreeは開発者API終了(2023/12)・購読iCal URL無し＝自動連携手段が無い。そこで「スクショ→LLMで予定テキスト化→サイトに貼り付けインポート」方式（＝案A・インフラ追加ゼロ）を採用。ユーザーは案Aで合意。
-  - **今回の実装**: staffカレンダー画面に「📋 一括インポート」新設（`goImportCal`/`parseCalImport`/`renderCalImportPreview`/`doCalImport`＋`detectCalType`/`_normCalDate`、staff:postAnnounceFromCalendar直後）。形式 `日付 | 種別 | タイトル | 時間`（種別・時間省略可、空ならタイトルから自動判定）。プレビュー表で種別修正・行ごと登録ON/OFF・**日付+タイトルで重複排除（再取り込み安全）**。`cal`へ`svSafeUpdate`。
-  - **`weight`(ウエイト)種別を新設**: staff色分け(1345/1353=`#F97316`)・ラベル(1354/4680)・フォーム選択肢(calEventFormHTML)・お知らせ(postAnnounceFromCalendar)、player週スケジュールに🏋️(852)。
-  - **検証で潰したバグ2件**(JXAモック): ①3カラムの誤読(`date|title|time`を`date|type|title`扱い)→中央が既知種別かつ右にタイトルがある時のみ種別扱いに分岐。②"OFF"がタイトルなのに種別語と一致して空タイトルERR→ガード追加。最終: 6月実データ56件を全て正分類・重複除外・エラー0。
-  - **trainer/coachは`cal`表示UIが無い**(grep確認)＝カレンダー反映はstaff(入力)＋player(週表示)のみ。必要なら別途追加。
+- **🆕🆕 新プロジェクト「怪我管理 × リハビリ連携の強化」＝実装中。下の「怪我×リハビリ連携」節に全体設計。** grilling→2サブエージェントレビュー→自己レビュー→ユーザー承認済み。
+  - **✅ Phase 0（データ基盤）完了・未push（実機スモーク＋デプロイ判断待ち）。** staff/trainer両方に実装：
+    - P0-a `getChart`補完（metrics/mmtTargets/injType/isConcussion/medClearance/romLimit/rtpLevel の既定値）→metrics未定義の既存カルテで白画面にならない。
+    - P0-b 操作単位保存：`_chartIdx`＋`saveChartMetrics`新設。`saveEval`/`delEval`を**server-latestのevalsだけ触る方式に書き換え**（旧`saveChart(ch)`全置換のロストアップデートを解消）。saveChart本体にも注意コメント追加。
+    - P0-c `saveEval`拡張：健側枠(`romH/mmtH/circH/fitH`)・フィットネス独自指標(`fit`)・臨床項目(`effusion/painLoad/readiness`)を収集（中身がある時だけ書く＝空{}で肥大させない）。UIは後フェーズ、現状は空収集で無害。
+    - 定数追加：`MMT_ORDER`/`METRIC_CAT_MAP`/`INJ_TEMPLATES`/`STG_CAT_BY_SYS`（staff/trainer一致。INJ_TEMPLATES/STG_CAT_BY_SYSは**最小雛形＝臨床コンテンツで凛人と精緻化が必要**）。
+    - **検証済み**：両ファイル構文OK(node無し環境なのでJavaScriptCore/osascriptの`new Function`パースで代替)＋模擬実行21件パス（getChart補完・他端末evalとmetricsを巻き戻さない・編集/削除/新injId作成）。staff==trainerのPhase0関数&定数はバイト一致をdiff確認。
+    - **次**：実機スモーク（既存の評価入力/編集/削除/グラフ/SOAPが無傷か）→**Phase 0単独でpush**（後方互換の砦）→Phase 1へ。
+  - **完成プランの場所**: `/Users/nakayamarinnin/.claude/plans/rom-rom-tender-sundae.md`（v2。**着手前に必読**。ここに全フェーズ・確定判断・臨床セーフティ・データ基盤修正・検証手順が入っている）。
+  - **やりたいこと（ユーザーの言葉）**: 怪我管理で入れた情報からリハビリを組む。「ROMが足りない→ROM改善やろう」「あと◯度足りない」「今週までにここまで到達」を出す。ROM以外に筋力・フィットネス(時間/回数)も。エクササイズ前後の伸び(pre/post)。過去リハビリ記録から「最近走れてない→走ろう」。**全部コメントで代替できるが"専用機能"が欲しい**、が出発点。
+  - **⚠️ レビューで判明した急所（プランに反映済み）**: (1)既存`saveChart`([staff:1604](staff/index.html:1604)`latest[i]=ch`全置換)は**同一injId内ロストアップデート**＝staff指標設定中にtrainerが足したevalが消える→**操作単位の保存に直す(P0)**。(2)`getChart`がmetrics未補完→既存怪我で画面が白くなる→**空配列補完(P0)**。(3)`evals`に**健側枠が無い**→並行キー`romH`等を新設して3層基準(受傷前→健側→正常値＋手動目標)を成立。(4)**臨床安全弁が必須**＝提案の安全ゲート(夜間痛/腫脹/医師ROM制限中は提案抑制)・脳震盪を数値メトリックから分離(GRTP別扱い)・医師clearanceハードゲート・怪我種別テンプレ。(5)**postはevalsに積まない**(一時的ROM増加で推移を汚す)・正本はpre。(6)ゲージは**Chart.js不使用CSS/SVG**(`}}}});`括弧地雷回避)・MMTは`MMT_ORDER`のindex比較。(7)e1rm/ph(BIG3)は**患健LSI不可**＝受傷前比(全身回復)に使う／患健LSIは単脚/ホップ等side付き種目だけ。
+  - **進め方**: Phase 0(基盤修正・最高回帰リスク=saveEvalを触る→単独デプロイ&スモークで隔離)→1(指標定義+種別テンプレ生成)→2(不足ゲージ)→3(提案+安全ゲート)→4(trainer pre/post)→5(やれてない検出)→6(player/coach薄く)。各末で構文チェック+模擬実行。
+  - **怪我種別テンプレ(INJ_TEMPLATES)の中身は臨床コンテンツ＝勝手に確定せず凛人と詰める**。
+- **（保留中の別タスク）TimeTree連携フェーズ1「チーム共通プッシュ/プル表示」**は未着手のまま（下の「TimeTree連携」節）。フェーズ2=予定一括インポートは完成・push済み。リハビリ連携を優先するため後回し。
 - **実機スモーク用ローカルサーバ**（必要時）: `python3 -m http.server 8765 --bind 127.0.0.1`（リポジトリ直下で・Bash権限必要）→ Chromeで `http://127.0.0.1:8765/<site>/index.html`。本番Firebaseに繋がり実データで確認できる。
 - **（完了）新機能「トレーニング内容の把握」＝staff(`085ea04`)・coach(`4fca6d5`)両方push済み＝完成。** 以下はその実装メモ（履歴）。
 - **staff実装内容（push済み `085ea04`）**: `goPlayerDetail` に6つ目のタブ「トレーニング」dt5を新設。
@@ -44,7 +52,53 @@
 
 ---
 
-## 🆕 TimeTree連携プロジェクト（全体設計）— 進行中
+## 🆕🆕 怪我管理 × リハビリ連携の強化（全体設計）— 計画完了・実装着手直前
+
+> **完成プラン本体＝`/Users/nakayamarinnin/.claude/plans/rom-rom-tender-sundae.md`（着手前に必読）。** 以下は要約。grilling＋2サブエージェントレビュー＋自己レビュー（コード裏取り）で確定。
+
+### 確定した設計判断（grilling 10問の答え）
+1. ROM/筋力の**正本は`chart.evals`**（injIdごと）に一本化。`EVAL_MASTER`の正常値(`normal`)を使う。
+2. **不足判定3層**：受傷前ベースライン→健側(LSI)→`EVAL_MASTER`正常値、の上に**凛人の手動目標(期限つき)**を任意でかぶせ優先。基準の"出所"をゲージに明示。
+3. **数値メトリック共通型**でROM(°)・周径(cm)・数値筋力(kg)・フィットネス(秒/回)を一本化＋`direction`(up/down)。**MMTは順序型で別レーン**(`MMT_ORDER`のindex比較、文字列比較不可)。
+4. **提案は(A)基盤(不足→RCATSカテゴリ)＋(B)任意(指標↔種目紐付けで種目名まで)**。自動ルールエンジンは作らない。**提案に安全ゲート必須**。
+5. **定量筋力**：e1rm/ph(BIG3)＝受傷前比(全身回復)／患健LSI(≧90%)は単脚・ホップ等side付き種目だけ(BIG3で患健比は無意味)。
+6. **「やれてない」検出は怪我種別テンプレ前提**：系統別(下肢/上肢/脳震盪)でSTG各段階の「やるべきカテゴリ集合」を定義→直近7日`rlog`差分→「最近◯◯**直近未実施(要確認)**」。断定しない。
+7. **pre/postはセッション単位**。**正本はpreのみ**(条件統一=測定日)。**postは`postCheck`止まりで推移グラフ非混入**(一時的ROM増加でトレンドを汚す)。「今日の伸び」はpre/postCheckの2値から。
+8. 設定は凛人(staff)。**新Firestoreキーを足さず`chart`内に同居**。
+9. **v1スコープ=staff＋trainer作り込み、player/coachは進捗ゲージを薄く差すだけ**(計算ロジックを持たせない)。
+
+### 🛑 臨床セーフティ（トレーナー役レビューで必須判定・フル装備で採用）
+- **提案の安全ゲート**：夜間痛/安静時痛・**腫脹/熱感**・**医師指示のROM制限期間内**のいずれかで積極提案を抑制し「炎症/疼痛管理優先」に切替。文言は「処方」でなく「**候補(要臨床判断)**」。
+- **脳震盪を本機能から分離**：`chart.isConcussion`で数値メトリック/ゲージ/提案の対象外。GRTP(症状ベース・24時間・症状再燃で後退)別扱い。7段階に乗せない。
+- **医師clearanceハードゲート**(数値が全部緑でも医師許可無しは復帰不可)。
+- **怪我種別テンプレ(`INJ_TEMPLATES`)**で指標2-3個＋段階カテゴリ＋禁忌期間を一括生成(入力負荷激減＋臨床妥当性担保)。**中身は臨床コンテンツ＝勝手に確定せず凛人と詰める**。
+- 段階後退フロー維持(`prevStage`)。LSI前提崩れ(両側損傷/利き脚差)の注意ラベル。健側は測定日(週1-2)のみ測り「健側測定:◯日前」を表示。
+
+### ⚙️ データ基盤の修正（エンジニア役レビューでP0＝Phase1着手前に潰す。実コードで裏取り済み）
+`chart`(injIdごと)に追記：`metrics[]`(追跡指標定義＋目標＋direction)/`mmtTargets[]`/`injType`/`isConcussion`/`medClearance`/`romLimit`。実測値は`evals`。
+- **健側枠**：患側は既存`ev.rom/mmt/circ`、健側は並行キー`ev.romH/mmtH/circH/fitH`(既存`drawEvalCharts`は`e.rom`しか読まない＝後方互換)。フィットネスは`ev.fit/fitH={指標id:値}`。臨床項目`ev.effusion/painLoad/readiness`(提案ゲートの入力源)。
+- **P0-a**：`getChart`に`metrics`/`mmtTargets`/`rtpLevel`等の補完([staff:1584](staff/index.html:1584)で未補完を確認)。**Phase0最初の1手**。
+- **P0-b**：保存を**操作単位化**([staff:1604](staff/index.html:1604)`latest[i]=ch`が火種を確認)。素朴なid和集合マージは削除を壊すので不可。`saveChartMetrics`＝`latest[i].metrics=`のみ、eval追加/編集/削除＝`latest[i].evals`を直接操作。**回帰リスク高い`saveEval`/`delEval`＋metricsだけP0、低頻度の他saveChart呼び出しはP1**。
+- **P0-c**：`saveEval`にfit/健側/effusion/painLoad/readinessの収集を追加([staff:2045](staff/index.html:2045)が現状pain/rom/mmt/circ/ortho/special/noteのみ)。
+- 定数追加：`MMT_ORDER`/`METRIC_CAT_MAP`/`INJ_TEMPLATES`/`STG_CAT_BY_SYS`(4ファイルコピー運用)。最新eval解決はdate→inputAtの2段ソート。
+
+### 実装順序（各末で構文チェック＋模擬実行→確認→次へ）
+- **Phase 0**：基盤修正(P0-a/b/c＋定数)。**最高回帰リスク=saveEval経路を触る→既存の評価入力/編集/削除/グラフ/SOAP/rlogが無傷を実機スモークで確認し単独デプロイ**してからPhase1へ。
+- Phase 1：追跡指標セクション＋種別テンプレ生成(staff)。
+- Phase 2：不足ゲージ(CSS/SVG・3層解決・LSI・MMT段階ドット・0除算ガード)。
+- Phase 3：提案＋安全ゲート＋医師clearance＋脳震盪除外。
+- Phase 4：trainer実施画面pre/post(対象2-3個・前回値プリフィル・post任意・既存preCheck接続を後方互換で)。
+- Phase 5：やれてない検出(系統別STG×直近rlog差分)。
+- Phase 6：player/coach薄く(描画関数のみ)。
+
+### レビュー結論
+- 現場トレーナー役：骨格OK。**安全弁(腫脹/痛み/治癒段階/医師許可/怪我種別＝特に脳震盪分離)が抜けていた→全部反映済み**。
+- シニアエンジニア役：**条件付き承認**。P0(saveChartマージ/getChart補完/健側枠/preCheck接続)を着手前に潰すのが条件→プランに反映済み。
+- 自己レビュー(コード裏取り)：saveChart全置換・getChart未補完・saveEval項目を実コードで確認。追加修正＝e1rm患健比の誤り訂正・素朴マージは削除を壊す指摘・健側は測定日のみ運用・テンプレは凛人と詰める。
+
+---
+
+## 🆕 TimeTree連携プロジェクト（全体設計）— 保留中（リハビリ連携を優先）
 
 > 「部の予定はTimeTreeに入っている。二重入力せずサイトに反映したい」が出発点。grillingで方向確定。
 
@@ -196,7 +250,8 @@
 - 直近push: `085ea04`(staffトレーニングタブ) → `4fca6d5`(coach移植) → 予定一括インポート＋weight種別(TimeTree連携フェーズ2)。
 
 ## 次の一手
-- **最優先＝TimeTree連携フェーズ1「チーム共通プッシュ/プル表示」**（仕様は上の「TimeTree連携」節）。厳密交互・チーム共通・新キー`pp`・player/staff/trainerにバッジ＋1タップ反転。`cal`のweightイベントで「今日は」自動表示も狙える。
+- **最優先＝怪我管理×リハビリ連携の Phase 0（データ基盤の修正）に着手**（プラン＝`/Users/nakayamarinnin/.claude/plans/rom-rom-tender-sundae.md`、要約は上の「怪我×リハビリ連携」節）。まず最高リスクの`saveEval`保存経路を操作単位化する前に、既存の評価入力/編集/削除が無傷なことを模擬実行で固める→getChart補完→saveChartマージ改修→単独デプロイ&スモーク。**ユーザー承認済み**。
+- （保留）TimeTree連携フェーズ1「チーム共通プッシュ/プル表示」（仕様は下の「TimeTree連携」節）。厳密交互・チーム共通・新キー`pp`・player/staff/trainerにバッジ＋1タップ反転。リハビリ連携を優先するため後回し。
 - 一括インポートの運用: 毎月スクショを私に渡す→出た予定テキストをstaff「📋一括インポート」に貼る。形式は `日付 | 種別 | タイトル | 時間`。
 - その他（任意・保留中の候補）:
   - TimeTree連携の発展: 画像直アップ全自動(案B・AIキー+無料サーバーレス必要)、trainer/coachにカレンダー表示追加。
