@@ -12,13 +12,15 @@
 
 ## いま何をしているか（現在地）
 - **🆕🆕 新プロジェクト「怪我管理 × リハビリ連携の強化」＝実装中。下の「怪我×リハビリ連携」節に全体設計。** grilling→2サブエージェントレビュー→自己レビュー→ユーザー承認済み。
-  - **✅ Phase 0（データ基盤）完了・未push（実機スモーク＋デプロイ判断待ち）。** staff/trainer両方に実装：
+  - **✅ Phase 0（データ基盤）完了・push済み(`93c5d9c`)＝実機スモーク検証OK。次はPhase 1。** staff/trainer両方に実装：
     - P0-a `getChart`補完（metrics/mmtTargets/injType/isConcussion/medClearance/romLimit/rtpLevel の既定値）→metrics未定義の既存カルテで白画面にならない。
     - P0-b 操作単位保存：`_chartIdx`＋`saveChartMetrics`新設。`saveEval`/`delEval`を**server-latestのevalsだけ触る方式に書き換え**（旧`saveChart(ch)`全置換のロストアップデートを解消）。saveChart本体にも注意コメント追加。
     - P0-c `saveEval`拡張：健側枠(`romH/mmtH/circH/fitH`)・フィットネス独自指標(`fit`)・臨床項目(`effusion/painLoad/readiness`)を収集（中身がある時だけ書く＝空{}で肥大させない）。UIは後フェーズ、現状は空収集で無害。
     - 定数追加：`MMT_ORDER`/`METRIC_CAT_MAP`/`INJ_TEMPLATES`/`STG_CAT_BY_SYS`（staff/trainer一致。INJ_TEMPLATES/STG_CAT_BY_SYSは**最小雛形＝臨床コンテンツで凛人と精緻化が必要**）。
     - **検証済み**：両ファイル構文OK(node無し環境なのでJavaScriptCore/osascriptの`new Function`パースで代替)＋模擬実行21件パス（getChart補完・他端末evalとmetricsを巻き戻さない・編集/削除/新injId作成）。staff==trainerのPhase0関数&定数はバイト一致をdiff確認。
-    - **次**：実機スモーク（既存の評価入力/編集/削除/グラフ/SOAPが無傷か）→**Phase 0単独でpush**（後方互換の砦）→Phase 1へ。
+    - **おまけ修正**：trainerがChart.js未読込だった既存バグを発見し同commitで修正（評価タブのグラフ`drawEvalCharts`が`Chart is not defined`で落ちていた）。staffと同じCDN行を追加。
+    - **⚠️実機スモークの教訓**：ローカルサーバ(127.0.0.1:8765)で確認するつもりが本番(rinto1129.github.io)を開いていて「修正が反映されない」と混乱した。Consoleのfaviconリクエスト元URLでどちらを見ているか判別できる。**必ずアドレスバーが127.0.0.1:8765か確認**。
+    - **次＝Phase 1**（追跡指標セクション＋種別テンプレ生成, staff）。**最初の一手：実装前に凛人とINJ_TEMPLATES/STG_CAT_BY_SYSの中身（ACL/ハム肉離れ/足関節捻挫/肩前方脱臼の追跡指標2-3個＋段階別カテゴリ＋禁忌期間）を詰める**。今コードに入っているのは仮の最小雛形なので、確定後に定数を差し替えてからUI実装に入る。UIはカルテ評価タブ付近に「追跡指標」セクションを新設し、種別選択→テンプレから指標一括生成、保存は`saveChartMetrics`（Phase0で用意済み）。
   - **完成プランの場所**: `/Users/nakayamarinnin/.claude/plans/rom-rom-tender-sundae.md`（v2。**着手前に必読**。ここに全フェーズ・確定判断・臨床セーフティ・データ基盤修正・検証手順が入っている）。
   - **やりたいこと（ユーザーの言葉）**: 怪我管理で入れた情報からリハビリを組む。「ROMが足りない→ROM改善やろう」「あと◯度足りない」「今週までにここまで到達」を出す。ROM以外に筋力・フィットネス(時間/回数)も。エクササイズ前後の伸び(pre/post)。過去リハビリ記録から「最近走れてない→走ろう」。**全部コメントで代替できるが"専用機能"が欲しい**、が出発点。
   - **⚠️ レビューで判明した急所（プランに反映済み）**: (1)既存`saveChart`([staff:1604](staff/index.html:1604)`latest[i]=ch`全置換)は**同一injId内ロストアップデート**＝staff指標設定中にtrainerが足したevalが消える→**操作単位の保存に直す(P0)**。(2)`getChart`がmetrics未補完→既存怪我で画面が白くなる→**空配列補完(P0)**。(3)`evals`に**健側枠が無い**→並行キー`romH`等を新設して3層基準(受傷前→健側→正常値＋手動目標)を成立。(4)**臨床安全弁が必須**＝提案の安全ゲート(夜間痛/腫脹/医師ROM制限中は提案抑制)・脳震盪を数値メトリックから分離(GRTP別扱い)・医師clearanceハードゲート・怪我種別テンプレ。(5)**postはevalsに積まない**(一時的ROM増加で推移を汚す)・正本はpre。(6)ゲージは**Chart.js不使用CSS/SVG**(`}}}});`括弧地雷回避)・MMTは`MMT_ORDER`のindex比較。(7)e1rm/ph(BIG3)は**患健LSI不可**＝受傷前比(全身回復)に使う／患健LSIは単脚/ホップ等side付き種目だけ。
