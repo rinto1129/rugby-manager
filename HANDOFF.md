@@ -11,7 +11,18 @@
 - 更新者: Claude
 
 ## いま何をしているか（現在地）
-- **🆕🆕 新プロジェクト「怪我管理 × リハビリ連携の強化」＝実装中。下の「怪我×リハビリ連携」節に全体設計。** grilling→2サブエージェントレビュー→自己レビュー→ユーザー承認済み。
+- **🆕🆕🆕 進行中：4サイト監査（弱点洗い出し）— playerサイト完了、次はstaff。コードは一切変更していない（読み取り専用の調査タスク）。**
+  - ユーザー依頼: 「player/staff/trainer/coach の弱点洗い出しをしたい。①UX/導線の弱点・惜しい所 ②壊れやすい/危ういデータ事故リスク構造 ③デザイン/UIで古い所、を優先度(高/中/低)つきでリスト化。一気にやらずplayerサイトから」。
+  - **playerサイト監査＝完了**。手法: `player/index.html`全3179行を精読＋grepで裏取り（未定義CSSクラス4件・デッドコード5関数・素の`sv()`呼び出し0件を確認）＋本番サイトをブラウザで閲覧（テスト選手でログイン→home/mypage/トレーニング/ランキング画面）。**書込操作は一切していない。**
+  - **成果物＝ `/Users/nakayamarinnin/.claude/plans/4-player-staff-trainer-coach-1-ux-merry-harbor.md`（次セッションで必読）**。ユーザー承認済み（plan modeで提示→approve）。中身は「1.壊れやすい構造」「2.UX/導線」「3.デザイン」の3カテゴリ×優先度(高/中/低)、計27項目。
+  - **見つけた最重要バグ3件（未修正・次回対応候補）**:
+    1. `T.home`(801〜812行) で `yesterdayS2` を**定義より前に使用**（var巻き上げでundefined）→「試合日チェック未入力」アラートが**一度も出ない**。さらに `D.matchsel` の扱いが home(pid配列想定)とmypage({date,pids}想定)で**食い違っている**。修正時は`D.matchsel`の実データ形状をFirestoreで先に確認すること。
+    2. onSnapshotのリスナー(`startListeners`497〜515行)は「curTabの画面」だけ再描画保護するが、`T.condition()`等はcurTab更新なしで直接呼ばれる画面があり、**入力中に他人の保存でマイページへ強制送還され入力が消える**（コンディション入力など毎日使う画面が対象）。
+    3. テーピング予約 `updateTapeSlots`/`doTapeBook`(3104/3131行) の空き枠判定が**複数枠予約の先頭枠しか見ておらず**、二重予約が起こり得る。
+  - **次の一手＝staffサイトの同様監査**（5158行・最大。素の`sv('chart')`残存疑いの掃討状況も併せて確認）→trainer→coach→最後に4サイト横断の優先度統合リスト。
+  - まだ**修正フェーズには入っていない**。ユーザーが監査結果からどれを直すか選んでから、通常の「1機能ずつ→構文チェック→模擬実行→実機確認」フローに入る。
+
+- **（保留・進行中）新プロジェクト「怪我管理 × リハビリ連携の強化」＝実装中。下の「怪我×リハビリ連携」節に全体設計。** grilling→2サブエージェントレビュー→自己レビュー→ユーザー承認済み。
   - **✅ Phase 0（データ基盤）完了・push済み(`93c5d9c`)＝実機スモーク検証OK。次はPhase 1。** staff/trainer両方に実装：
     - P0-a `getChart`補完（metrics/mmtTargets/injType/isConcussion/medClearance/romLimit/rtpLevel の既定値）→metrics未定義の既存カルテで白画面にならない。
     - P0-b 操作単位保存：`_chartIdx`＋`saveChartMetrics`新設。`saveEval`/`delEval`を**server-latestのevalsだけ触る方式に書き換え**（旧`saveChart(ch)`全置換のロストアップデートを解消）。saveChart本体にも注意コメント追加。
@@ -263,7 +274,8 @@
 - 直近push: `93c5d9c`(怪我×リハビリ Phase0 データ基盤) → `9ce97a3`(同 Phase1 追跡指標セクション＋種別テンプレ確定)。
 
 ## 次の一手
-- **最優先＝怪我管理×リハビリ連携の Phase 2（不足ゲージ, staff・カルテ内）**（プラン＝`/Users/nakayamarinnin/.claude/plans/rom-rom-tender-sundae.md`、要約は上の「怪我×リハビリ連携」節・現在地節にPhase2の要点）。**Chart.js不使用のCSS/SVGゲージ**で、各追跡指標の最新eval vs 基準(受傷前→健側→正常値＋手動目標優先)→達成率%・「あと◯◯」を表示。direction/0除算/NaN/Infinityガード・基準の出所ラベル・LSI・MMTドット。Phase0/1は完了・実機検証済み。**ユーザー承認済み(プラン全体)**。
+- **直近の作業＝4サイト監査の続き（staffサイトから）**。プラン＝`/Users/nakayamarinnin/.claude/plans/4-player-staff-trainer-coach-1-ux-merry-harbor.md`（player分は完了・承認済み）。staff(5158行)→trainer→coachの順で同じ観点（①UX/導線②データ事故リスク③デザイン、優先度つき）を洗い出し、最後に4サイト横断の統合リストを作る。**修正はまだ開始していない**——監査が終わってユーザーが直す項目を選んでから実装に入る。
+- **並行して保留中＝怪我管理×リハビリ連携の Phase 2（不足ゲージ, staff・カルテ内）**（プラン＝`/Users/nakayamarinnin/.claude/plans/rom-rom-tender-sundae.md`、要約は上の「怪我×リハビリ連携」節・現在地節にPhase2の要点）。**Chart.js不使用のCSS/SVGゲージ**で、各追跡指標の最新eval vs 基準(受傷前→健側→正常値＋手動目標優先)→達成率%・「あと◯◯」を表示。direction/0除算/NaN/Infinityガード・基準の出所ラベル・LSI・MMTドット。Phase0/1は完了・実機検証済み。**ユーザー承認済み(プラン全体)**。4サイト監査より前から進行中のプロジェクトなので、ユーザーが望めばこちらを先に再開してもよい。
 - （保留）TimeTree連携フェーズ1「チーム共通プッシュ/プル表示」（仕様は下の「TimeTree連携」節）。厳密交互・チーム共通・新キー`pp`・player/staff/trainerにバッジ＋1タップ反転。リハビリ連携を優先するため後回し。
 - 一括インポートの運用: 毎月スクショを私に渡す→出た予定テキストをstaff「📋一括インポート」に貼る。形式は `日付 | 種別 | タイトル | 時間`。
 - その他（任意・保留中の候補）:
