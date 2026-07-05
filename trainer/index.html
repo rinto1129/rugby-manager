@@ -32,7 +32,8 @@ body{font-family:var(--font-sans);background:var(--bg-app);color:var(--text-prim
 .btn-d{color:var(--red);border-color:var(--red)}
 .btn-s{color:var(--green);border-color:var(--green)}
 .btn-sm{padding:4px 10px;font-size:11px;width:auto}
-.ipt{padding:9px 12px;border:1.5px solid var(--border-secondary);border-radius:var(--radius);background:var(--navy);font-size:13px;color:var(--text-primary);font-family:var(--font-sans);width:100%}
+.btn-back{background:none;border:none;padding:10px 4px;font-size:13px;font-weight:600;color:var(--accent);cursor:pointer;font-family:var(--font-sans)}.btn-back:hover{color:var(--accent-d)}
+.ipt{padding:9px 12px;border:1.5px solid var(--border-secondary);border-radius:var(--radius);background:var(--navy);font-size:16px;color:var(--text-primary);font-family:var(--font-sans);width:100%}
 .ipt:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
 .ipt::placeholder{color:var(--text-tertiary)}
 select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
@@ -135,7 +136,9 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 if(window.Chart){Chart.defaults.color='#9FB0C8';Chart.defaults.borderColor='rgba(255,255,255,0.10)';Chart.defaults.scale.grid.color='rgba(255,255,255,0.08)';}
 firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
 var db=firebase.firestore();
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm'};
+// tmenu/tlog/texlist/e1rmはtrainer内で一切読まれない（トレーニング関連はstaff/player/coach専用）。
+// 購読すると選手のセット保存の度に全trainer端末がtlog(数百KB)を再ダウンロード＋画面リセットされるため対象外にする。
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec'};
 var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
 var D={p:[],i:[],r:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[]};
 var myTrainer=null;
@@ -411,10 +414,17 @@ var EVAL_MASTER={
     special:[]
   }
 };
+// ⑨ 整形外科的テストの二層化（supervised）。安全側の既定＝全テスト「監督下推奨」🔒。
+// 凛人が「見習いが単独で確定判定してよい」と確定したテスト名だけを true にすると、そのテストだけ🔒バッジが外れる。
+// ※臨床コンテンツ（INJ_TEMPLATES同様）＝勝手に確定しない。空のまま＝全テスト監督下が初期状態。テスト名はEVAL_MASTERの各部位ortho[]の文字列と完全一致させること。
+var ORTHO_SOLO_OK={
+  // 例: 'Neerテスト':true,  ← 凛人が単独可と判断したものだけ追記
+};
+function orthoIsSupervised(testName){return !ORTHO_SOLO_OK[testName];}
 var curChartTab="overview";var _chartIid=null;
 // 専門学生サイトではケガの編集・削除・解決はスタッフ権限（スタブ）
 function goEditInjury(iid){alert('ケガ基本情報の編集はスタッフ画面から行ってください。');}
-function resolveInj(iid){if(!confirm('この怪我を回復済みにしますか？'))return;var inj=D.i.find(function(x){return idEq(x.id,iid);});if(inj){inj.resolved=true;inj.resolvedDate=todayStr();svRec('i',inj);}}
+function resolveInj(iid){alert('回復済みへの変更はスタッフ画面から行ってください。');}
 function deleteInjury(iid){alert('ケガの削除はスタッフ画面から行ってください。');}
 // カルテデータ取得（なければ新規作成して返す）
 function getChart(injId){
@@ -549,8 +559,13 @@ function renderInjHistoryBox(pid,excludeIid,currentPart){
 
 
 function setRtpLevel(iid,level){
+  var lv=RTP_LEVELS.find(function(x){return x.k===level;});
+  // 練習参加レベルは選手・スタッフ全員に共有される臨床判断のため、確認＋実施者記録を必須にする
+  if(!confirm('練習参加レベルを「'+(lv?lv.label:level)+'」に変更しますか？\n選手・スタッフ全員に共有されます。'))return;
   var ch=getChart(iid);
   ch.rtpLevel=level;
+  ch.rtpLevelDate=todayStr();
+  ch.rtpLevelBy=myTrainer?myTrainer.name:'';
   saveChart(ch);
   renderChartTab();
 }
@@ -580,7 +595,6 @@ function ld(){
         try{
           var parsed=JSON.parse(doc.data().data);
           if(Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
-          else if(!Array.isArray(parsed))D[k]=parsed;
         }catch(e){console.log('parse error:',k);}
       }
     }).catch(function(e){console.log('load error:',k,e);});
@@ -611,7 +625,8 @@ function svSafe(k,newRec,callback){
     });
   }).then(function(latest){D[k]=latest;if(callback)callback();}).catch(function(e){alert('保存に失敗しました');console.error(e);});
 }
-function svSafeUpdate(k,updateFn,onDone){
+// onError(任意・第4引数): 指定時は失敗を呼び出し側へ委譲（既定の保存失敗alertは出さない）。未指定なら従来どおりalert。
+function svSafeUpdate(k,updateFn,onDone,onError){
   var ref=db.collection('appdata').doc(k);
   return db.runTransaction(function(tx){
     return tx.get(ref).then(function(doc){
@@ -620,7 +635,7 @@ function svSafeUpdate(k,updateFn,onDone){
       tx.set(ref,{data:JSON.stringify(latest)});
       return latest;
     });
-  }).then(function(latest){D[k]=latest;if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);alert('保存に失敗しました');});
+  }).then(function(latest){D[k]=latest;if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);if(onError)onError(e);else alert('保存に失敗しました');});
 }
 // 単一レコードをトランザクションで安全にupsert（id一致で置換、なければ追加）
 function svRec(k,rec,onDone){
@@ -633,6 +648,54 @@ function svRec(k,rec,onDone){
 // 単一レコードをトランザクションで安全に削除（id一致）
 function svDel(k,id,onDone){
   return svSafeUpdate(k,function(latest){return latest.filter(function(x){return!idEq(x.id,id);});},onDone);
+}
+// ===== 共通の安全土台（playerから移植） =====
+// 0をはじかない必須チェック。空文字・null・undefined・NaNのみを「未入力」とする（0は有効値）。
+function isFilled(v){if(v===''||v==null)return false;if(typeof v==='number')return !Number.isNaN(v);if(typeof v==='string')return v.trim()!=='';return true;}
+// 複数レコードを順番に安全保存する。items=[{k:'i',rec:...},{k:'r',rec:...}]
+// 全件成功でonAllDone、途中失敗でonError(err, doneList, item)。
+function svSafeSeq(items,onAllDone,onError){
+  var done=[];
+  function step(i){
+    if(i>=items.length){if(onAllDone)onAllDone(done);return;}
+    var it=items[i];
+    var ref=db.collection('appdata').doc(it.k);
+    db.runTransaction(function(tx){
+      return tx.get(ref).then(function(doc){
+        var latest=[];
+        if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+        latest.push(it.rec);
+        tx.set(ref,{data:JSON.stringify(latest)});
+        return latest;
+      });
+    }).then(function(latest){
+      D[it.k]=latest;done.push(it.k);step(i+1);
+    }).catch(function(e){
+      console.error('svSafeSeq error:',it.k,e);
+      if(onError)onError(e,done,it);
+    });
+  }
+  step(0);
+}
+// 二重送信ガード：保存中はボタンをdisabled＋ラベル差し替え。releaseSubmitで原状復帰。
+function guardSubmit(btnEl,label){
+  if(!btnEl)return false;
+  if(btnEl.dataset.busy==='1')return false;
+  btnEl.dataset.busy='1';
+  btnEl.dataset.prevLabel=btnEl.innerHTML;
+  btnEl.disabled=true;
+  btnEl.style.opacity='.6';
+  btnEl.style.pointerEvents='none';
+  if(label!=null)btnEl.innerHTML=escapeHtml(label);
+  return true;
+}
+function releaseSubmit(btnEl){
+  if(!btnEl)return;
+  btnEl.dataset.busy='';
+  if(btnEl.dataset.prevLabel!=null&&btnEl.dataset.prevLabel!=='')btnEl.innerHTML=btnEl.dataset.prevLabel;
+  btnEl.disabled=false;
+  btnEl.style.opacity='';
+  btnEl.style.pointerEvents='';
 }
 
 function todayStr(){var d=new Date();var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
@@ -826,14 +889,43 @@ function login(tid){
     }
   }
   myTrainer=trainer;
+  try{localStorage.setItem('rm_my_trainer_id',String(tid));}catch(e){}
   document.getElementById('login-screen').style.display='none';
   document.getElementById('header-user').textContent=myTrainer.name+'さん | ログアウト';
   go('home');
 }
 
+// 前回ログインしたトレーナーを確認画面付きで復元（PIN再入力を省略。playerの自動ログインと同じ考え方）
+function showAutoLoginConfirmT(tid){
+  var trainer=D.trainers.find(function(t){return t.id===tid;});
+  if(!trainer)return showLogin();
+  var listEl=document.getElementById('trainer-list');
+  listEl.innerHTML='<div style="text-align:center;padding:20px">'+
+    '<div style="font-size:36px;margin-bottom:8px">👤</div>'+
+    '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">あなたは下記のトレーナーですか？</div>'+
+    '<div style="font-size:20px;font-weight:700;margin-bottom:16px">'+escapeHtml(trainer.name)+'さん</div>'+
+    '<button class="btn btn-p" style="width:200px;padding:14px;font-size:15px;margin-bottom:10px" onclick="confirmAutoLoginT('+tid+')">✅ はい、私です</button><br>'+
+    '<button class="btn" style="width:200px;padding:10px;font-size:13px" onclick="rejectAutoLoginT()">❌ 違うトレーナーで入る</button>'+
+    '</div>';
+  document.getElementById('login-screen').style.display='flex';
+}
+function confirmAutoLoginT(tid){
+  var trainer=D.trainers.find(function(t){return t.id===tid;});
+  if(!trainer)return showLogin();
+  myTrainer=trainer;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('header-user').textContent=myTrainer.name+'さん | ログアウト';
+  go('home');
+}
+function rejectAutoLoginT(){
+  try{localStorage.removeItem('rm_my_trainer_id');}catch(e){}
+  showLogin();
+}
+
 function logout(){
   if(!confirm('ログアウトしますか？'))return;
   myTrainer=null;
+  try{localStorage.removeItem('rm_my_trainer_id');}catch(e){}
   showLogin();
 }
 
@@ -850,6 +942,45 @@ function go(tab){
   T[tab]&&T[tab]();
 }
 
+// 予約rsvsのうち、slotId(枠)を占有しているものを返す（複数枠予約はslotIds配列全体を見る。旧データはslotIdのみへフォールバック）
+function tapeSlotBooked(rsvs,slotId){return rsvs.filter(function(t){return(t.slotIds||[t.slotId]).indexOf(slotId)>=0;});}
+
+// ホームTo-Doバッジ（1カード1個・優先度: 🔴安全(脳震盪/レッドフラグ未対応/評価空きすぎ)→🟡評価期限→🔵メニュー未設定→🟣復帰テスト目前→🟢記録済み）。該当なければnull。
+function trTodoBadge(inj){
+  var today=todayStr();
+  var ch=getChart(inj.id);
+  var rh=(D.r||[]).find(function(x){return idEq(x.injId,inj.id);});
+  var plan=(D.rplan||[]).find(function(x){return x.injId===inj.id;});
+  var lastLog=(D.rlog||[]).filter(function(l){return l.injId===inj.id;}).sort(function(a,b){return (b.date||"").localeCompare(a.date||"");})[0];
+  if(ch.isConcussion)return{rank:0,cls:'bd-r',emoji:'🧠',label:'脳震盪：安全ゲート要確認',action:'chart'};
+  // レッドフラグ：直近のinjcommがトレーナー発の要確認連絡のままでスタッフ側の返信がまだない
+  var comms=(D.injcomm||[]).filter(function(c){return idEq(c.injId,inj.id);}).sort(function(a,b){return (a.createdAt||'').localeCompare(b.createdAt||'');});
+  var lastComm=comms[comms.length-1];
+  if(lastComm&&lastComm.role==='trainer'&&lastComm.text&&lastComm.text.indexOf('⚠️【要確認・実施前チェック】')===0){
+    return{rank:0,cls:'bd-r',emoji:'🚨',label:'レッドフラグ連絡中・要対応',action:'rehab'};
+  }
+  var evalDates=(ch.evals||[]).map(function(e){return e.date;}).filter(Boolean).sort();
+  var lastEvalDate=evalDates[evalDates.length-1];
+  var refDate=lastEvalDate||inj.date;
+  var gapDays=Math.floor((new Date(today)-new Date(refDate))/86400000);
+  if(gapDays>=14)return{rank:0,cls:'bd-r',emoji:'📊',label:'評価が'+gapDays+'日空いています',action:'rehab'};
+  if(gapDays>=7)return{rank:1,cls:'bd-a',emoji:'🟡',label:'評価期限：前回から'+gapDays+'日',action:'rehab'};
+  var tomorrowCats=plan?plan.tomorrowCats||[]:[];
+  if(!tomorrowCats.length)return{rank:2,cls:'bd-b',emoji:'📋',label:'本日のメニュー未設定',action:'menu'};
+  if(rh&&rh.stage===STG.length-2&&!(D.rtest||[]).some(function(r){return r.injId===inj.id;})){
+    return{rank:3,cls:'bd-p',emoji:'🏁',label:'復帰テスト目前',action:'rtest'};
+  }
+  if(lastLog&&lastLog.date===today)return{rank:4,cls:'bd-g',emoji:'✅',label:'今日は記録済み',action:'rehab'};
+  return null;
+}
+// トップ画面のTo-Doバッジタップ時の遷移先ディスパッチ
+function trBadgeGo(action,injId){
+  if(action==='chart')return openChart(injId);
+  if(action==='menu')return goSetNextMenuT(injId);
+  if(action==='rtest')return goRTestRecord(injId);
+  return goRehabPlayer(injId);
+}
+
 // ===== TABS =====
 var T={
 
@@ -858,8 +989,9 @@ home:function(){
   var today=todayStr();
   // 今日のテーピング予約（自分が担当）
   var mySlots=(D.tapeslot||[]).filter(function(s){return s.date===today&&s.staff===myTrainer.name;});
+  var mySlotIds=mySlots.map(function(s){return s.id;});
   var myRsvs=(D.tape||[]).filter(function(t){
-    return t.date===today&&mySlots.some(function(s){return s.id===t.slotId;});
+    return t.date===today&&(t.slotIds||[t.slotId]).some(function(sid){return mySlotIds.indexOf(sid)>=0;});
   });
   // 今日の担当リハビリ選手（今後追加予定）
   var today=todayStr();
@@ -873,7 +1005,7 @@ home:function(){
   if(mySlots.length){
     h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">あなたの担当枠</div>';
     mySlots.sort(function(a,b){return a.startTime.localeCompare(b.startTime);}).forEach(function(s){
-      var booked=myRsvs.filter(function(t){return t.slotId===s.id;});
+      var booked=tapeSlotBooked(myRsvs,s.id);
       var full=booked.length>=s.capacity;
       h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--border-tertiary)">'+
       '<span style="font-weight:600">'+s.startTime+'〜'+s.endTime+'</span>'+
@@ -914,10 +1046,17 @@ home:function(){
   }
   h+='<div class="card"><div style="font-weight:600;margin-bottom:10px">🩹 担当リハビリ選手</div>';
   if(myRehabInj.length){
-    myRehabInj.forEach(function(inj){
-      var p=D.p.find(function(x){return x.id===inj.pid;});if(!p)return;
+    var rehabRows=myRehabInj.map(function(inj){return{inj:inj,badge:trTodoBadge(inj)};}).filter(function(row){return D.p.find(function(x){return x.id===row.inj.pid;});});
+    rehabRows.sort(function(a,b){
+      var ra=a.badge?a.badge.rank:5,rb=b.badge?b.badge.rank:5;
+      if(ra!==rb)return ra-rb;
+      return(b.inj.date||'').localeCompare(a.inj.date||'');
+    });
+    rehabRows.forEach(function(row){
+      var inj=row.inj,badge=row.badge;
+      var p=D.p.find(function(x){return x.id===inj.pid;});
       var plan=(D.rplan||[]).find(function(x){return x.injId===inj.id;});
-      var lastLog=(D.rlog||[]).filter(function(l){return l.injId===inj.id;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
+      var lastLog=(D.rlog||[]).filter(function(l){return l.injId===inj.id;}).sort(function(a,b){return (b.date||"").localeCompare(a.date||"");})[0];
       var tomorrowCats=plan?plan.tomorrowCats||[]:[];
       h+='<div class="card card-click" style="margin-bottom:8px" onclick="goRehabPlayer('+inj.id+')">'+
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'+avH(p,30)+
@@ -925,7 +1064,8 @@ home:function(){
       '<div style="font-size:12px;color:var(--text-secondary)">'+(inj.side||'')+inj.part+' '+inj.type+'</div></div>'+
       (lastLog?'<span style="font-size:11px;color:var(--text-secondary)">最終: '+fmt(lastLog.date)+'</span>':'')+
       '</div>'+
-      (tomorrowCats.length?'<div style="display:flex;flex-wrap:wrap;gap:4px">'+tomorrowCats.map(function(c){return'<span style="background:'+RCAT_BG[c]+';color:'+RCAT_COLOR[c]+';padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">'+c+'</span>';}).join('')+'</div>':'<div style="font-size:11px;color:var(--text-tertiary)">本日のメニュー未設定</div>')+
+      (badge?'<span class="bd '+badge.cls+'" style="cursor:pointer" onclick="event.stopPropagation();trBadgeGo(\''+badge.action+'\','+inj.id+')">'+badge.emoji+' '+badge.label+'</span>':
+        (tomorrowCats.length?'<div style="display:flex;flex-wrap:wrap;gap:4px">'+tomorrowCats.map(function(c){return'<span style="background:'+RCAT_BG[c]+';color:'+RCAT_COLOR[c]+';padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">'+c+'</span>';}).join('')+'</div>':''))+
       '</div>';
     });
   } else {
@@ -1022,7 +1162,7 @@ tape:function(){
       (!isPast?'<button class="btn btn-sm btn-d" onclick="delMyTapeDay(\''+date+'\')">削除</button>':'')+
       '</div>';
       slots.forEach(function(s){
-        var booked=rsvs.filter(function(t){return t.slotId===s.id;});
+        var booked=tapeSlotBooked(rsvs,s.id);
         var full=booked.length>=s.capacity;
         h+='<div style="margin-bottom:6px;padding:8px;background:var(--bg-secondary);border-radius:var(--radius)">'+
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:'+(booked.length?'6px':'0')+'">'+
@@ -1058,7 +1198,7 @@ rehab:function(){
     var p=D.p.find(function(x){return x.id===inj.pid;});if(!p)return;
     var plan=(D.rplan||[]).find(function(x){return x.injId===inj.id;});
     var rh=(D.r||[]).find(function(x){return x.injId===inj.id;});
-    var lastLog=(D.rlog||[]).filter(function(l){return l.injId===inj.id;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
+    var lastLog=(D.rlog||[]).filter(function(l){return l.injId===inj.id;}).sort(function(a,b){return (b.date||"").localeCompare(a.date||"");})[0];
     var tomorrowCats=plan?plan.tomorrowCats||[]:[];
     var trainer=(D.trainers||[]).find(function(t){return t.id===inj.trainerId;});
     // 検索対象テキスト（data属性に入れる）
@@ -1073,7 +1213,7 @@ rehab:function(){
     '<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">本日のメニュー</div>'+
     (tomorrowCats.length?'<div style="display:flex;flex-wrap:wrap;gap:4px">'+tomorrowCats.map(function(c){return'<span style="background:'+RCAT_BG[c]+';color:'+RCAT_COLOR[c]+';padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600">'+c+'</span>';}).join('')+'</div>':'<div style="font-size:12px;color:var(--text-secondary)">未設定</div>')+
     '</div>'+
-    (lastLog?'<div style="font-size:11px;color:var(--text-secondary);border-top:0.5px solid var(--border-tertiary);padding-top:6px;margin-top:4px">前回: '+fmt(lastLog.date)+' / 痛み:'+lastLog.pain+'/10'+(lastLog.comment?' / '+lastLog.comment.slice(0,20)+'...':'')+'</div>':'')+
+    (lastLog?'<div style="font-size:11px;color:var(--text-secondary);border-top:0.5px solid var(--border-tertiary);padding-top:6px;margin-top:4px">前回: '+fmt(lastLog.date)+(lastLog.preCheck&&lastLog.preCheck.pain!=null?' / 痛み:'+lastLog.preCheck.pain+'/10':'')+(lastLog.comment?' / '+lastLog.comment.slice(0,20)+'...':'')+'</div>':'')+
     '</div>';
   });
   h+='</div>';
@@ -1210,13 +1350,14 @@ function showTapeRecForm(recId,presetPid){window._subViewActive=true;
   h+='<div class="form-box"><div class="form-title">参考動画・リンク（任意）</div><input class="ipt" id="tr-video" value="'+escapeHtml(rec.videoUrl||'')+'" placeholder="YouTube等のURL"></div>';
   // 記録者
   h+='<div class="form-box"><div class="form-title">記録者</div><input class="ipt" id="tr-author" value="'+escapeHtml(rec.author||'')+'" placeholder="巻いた人の名前"></div>';
-  h+='<button class="btn btn-p" style="width:100%" onclick="saveTapeRec('+(isEdit?'\''+recId+'\'':'null')+')">💾 保存</button>';
+  h+='<button class="btn btn-p" style="width:100%" onclick="saveTapeRec('+(isEdit?'\''+recId+'\'':'null')+',this)">💾 保存</button>';
   $m().innerHTML=h;
 }
-function saveTapeRec(recId){
+function saveTapeRec(recId,btnEl){
   var pidEl=document.getElementById('tr-pid');
   var pid=pidEl&&pidEl.value?parseInt(pidEl.value):(recId?(D.taperec.find(function(x){return idEq(x.id,recId);})||{}).pid:null);
   if(!pid)return alert('選手を選択してください');
+  if(!guardSubmit(btnEl,'保存中…'))return;
   var tapeTypes=Array.prototype.slice.call(document.querySelectorAll('.tr-tape:checked')).map(function(e){return e.value;});
   var g=function(id){var e=document.getElementById(id);return e?e.value:'';};
   var data={pid:pid,date:g('tr-date')||todayStr(),side:g('tr-side'),part:g('tr-part'),tapeTypes:tapeTypes,method:g('tr-method'),caution:g('tr-caution'),videoUrl:g('tr-video').trim(),author:g('tr-author'),inputAt:new Date().toISOString()};
@@ -1232,6 +1373,9 @@ function saveTapeRec(recId){
   },function(){
     alert('保存しました');
     showPlayerTapeRecs(pid);
+  },function(){
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
   });
 }
 function delTapeRec(recId,pid){
@@ -1274,7 +1418,7 @@ function renderChartTimeline(iid){
       var dtxt=[];
       if(ch.medical.hospital)dtxt.push(escapeHtml(ch.medical.hospital));
       if(ch.medical.diagnosis)dtxt.push('診断: '+escapeHtml(ch.medical.diagnosis));
-      if(ch.medical.imgFindings&&ch.medical.imgFindings.length)dtxt.push(ch.medical.imgFindings.join('・'));
+      if(ch.medical.imgFindings&&ch.medical.imgFindings.length)dtxt.push(Array.isArray(ch.medical.imgFindings)?ch.medical.imgFindings.join('・'):escapeHtml(ch.medical.imgFindings));
       events.push({date:ddate,type:'hospital',title:'病院受診・診断',desc:dtxt.join('<br>')});
     }
     if(ch.medical.surgery&&ch.medical.surgeryDate){
@@ -1358,8 +1502,8 @@ function renderChartTimeline(iid){
       '<div class="tl-dot">'+(IC[ev.type]||'')+'</div>'+
       '<div class="tl-card" style="'+futureStyle+'">'+
         '<div class="tl-date">'+fmt(ev.date)+(ev._future?' ・ 予定':'')+'</div>'+
-        '<div class="tl-title">'+escapeHtml(ev.title)+'</div>'+
-        (ev.desc?'<div class="tl-desc">'+escapeHtml(ev.desc)+'</div>':'')+
+        '<div class="tl-title">'+ev.title+'</div>'+
+        (ev.desc?'<div class="tl-desc">'+ev.desc+'</div>':'')+
       '</div>'+
     '</div>';
   });
@@ -1392,6 +1536,12 @@ function renderChartOverview(iid){
     (ch.injDetail.severity?'<div class="detail-row"><span class="detail-label">重症度</span><span class="detail-value">'+ch.injDetail.severity+'</span></div>':'')+
     (ch.medical.diagnosis?'<div class="detail-row"><span class="detail-label">診断名</span><span class="detail-value">'+escapeHtml(ch.medical.diagnosis)+'</span></div>':'')+
     '</div>';
+  // 脳震盪・禁忌の警告（現場で見落とすと危険なので、開いてすぐ見える概要タブに掲示）
+  if(ch.isConcussion){
+    h+='<div style="font-size:12.5px;padding:12px;border-radius:10px;background:var(--amber-bg);color:var(--amber);line-height:1.6;margin-bottom:12px">🧠 <b>脳震盪</b>として登録されています。数値評価・整形外科的テストの対象外です。GRTP（症状ベース・24時間ルール）で管理してください。</div>';
+  } else if(ch.injType&&INJ_TEMPLATES[ch.injType]&&INJ_TEMPLATES[ch.injType].contra){
+    h+='<div style="font-size:12px;padding:8px 10px;border-radius:8px;background:var(--amber-bg);color:var(--amber);line-height:1.5;margin-bottom:12px">⚠️ <b>禁忌:</b> '+escapeHtml(INJ_TEMPLATES[ch.injType].contra)+'</div>';
+  }
   // リハビリ状況
   if(rh){
     h+='<div class="form-box"><div class="form-title">リハビリ状況</div>'+
@@ -1422,7 +1572,7 @@ function renderChartOverview(iid){
   // アクションボタン
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
     '<button class="btn btn-p" onclick="goEditInjury('+iid+')">基本情報を編集</button>'+
-    (!inj.resolved?'<button class="btn btn-s" onclick="resolveInj('+iid+');popView()">回復済みにする</button>':'<button class="btn" onclick="unresolveInj('+iid+')">治療中に戻す</button>')+
+    (!inj.resolved?'<button class="btn btn-s" onclick="resolveInj('+iid+')">回復済みにする</button>':'<button class="btn" onclick="unresolveInj('+iid+')">治療中に戻す</button>')+
     '<button class="btn btn-d" onclick="deleteInjury('+iid+')">削除</button>'+
     '</div>';
   return h;
@@ -1484,6 +1634,12 @@ function renderChartEval(iid){
   var em=EVAL_MASTER[inj.part]||EVAL_MASTER['その他'];
   var evals=ch.evals.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
   var h='';
+  // 脳震盪：整形外科的テストを通常の陰性/陽性判定として扱わない（GRTP＝症状ベースで管理）
+  if(ch.isConcussion){
+    h+='<div style="font-size:12.5px;padding:12px;border-radius:10px;background:var(--amber-bg);color:var(--amber);line-height:1.6;margin-bottom:12px">🧠 <b>脳震盪として登録</b>されています。数値評価の対象外です。<br>GRTP（症状ベース・24時間ルール・症状再燃で前段階へ後退）で管理してください。判断に迷う場合は必ずスタッフに相談してください。</div>';
+  } else if(ch.injType&&INJ_TEMPLATES[ch.injType]&&INJ_TEMPLATES[ch.injType].contra){
+    h+='<div style="font-size:12px;padding:8px 10px;border-radius:8px;background:var(--amber-bg);color:var(--amber);line-height:1.5;margin-bottom:12px">⚠️ <b>禁忌:</b> '+escapeHtml(INJ_TEMPLATES[ch.injType].contra)+'</div>';
+  }
   // 新規評価追加ボタン
   h+='<button class="btn btn-p" style="width:100%;margin-bottom:14px" onclick="showEvalForm('+iid+')">＋ 新しい評価を記録する</button>';
   // 痛み推移グラフ
@@ -1543,80 +1699,256 @@ function renderChartEval(iid){
   return h;
 }
 
-// 評価入力フォーム（部位連動）
+// 評価入力フォーム（部位連動・セクション型ウィザード）
+// 見習いが「何から・どの順で入力するか」で迷わないよう、上部固定の進捗チップ＋アコーディオン式セクションで
+// 「上から順に」誘導する。順序は臨床の侵襲が少ない順（痛み→周径(腫脹)→ROM→筋力→テスト→症状→所見）。
+// セクション移動は再描画せず可視性トグルのみ＝入力中のDOM値は保持される（メモリ不滅）。
 function showEvalForm(iid,evalId){
   var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return;
   var ch=getChart(iid);
   var em=EVAL_MASTER[inj.part]||EVAL_MASTER['その他'];
+  var evals=(ch&&ch.evals)?ch.evals:[];var exId=evalId||null; // ⑧-b 前回値ゴースト用（編集中evalは除外）
   var ev=evalId?ch.evals.find(function(x){return idEq(x.id,evalId);}):null;
   var isEdit=!!ev;
   if(!ev)ev={date:todayStr(),pain:{},rom:{},mmt:{},circ:{},ortho:{},note:''};
-  var h='<div style="max-width:600px">';
-  h+='<div class="form-box"><div class="form-title">評価日</div><input type="date" class="ipt" id="ev-date" value="'+(ev.date||todayStr())+'"></div>';
-  // 痛み（全部位共通）
-  h+='<div class="form-box"><div class="form-title">😣 痛み（0:なし 〜 10:最大）</div>';
-  PAIN_TYPES.forEach(function(pt){
+  // --- セクションを部位に応じて動的生成（該当項目がある部位だけ並ぶ）---
+  var secs=[];
+  // ① 痛み（全部位共通）
+  var pbody='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">0:なし 〜 10:最大。運動時痛が推移グラフの基準になります。</div>';
+  PAIN_TYPES.forEach(function(pt,pi){
     var v=ev.pain&&ev.pain[pt.k]!=null?ev.pain[pt.k]:'';
-    h+='<div class="fl" style="margin-bottom:10px"><label>'+pt.label+'</label><input type="number" class="ipt ev-pain" data-k="'+pt.k+'" min="0" max="10" value="'+v+'" placeholder="0-10"></div>';
+    var pr=evPrevVal(evals,'pain',pt.k,exId);
+    var ser=evSeriesFull(evals,'pain',pt.k),spk=sparklineSVG(ser,'down','pain'+pi);
+    pbody+='<div style="margin-bottom:12px"><div class="fl"><label>'+pt.label+(pr?' <span style="font-size:11px;font-weight:400;color:var(--text-tertiary)">前回 '+pr.v+'/10</span>':'')+'</label>'+
+      '<input type="number" class="ipt ev-pain" data-k="'+pt.k+'" data-prev="'+(pr?pr.v:'')+'" data-dir="down" data-unit="" data-diff="evd-pain-'+pi+'" min="0" max="10" value="'+v+'" placeholder="0-10" oninput="evLiveDiff(this)"></div>'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-top:3px"><span id="evd-pain-'+pi+'" style="font-size:11px;color:var(--text-secondary)"></span>'+(spk?'<div style="flex:1;min-width:0">'+spk+'</div>'+sparkCaption(ser,'down'):'')+'</div></div>';
   });
-  h+='</div>';
-  // ROM（部位連動）
-  if(em.rom.length){
-    h+='<div class="form-box"><div class="form-title">📐 ROM 関節可動域</div>';
-    em.rom.forEach(function(r){
-      var v=ev.rom&&ev.rom[r.k]!=null?ev.rom[r.k]:'';
-      h+='<div class="fl" style="margin-bottom:10px"><label>'+r.label+(r.normal?' <span style="color:var(--text-tertiary);font-weight:400">(正常≒'+r.normal+r.unit+')</span>':'')+'</label><input type="text" class="ipt ev-rom" data-k="'+r.k+'" value="'+escapeHtml(v)+'" placeholder="'+r.unit+'"></div>';
-    });
-    h+='</div>';
-  }
-  // MMT（部位連動）
-  if(em.mmt.length){
-    h+='<div class="form-box"><div class="form-title">💪 筋力 MMT（0〜5）</div>';
-    em.mmt.forEach(function(mm){
-      var v=ev.mmt&&ev.mmt[mm]!=null?ev.mmt[mm]:'';
-      h+='<div class="fl" style="margin-bottom:10px"><label>'+mm+'</label><select class="ipt ev-mmt" data-k="'+escapeHtml(mm)+'"><option value="">-</option>'+
-        ['5','4+','4','4-','3+','3','3-','2','1','0'].map(function(o){return'<option'+(String(v)===o?' selected':'')+'>'+o+'</option>';}).join('')+'</select></div>';
-    });
-    h+='</div>';
-  }
-  // 周径（部位連動）
+  secs.push({key:'pain',icon:'😣',label:'痛み',body:pbody});
+  // ② 周径（腫脹）— ROMより前（その日どこまで押してよいかの判断材料になるため）
   if(em.circ.length){
-    h+='<div class="form-box"><div class="form-title">📏 周径（cm）</div>';
-    em.circ.forEach(function(c){
+    var cbody='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">腫脹の指標。左右差の確認に使います。</div>';
+    em.circ.forEach(function(c,ci){
       var v=ev.circ&&ev.circ[c]!=null?ev.circ[c]:'';
-      h+='<div class="fl" style="margin-bottom:10px"><label>'+c+'</label><input type="number" step="0.1" class="ipt ev-circ" data-k="'+escapeHtml(c)+'" value="'+v+'" placeholder="cm"></div>';
+      var pr=evPrevVal(evals,'circ',c,exId);
+      var ser=evSeriesFull(evals,'circ',c),spk=sparklineSVG(ser,'none','circ'+ci);
+      cbody+='<div style="margin-bottom:12px"><div class="fl"><label>'+escapeHtml(c)+(pr?' <span style="font-size:11px;font-weight:400;color:var(--text-tertiary)">前回 '+pr.v+'cm</span>':'')+'</label>'+
+        '<input type="number" step="0.1" class="ipt ev-circ" data-k="'+escapeHtml(c)+'" data-prev="'+(pr?pr.v:'')+'" data-dir="none" data-unit="cm" data-diff="evd-circ-'+ci+'" value="'+v+'" placeholder="cm" oninput="evLiveDiff(this)"></div>'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:3px"><span id="evd-circ-'+ci+'" style="font-size:11px;color:var(--text-secondary)"></span>'+(spk?'<div style="flex:1;min-width:0">'+spk+'</div>'+sparkCaption(ser,'none'):'')+'</div></div>';
     });
-    h+='</div>';
+    secs.push({key:'circ',icon:'📏',label:'周径',body:cbody});
   }
-  // 整形外科テスト（部位連動）
-  if(em.ortho.length){
-    h+='<div class="form-box"><div class="form-title">🔬 整形外科的テスト</div>';
+  // ③ ROM
+  if(em.rom.length){
+    var rbody='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">関節可動域。健側と比較して。</div>';
+    em.rom.forEach(function(r,ri){
+      var v=ev.rom&&ev.rom[r.k]!=null?ev.rom[r.k]:'';
+      var pr=evPrevVal(evals,'rom',r.k,exId);
+      var ser=evSeriesFull(evals,'rom',r.k),spk=sparklineSVG(ser,'none','rom'+ri);
+      rbody+='<div style="margin-bottom:12px"><div class="fl"><label>'+r.label+(r.normal?' <span style="color:var(--text-tertiary);font-weight:400">(正常≒'+r.normal+r.unit+')</span>':'')+(pr?' <span style="font-size:11px;font-weight:400;color:var(--text-tertiary)">前回 '+escapeHtml(String(pr.v))+r.unit+'</span>':'')+'</label>'+
+        '<input type="text" inputmode="decimal" class="ipt ev-rom" data-k="'+r.k+'" data-prev="'+(pr?escapeHtml(String(pr.v)):'')+'" data-dir="none" data-unit="'+r.unit+'" data-diff="evd-rom-'+ri+'" value="'+escapeHtml(v)+'" placeholder="'+r.unit+'" oninput="evLiveDiff(this)"></div>'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:3px"><span id="evd-rom-'+ri+'" style="font-size:11px;color:var(--text-secondary)"></span>'+(spk?'<div style="flex:1;min-width:0">'+spk+'</div>'+sparkCaption(ser,'none'):'')+'</div></div>';
+    });
+    secs.push({key:'rom',icon:'📐',label:'ROM',body:rbody});
+  }
+  // ④ 筋力 MMT
+  if(em.mmt.length){
+    var mbody='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">徒手筋力テスト（0〜5）。健側と比較して。</div>';
+    em.mmt.forEach(function(mm,mmi){
+      var v=ev.mmt&&ev.mmt[mm]!=null?ev.mmt[mm]:'';
+      var pr=evPrevVal(evals,'mmt',mm,exId);
+      var ser=evSeriesFull(evals,'mmt',mm),spk=sparklineSVG(ser,'up','mmt'+mmi);
+      mbody+='<div style="margin-bottom:12px"><div class="fl"><label>'+escapeHtml(mm)+(pr?' <span style="font-size:11px;font-weight:400;color:var(--text-tertiary)">前回 '+escapeHtml(String(pr.v))+'</span>':'')+'</label>'+
+        '<select class="ipt ev-mmt" data-k="'+escapeHtml(mm)+'" data-prev="'+(pr?escapeHtml(String(pr.v)):'')+'" data-dir="up" data-ord="1" data-diff="evd-mmt-'+mmi+'" onchange="evLiveDiff(this)"><option value="">-</option>'+
+        ['5','4+','4','4-','3+','3','3-','2','1','0'].map(function(o){return'<option'+(String(v)===o?' selected':'')+'>'+o+'</option>';}).join('')+'</select></div>'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:3px"><span id="evd-mmt-'+mmi+'" style="font-size:11px;color:var(--text-secondary)"></span>'+(spk?'<div style="flex:1;min-width:0">'+spk+'</div>'+sparkCaption(ser,'up'):'')+'</div></div>';
+    });
+    secs.push({key:'mmt',icon:'💪',label:'筋力',body:mbody});
+  }
+  // ⑤ 整形外科テスト（脳震盪は陰性/陽性の二値判定になじまないため対象外）
+  if(em.ortho.length&&!ch.isConcussion){
+    var obody='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;line-height:1.6"><b style="color:var(--amber)">🔒 監督下</b>のテストは、有資格スタッフの立ち会いのもとで実施・判定してください。自信がなければ「未実施」のままでOK。判断に迷ったら必ずスタッフに相談を。</div>';
     em.ortho.forEach(function(o){
       var v=ev.ortho&&ev.ortho[o]!=null?ev.ortho[o]:'';
-      h+='<div class="fl" style="margin-bottom:10px"><label>'+o+'</label><select class="ipt ev-ortho" data-k="'+escapeHtml(o)+'"><option value="">-</option>'+
+      var sup=orthoIsSupervised(o); // 既定は全テストtrue（安全側）＝凛人がORTHO_SOLO_OKに登録すると外れる
+      obody+='<div class="fl" style="margin-bottom:10px"><label>'+escapeHtml(o)+(sup?' <span style="font-size:10px;font-weight:700;color:var(--amber);background:var(--amber-bg);border-radius:5px;padding:1px 6px;white-space:nowrap">🔒 監督下</span>':'')+'</label><select class="ipt ev-ortho" data-k="'+escapeHtml(o)+'"><option value="">未実施</option>'+
         ['陰性(-)','陽性(+)','疑陽性(±)'].map(function(opt){return'<option'+(v===opt?' selected':'')+'>'+opt+'</option>';}).join('')+'</select></div>';
     });
-    h+='</div>';
+    secs.push({key:'ortho',icon:'🔬',label:'テスト',body:obody});
   }
-  // 特記症状（部位連動）
+  // ⑥ 特記症状
   if(em.special&&em.special.length){
-    h+='<div class="form-box"><div class="form-title">⚠️ その他の症状（該当をチェック）</div><div style="display:flex;flex-wrap:wrap;gap:10px">';
+    var sbody='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">該当する症状にチェックしてください。</div><div style="display:flex;flex-wrap:wrap;gap:10px">';
     em.special.forEach(function(s){
       var checked=ev.special&&ev.special.indexOf(s)>=0;
-      h+='<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" class="ev-special" value="'+escapeHtml(s)+'"'+(checked?' checked':'')+'> '+s+'</label>';
+      sbody+='<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" class="ev-special" value="'+escapeHtml(s)+'"'+(checked?' checked':'')+'> '+escapeHtml(s)+'</label>';
     });
-    h+='</div></div>';
+    sbody+='</div>';
+    secs.push({key:'special',icon:'⚠️',label:'症状',body:sbody});
   }
-  // 所見
-  h+='<div class="form-box"><div class="form-title">📝 所見・メモ</div><textarea class="ipt" id="ev-note" placeholder="気づいたこと、評価の総合所見など" style="min-height:80px">'+escapeHtml(ev.note||'')+'</textarea></div>';
-  h+='<div style="display:flex;gap:8px"><button class="btn btn-back" onclick="chartTab(\'eval\')">キャンセル</button><button class="btn btn-p" style="flex:1" onclick="saveEval('+iid+','+(isEdit?'\''+evalId+'\'':'null')+')">💾 保存</button></div>';
+  // ⑦ 所見（全部位共通・最後）
+  secs.push({key:'note',icon:'📝',label:'所見',body:'<textarea class="ipt" id="ev-note" placeholder="気づいたこと、評価の総合所見など" style="min-height:80px">'+escapeHtml(ev.note||'')+'</textarea>'});
+
+  window._evSecKeys=secs.map(function(s){return s.key;});
+  window._evSec=0;
+  var last=secs.length-1;
+
+  var h='';
+  h+='<div style="font-size:16px;font-weight:700;margin-bottom:4px">'+(isEdit?'評価を編集':'新しい評価を記録')+'</div>';
+  h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">'+escapeHtml((inj.side||'')+inj.part)+' ・ 上から順に入力していきましょう（全'+secs.length+'ステップ）</div>';
+  if(ch.isConcussion){
+    h+='<div style="font-size:12.5px;padding:12px;border-radius:10px;background:var(--amber-bg);color:var(--amber);line-height:1.6;margin-bottom:12px">🧠 <b>脳震盪として登録</b>されています。整形外科的テストの対象外です。以下の症状チェックとメモで記録してください。判断に迷う場合は必ずスタッフに相談してください。</div>';
+  } else if(ch.injType&&INJ_TEMPLATES[ch.injType]&&INJ_TEMPLATES[ch.injType].contra){
+    h+='<div style="font-size:12px;padding:8px 10px;border-radius:8px;background:var(--amber-bg);color:var(--amber);line-height:1.5;margin-bottom:12px">⚠️ <b>禁忌:</b> '+escapeHtml(INJ_TEMPLATES[ch.injType].contra)+'</div>';
+  }
+  // 評価日（常時見える・設定して忘れる項目）
+  h+='<div class="fl" style="margin-bottom:12px"><label>評価日</label><input type="date" class="ipt" id="ev-date" value="'+(ev.date||todayStr())+'"></div>';
+  // 進捗チップ（上部固定・横スクロール）
+  h+='<div id="ev-prog" style="position:sticky;z-index:50;background:var(--bg-app);padding:8px 0;margin-bottom:10px;display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch">';
+  secs.forEach(function(s,i){
+    h+='<div id="evchip-'+i+'" onclick="evGoSec('+i+')" style="flex:0 0 auto;display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:99px;border:1px solid var(--border-tertiary);background:var(--bg-secondary);color:var(--text-secondary);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap"><span class="ev-chip-n" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,0.12);font-size:11px">'+(i+1)+'</span>'+s.label+'</div>';
+  });
   h+='</div>';
-  // サブビューとして表示
+  // セクション本体（アコーディオン）
+  secs.forEach(function(s,i){
+    h+='<div class="form-box ev-sec" id="evsec-'+s.key+'" style="padding:0;overflow:hidden">'+
+      '<div id="evsec-head-'+s.key+'" onclick="evGoSec('+i+')" style="display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer">'+
+        '<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--blue-bg);color:var(--blue);font-size:12px;font-weight:700;flex-shrink:0">'+(i+1)+'</span>'+
+        '<span style="font-weight:700;font-size:14px;flex:1">'+s.icon+' '+s.label+'</span>'+
+        '<span id="evchev-'+s.key+'" style="color:var(--text-secondary);font-size:12px">'+(i===0?'▾':'▸')+'</span>'+
+      '</div>'+
+      '<div class="ev-sec-body" id="evsec-body-'+s.key+'" style="display:'+(i===0?'block':'none')+';padding:0 14px 14px">'+
+        s.body+
+        (i<last?'<button class="btn btn-p" style="width:100%;margin-top:10px" onclick="evGoSec('+(i+1)+')">次へ ▶</button>':'')+
+      '</div>'+
+    '</div>';
+  });
+  // 保存アクション（常時到達可能）
+  h+='<div style="display:flex;gap:8px;margin-top:6px"><button class="btn btn-back" onclick="chartTab(\'eval\')">キャンセル</button><button class="btn btn-p" style="flex:1" onclick="saveEval('+iid+','+(isEdit?'\''+evalId+'\'':'null')+',this)">💾 保存する</button></div>';
   var body=document.getElementById('chart-body');
   if(body)body.innerHTML=h;
+  // 進捗バーのsticky topをアプリヘッダー高さに合わせる＋初期状態を反映（初回はスクロールしない）
+  setTimeout(function(){
+    var hd=document.querySelector('.header');var hh=hd?hd.offsetHeight:0;
+    var pbEl=document.getElementById('ev-prog');if(pbEl)pbEl.style.top=hh+'px';
+    evGoSec(0,true);
+  },30);
+}
+// セクション移動：再描画せず表示切替のみ（入力DOM値を保持）。noScroll=trueで初期化時のジャンプを抑止。
+function evGoSec(n,noScroll){
+  var keys=window._evSecKeys||[];
+  if(!keys.length)return;
+  if(n<0)n=0;if(n>=keys.length)n=keys.length-1;
+  window._evSec=n;
+  keys.forEach(function(k,i){
+    var bodyEl=document.getElementById('evsec-body-'+k);
+    if(bodyEl)bodyEl.style.display=(i===n)?'block':'none';
+    var chev=document.getElementById('evchev-'+k);if(chev)chev.textContent=(i===n)?'▾':'▸';
+    var chip=document.getElementById('evchip-'+i);
+    if(chip){
+      var active=(i===n),done=(i<n);
+      chip.style.background=active?'var(--blue)':(done?'var(--green-bg)':'var(--bg-secondary)');
+      chip.style.color=active?'#fff':(done?'var(--green)':'var(--text-secondary)');
+      chip.style.borderColor=active?'var(--blue)':(done?'var(--green)':'var(--border-tertiary)');
+      var nEl=chip.querySelector('.ev-chip-n');if(nEl){nEl.textContent=done?'✓':(i+1);nEl.style.background=active?'rgba(255,255,255,0.25)':(done?'var(--green-bg)':'rgba(255,255,255,0.12)');}
+    }
+  });
+  var ac=document.getElementById('evchip-'+n);if(ac&&ac.scrollIntoView){try{ac.scrollIntoView({inline:'center',block:'nearest'});}catch(e){}}
+  if(noScroll)return;
+  var sec=document.getElementById('evsec-'+keys[n]);
+  if(sec){
+    var hd=document.querySelector('.header');var hh=hd?hd.offsetHeight:0;
+    var pbEl=document.getElementById('ev-prog');var ph=pbEl?pbEl.offsetHeight:0;
+    var y=sec.getBoundingClientRect().top+(window.pageYOffset||0)-hh-ph-8;
+    try{window.scrollTo({top:y,behavior:'smooth'});}catch(e){window.scrollTo(0,y);}
+  }
 }
 
-function saveEval(iid,evalId){
+// --- ⑧-b フル評価の前回値ゴースト＋差分色＋スパークライン ---
+// kind='pain'|'rom'|'mmt'|'circ'。編集中のeval(excludeId)を除いた直近の生値 {v,date} を返す（無ければnull）
+function evPrevVal(evals,kind,key,excludeId){
+  var sorted=(evals||[]).slice().sort(function(a,b){
+    var d=(b.date||'').localeCompare(a.date||'');
+    if(d!==0)return d;
+    return (b.inputAt||'').localeCompare(a.inputAt||'');
+  });
+  for(var i=0;i<sorted.length;i++){
+    var ev=sorted[i];
+    if(excludeId!=null&&idEq(ev.id,excludeId))continue;
+    var obj=ev[kind];
+    if(obj&&typeof obj==='object'&&obj[key]!=null&&obj[key]!=='')return{v:obj[key],date:ev.date};
+  }
+  return null;
+}
+// 昇順の数値時系列（スパークライン用）。mmtはMMT_ORDERのindex、他はparseFloat。非数値は除外。
+function evSeriesFull(evals,kind,key){
+  var sorted=(evals||[]).slice().sort(function(a,b){
+    var d=(a.date||'').localeCompare(b.date||'');
+    if(d!==0)return d;
+    return (a.inputAt||'').localeCompare(b.inputAt||'');
+  });
+  var out=[];
+  sorted.forEach(function(ev){
+    var obj=ev[kind];if(!obj||typeof obj!=='object')return;
+    var raw=obj[key];if(raw==null||raw==='')return;
+    var num;
+    if(kind==='mmt'){num=MMT_ORDER.indexOf(String(raw));if(num<0)return;}
+    else{num=parseFloat(raw);if(isNaN(num))return;}
+    out.push({date:ev.date,v:num});
+  });
+  return out;
+}
+// 入力のたびに前回比を表示（data-*から前回値/向き/表示先を取得）。
+// data-dir='none' は良し悪しを断定せず数値差のみ灰色表示（ROM/周径）。data-ord='1' はMMT順序型（段数差）。
+function evLiveDiff(el){
+  var diffId=el.getAttribute('data-diff');if(!diffId)return;
+  var dEl=document.getElementById(diffId);if(!dEl)return;
+  var prevStr=el.getAttribute('data-prev');
+  var dir=el.getAttribute('data-dir')||'up';
+  var ord=el.getAttribute('data-ord')==='1';
+  var unit=el.getAttribute('data-unit')||'';
+  var raw=el.value;
+  if(raw===''||raw==null||prevStr===''||prevStr==null){dEl.textContent='';return;}
+  var cur,prev;
+  if(ord){cur=MMT_ORDER.indexOf(String(raw));prev=MMT_ORDER.indexOf(String(prevStr));if(cur<0||prev<0){dEl.textContent='';return;}}
+  else{cur=parseFloat(raw);prev=parseFloat(prevStr);if(isNaN(cur)||isNaN(prev)){dEl.textContent='';return;}}
+  var d=Math.round((cur-prev)*100)/100;
+  var suffix=ord?'段':unit;
+  if(d===0){dEl.textContent='前回比 ±0';dEl.style.color='var(--text-secondary)';return;}
+  var txt='前回比 '+(d>0?'+':'')+d+suffix;
+  if(dir==='none'){dEl.textContent=txt;dEl.style.color='var(--text-secondary)';return;}
+  var improved=dir==='down'?d<0:d>0;
+  dEl.textContent=txt+(improved?'（改善）':'（悪化）');
+  dEl.style.color=improved?'var(--green)':'var(--red)';
+}
+// 保存時の改善サマリー。良し悪しが一意に定まる痛み(down)・筋力MMT(up)だけを対象に集計（ROM/周径は向き不定なので数えない）
+function evImprovementSummary(evals,entered,excludeId){
+  var improved=0,total=0;
+  [['pain','down'],['mmt','up']].forEach(function(pair){
+    var kind=pair[0],dir=pair[1],obj=entered[kind]||{};
+    Object.keys(obj).forEach(function(k){
+      var pr=evPrevVal(evals,kind,k,excludeId);if(!pr)return;
+      var cur,pv;
+      if(kind==='mmt'){cur=MMT_ORDER.indexOf(String(obj[k]));pv=MMT_ORDER.indexOf(String(pr.v));if(cur<0||pv<0)return;}
+      else{cur=parseFloat(obj[k]);pv=parseFloat(pr.v);if(isNaN(cur)||isNaN(pv))return;}
+      total++;
+      if(cur===pv)return;
+      if(dir==='down'?cur<pv:cur>pv)improved++;
+    });
+  });
+  return{improved:improved,total:total};
+}
+// 保存後、評価タブ先頭に一時的な完了バナーを差し込む（数秒でフェードアウト）
+function showEvalSavedBanner(html){
+  if(!html)return;
+  var body=document.getElementById('chart-body');if(!body)return;
+  var d=document.createElement('div');
+  d.style.cssText='background:var(--green-bg);color:var(--green);border:1px solid var(--green);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px;font-weight:600;line-height:1.55';
+  d.innerHTML=html;
+  body.insertBefore(d,body.firstChild);
+  setTimeout(function(){if(d&&d.parentNode){d.style.transition='opacity .5s';d.style.opacity='0';setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d);},520);}},4500);
+}
+
+function saveEval(iid,evalId,btn){
   var pain={},rom={},mmt={},circ={},ortho={},special=[];
   var fit={},romH={},mmtH={},circH={},fitH={};
   document.querySelectorAll('.ev-pain').forEach(function(e){if(e.value!=='')pain[e.dataset.k]=parseFloat(e.value);});
@@ -1638,6 +1970,12 @@ function saveEval(iid,evalId){
   var date=document.getElementById('ev-date').value||todayStr();
   var note=document.getElementById('ev-note').value;
   var nowISO=new Date().toISOString();
+  // ⑧-b 保存後の完了サマリー（今回入力を保存前の直近evalと比較。編集時は自身を除外）
+  var _sch=getChart(iid);var _sevals=(_sch&&_sch.evals)?_sch.evals:[];
+  var _sum=evImprovementSummary(_sevals,{pain:pain,mmt:mmt},evalId||null);
+  var _sumHtml='✅ 評価を保存しました';
+  if(_sum.improved>0)_sumHtml+='<br>痛み・筋力で '+_sum.improved+' 項目が前回より改善しています 🎉';
+  if(!guardSubmit(btn,'保存中…'))return;
   svSafeUpdate('chart',function(latest){
     var i=_chartIdx(latest,iid);
     if(!latest[i].evals)latest[i].evals=[];
@@ -1655,7 +1993,7 @@ function saveEval(iid,evalId){
     if(painLoad!=null)rec.painLoad=painLoad;
     if(readiness!=null)rec.readiness=readiness;
     return latest;
-  },function(){chartTab('eval');});
+  },function(){chartTab('eval');showEvalSavedBanner(_sumHtml);},function(){releaseSubmit(btn);alert('保存に失敗しました。通信状況を確認してもう一度お試しください。入力内容は残っています。');});
 }
 function delEval(iid,evalId){
   if(!confirm('この評価記録を削除しますか？'))return;
@@ -1728,39 +2066,68 @@ function showSOAPForm(iid,soapId){
   var s=soapId?ch.soaps.find(function(x){return idEq(x.id,soapId);}):null;
   var isEdit=!!s;
   if(!s)s={date:todayStr(),s:'',o:'',a:'',p:'',menu:'',author:''};
+  var oDraft=isEdit?'':buildSOAPObjectiveDraft(iid); // ⑨ 新規時のみO欄の下書き候補を用意
   var h='<div style="max-width:600px">';
   h+='<div class="form-box"><div class="form-title">記録日</div><input type="date" class="ipt" id="sp-date" value="'+(s.date||todayStr())+'"></div>';
   h+='<div class="form-box"><div class="form-title"><span class="soap-tag" style="background:#3B82F6">S</span> 主観的情報（選手の訴え）</div><textarea class="ipt" id="sp-s" placeholder="例：歩行時に膝の内側が痛む。階段の下りがつらい。" style="min-height:60px">'+escapeHtml(s.s||'')+'</textarea></div>';
-  h+='<div class="form-box"><div class="form-title"><span class="soap-tag" style="background:#0E9F6E">O</span> 客観的情報（観察・測定した事実）</div><textarea class="ipt" id="sp-o" placeholder="例：膝関節屈曲110°、腫脹軽度残存、圧痛(+)。" style="min-height:60px">'+escapeHtml(s.o||'')+'</textarea></div>';
+  h+='<div class="form-box"><div class="form-title"><span class="soap-tag" style="background:#0E9F6E">O</span> 客観的情報（観察・測定した事実）</div><textarea class="ipt" id="sp-o" placeholder="例：膝関節屈曲110°、腫脹軽度残存、圧痛(+)。" style="min-height:60px">'+escapeHtml(s.o||'')+'</textarea>'+
+    (oDraft?'<button class="btn btn-sm" style="margin-top:8px" onclick="insertSOAPDraft('+iid+')">📥 直近の評価から下書きを挿入</button><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">'+escapeHtml(oDraft)+'</div>':'')+
+    '</div>';
   h+='<div class="form-box"><div class="form-title"><span class="soap-tag" style="background:#FBBF24">A</span> 評価（考察・判断）</div><textarea class="ipt" id="sp-a" placeholder="例：可動域改善傾向。炎症は鎮静化しつつある。" style="min-height:60px">'+escapeHtml(s.a||'')+'</textarea></div>';
   h+='<div class="form-box"><div class="form-title"><span class="soap-tag" style="background:#A78BFA">P</span> 計画（次の方針）</div><textarea class="ipt" id="sp-p" placeholder="例：来週からジョギング開始予定。可動域訓練継続。" style="min-height:60px">'+escapeHtml(s.p||'')+'</textarea></div>';
   h+='<div class="form-box"><div class="form-title">🏋️ 実施したメニュー</div><textarea class="ipt" id="sp-menu" placeholder="例：温熱療法10分、可動域訓練、大腿四頭筋セッティング3×15" style="min-height:50px">'+escapeHtml(s.menu||'')+'</textarea></div>';
   h+='<div class="form-box"><div class="form-title">記録者</div><input class="ipt" id="sp-author" value="'+escapeHtml(s.author||'')+'" placeholder="記録した人の名前"></div>';
-  h+='<div style="display:flex;gap:8px"><button class="btn btn-back" onclick="chartTab(\'soap\')">キャンセル</button><button class="btn btn-p" style="flex:1" onclick="saveSOAP('+iid+','+(isEdit?'\''+soapId+'\'':'null')+')">💾 保存</button></div>';
+  h+='<div style="display:flex;gap:8px"><button class="btn btn-back" onclick="chartTab(\'soap\')">キャンセル</button><button class="btn btn-p" style="flex:1" onclick="saveSOAP('+iid+','+(isEdit?'\''+soapId+'\'':'null')+',this)">💾 保存</button></div>';
   h+='</div>';
   var body=document.getElementById('chart-body');
   if(body)body.innerHTML=h;
 }
-function saveSOAP(iid,soapId){
-  var ch=getChart(iid);
+// 操作単位化：server-latestの対象injIdの soaps だけを触る（saveChart全置換のロストアップデートを解消。saveEval/delEvalと同型）
+function saveSOAP(iid,soapId,btn){
   var g=function(id){var e=document.getElementById(id);return e?e.value:'';};
   var data={date:g('sp-date')||todayStr(),s:g('sp-s'),o:g('sp-o'),a:g('sp-a'),p:g('sp-p'),menu:g('sp-menu'),author:g('sp-author'),inputAt:new Date().toISOString()};
-  if(soapId){
-    var sp=ch.soaps.find(function(x){return idEq(x.id,soapId);});
-    if(sp)Object.assign(sp,data);
-  }else{
-    data.id=Date.now()+'_'+Math.floor(Math.random()*1000);
-    ch.soaps.push(data);
-  }
-  saveChart(ch);
-  chartTab('soap');
+  if(!guardSubmit(btn,'保存中…'))return;
+  svSafeUpdate('chart',function(latest){
+    var i=_chartIdx(latest,iid);
+    if(!latest[i].soaps)latest[i].soaps=[];
+    var rec=soapId?latest[i].soaps.find(function(x){return idEq(x.id,soapId);}):null;
+    if(rec){Object.assign(rec,data);}
+    else{data.id=soapId||(Date.now()+'_'+Math.floor(Math.random()*1000));latest[i].soaps.push(data);}
+    return latest;
+  },function(){chartTab('soap');},function(){releaseSubmit(btn);alert('保存に失敗しました。通信状況を確認してもう一度お試しください。入力内容は残っています。');});
 }
 function delSOAP(iid,soapId){
   if(!confirm('この記録を削除しますか？'))return;
-  var ch=getChart(iid);
-  ch.soaps=ch.soaps.filter(function(x){return!idEq(x.id,soapId);});
-  saveChart(ch);
-  chartTab('soap');
+  svSafeUpdate('chart',function(latest){
+    var i=latest.findIndex(function(x){return idEq(x.injId,iid);});
+    if(i>=0&&latest[i].soaps)latest[i].soaps=latest[i].soaps.filter(function(x){return!idEq(x.id,soapId);});
+    return latest;
+  },function(){chartTab('soap');});
+}
+// ⑨ SOAP自動下書き（O欄限定・測定済み数値の整形のみ＝臨床判断は加えない）。直近evalのpain/rom/mmt/circをまとめた文字列を返す（無ければ''）
+function buildSOAPObjectiveDraft(iid){
+  var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return '';
+  var ch=getChart(iid);var em=EVAL_MASTER[inj.part]||EVAL_MASTER['その他'];
+  var evals=(ch.evals||[]).slice().sort(function(a,b){
+    var d=(b.date||'').localeCompare(a.date||'');
+    if(d!==0)return d;
+    return (b.inputAt||'').localeCompare(a.inputAt||'');
+  });
+  if(!evals.length)return '';
+  var ev=evals[0];var parts=[];
+  PAIN_TYPES.forEach(function(pt){if(ev.pain&&ev.pain[pt.k]!=null&&ev.pain[pt.k]!=='')parts.push(pt.label+ev.pain[pt.k]+'/10');});
+  (em.rom||[]).forEach(function(r){if(ev.rom&&ev.rom[r.k]!=null&&ev.rom[r.k]!=='')parts.push(r.label+ev.rom[r.k]+r.unit);});
+  (em.mmt||[]).forEach(function(mm){if(ev.mmt&&ev.mmt[mm]!=null&&ev.mmt[mm]!=='')parts.push(mm+' MMT'+ev.mmt[mm]);});
+  (em.circ||[]).forEach(function(c){if(ev.circ&&ev.circ[c]!=null&&ev.circ[c]!=='')parts.push(c+' '+ev.circ[c]+'cm');});
+  if(!parts.length)return '';
+  return '【'+(ev.date||'')+'の評価より】'+parts.join('、')+'。';
+}
+// O欄に下書きを挿入（空なら差し込み、既記入なら末尾に追記）。トレーナーが自由に編集できる＝あくまで下書き
+function insertSOAPDraft(iid){
+  var draft=buildSOAPObjectiveDraft(iid);
+  var el=document.getElementById('sp-o');if(!el||!draft)return;
+  el.value=el.value?(el.value.replace(/\s*$/,'')+' '+draft):draft;
+  el.focus();
 }
 
 // ===== 復帰タブ =====
@@ -1816,9 +2183,14 @@ function changeStage(iid,delta){
   var rh=D.r.find(function(x){return idEq(x.injId,iid);});if(!rh)return;
   var ns=rh.stage+delta;
   if(ns<0||ns>=STG.length)return;
+  // 段階変更は臨床判断のため、確認＋実施者記録を必須にする
+  var msg=delta>0?'リハビリ段階を「'+STG[ns]+'」に進めますか？':'リハビリ段階を「'+STG[ns]+'」に戻しますか？';
+  if(!confirm(msg))return;
   rh.stage=ns;
   if(!rh.stageDates)rh.stageDates=[];
   rh.stageDates[ns]=todayStr();
+  if(!rh.stageBy)rh.stageBy=[];
+  rh.stageBy[ns]=myTrainer?myTrainer.name:'';
   svRec('r',rh);
   chartTab('return');
 }
@@ -1858,7 +2230,7 @@ function trShowAddInjury(){window._subViewActive=true;
   h+='<div class="fl" style="margin-bottom:12px"><label>メモ</label><textarea class="ipt" id="tri-note" placeholder="受傷状況など"></textarea></div>';
   h+='</div>';
   h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">登録すると同時にリハビリ管理が開始されます（段階：ウォーキングから）。受傷機転や診断など詳しい情報は、登録後に電子カルテから入力できます。</div>';
-  h+='<button class="btn btn-p" style="width:100%" onclick="trDoAddInjury()">登録する</button>';
+  h+='<button class="btn btn-p" style="width:100%" onclick="trDoAddInjury(this)">登録する</button>';
   $m().innerHTML=h;
 }
 function trToggleOther(){
@@ -1869,19 +2241,22 @@ function trToggleOtherType(){
   var v=document.getElementById('tri-type').value;
   document.getElementById('tri-typeOther-wrap').style.display=(v==='その他')?'block':'none';
 }
-function trDoAddInjury(){
+function trDoAddInjury(btnEl){
   var pid=parseInt(document.getElementById('tri-pid').value);
   if(!pid)return alert('選手を選択してください');
+  // 二重送信ガード（連打で i/r レコードが重複作成されるのを防ぐ）
+  if(!guardSubmit(btnEl,'登録中…'))return;
   var part=document.getElementById('tri-part').value;
   var type=document.getElementById('tri-type').value;
   var injId=Date.now();
   var inj={id:injId,pid:pid,side:document.getElementById('tri-side').value,part:part,partOther:part==='その他'?document.getElementById('tri-partOther').value:'',type:type,typeOther:type==='その他'?document.getElementById('tri-typeOther').value:'',date:document.getElementById('tri-date').value,returnDate:document.getElementById('tri-ret').value,note:document.getElementById('tri-note').value,resolved:false,source:'trainer',approved:true};
-  // svSafe方式でi・rを順にトランザクション追加（同時保存でも記録を失わない）
-  svSafe('i',inj,function(){
-    svSafe('r',{id:injId+1,injId:injId,pid:pid,stage:0,logs:[],stageDates:[]},function(){
-      alert('ケガを登録しました。リハビリ管理を開始します。');
-      openChart(injId);
-    });
+  // i(怪我)→r(リハビリ)を順次安全保存。svSafeSeqで成否を捕捉（svSafeは失敗時に内部alert＋ボタン固着するため使わない）
+  svSafeSeq([{k:'i',rec:inj},{k:'r',rec:{id:injId+1,injId:injId,pid:pid,stage:0,logs:[],stageDates:[]}}],function(){
+    alert('ケガを登録しました。リハビリ管理を開始します。');
+    openChart(injId);
+  },function(){
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
   });
 }
 
@@ -1937,10 +2312,11 @@ function goRehabPlayer(injId){window._subViewActive=true;
   var inj=(D.i||[]).find(function(x){return x.id===injId;});if(!inj)return;
   var p=D.p.find(function(x){return x.id===inj.pid;});if(!p)return;
   var plan=(D.rplan||[]).find(function(x){return x.injId===injId;});
-  var logs=(D.rlog||[]).filter(function(l){return l.injId===injId;}).sort(function(a,b){return b.date.localeCompare(a.date);});
+  var logs=(D.rlog||[]).filter(function(l){return l.injId===injId;}).sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
   var tpl=plan&&plan.tplId?(D.rtpl||[]).find(function(x){return x.id===plan.tplId;}):null;
   var tomorrowCats=plan?plan.tomorrowCats||[]:[];
   var rh=(D.r||[]).find(function(x){return x.injId===injId;});
+  var _qch=getChart(injId);
 
   var h='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'+avH(p,38)+
   '<div><div style="font-size:17px;font-weight:600">'+escapeHtml(p.name)+'</div>'+
@@ -1963,12 +2339,29 @@ function goRehabPlayer(injId){window._subViewActive=true;
       h+='<div style="display:flex;flex-direction:column;align-items:center;min-width:64px;flex:1;position:relative">'+
       (idx<STG.length-1?'<div style="position:absolute;top:13px;left:50%;width:100%;height:2.5px;background:'+(isDone?'var(--green)':'var(--border-tertiary)')+';z-index:1"></div>':'')+
       '<div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;z-index:2;border:2.5px solid '+(isDone?'var(--green)':isCur?'var(--blue)':'var(--border-tertiary)')+';background:'+(isDone?'var(--green)':isCur?'var(--blue)':'var(--bg-primary)')+';color:'+(isDone||isCur?'#fff':'var(--text-secondary)')+'">'+( isDone?'✓':(idx+1))+'</div>'+
-      '<div style="font-size:8px;color:var(--text-secondary);margin-top:3px;text-align:center;line-height:1.3">'+STG[idx]+'</div>'+
-      (sd?'<div style="font-size:8px;color:var(--green);font-weight:600">'+fmt(sd)+'</div>':'')+
+      '<div style="font-size:10px;color:var(--text-secondary);margin-top:3px;text-align:center;line-height:1.3">'+STG[idx]+'</div>'+
+      (sd?'<div style="font-size:10px;color:var(--green);font-weight:600">'+fmt(sd)+'</div>':'')+
       '</div>';
     }
     h+='</div></div>';
   }
+
+  // === ステップ0: 今日の変化チェック（安全ゲート）===
+  window._chgChk={pain:null,night:null,swell:null};
+  var chgQs=[{k:'pain',q:'前回よりも痛みが増えた'},{k:'night',q:'夜間痛（寝ている時の痛み）がある'},{k:'swell',q:'腫れ・熱感が増えた'}];
+  h+='<div class="form-box" style="border-left:3px solid var(--red)">'+
+  '<div class="form-title">🚦 今日の変化チェック</div>'+
+  '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">リハビリを始める前に確認します。1つでも「はい」があれば、今日は中断してスタッフに連絡します。</div>';
+  chgQs.forEach(function(o){
+    h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'+
+    '<span style="font-size:14px;flex:1;line-height:1.4">'+o.q+'</span>'+
+    '<div style="display:flex;gap:6px;flex-shrink:0">'+
+    '<button id="cc-'+o.k+'-y" onclick="setChgChk(\''+o.k+'\',true,'+injId+')" style="padding:8px 16px;border-radius:var(--radius);border:1.5px solid var(--border-secondary);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-weight:600;cursor:pointer;min-width:56px">はい</button>'+
+    '<button id="cc-'+o.k+'-n" onclick="setChgChk(\''+o.k+'\',false,'+injId+')" style="padding:8px 16px;border-radius:var(--radius);border:1.5px solid var(--border-secondary);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-weight:600;cursor:pointer;min-width:56px">いいえ</button>'+
+    '</div></div>';
+  });
+  h+='<div id="chgchk-result" style="margin-top:12px">'+renderChgChkGate(injId)+'</div>'+
+  '</div>';
 
   // 前回の記録
   var lastLog=logs.length?logs[0]:null;
@@ -1977,16 +2370,30 @@ function goRehabPlayer(injId){window._subViewActive=true;
     h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'+
     '<div><div class="form-title" style="margin-bottom:2px">📋 前回の記録</div>'+
     '<div style="font-size:12px;color:var(--text-secondary)">'+fmt(lastLog.date)+' / '+(lastLog.implementer||lastLog.by||'記録者不明')+'</div></div></div>';
-    // 前回の評価
-    if(lastLog.preCheck){
-      var pc=lastLog.preCheck;
-      h+='<div style="background:var(--bg-primary);border-radius:var(--radius);padding:8px;margin-bottom:8px">';
-      h+='<div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">評価</div>';
-      if(pc.pain!=null)h+='<div style="font-size:13px;margin-bottom:4px">痛み: <b style="color:'+(pc.pain<=3?'var(--green)':pc.pain<=6?'var(--amber)':'var(--red)')+'">'+pc.pain+'/10</b></div>';
-      if(pc.roms&&pc.roms.length)pc.roms.forEach(function(r){h+='<div style="font-size:13px;margin-bottom:2px">'+r.joint+': <b>'+r.angle+'°</b></div>';});
-      if(pc.strengths&&pc.strengths.length)pc.strengths.forEach(function(s){h+='<div style="font-size:13px;margin-bottom:2px">'+escapeHtml(s.name)+': <b>'+s.value+'</b></div>';});
-      if(pc.feeling)h+='<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;border-top:0.5px solid var(--border-tertiary);padding-top:4px">感覚: '+escapeHtml(pc.feeling)+'</div>';
-      h+='</div>';
+    // 前回の評価（脳震盪=旧preCheck方式、非脳震盪=同日のクイック評価chart.evalsを参照）
+    if(_qch.isConcussion){
+      if(lastLog.preCheck){
+        var pc=lastLog.preCheck;
+        h+='<div style="background:var(--bg-primary);border-radius:var(--radius);padding:8px;margin-bottom:8px">';
+        h+='<div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">評価</div>';
+        if(pc.pain!=null)h+='<div style="font-size:13px;margin-bottom:4px">痛み: <b style="color:'+(pc.pain<=3?'var(--green)':pc.pain<=6?'var(--amber)':'var(--red)')+'">'+pc.pain+'/10</b></div>';
+        if(pc.roms&&pc.roms.length)pc.roms.forEach(function(r){h+='<div style="font-size:13px;margin-bottom:2px">'+escapeHtml(r.joint)+': <b>'+r.angle+'°</b></div>';});
+        if(pc.strengths&&pc.strengths.length)pc.strengths.forEach(function(s){h+='<div style="font-size:13px;margin-bottom:2px">'+escapeHtml(s.name)+': <b>'+s.value+'</b></div>';});
+        if(pc.feeling)h+='<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;border-top:0.5px solid var(--border-tertiary);padding-top:4px">感覚: '+escapeHtml(pc.feeling)+'</div>';
+        h+='</div>';
+      }
+    } else {
+      var sameEv=sameDayEval(_qch.evals,lastLog.date);
+      if(sameEv){
+        var evPv=evalPainVal(sameEv);
+        var evMvs=evalMetricVals(_qch,sameEv);
+        h+='<div style="background:var(--bg-primary);border-radius:var(--radius);padding:8px;margin-bottom:8px">';
+        h+='<div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">評価（クイック評価）</div>';
+        if(evPv!=null)h+='<div style="font-size:13px;margin-bottom:4px">痛み: <b style="color:'+(evPv<=3?'var(--green)':evPv<=6?'var(--amber)':'var(--red)')+'">'+evPv+'/10</b></div>';
+        evMvs.forEach(function(mv){h+='<div style="font-size:13px;margin-bottom:2px">'+escapeHtml(mv.name)+': <b>'+mv.val+escapeHtml(mv.unit)+'</b></div>';});
+        if(sameEv.note)h+='<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;border-top:0.5px solid var(--border-tertiary);padding-top:4px">メモ: '+escapeHtml(sameEv.note)+'</div>';
+        h+='</div>';
+      }
     }
     // 前回の種目
     if(lastLog.exercises&&lastLog.exercises.length){
@@ -1994,7 +2401,7 @@ function goRehabPlayer(injId){window._subViewActive=true;
       lastLog.exercises.forEach(function(e){
         h+='<div style="font-size:12px;padding:3px 0;display:flex;align-items:center;gap:6px">'+
         '<span style="color:'+(e.done?'var(--green)':'var(--text-tertiary)')+'">'+(e.done?'✓':'✗')+'</span>'+
-        '<span style="flex:1">'+(e.done?'<b>':'<span style="color:var(--text-tertiary)">')+e.name+(e.done?'</b>':'</span>')+
+        '<span style="flex:1">'+(e.done?'<b>':'<span style="color:var(--text-tertiary)">')+escapeHtml(e.name)+(e.done?'</b>':'</span>')+
         (e.sets?' '+e.sets+'セット':'')+( e.reps?' × '+e.reps+'回':'')+'</span>'+
         (e.comment?'<span style="font-size:11px;color:var(--text-secondary)">'+escapeHtml(e.comment)+'</span>':'')+
         '</div>';
@@ -2019,6 +2426,10 @@ function goRehabPlayer(injId){window._subViewActive=true;
     h+='</div>';
   }
 
+  // 評価入力：脳震盪でなければクイック評価（chart.metrics連動）、脳震盪は従来の自由入力式（数値評価対象外なので所見メモ主体）
+  if(!_qch.isConcussion){
+    h+=renderQuickEvalCard(injId);
+  } else {
   // 実施前チェック（任意）- 前回の値を参考値として表示
   var prevPain=lastLog&&lastLog.preCheck&&lastLog.preCheck.pain!=null?lastLog.preCheck.pain:null;
   var prevRoms=lastLog&&lastLog.preCheck&&lastLog.preCheck.roms?lastLog.preCheck.roms:[];
@@ -2037,18 +2448,19 @@ function goRehabPlayer(injId){window._subViewActive=true;
   '</div>'+
   // ROM
   '<div style="margin-bottom:10px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
-  '<label style="font-size:12px;color:var(--text-secondary);font-weight:600">ROM（関節角度）'+(prevRoms.length?'<span style="font-weight:400"> — 前回: '+prevRoms.map(function(r){return r.joint+' '+r.angle+'°';}).join(', ')+'</span>':'')+'</label>'+
+  '<label style="font-size:12px;color:var(--text-secondary);font-weight:600">ROM（関節角度）'+(prevRoms.length?'<span style="font-weight:400"> — 前回: '+prevRoms.map(function(r){return escapeHtml(r.joint)+' '+r.angle+'°';}).join(', ')+'</span>':'')+'</label>'+
   '<button class="btn btn-sm" onclick="addROMItem()">+ 追加</button></div>'+
   '<div id="pc-rom-wrap"></div></div>'+
   // 筋力
   '<div style="margin-bottom:10px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
-  '<label style="font-size:12px;color:var(--text-secondary);font-weight:600">筋力'+(prevStrs.length?'<span style="font-weight:400"> — 前回: '+prevStrs.map(function(s){return s.name+' '+s.value;}).join(', ')+'</span>':'')+'</label>'+
+  '<label style="font-size:12px;color:var(--text-secondary);font-weight:600">筋力'+(prevStrs.length?'<span style="font-weight:400"> — 前回: '+prevStrs.map(function(s){return escapeHtml(s.name)+' '+s.value;}).join(', ')+'</span>':'')+'</label>'+
   '<button class="btn btn-sm" onclick="addStrengthItem()">+ 追加</button></div>'+
   '<div id="pc-str-wrap"></div></div>'+
   // 感覚
   '<div class="fl"><label>感覚・コメント'+(lastLog&&lastLog.preCheck&&lastLog.preCheck.feeling?'<span style="font-size:11px;font-weight:400;color:var(--text-secondary)"> 前回: '+escapeHtml(lastLog.preCheck.feeling)+'</span>':'')+'</label>'+
   '<textarea class="ipt" id="pc-feeling" style="min-height:60px" placeholder="選手の主観的な感覚、気になる点など..."></textarea></div>'+
   '</div></div>';
+  }
 
   // 記録入力
   h+='<div class="form-box"><div class="form-title">今日の実施記録</div>'+
@@ -2058,7 +2470,7 @@ function goRehabPlayer(injId){window._subViewActive=true;
   if(tpl&&tpl.exercises&&tpl.exercises.length){
     h+='<div class="form-box"><div class="form-title">種目ごとの記録</div>'+
     tpl.exercises.map(function(ex,ei){
-      return'<div id="rl-ex-'+ei+'" style="padding:10px;background:var(--bg-primary);border:1px solid var(--border-tertiary);border-radius:var(--radius);margin-bottom:8px">'+
+      return'<div id="rl-ex-'+ei+'" data-name="'+escapeHtml(ex.name)+'" data-cat="'+escapeHtml(ex.cat)+'" style="padding:10px;background:var(--bg-primary);border:1px solid var(--border-tertiary);border-radius:var(--radius);margin-bottom:8px">'+
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
       '<input type="checkbox" id="rl-chk-'+ei+'" style="width:18px;height:18px;cursor:pointer">'+
       '<span style="background:'+RCAT_BG[ex.cat]+';color:'+RCAT_COLOR[ex.cat]+';padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600">'+ex.cat+'</span>'+
@@ -2070,13 +2482,13 @@ function goRehabPlayer(injId){window._subViewActive=true;
       '</div>';
     }).join('')+'</div>';
     h+='<div class="fl" style="margin-bottom:14px"><label>全体コメント</label><textarea class="ipt" id="rl-comment" placeholder="今日全体の状況..."></textarea></div>'+
-    '<button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="doSaveRehabLogTrainer('+injId+',true,'+tpl.exercises.length+')">リハビリ終了・保存</button>'+
+    '<button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="doSaveRehabLogTrainer('+injId+',true,'+tpl.exercises.length+',this)">リハビリ終了・保存</button>'+
     '<button class="btn" style="width:100%;margin-bottom:10px;border-color:var(--purple);color:var(--purple)" onclick="goRTestRecord('+injId+')">🏁 復帰テストを実施する</button>';
   } else {
     h+='<div id="rl-custom-items"></div>'+
     '<button class="btn" style="width:100%;margin-bottom:10px" onclick="addCustomRehabItemT()">+ 種目を追加</button>'+
     '<div class="fl" style="margin-bottom:14px"><label>全体コメント</label><textarea class="ipt" id="rl-comment" placeholder="今日全体の状況..."></textarea></div>'+
-    '<button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="doSaveRehabLogTrainer('+injId+',false,0)">リハビリ終了・保存</button>'+
+    '<button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="doSaveRehabLogTrainer('+injId+',false,0,this)">リハビリ終了・保存</button>'+
     '<button class="btn" style="width:100%;margin-bottom:10px;border-color:var(--purple);color:var(--purple)" onclick="goRTestRecord('+injId+')">🏁 復帰テストを実施する</button>';
   }
 
@@ -2088,15 +2500,27 @@ function goRehabPlayer(injId){window._subViewActive=true;
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
       '<span style="font-weight:600">'+fmt(l.date)+'</span>'+
       '<span style="font-size:11px;color:var(--text-secondary)">'+(l.implementer||l.by||'不明')+'</span></div>'+
-      // 評価データ表示
-      (l.preCheck?'<div style="font-size:11px;color:var(--blue);margin-bottom:4px">'+
-      (l.preCheck.pain!=null?'痛み:'+l.preCheck.pain+'/10 ':'')+
-      (l.preCheck.roms&&l.preCheck.roms.length?l.preCheck.roms.map(function(r){return r.joint+':'+r.angle+'°';}).join(' '):'')+
-      '</div>':'')+
+      // 評価データ表示（脳震盪=旧preCheck方式、非脳震盪=同日のクイック評価chart.evalsを参照）
+      (function(){
+        if(_qch.isConcussion){
+          if(!l.preCheck)return'';
+          return '<div style="font-size:11px;color:var(--blue);margin-bottom:4px">'+
+          (l.preCheck.pain!=null?'痛み:'+l.preCheck.pain+'/10 ':'')+
+          (l.preCheck.roms&&l.preCheck.roms.length?l.preCheck.roms.map(function(r){return escapeHtml(r.joint)+':'+r.angle+'°';}).join(' '):'')+
+          '</div>';
+        }
+        var ev=sameDayEval(_qch.evals,l.date);
+        if(!ev)return'';
+        var pv=evalPainVal(ev);
+        var parts=[];
+        if(pv!=null)parts.push('痛み:'+pv+'/10');
+        evalMetricVals(_qch,ev).forEach(function(mv){parts.push(escapeHtml(mv.name)+':'+mv.val+escapeHtml(mv.unit));});
+        return parts.length?'<div style="font-size:11px;color:var(--blue);margin-bottom:4px">'+parts.join(' ')+'</div>':'';
+      })()+
       '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">'+
       (l.cats||[]).map(function(c){return'<span style="background:'+RCAT_BG[c]+';color:'+RCAT_COLOR[c]+';padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">'+c+'</span>';}).join('')+
       '</div>'+
-      (l.exercises&&l.exercises.length?'<div style="font-size:12px">'+l.exercises.filter(function(e){return e.done;}).map(function(e){return'<span style="color:var(--green)">✓'+escapeHtml(e.name)+'</span>';}).join(' ')+(l.exercises.filter(function(e){return!e.done;}).length?'<span style="color:var(--text-tertiary)"> 未:'+l.exercises.filter(function(e){return!e.done;}).map(function(e){return e.name;}).join(',')+'</span>':'')+'</div>':'')+
+      (l.exercises&&l.exercises.length?'<div style="font-size:12px">'+l.exercises.filter(function(e){return e.done;}).map(function(e){return'<span style="color:var(--green)">✓'+escapeHtml(e.name)+'</span>';}).join(' ')+(l.exercises.filter(function(e){return!e.done;}).length?'<span style="color:var(--text-tertiary)"> 未:'+l.exercises.filter(function(e){return!e.done;}).map(function(e){return escapeHtml(e.name);}).join(',')+'</span>':'')+'</div>':'')+
       (l.comment?'<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">'+escapeHtml(l.comment)+'</div>':'')+
       '</div>';
     }).join('');
@@ -2199,6 +2623,430 @@ function collectPreCheck(lastLog){
   return{pain:isNaN(pain)?null:pain,roms:roms,strengths:strengths,feeling:feeling};
 }
 
+// === ステップ0: 今日の変化チェック（安全ゲート）===
+function setChgChk(key,val,injId){
+  if(!window._chgChk)window._chgChk={pain:null,night:null,swell:null};
+  window._chgChk[key]=val;
+  ['pain','night','swell'].forEach(function(k){
+    var v=window._chgChk[k];
+    var yb=document.getElementById('cc-'+k+'-y');
+    var nb=document.getElementById('cc-'+k+'-n');
+    if(yb){var ya=(v===true);yb.style.background=ya?'var(--red-bg)':'var(--bg-secondary)';yb.style.borderColor=ya?'var(--red)':'var(--border-secondary)';yb.style.color=ya?'var(--red)':'var(--text-primary)';}
+    if(nb){var na=(v===false);nb.style.background=na?'var(--green-bg)':'var(--bg-secondary)';nb.style.borderColor=na?'var(--green)':'var(--border-secondary)';nb.style.color=na?'var(--green)':'var(--text-primary)';}
+  });
+  var res=document.getElementById('chgchk-result');
+  if(res)res.innerHTML=renderChgChkGate(injId);
+}
+function renderChgChkGate(injId){
+  var c=window._chgChk||{pain:null,night:null,swell:null};
+  var keys=['pain','night','swell'];
+  var remaining=keys.filter(function(k){return c[k]==null;}).length;
+  if(remaining>0)return'<div class="alert-card alert-info" style="margin-bottom:0">残り'+remaining+'問に答えてください</div>';
+  var anyYes=keys.some(function(k){return c[k]===true;});
+  if(anyYes){
+    var flags=[];
+    if(c.pain)flags.push('痛みの増加');
+    if(c.night)flags.push('夜間痛');
+    if(c.swell)flags.push('腫れ・熱感の増加');
+    return'<div style="background:var(--red-bg);border:1.5px solid var(--red);border-radius:var(--radius);padding:12px">'+
+    '<div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:6px">⚠️ 今日は中断してください</div>'+
+    '<div style="font-size:12px;line-height:1.6;margin-bottom:10px">'+flags.join('・')+'があります。炎症や組織への負担が増えているサインかもしれません。<b>自己判断でリハビリを進めず、スタッフに連絡して指示を仰いでください。</b></div>'+
+    '<button id="chgchk-esc-btn" onclick="escalateChgChk('+injId+',this)" style="width:100%;padding:10px;border-radius:var(--radius);border:1.5px solid var(--red);background:var(--red);color:#fff;font-size:14px;font-weight:700;cursor:pointer">📤 この内容をスタッフに連絡する</button>'+
+    '</div>';
+  }
+  return'<div style="background:var(--green-bg);border:1.5px solid var(--green);border-radius:var(--radius);padding:12px">'+
+  '<div style="font-weight:700;color:var(--green);font-size:14px;margin-bottom:4px">✓ 特記事項なし</div>'+
+  '<div style="font-size:12px;color:var(--text-secondary)">気になる変化はないようです。このまま評価・リハビリを進めてください。</div>'+
+  '</div>';
+}
+function escalateChgChk(injId,btn){
+  var c=window._chgChk||{};
+  var flags=[];
+  if(c.pain)flags.push('前回より痛みが増加');
+  if(c.night)flags.push('夜間痛あり');
+  if(c.swell)flags.push('腫れ・熱感が増加');
+  if(!flags.length){alert('連絡が必要な項目がありません');return;}
+  if(!myTrainer){alert('ログインし直してください');return;}
+  if(!guardSubmit(btn,'送信中…'))return;
+  var text='⚠️【要確認・実施前チェック】'+flags.join('／')+'。本日のリハビリを中断し、スタッフの指示を仰ぎます。（'+myTrainer.name+'）';
+  var newComm={
+    id:'ic_'+Date.now()+'_'+Math.floor(Math.random()*1000),
+    injId:injId,role:'trainer',
+    authorId:getCurrentUserId('trainer'),
+    authorName:getCurrentUserName('trainer'),
+    text:text,createdAt:new Date().toISOString()
+  };
+  svSafeUpdate('injcomm',function(latest){latest.push(newComm);return latest;},function(){
+    var res=document.getElementById('chgchk-result');
+    if(res)res.innerHTML='<div style="background:var(--red-bg);border:1.5px solid var(--red);border-radius:var(--radius);padding:12px">'+
+      '<div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:4px">📨 スタッフに連絡しました</div>'+
+      '<div style="font-size:12px;line-height:1.6">指示があるまでリハビリは中断してください。連絡内容は下の「💬 コメント」に記録されています。</div>'+
+      '</div>';
+    var listEl=document.getElementById('injcomm-list-'+injId);
+    if(listEl){listEl.innerHTML=renderInjCommentsListOnly(injId,'trainer');listEl.scrollTop=listEl.scrollHeight;}
+  },function(){
+    releaseSubmit(btn);
+    alert('連絡の送信に失敗しました。通信状況を確認してもう一度お試しください。');
+  });
+}
+
+// === ステップ⑤-b: クイック評価（痛み＋★重要指標・chart.metrics連動）===
+// metricの値がevalレコードのどのフィールド/キーに入るかを解決（Phase0のev.rom/circ/fit・健側枠と整合）
+function metricEvalRef(m){
+  if(m.kind==='rom'&&m.evalKey)return{f:'rom',hf:'romH',k:m.evalKey,str:true};
+  if(m.kind==='circ'&&m.evalKey)return{f:'circ',hf:'circH',k:m.evalKey,str:false};
+  // strength(定量kg)・fitness・evalKey無しのrom/circ は fit/fitH に metric.id で格納
+  return{f:'fit',hf:'fitH',k:'m_'+m.id,str:false};
+}
+// evalレコードから指定metricの数値を取り出す（患側/健側）。無ければnull
+function readEvalMetric(rec,ref,healthy){
+  var obj=rec[healthy?ref.hf:ref.f];
+  if(!obj)return null;
+  var v=obj[ref.k];
+  if(v==null||v==='')return null;
+  var n=parseFloat(v);
+  return isNaN(n)?null:n;
+}
+// 指定日付のevalのうち最新（inputAt降順）のものを返す。無ければnull（rlog記録日とクイック評価を紐付ける用）
+function sameDayEval(evals,date){
+  var matches=(evals||[]).filter(function(ev){return ev.date===date;});
+  if(!matches.length)return null;
+  matches.sort(function(a,b){return (b.inputAt||'').localeCompare(a.inputAt||'');});
+  return matches[0];
+}
+// evalの運動時痛み値（motion）。無ければnull
+function evalPainVal(ev){return ev&&ev.pain&&ev.pain.motion!=null?ev.pain.motion:null;}
+// ch.metricsのうちevに値がある指標だけ{name,unit,val}で返す（履歴カードの読み手用）
+function evalMetricVals(ch,ev){
+  var out=[];
+  (ch.metrics||[]).forEach(function(m){
+    var ref=metricEvalRef(m);
+    var v=readEvalMetric(ev,ref,false);
+    if(v!=null)out.push({name:m.name||'',unit:m.unit||'',val:v});
+  });
+  return out;
+}
+// 指定metricについて、最新の患側値を持つevalから {patient,healthy,date} を返す（date→inputAtの2段ソート）
+function latestEvalForMetric(evals,m){
+  var ref=metricEvalRef(m);
+  var sorted=(evals||[]).slice().sort(function(a,b){
+    var d=(b.date||'').localeCompare(a.date||'');
+    if(d!==0)return d;
+    return (b.inputAt||'').localeCompare(a.inputAt||'');
+  });
+  for(var i=0;i<sorted.length;i++){
+    var pv=readEvalMetric(sorted[i],ref,false);
+    if(pv!=null)return{patient:pv,healthy:readEvalMetric(sorted[i],ref,true),date:sorted[i].date};
+  }
+  return null;
+}
+// 最新の痛み（運動時motion優先、無ければ全PAIN_TYPESのmax）
+function latestPainVal(evals){
+  var sorted=(evals||[]).slice().sort(function(a,b){
+    var d=(b.date||'').localeCompare(a.date||'');
+    if(d!==0)return d;
+    return (b.inputAt||'').localeCompare(a.inputAt||'');
+  });
+  for(var i=0;i<sorted.length;i++){
+    var p=sorted[i].pain;
+    if(p&&typeof p==='object'){
+      if(p.motion!=null)return{val:p.motion,date:sorted[i].date};
+      var mx=null;PAIN_TYPES.forEach(function(pt){if(p[pt.k]!=null&&(mx==null||p[pt.k]>mx))mx=p[pt.k];});
+      if(mx!=null)return{val:mx,date:sorted[i].date};
+    }
+  }
+  return null;
+}
+// direction考慮の左右比%（患健の対称性・0除算/NaN/Infガード）。>=90%で左右差ほぼ解消の目安。
+function symPct(patient,healthy,direction){
+  if(patient==null||healthy==null||isNaN(patient)||isNaN(healthy))return null;
+  var num,den;
+  if(direction==='down'){num=healthy;den=patient;}else{num=patient;den=healthy;}
+  if(den===0)return num===0?100:null;
+  var pct=num/den*100;
+  if(!isFinite(pct))return null;
+  return Math.round(pct);
+}
+// 指定metricの患側値の時系列（昇順 date→inputAt）。スパークライン用。[{date,v}]
+function metricSeries(evals,m){
+  var ref=metricEvalRef(m);
+  var sorted=(evals||[]).slice().sort(function(a,b){
+    var d=(a.date||'').localeCompare(b.date||'');
+    if(d!==0)return d;
+    return (a.inputAt||'').localeCompare(b.inputAt||'');
+  });
+  var out=[];
+  sorted.forEach(function(ev){var v=readEvalMetric(ev,ref,false);if(v!=null)out.push({date:ev.date,v:v});});
+  return out;
+}
+// 痛み（運動時motion優先、無ければ全PAIN_TYPESのmax）の時系列（昇順）。[{date,v}]
+function painSeries(evals){
+  var sorted=(evals||[]).slice().sort(function(a,b){
+    var d=(a.date||'').localeCompare(b.date||'');
+    if(d!==0)return d;
+    return (a.inputAt||'').localeCompare(b.inputAt||'');
+  });
+  var out=[];
+  sorted.forEach(function(ev){
+    var p=ev.pain;if(!p||typeof p!=='object')return;
+    if(p.motion!=null){out.push({date:ev.date,v:p.motion});return;}
+    var mx=null;PAIN_TYPES.forEach(function(pt){if(p[pt.k]!=null&&(mx==null||p[pt.k]>mx))mx=p[pt.k];});
+    if(mx!=null)out.push({date:ev.date,v:mx});
+  });
+  return out;
+}
+// ネオン系ミニスパークライン（純SVG・Chart.js不使用）。pts=[{date,v}]昇順。
+// 2点未満は''（推移が描けない）。min==max（横ばい）は中央の水平線。direction基準で終点ドットを色分け（改善=緑/悪化=赤/横ばい=青）。
+function sparklineSVG(pts,direction,idsfx){
+  pts=(pts||[]).filter(function(p){return p&&p.v!=null&&!isNaN(p.v);});
+  if(pts.length>12)pts=pts.slice(-12);
+  if(pts.length<2)return '';
+  idsfx=String(idsfx==null?'':idsfx).replace(/[^a-zA-Z0-9_]/g,'');
+  var W=300,H=40,padX=6,padT=8,padB=8,n=pts.length;
+  var vals=pts.map(function(p){return p.v;});
+  var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals),span=mx-mn;
+  var X=function(i){return Math.round((padX+(W-2*padX)*(i/(n-1)))*10)/10;};
+  var Y=function(v){var y=span===0?H/2:padT+(H-padT-padB)*(1-(v-mn)/span);return Math.round(y*10)/10;};
+  var pointStr=pts.map(function(p,i){return X(i)+','+Y(p.v);}).join(' ');
+  var first=vals[0],last=vals[n-1],flat=last===first;
+  var improved=direction==='down'?last<first:last>first;
+  // direction==='none' は良し悪しを断定しない項目（ROM/周径など向きが部位で反転しうる）＝終点は常に青
+  var endCol=(direction==='none'||flat)?'var(--blue)':(improved?'var(--green)':'var(--red)');
+  var lx=X(n-1),ly=Y(last);
+  var sg='sg_'+idsfx,sa='sa_'+idsfx;
+  var areaStr='M'+X(0)+','+(H-padB)+' L'+pointStr.split(' ').join(' L')+' L'+lx+','+(H-padB)+' Z';
+  var s='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:38px;display:block;overflow:visible">';
+  s+='<defs><linearGradient id="'+sg+'" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3B82F6"/><stop offset="1" stop-color="#A78BFA"/></linearGradient>';
+  s+='<linearGradient id="'+sa+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3B82F6" stop-opacity="0.28"/><stop offset="1" stop-color="#3B82F6" stop-opacity="0"/></linearGradient></defs>';
+  s+='<path d="'+areaStr+'" fill="url(#'+sa+')" stroke="none"/>';
+  s+='<polyline points="'+pointStr+'" fill="none" stroke="url(#'+sg+')" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0.35" vector-effect="non-scaling-stroke"/>';
+  s+='<polyline points="'+pointStr+'" fill="none" stroke="url(#'+sg+')" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>';
+  s+='<circle cx="'+lx+'" cy="'+ly+'" r="5.5" fill="'+endCol+'" opacity="0.25"/>';
+  s+='<circle cx="'+lx+'" cy="'+ly+'" r="2.8" fill="'+endCol+'"/>';
+  s+='</svg>';
+  return s;
+}
+// スパークライン脇の推移キャプション（N回・↗改善/↘悪化/→横ばい）。direction基準。2点未満は''
+function sparkCaption(pts,direction){
+  if(!pts||pts.length<2)return '';
+  var first=pts[0].v,last=pts[pts.length-1].v,flat=last===first;
+  var improved=direction==='down'?last<first:last>first;
+  var arrow=flat?'→':(last>first?'↗':'↘'); // 矢印は数値の増減（スパークラインの見た目と一致）、色で良し悪しを表す
+  // direction==='none' は良し悪しを断定しない＝色はニュートラル（矢印だけで数値の増減を示す）
+  var col=(direction==='none'||flat)?'var(--text-secondary)':(improved?'var(--green)':'var(--red)');
+  return '<span style="white-space:nowrap"><span style="font-size:10px;color:var(--text-tertiary)">'+pts.length+'回</span> <span style="font-size:13px;font-weight:700;color:'+col+'">'+arrow+'</span></span>';
+}
+var QE_KIND_LABEL={rom:'ROM',circ:'周径',strength:'筋力',fitness:'ﾌｨｯﾄﾈｽ'};
+// クイック評価カードのHTMLを返す（脳震盪でない怪我で使用）
+function renderQuickEvalCard(injId){
+  var inj=(D.i||[]).find(function(x){return x.id===injId;});if(!inj)return'';
+  var ch=getChart(injId);
+  window._qeInjId=injId;
+  var metrics=(ch.metrics||[]);
+  var evals=ch.evals||[];
+  // 同日下書きの復元（別日の放置下書きは無視）
+  var draft=null;try{var ds=localStorage.getItem('rm_qe_'+injId);if(ds){var dobj=JSON.parse(ds);if(dobj&&dobj.date===todayStr())draft=dobj;}}catch(e){}
+  var pp=latestPainVal(evals);
+  var h='<div class="form-box" style="border-left:3px solid var(--blue)">';
+  h+='<div class="form-title">⚡ クイック評価</div>';
+  h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">今日の痛みと重要指標をサッと記録します。カルテの「評価記録」に保存され、推移グラフに反映されます。</div>';
+  h+='<div class="fl" style="margin-bottom:14px"><label>評価日</label><input class="ipt" type="date" id="qe-date" value="'+todayStr()+'"></div>';
+  // 痛み（運動時）。前回値をスライダー初期値にするが、動かさない限り保存しない（前回値の複製事故防止）
+  var painDraft=draft&&draft.painMoved&&draft.pain!=null?draft.pain:null;
+  var painInit=painDraft!=null?painDraft:(pp?pp.val:0);
+  h+='<div class="fl" style="margin-bottom:14px">'+
+    '<label>痛みレベル（運動時 0〜10）'+(pp?' <span style="font-size:11px;font-weight:400;color:var(--text-secondary)">前回: '+pp.val+'/10</span>':'')+'</label>'+
+    '<div style="display:flex;align-items:center;gap:10px">'+
+    '<input type="range" id="qe-pain" min="0" max="10" step="1" value="'+painInit+'" data-prev="'+(pp?pp.val:'')+'" data-moved="'+(painDraft!=null?'1':'0')+'" style="flex:1" oninput="qeUpdatePain()">'+
+    '<span id="qe-pain-val" style="font-weight:700;min-width:52px;font-size:15px">'+painInit+'/10</span></div>'+
+    '<div id="qe-pain-diff" style="font-size:11px;margin-top:4px;color:var(--text-secondary)">'+(painDraft!=null?'':'スライダーを動かすと今日の痛みを記録します')+'</div>'+
+    '</div>';
+  // 痛みの推移スパークライン（過去evalが2回以上ある時のみ）
+  var painPts=painSeries(evals);
+  var painSpark=sparklineSVG(painPts,'down','pain');
+  if(painSpark)h+='<div style="display:flex;align-items:center;gap:8px;margin:-6px 0 14px"><div style="flex:1;min-width:0">'+painSpark+'</div>'+sparkCaption(painPts,'down')+'</div>';
+  // ★ 重要指標
+  if(!metrics.length){
+    h+='<div class="alert-card alert-info" style="margin-bottom:12px">この怪我にはまだ追跡指標が設定されていません。スタッフがカルテの「🎯追跡指標」を設定すると、ここに重要指標が並びます。</div>';
+  } else {
+    h+='<div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">★ 重要指標（'+metrics.length+'項目）</div>';
+    metrics.forEach(function(m,mi){
+      var mid=m.id;
+      var unit=m.unit||'';
+      var kindLabel=QE_KIND_LABEL[m.kind]||'';
+      var dirLabel=m.direction==='down'?'小さいほど良い':'大きいほど良い';
+      var prev=latestEvalForMetric(evals,m);
+      var prevH=prev&&prev.healthy!=null?prev.healthy:null;
+      var dm=draft&&draft.m&&draft.m[mid]?draft.m[mid]:null;
+      var pVal=dm?dm.p:'';
+      var hVal=dm?dm.h:'';
+      // 患側値の推移スパークライン（過去evalが2回以上ある時のみ）
+      var mPts=metricSeries(evals,m);
+      var mSpark=sparklineSVG(mPts,m.direction||'up','m'+mi);
+      var mSparkHtml=mSpark?'<div style="display:flex;align-items:center;gap:8px;margin-top:8px"><div style="flex:1;min-width:0">'+mSpark+'</div>'+sparkCaption(mPts,m.direction||'up')+'</div>':'';
+      h+='<div class="qe-metric" data-mid="'+mid+'" style="background:var(--bg-primary);border:1px solid var(--border-tertiary);border-radius:var(--radius);padding:10px;margin-bottom:8px">'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'+
+        '<span style="font-weight:600;font-size:13px">'+escapeHtml(m.name||'(無名の指標)')+'</span>'+
+        (kindLabel?'<span class="bd bd-b" style="font-size:10px">'+kindLabel+'</span>':'')+
+        '<span style="font-size:11px;color:var(--text-secondary)">'+dirLabel+'</span>'+
+        '</div>'+
+        '<div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">'+
+        '<div class="fl" style="flex:1;min-width:120px"><label style="font-size:11px">患側'+(prev?' <span style="color:var(--text-secondary);font-weight:400">前回 '+prev.patient+unit+'</span>':'')+'</label>'+
+        '<div style="display:flex;align-items:center;gap:4px"><input class="ipt" type="number" step="any" inputmode="decimal" id="qe-m-'+mid+'" value="'+escapeHtml(String(pVal))+'" data-prev="'+(prev?prev.patient:'')+'" data-dir="'+(m.direction||'up')+'" data-lsi="'+(m.lsi?1:0)+'" placeholder="'+(prev?prev.patient:'測定値')+'" oninput="qeUpdateMetric(\''+mid+'\')" style="flex:1"><span style="font-size:12px;color:var(--text-secondary)">'+escapeHtml(unit)+'</span></div></div>'+
+        (m.lsi?'<div class="fl" style="flex:1;min-width:120px"><label style="font-size:11px">健側'+(prevH!=null?' <span style="color:var(--text-secondary);font-weight:400">前回 '+prevH+unit+'</span>':'')+'</label>'+
+          '<div style="display:flex;align-items:center;gap:4px"><input class="ipt" type="number" step="any" inputmode="decimal" id="qe-mH-'+mid+'" value="'+escapeHtml(String(hVal))+'" placeholder="'+(prevH!=null?prevH:'健側値')+'" oninput="qeUpdateMetric(\''+mid+'\')" style="flex:1"><span style="font-size:12px;color:var(--text-secondary)">'+escapeHtml(unit)+'</span></div></div>':'')+
+        '</div>'+
+        '<div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap">'+
+        '<span id="qe-diff-'+mid+'" style="font-size:11px;color:var(--text-secondary)"></span>'+
+        (m.lsi?'<span id="qe-lsi-'+mid+'" style="font-size:11px;font-weight:600"></span>':'')+
+        '</div>'+
+        mSparkHtml+
+        '</div>';
+    });
+  }
+  h+='<div class="fl" style="margin-bottom:12px"><label>メモ（任意）</label><textarea class="ipt" id="qe-note" style="min-height:50px" placeholder="気づき・選手の感覚など..." oninput="qeSaveDraft(window._qeInjId)">'+escapeHtml(draft&&draft.note?draft.note:'')+'</textarea></div>';
+  h+='<div id="qe-result"></div>';
+  h+='<button class="btn btn-p" id="qe-save-btn" style="width:100%" onclick="saveQuickEval('+injId+',this)">💾 評価を保存</button>';
+  h+='</div>';
+  return h;
+}
+function qeUpdatePain(){
+  var el=document.getElementById('qe-pain');if(!el)return;
+  el.setAttribute('data-moved','1');
+  var v=parseInt(el.value);
+  var vEl=document.getElementById('qe-pain-val');if(vEl)vEl.textContent=v+'/10';
+  var dEl=document.getElementById('qe-pain-diff');
+  if(dEl){
+    var prevStr=el.getAttribute('data-prev');
+    if(prevStr===''||prevStr==null){dEl.textContent='今日の痛み: '+v+'/10 を記録します';dEl.style.color='var(--text-secondary)';}
+    else{
+      var prev=parseInt(prevStr);var d=v-prev;
+      if(d===0){dEl.textContent='前回比 ±0';dEl.style.color='var(--text-secondary)';}
+      else{var improved=d<0;dEl.textContent='前回比 '+(d>0?'+':'')+d+(improved?'（改善）':'（増加）');dEl.style.color=improved?'var(--green)':'var(--red)';}
+    }
+  }
+  qeSaveDraft(window._qeInjId);
+}
+function qeUpdateMetric(mid){
+  var pel=document.getElementById('qe-m-'+mid);if(!pel)return;
+  var dir=pel.getAttribute('data-dir')||'up';
+  var isLsi=pel.getAttribute('data-lsi')==='1';
+  var cur=pel.value!==''?parseFloat(pel.value):null;
+  var dEl=document.getElementById('qe-diff-'+mid);
+  if(dEl){
+    var prevStr=pel.getAttribute('data-prev');
+    if(cur==null||isNaN(cur)||prevStr===''||prevStr==null){dEl.textContent='';dEl.style.color='var(--text-secondary)';}
+    else{
+      var prev=parseFloat(prevStr);var d=Math.round((cur-prev)*100)/100;
+      if(d===0){dEl.textContent='前回比 ±0';dEl.style.color='var(--text-secondary)';}
+      else{var improved=dir==='down'?d<0:d>0;dEl.textContent='前回比 '+(d>0?'+':'')+d+(improved?'（改善）':'（低下）');dEl.style.color=improved?'var(--green)':'var(--red)';}
+    }
+  }
+  if(isLsi){
+    var lEl=document.getElementById('qe-lsi-'+mid);
+    var hel=document.getElementById('qe-mH-'+mid);
+    if(lEl){
+      var hv=hel&&hel.value!==''?parseFloat(hel.value):null;
+      var pct=symPct(cur,hv,dir);
+      if(pct==null){lEl.textContent='';}
+      else{var col=pct>=90?'var(--green)':pct>=75?'var(--amber)':'var(--red)';lEl.innerHTML='左右比 <span style="color:'+col+'">'+pct+'%</span>'+(pct>=90?' ✓':'');}
+    }
+  }
+  qeSaveDraft(window._qeInjId);
+}
+// 同日下書きをlocalStorageに保存（怪我ごと1件）。保存成功時に消す。
+function qeSaveDraft(injId){
+  if(injId==null)return;
+  try{
+    var pe=document.getElementById('qe-pain');
+    var d={date:todayStr(),ts:Date.now(),
+      painMoved:!!(pe&&pe.getAttribute('data-moved')==='1'),
+      pain:pe?parseInt(pe.value):null,
+      note:(document.getElementById('qe-note')||{}).value||'',m:{}};
+    document.querySelectorAll('.qe-metric').forEach(function(el){
+      var mid=el.getAttribute('data-mid');
+      var p=document.getElementById('qe-m-'+mid);
+      var hh=document.getElementById('qe-mH-'+mid);
+      d.m[mid]={p:p?p.value:'',h:hh?hh.value:''};
+    });
+    localStorage.setItem('rm_qe_'+injId,JSON.stringify(d));
+  }catch(e){}
+}
+function saveQuickEval(injId,btn){
+  var ch=getChart(injId);
+  var metrics=(ch.metrics||[]);
+  var date=(document.getElementById('qe-date')||{}).value||todayStr();
+  var note=(document.getElementById('qe-note')||{}).value||'';
+  // 痛み：スライダーを動かした時だけ記録（前回値の複製事故防止）
+  var painEl=document.getElementById('qe-pain');
+  var painVal=null;
+  if(painEl&&painEl.getAttribute('data-moved')==='1'){var pv=parseInt(painEl.value);if(!isNaN(pv))painVal=pv;}
+  // 指標
+  var rom={},circ={},fit={},romH={},circH={},fitH={};
+  var filledCount=0;var summary=[];
+  metrics.forEach(function(m){
+    var ref=metricEvalRef(m);
+    var pel=document.getElementById('qe-m-'+m.id);
+    var hel=document.getElementById('qe-mH-'+m.id);
+    if(pel&&pel.value.trim()!==''){
+      var raw=pel.value.trim();var pn=parseFloat(raw);
+      if(!isNaN(pn)){
+        if(ref.f==='rom')rom[ref.k]=raw;else if(ref.f==='circ')circ[ref.k]=pn;else fit[ref.k]=pn;
+        filledCount++;
+        var prev=latestEvalForMetric(ch.evals||[],m);
+        summary.push({name:m.name,unit:m.unit||'',cur:pn,prev:prev?prev.patient:null,dir:m.direction||'up'});
+      }
+    }
+    if(m.lsi&&hel&&hel.value.trim()!==''){
+      var hn=parseFloat(hel.value);
+      if(!isNaN(hn)){if(ref.hf==='romH')romH[ref.k]=String(hn);else if(ref.hf==='circH')circH[ref.k]=hn;else fitH[ref.k]=hn;}
+    }
+  });
+  if(painVal==null&&filledCount===0){alert('記録する項目がありません。痛みスライダーを動かすか、指標を入力してください。');return;}
+  if(!guardSubmit(btn,'保存中…'))return;
+  var nowISO=new Date().toISOString();
+  svSafeUpdate('chart',function(latest){
+    var i=_chartIdx(latest,injId);
+    if(!latest[i].evals)latest[i].evals=[];
+    var rec={id:Date.now()+'_'+Math.floor(Math.random()*1000),date:date,inputAt:nowISO,source:'quick'};
+    var painObj={};if(painVal!=null)painObj.motion=painVal;
+    rec.pain=painObj;
+    if(Object.keys(rom).length)rec.rom=rom;
+    if(Object.keys(circ).length)rec.circ=circ;
+    if(Object.keys(fit).length)rec.fit=fit;
+    if(Object.keys(romH).length)rec.romH=romH;
+    if(Object.keys(circH).length)rec.circH=circH;
+    if(Object.keys(fitH).length)rec.fitH=fitH;
+    if(note)rec.note=note;
+    latest[i].evals.push(rec);
+    return latest;
+  },function(){
+    qeShowResult(injId,painVal,summary,btn);
+    try{localStorage.removeItem('rm_qe_'+injId);}catch(e){}
+  },function(){
+    releaseSubmit(btn);
+    alert('保存に失敗しました。通信状況を確認してもう一度お試しください。入力内容は残っています。');
+  });
+}
+function qeShowResult(injId,painVal,summary,btn){
+  var improved=summary.filter(function(s){return s.prev!=null&&(s.dir==='down'?s.cur<s.prev:s.cur>s.prev);}).length;
+  var lines=[];
+  if(painVal!=null)lines.push('痛み '+painVal+'/10');
+  summary.forEach(function(s){
+    var arrow='';
+    if(s.prev!=null){var d=Math.round((s.cur-s.prev)*100)/100;if(d!==0){var imp=s.dir==='down'?d<0:d>0;arrow=' <span style="color:'+(imp?'var(--green)':'var(--red)')+'">('+(d>0?'+':'')+d+escapeHtml(s.unit)+')</span>';}}
+    lines.push(escapeHtml(s.name)+' '+s.cur+escapeHtml(s.unit)+arrow);
+  });
+  var h='<div style="background:var(--green-bg);border:1.5px solid var(--green);border-radius:var(--radius);padding:12px;margin-bottom:10px">'+
+    '<div style="font-weight:700;color:var(--green);font-size:14px;margin-bottom:6px">✓ 評価を保存しました</div>'+
+    '<div style="font-size:12px;line-height:1.8">'+(lines.length?lines.join(' ・ '):'（記録なし）')+'</div>'+
+    (improved>0?'<div style="font-size:12px;color:var(--green);font-weight:600;margin-top:6px">'+improved+'項目が前回より改善しています 🎉</div>':'')+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-top:6px">カルテの「評価記録」に保存しました。続けて下で今日のリハビリ実施内容を記録できます。</div>'+
+    '</div>';
+  var res=document.getElementById('qe-result');if(res)res.innerHTML=h;
+  if(btn){releaseSubmit(btn);btn.innerHTML='💾 評価を保存';}
+}
+
 function goRTestRecord(injId){window._subViewActive=true;
   var inj=(D.i||[]).find(function(x){return x.id===injId;});if(!inj)return;
   var p=D.p.find(function(x){return x.id===inj.pid;});if(!p)return;
@@ -2209,7 +3057,8 @@ function goRTestRecord(injId){window._subViewActive=true;
   '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">'+escapeHtml(p.name)+' / '+(inj.side||'')+inj.part+'</div>';
 
   if(!tpl){
-    h+='<div class="alert-card alert-warn">スタッフ側で復帰テストテンプレを設定してもらってください</div>';
+    h+='<div class="alert-card alert-warn">スタッフ側で復帰テストテンプレを設定してもらってください</div>'+
+    '<button class="btn btn-sm" style="margin-top:10px" onclick="goRehabPlayer('+injId+')">← リハビリ画面に戻る</button>';
     $m().innerHTML=h;return;
   }
 
@@ -2252,7 +3101,7 @@ function goRTestRecord(injId){window._subViewActive=true;
   '</div>';
 
   h+='<div class="fl" style="margin-bottom:14px"><label>全体コメント</label><textarea class="ipt" id="rt-note" placeholder="テスト全体の所見..."></textarea></div>'+
-  '<button class="btn btn-p" style="width:100%" onclick="doSaveRTest('+injId+','+(tpl.physTests||[]).length+')">テスト結果を保存</button>';
+  '<button class="btn btn-p" style="width:100%" onclick="doSaveRTest('+injId+','+(tpl.physTests||[]).length+',this)">テスト結果を保存</button>';
 
   $m().innerHTML=h;
   window._currentRTestInjId=injId;
@@ -2274,9 +3123,10 @@ function calcSideDiff(ti){
   el.style.color=passed?'var(--green)':'var(--red)';
 }
 
-function doSaveRTest(injId,physCount){
+function doSaveRTest(injId,physCount,btnEl){
   var date=document.getElementById('rt-date').value;
   if(!date)return alert('日付を入力してください');
+  if(!guardSubmit(btnEl,'保存中…'))return;
   var physResults=[];var physPassed=true;
   var types=window._rtTestTypes||[];
   for(var ti=0;ti<physCount;ti++){
@@ -2302,11 +3152,14 @@ function doSaveRTest(injId,physCount){
   var fitPassed=broncoTime&&broncoTarget?broncoTime<=broncoTarget:false;
   var note=(document.getElementById('rt-note')||{}).value||'';
   var rec={id:Date.now(),injId:injId,date:date,implementer:myTrainer.name,physResults:physResults,physPassed:physPassed,broncoTime:broncoTime,fitPassed:fitPassed,note:note,inputAt:new Date().toISOString()};
-  svSafe('rtest',rec,function(){
+  svSafeSeq([{k:'rtest',rec:rec}],function(){
     var msg='保存しました ✓\n患部テスト: '+(physPassed?'✓ クリア':'✗ 未クリア')+'\nフィットテスト: '+(fitPassed?'✓ クリア':'✗ 未クリア');
     if(physPassed&&fitPassed)msg+='\n\n🎉 全テストクリア！スタッフに承認をもらいましょう！';
     alert(msg);
     goRehabPlayer(injId);
+  },function(){
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
   });
 }
 
@@ -2333,19 +3186,18 @@ function addCustomRehabItemT(){
 
 function removeCustomRehabItemT(ci){var el=document.getElementById('crit-'+ci);if(el)el.remove();}
 
-function doSaveRehabLogTrainer(injId,hasTpl,exCount){
+function doSaveRehabLogTrainer(injId,hasTpl,exCount,btnEl){
   var date=document.getElementById('rl-date').value;
   if(!date)return alert('日付を入力してください');
+  if(!guardSubmit(btnEl,'保存中…'))return;
   var exercises=[];var cats=[];
   if(hasTpl){
     for(var ei=0;ei<exCount;ei++){
       var chk=document.getElementById('rl-chk-'+ei);
       var done=chk&&chk.checked;
       var exDiv=document.getElementById('rl-ex-'+ei);
-      var nameEl=exDiv?exDiv.querySelector('span[style*="font-size:13px"]'):null;
-      var exName=nameEl?nameEl.textContent:'';
-      var catEl=exDiv?exDiv.querySelector('span[style*="border-radius:99px"]'):null;
-      var cat=catEl?catEl.textContent:'';
+      var exName=exDiv?(exDiv.dataset.name||''):'';
+      var cat=exDiv?(exDiv.dataset.cat||''):'';
       var sets=parseInt((document.getElementById('rl-sets-'+ei)||{}).value)||null;
       var reps=parseInt((document.getElementById('rl-reps-'+ei)||{}).value)||null;
       var cmt=(document.getElementById('rl-cmt-'+ei)||{}).value||'';
@@ -2365,16 +3217,19 @@ function doSaveRehabLogTrainer(injId,hasTpl,exCount){
     });
   }
   var comment=(document.getElementById('rl-comment')||{}).value||'';
-  var lastLog2=(D.rlog||[]).filter(function(l){return l.injId===injId;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0]||null;
+  var lastLog2=(D.rlog||[]).filter(function(l){return l.injId===injId;}).sort(function(a,b){return (b.date||"").localeCompare(a.date||"");})[0]||null;
   var preCheck=collectPreCheck(lastLog2);
   var curSess=getCurrentMSess();
   var logRec={id:Date.now(),injId:injId,date:date,implementer:myTrainer.name,by:myTrainer.name,cats:cats,exercises:exercises,comment:comment,preCheck:preCheck,msessId:curSess?curSess.id:null,inputAt:new Date().toISOString()};
-  svSafe('rlog',logRec,function(){
-    // D.rlogが更新されたので最新状態で再描画
+  // svSafeは失敗時に内部でalert＋ボタン固着してしまうため、svSafeSeqで成否を捕捉する
+  svSafeSeq([{k:'rlog',rec:logRec}],function(){
     if(!hasTpl&&exercises.length&&confirm('このメニューをテンプレとして保存しますか？')){
       goSaveAsTemplateT(injId,exercises,cats);return;
     }
     goSetNextMenuT(injId);
+  },function(){
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
   });
 }
 
@@ -2434,7 +3289,7 @@ function timeOptions(sel){
   return h;
 }
 
-function showTapeSetupForm(){
+function showTapeSetupForm(){window._subViewActive=true;
   var today=todayStr();
   var now=new Date();
   var daysToNextMon=now.getDay()===0?1:8-now.getDay();
@@ -2452,11 +3307,11 @@ function showTapeSetupForm(){
   '<div class="form-box"><div class="form-title">定員</div>'+
   '<div class="fl"><label>1枠あたりの同時対応人数</label><input class="ipt" type="number" id="ts-cap" value="1" min="1" max="5"></div>'+
   '</div>'+
-  '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="T.tape()">キャンセル</button><button class="btn btn-p" style="flex:1" onclick="doTapeSetup()">枠を作成</button></div>';
+  '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="go(\'tape\')">キャンセル</button><button class="btn btn-p" style="flex:1" onclick="doTapeSetup(this)">枠を作成</button></div>';
   $m().innerHTML=h;
 }
 
-function doTapeSetup(){
+function doTapeSetup(btnEl){
   var date=document.getElementById('ts-date').value;
   var type=document.getElementById('ts-type').value;
   var startT=document.getElementById('ts-start').value;
@@ -2477,9 +3332,13 @@ function doTapeSetup(){
     cur=next;
   }
   if(!newSlots.length)return alert('枠が作成できませんでした。時間を確認してください。');
+  if(!guardSubmit(btnEl,'作成中…'))return;
   svSafeUpdate('tapeslot',function(latest){return latest.concat(newSlots);},function(){
     alert(newSlots.length+'枠を作成しました ✓');
-    T.tape();
+    go('tape');
+  },function(){
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
   });
 }
 
@@ -2502,7 +3361,6 @@ function startListeners(){
         try{
           var parsed=JSON.parse(doc.data().data);
           if(Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
-          else if(!Array.isArray(parsed)&&parsed!==undefined)D[k]=parsed;
           // 入力中フォーム判定
           var ae=document.activeElement;
           var isInputting=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT');
@@ -2518,6 +3376,15 @@ function startListeners(){
 ld().then(function(){
   document.getElementById('loading-screen').style.display='none';
   startListeners();
+  // 前回のログイン情報を復元（確認画面を経由。PINは再入力させない）
+  try{
+    var savedTid=localStorage.getItem('rm_my_trainer_id');
+    if(savedTid){
+      var tid=parseInt(savedTid);
+      var t=D.trainers.find(function(x){return x.id===tid;});
+      if(t){showAutoLoginConfirmT(tid);return;}
+    }
+  }catch(e){}
   showLogin();
 }).catch(function(e){
   console.error(e);
