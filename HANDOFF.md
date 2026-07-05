@@ -11,10 +11,19 @@
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
+- **✅✅✅✅ coach「3体レビュー未適用分」の高優先度5件（C1〜C4+U3）実装完了・検証済み・未push（2026-07-06・このセッション）。** ユーザーが「coach未適用レビューをお願い」と依頼→未適用リストを提示→「高優先度を順番に全部」で着手を承認。plan `4-player-staff-trainer-coach-1-ux-merry-harbor.md`末尾のC1-C4/U3を実装。
+  - **C1** ポジション別の頭数×稼働マトリクス（概況タブ）: `positionMatrix()`新設、`injuryStatusMaps()`は`availability()`と共通化。PR/HOはフル稼働3名未満で赤警告(`POS_CRIT_MIN`)。
+  - **C2** RTPレベルを「出場可/練習のみ/不可/判断待ち」バケットへ翻訳し概況最上部（稼働率リング）に反映。`rtpBuckets()`新設（旧`availability()`は置き換えて削除＝重複防止）。rtpLevel未設定を「判断待ち」として明確に分離（実データで8名該当と判明＝旧実装では「離脱中」に紛れて見えなかった）。
+  - **C3** 滞留レコード検出（`insInjury()`に追加）: 120日超+復帰予定未設定→棚卸し推奨の考察カード。平均離脱期間の算出に`iqrFilter()`(Tukey 1.5×IQR法)を適用し外れ値を除外。
+  - **C4** 低入力率への適応（`insCondition()`）: ①連続高RPE判定を「3日連続」→「直近5回の入力中3回以上」に緩和（疎な入力でも検知可能に）②チーム平均睡眠にn数を併記、n<5は「参考値」表記＋lv:infoに格下げ③入力率指標を「当日のみ」→「直近7日カバレッジ」＋最終入力日表示に変更（オオカミ少年化防止）。
+  - **U3** オフライン/取得エラー帯: `loadData()`のonSnapshotエラー時に`_errKeys`へ記録→`renderSyncStatus()`が赤帯をtopbar内に表示（正常復帰で自動的に消える）。「更新hh:mm」もtopbarに常時表示。帯の高さ変動に合わせてtabs-barのsticky top位置を実測して追従。
+  - **検証方法**: 全項目をJavaScriptCore(`jsc`)でのモック実行（Node.jsが本機にインストールされていないため、`/System/Library/Frameworks/JavaScriptCore.framework/.../jsc`を構文チェック・模擬実行の代替として使用＝今後もnodeが無い場合はこの方法を使うこと）＋実機ブラウザ（本番Firestoreデータ、静的サーバー経由）の両方で確認。コンソールエラーなし。
+  - **残作業**: C5〜C8(中/低)・U9(低)・D1残り/D5/D9/D10(デザイン統一系)は未着手。次回ユーザーに続行するか確認すること。
+  - **launch.jsonを修正**: 元の`cd && python3 -m http.server`はこのMac環境でgetcwd()がPermissionErrorになり起動不可だった（サンドボックスでプロセスのcwdが取得不能な既知の制約）。`python3 -I -c`で`SimpleHTTPRequestHandler(directory=...)`を直接使う形に変更し解決（`-I`isolated modeが必須＝これが無いとimport時にも同じgetcwdエラーが出る）。次回以降のpreview起動はこの設定のまま使える。
+- **ユーザー方針（継続）**: 「実装は全部済ませてから、pushは最後に一気に行う」。ただし単発の小機能はユーザー指示があればその場でpush・実機確認までしてよい。今回のcoach C1-C4+U3はpush前でセッション終了→次回ユーザーにpushしてよいか確認すること。
 - **✅✅✅✅✅ trainer側「怪我の基本情報編集」解禁＝実装・push・実機確認すべて完了（2026-07-05実装→2026-07-06実機確認、コミット`c6a8cb0`）。** ユーザーが実機で一連の流れ（編集フォーム保存→タイムライン記録→スタッフ通知→変更なし時は保存されない→回復済み/削除は引き続きスタッフ権限）を確認し「問題なかったよ」と報告。**このタスクは完全に完了。**
 - **✅✅✅✅ 実機ブラウザ確認＝全項目「問題なし」（2026-07-05・このセッション）。** player/staff/trainer/coach 4サイトの直近の一連の変更（player/staffサイト監査対応、trainerガイド付き評価フロー①〜⑨全体、coach全面リニューアル、怪我×リハビリ連携Phase2不足ゲージ、TimeTree連携フェーズ1pp）を実機でユーザーが確認し、**全て期待通り動作・問題ゼロ**との報告を受けた。これですべてpush済み＋実機確認済み。
-- **ユーザー方針（継続）**: 「実装は全部済ませてから、pushは最後に一気に行う」。ただし単発の小機能（trainer怪我編集など）はユーザー指示があればその場でpush・実機確認までしてよい（今回がその例）。
-- **🔵 次の作業候補（ユーザーがまだ選んでいない・2026-07-06時点）**: ①coachの3体レビュー未適用分（C1〜C8: 頭数マトリクス・滞留レコード検出・低入力率対応等／U3・U9／D1・D5・D9・D10のデザイン統一系。詳細はplanファイル`4-player-staff-trainer-coach-1-ux-merry-harbor.md`末尾）②player監査の残り（1-6/1-9のデッドコード削除、3系＝alert()のトースト化等デザイン全般）。次セッション開始時にユーザーへどちらから着手するか確認すること。
+- **🔵 次の作業候補（2026-07-06時点）**: ①coachの3体レビュー残り（C5-C8/U9/D1残り・D5・D9・D10。詳細はplanファイル`4-player-staff-trainer-coach-1-ux-merry-harbor.md`末尾）②player監査の残り（1-6/1-9のデッドコード削除、3系＝alert()のトースト化等デザイン全般）。次セッション開始時にユーザーへどちらから着手するか確認すること。
 - **（旧・実装ログ）✅ trainer側「怪我の基本情報編集」解禁の実装詳細（2026-07-05・このセッション、trainer単独）**: 発端・ユーザー意向（対象範囲＝基本情報全体、条件＝①スタッフ通知＋②変更履歴記録）は既に確定済みだった設計メモ通り。
   - **実装内容**: スタブだった`goEditInjury(iid)`（[trainer/index.html:427](trainer/index.html:427)付近）を実装に差し替え、`chart-body`に`renderInjuryEditForm(iid)`を描画（呼び出し元2箇所＝概要タブ・復帰タブとも無変更で動作、キャンセル/保存後は`chartTab(curChartTab)`で戻る）。フィールド定義はstaffの`goEditInjury`/`doEditInjury`と同一構成の共有配列`INJ_EDIT_FIELDS`（+`injEditFieldFmt`/`injEditNormVal`）として新設し、差分検出・通知文・タイムライン表示で使い回す。保存は新設`doEditInjuryTrainer(iid,btn)`＝guardSubmit→変更前後を`INJ_EDIT_FIELDS`で比較→変更が1件もなければ「変更点がありませんでした」でリターン（保存しない）→ありなら`inj`へ反映＋`inj.editLog[]`に`{date,by,byId,changes}`を追記→`svRec('i',inj,onDone,onError)`で保存。
   - **①スタッフ通知**: 保存成功時に`escalateChgChk`と同型の`injcomm`投稿（`role:'trainer'`、テキストは変更項目を「field：from→to」で列挙）。ベストエフォート実行＝失敗しても`console.error`のみでメインの保存成功フローは止めない（怪我情報の保存自体は既に成功しているため）。

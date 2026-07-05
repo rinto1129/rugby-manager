@@ -162,7 +162,9 @@ select.sel{background:var(--bg-elev);color:var(--txt);border:1px solid var(--lin
     <div class="brand-logo">🏉</div>
     <div class="brand-txt"><h1>福岡大学ラグビー部</h1><p>COACH DASHBOARD</p></div>
     <span class="view-badge">閲覧専用</span>
+    <span id="sync-time" style="margin-left:8px;font-size:9.5px;font-weight:700;color:var(--txt-3);white-space:nowrap"></span>
   </div>
+  <div id="sync-err"></div>
 </div>
 <div class="tabs-bar"><div class="tabs" id="tabs"></div></div>
 <div class="wrap">
@@ -181,6 +183,22 @@ var _loaded={};
 var _allKeys=Object.keys(SK);
 var _rawCache={};
 var _renderTimer=null;
+// 取得エラーが出ているキー（オフライン等で握りつぶすと「0件」に見えてしまうのを防ぐ）
+var _errKeys={};
+var _lastUpdateAt=null;
+// ヘッダーの「更新 hh:mm」表示とエラー帯を更新（#mainの再描画とは独立して即時反映）
+function renderSyncStatus(){
+  var te=document.getElementById('sync-time');
+  if(te)te.textContent=_lastUpdateAt?('更新 '+String(_lastUpdateAt.getHours()).padStart(2,'0')+':'+String(_lastUpdateAt.getMinutes()).padStart(2,'0')):'';
+  var be=document.getElementById('sync-err');
+  if(be){
+    var errN=Object.keys(_errKeys).length;
+    be.innerHTML=errN?('<div style="background:var(--red-bg);color:var(--red);font-size:11.5px;font-weight:700;padding:9px 18px;text-align:center">⚠ 一部データの取得に失敗しました（通信状況をご確認ください）。表示中の内容が最新でない可能性があります。</div>'):'';
+  }
+  // 帯の表示有無でtopbarの高さが変わるため、その下に貼りつくtabs-barのsticky位置を実測して追従させる
+  var tb=document.querySelector('.topbar'),tbb=document.querySelector('.tabs-bar');
+  if(tb&&tbb)tbb.style.top=tb.offsetHeight+'px';
+}
 // データ読み込み（全キーをリッスン。中身が変わらない通知では再描画しない）
 function loadData(){
   _allKeys.forEach(function(k){
@@ -190,8 +208,11 @@ function loadData(){
       _rawCache[k]=raw;
       if(changed&&raw){try{var p=JSON.parse(raw);if(Array.isArray(p))D[k]=p;}catch(e){}}
       _loaded[k]=true;
+      delete _errKeys[k];
+      _lastUpdateAt=new Date();
+      renderSyncStatus();
       if(changed||!_firstRender)maybeRender();
-    },function(err){_loaded[k]=true;maybeRender();});
+    },function(err){_loaded[k]=true;_errKeys[k]=true;renderSyncStatus();maybeRender();});
   });
 }
 var _firstRender=false;
@@ -378,9 +399,8 @@ function heroDateStr(){
   return d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0')+' '+w+'曜日';
 }
 function pName(pid){var p=D.p.find(function(x){return idEq(x.id,pid);});return p?p.name:'?';}
-// チーム稼働状況: out=離脱(完全休養/リハビリのみ) lim=制限付き ok=フル
-function availability(){
-  var total=D.p.length;
+// 怪我による稼働状況マップ: outP=離脱(完全休養/リハビリのみ) limP=制限付き
+function injuryStatusMaps(){
   var outP={},limP={};
   D.i.filter(function(x){return !x.resolved;}).forEach(function(inj){
     var lv=getChart(inj.id).rtpLevel||'rest';
@@ -388,8 +408,38 @@ function availability(){
     else if(lv!=='full')limP[inj.pid]=1;
   });
   Object.keys(outP).forEach(function(k){delete limP[k];});
-  var out=Object.keys(outP).length,lim=Object.keys(limP).length;
-  return {total:total,out:out,lim:lim,ok:Math.max(total-out-lim,0)};
+  return {outP:outP,limP:limP};
+}
+// RTPレベルを「出場可/練習のみ/不可/判断待ち」の4バケットに翻訳（「土曜使えるか」に即答するため）
+// 怪我はあるがrtpLevel未設定＝評価未実施は「不可」と区別して「判断待ち」に分類する
+function rtpBuckets(){
+  var order={out:0,pending:1,train:2,ok:3};
+  var pidBucket={};
+  D.i.filter(function(x){return !x.resolved;}).forEach(function(inj){
+    var lv=getChart(inj.id).rtpLevel;
+    var b=!lv?'pending':lv==='full'?'ok':(lv==='rest'||lv==='rehab')?'out':'train';
+    if(!(inj.pid in pidBucket)||order[b]<order[pidBucket[inj.pid]])pidBucket[inj.pid]=b;
+  });
+  var c={ok:0,train:0,out:0,pending:0};
+  D.p.forEach(function(p){c[pidBucket[p.id]||'ok']++;});
+  return {total:D.p.length,ok:c.ok,train:c.train,out:c.out,pending:c.pending};
+}
+// ポジション別の頭数×稼働マトリクス（「土曜スクラム組めるか」に即答するため）
+// PR/HOはフル稼働2名+控え1名の計3名を切ると編成に赤信号
+var POS_CRIT_MIN={PR:3,HO:3};
+function positionMatrix(){
+  var m=injuryStatusMaps();
+  return POS.map(function(pos){
+    var players=D.p.filter(function(p){return p.position===pos;});
+    var total=players.length;
+    var out=players.filter(function(p){return m.outP[p.id];}).length;
+    var lim=players.filter(function(p){return m.limP[p.id];}).length;
+    var ok=Math.max(total-out-lim,0);
+    var min=POS_CRIT_MIN[pos];
+    var crit=min!=null&&ok<min;
+    var warn=!crit&&total>0&&ok===0;
+    return {pos:pos,total:total,ok:ok,lim:lim,out:out,crit:crit,warn:warn};
+  });
 }
 // 同一部位の過去の怪我（再発検出）
 function samePartBefore(inj){
@@ -425,6 +475,15 @@ function condDaily(days){
   return out;
 }
 function avgOf(arr){var v=arr.filter(function(x){return x!=null;});if(!v.length)return null;return v.reduce(function(s,x){return s+x;},0)/v.length;}
+// 外れ値除外（Tukeyの1.5×IQR法）。サンプルが4件未満はそのまま返す
+function iqrFilter(vals){
+  if(vals.length<4)return vals;
+  var s=vals.slice().sort(function(a,b){return a-b;});
+  function pct(p){var idx=(s.length-1)*p,lo=Math.floor(idx),hi=Math.ceil(idx);return lo===hi?s[lo]:s[lo]+(s[hi]-s[lo])*(idx-lo);}
+  var q1=pct(.25),q3=pct(.75),iqr=q3-q1,lo=q1-1.5*iqr,hi=q3+1.5*iqr;
+  var f=s.filter(function(v){return v>=lo&&v<=hi;});
+  return f.length?f:s;
+}
 // 期間のチーム総ボリューム
 function teamVolume(from,to){
   return D.tlog.filter(function(l){return !l.absent&&l.date>=from&&l.date<=to;})
@@ -510,11 +569,13 @@ function insInjury(){
         return insRowP(x.pid,escapeHtml((x.side||'')+x.part+' '+(x.type||'')),prev?'<div style="font-size:10px;color:var(--txt-3)">前回 '+fmt(prev.date)+'</div>':'');
       }).join('')});
   }
-  // 長期離脱
+  // 長期離脱（平均は外れ値〈極端に長い/短い離脱〉を除外して算出）
   var resolved=D.i.filter(function(x){return x.resolved&&x.date&&x.resolvedDate;});
   var avgDays=null;
   if(resolved.length){
-    avgDays=Math.round(resolved.reduce(function(s,x){return s+Math.max(0,(new Date(x.resolvedDate)-new Date(x.date))/86400000);},0)/resolved.length);
+    var durations=resolved.map(function(x){return Math.max(0,(new Date(x.resolvedDate)-new Date(x.date))/86400000);});
+    var filtered=iqrFilter(durations);
+    avgDays=Math.round(filtered.reduce(function(s,v){return s+v;},0)/filtered.length);
     var longActive=active.filter(function(x){return x.date&&(new Date(today)-new Date(x.date))/86400000>avgDays;});
     if(longActive.length&&avgDays>0){
       out.push({lv:'info',t:'チームの平均離脱期間は約'+avgDays+'日です',
@@ -526,6 +587,19 @@ function insInjury(){
     }else if(avgDays>0){
       out.push({lv:'info',t:'チームの平均離脱期間は約'+avgDays+'日です',d:'現在離脱中の選手は全員この平均の範囲内で経過しています。'});
     }
+  }
+  // 滞留レコード検出: 120日超+復帰予定未設定は棚卸し推奨（稼働率を歪める古いレコードの可能性）
+  var stale=active.filter(function(x){
+    var days=x.date?(new Date(today)-new Date(x.date))/86400000:0;
+    return days>120&&!x.returnDate;
+  });
+  if(stale.length){
+    out.push({lv:'warn',t:'120日超・復帰予定未設定のまま滞留している記録が'+stale.length+'件あります',
+      d:'受傷から長期間が経過し復帰予定も入っていないレコードは、実際は解決済みで更新漏れの可能性があります。棚卸し（回復済みへの更新 or 復帰予定の設定）を推奨します。稼働率の数字を歪める一因にもなります。',
+      detail:stale.sort(function(a,b){return (a.date||'').localeCompare(b.date||'');}).map(function(x){
+        var ds=Math.floor((new Date(today)-new Date(x.date))/86400000);
+        return insRowP(x.pid,escapeHtml((x.side||'')+x.part+' '+(x.type||'')),'<span style="color:var(--amber);font-weight:800;font-size:13px">'+ds+'日経過</span>');
+      }).join('')});
   }
   // 部位傾向（90日）
   var recent=D.i.filter(function(x){return (x.date||'')>=agoStr(90);});
@@ -679,16 +753,20 @@ function insTraining(){
 }
 // --- コンディション ---
 function insCondition(){
-  var out=[],today=todayStr();
+  var out=[];
   var recs7=D.f.filter(function(x){return x.date>=agoStr(6);});
   if(!recs7.length){
     if(D.f.length)out.push({lv:'warn',t:'直近7日間のコンディション入力がありません',d:'入力が途切れると疲労・睡眠の変化を見逃します。選手への声かけを推奨します。'});
     return out;
   }
-  // 睡眠トレンド
-  var s1=avgOf(recs7.map(function(x){return x.sleep>0?x.sleep:null;}));
+  // 睡眠トレンド（入力数nを併記。n<5は参考値扱いにして断定しない）
+  var sleepVals7=recs7.filter(function(x){return x.sleep>0;});
+  var n1=sleepVals7.length;
+  var s1=n1?sleepVals7.reduce(function(s,x){return s+x.sleep;},0)/n1:null;
   var prevRecs=D.f.filter(function(x){return x.date>=agoStr(13)&&x.date<agoStr(6);});
-  var s2=avgOf(prevRecs.map(function(x){return x.sleep>0?x.sleep:null;}));
+  var prevSleepVals=prevRecs.filter(function(x){return x.sleep>0;});
+  var n2=prevSleepVals.length;
+  var s2=n2?prevSleepVals.reduce(function(s,x){return s+x.sleep;},0)/n2:null;
   // 選手別の7日平均睡眠（短い順）
   var perSleep=D.p.map(function(p){
     var rs=recs7.filter(function(x){return idEq(x.pid,p.id)&&x.sleep!=null&&x.sleep>0;});
@@ -699,41 +777,44 @@ function insCondition(){
     return insRowP(x.p.id,'直近7日の平均睡眠','<span style="font-weight:800;font-size:13px;color:'+(x.s<6?'var(--red)':x.s<7?'var(--amber)':'var(--green)')+'">'+x.s.toFixed(1)+'h</span>');
   }),10);
   if(s1!=null){
+    var lowN=n1<5;
+    var nSuf='（入力'+n1+'名分'+(lowN?'・参考値':'')+'）';
+    var lowNote=lowN?'入力数が少ないため参考値です。':'';
     if(s1<6.5){
-      out.push({lv:'warn',t:'チーム平均睡眠が'+s1.toFixed(1)+'時間と不足気味です',
-        d:'睡眠不足は回復・パフォーマンス・怪我リスクに直結します。'+(s2!=null?'先週は'+s2.toFixed(1)+'時間でした。':'')+'7時間以上を目安に働きかけを。',detail:sleepDetail});
-    }else if(s2!=null&&s1-s2<=-0.7){
-      out.push({lv:'warn',t:'チーム平均睡眠が先週から'+(s1-s2).toFixed(1)+'時間減っています',
-        d:'今週 '+s1.toFixed(1)+'h / 先週 '+s2.toFixed(1)+'h。テスト期間や行事の影響が考えられます。負荷設定に反映する価値があります。',detail:sleepDetail});
+      out.push({lv:lowN?'info':'warn',t:'チーム平均睡眠が'+s1.toFixed(1)+'時間と不足気味です'+nSuf,
+        d:lowNote+'睡眠不足は回復・パフォーマンス・怪我リスクに直結します。'+(s2!=null?'先週は'+s2.toFixed(1)+'時間でした（'+n2+'名分）。':'')+'7時間以上を目安に働きかけを。',detail:sleepDetail});
+    }else if(s2!=null&&n2>=5&&!lowN&&s1-s2<=-0.7){
+      out.push({lv:'warn',t:'チーム平均睡眠が先週から'+(s1-s2).toFixed(1)+'時間減っています'+nSuf,
+        d:'今週 '+s1.toFixed(1)+'h（'+n1+'名分） / 先週 '+s2.toFixed(1)+'h（'+n2+'名分）。テスト期間や行事の影響が考えられます。負荷設定に反映する価値があります。',detail:sleepDetail});
     }else{
-      out.push({lv:'good',t:'チーム平均睡眠は'+s1.toFixed(1)+'時間を確保できています',d:(s2!=null?'先週は'+s2.toFixed(1)+'時間。':'')+'回復の土台となる睡眠が維持されています。',detail:sleepDetail});
+      out.push({lv:lowN?'info':'good',t:'チーム平均睡眠は'+s1.toFixed(1)+'時間を確保できています'+nSuf,d:lowNote+(s2!=null?'先週は'+s2.toFixed(1)+'時間。':'')+'回復の土台となる睡眠が維持されています。',detail:sleepDetail});
     }
   }
-  // 連続高RPE
+  // 連続高RPE（低入力率でも検知できるよう「直近3日連続」ではなく「直近5回の入力中3回以上」に緩和）
   var streak=[];
   D.p.forEach(function(p){
-    var vals=[];
-    for(var n=0;n<3;n++){
-      var r=D.f.find(function(x){return idEq(x.pid,p.id)&&x.date===agoStr(n);});
-      if(r&&r.rpe>=8)vals.push(r.rpe);
-    }
-    if(vals.length>=3)streak.push({p:p,vals:vals});
+    var recs=D.f.filter(function(x){return idEq(x.pid,p.id)&&x.rpe!=null;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).slice(0,5);
+    var high=recs.filter(function(x){return x.rpe>=8;});
+    if(high.length>=3)streak.push({p:p,vals:recs.map(function(x){return x.rpe;}),n:recs.length});
   });
   if(streak.length){
-    out.push({lv:'bad',t:'3日連続で疲労度8以上の選手が'+streak.length+'名います',
+    out.push({lv:'bad',t:'直近5回の入力中3回以上で疲労度8以上の選手が'+streak.length+'名います',
       d:'<b>'+streak.slice(0,4).map(function(x){return escapeHtml(x.p.name);}).join('・')+(streak.length>4?' ほか':'')+'</b>。疲労の蓄積が続くと怪我・体調不良につながります。負荷を落とすか休養日の検討を。',
       detail:streak.map(function(x){
-        return insRowP(x.p.id,'直近3日の疲労度','<span style="color:var(--red);font-weight:800;font-size:13px">'+x.vals.join(' / ')+'</span>');
+        return insRowP(x.p.id,'直近'+x.n+'回の疲労度（新しい順）','<span style="color:var(--red);font-weight:800;font-size:13px">'+x.vals.join(' / ')+'</span>');
       }).join('')});
   }
-  // 入力率
-  var todayN=D.f.filter(function(x){return x.date===today;}).length;
+  // 入力率（当日だけを見ると常に低く出て「オオカミ少年」化するため、直近7日のカバレッジを基準にする）
+  var coveredPids={};
+  recs7.forEach(function(x){coveredPids[x.pid]=1;});
+  var coveredN=Object.keys(coveredPids).length;
   if(D.p.length){
-    var rate=Math.round(todayN/D.p.length*100);
-    var noInput=D.p.filter(function(p){return !D.f.some(function(x){return idEq(x.pid,p.id)&&x.date===today;});});
-    out.push({lv:rate>=60?'good':'info',t:'本日のコンディション入力率は'+rate+'%です（'+todayN+'/'+D.p.length+'名）',
-      d:rate>=60?'高い入力率が保たれており、データの信頼性が高い状態です。':'入力率が上がるほどチーム状態の把握精度が上がります。',
-      detail:noInput.length?('<div style="font-size:11px;color:var(--txt-2);padding:6px 0 2px;font-weight:700">本日未入力の選手</div>'+capRows(noInput.map(function(p){
+    var rate=Math.round(coveredN/D.p.length*100);
+    var noInput7=D.p.filter(function(p){return !coveredPids[p.id];});
+    var lastDate=recs7.reduce(function(m,x){return x.date>m?x.date:m;},recs7[0].date);
+    out.push({lv:rate>=60?'good':'info',t:'直近7日でコンディションを入力した選手は'+rate+'%です（'+coveredN+'/'+D.p.length+'名）',
+      d:(rate>=60?'高い入力率が保たれており、データの信頼性が高い状態です。':'入力率が上がるほどチーム状態の把握精度が上がります。')+' 最終入力: '+fmt(lastDate)+'。',
+      detail:noInput7.length?('<div style="font-size:11px;color:var(--txt-2);padding:6px 0 2px;font-weight:700">直近7日未入力の選手</div>'+capRows(noInput7.map(function(p){
         return insRowP(p.id,escapeHtml(p.position||'-')+'・'+escapeHtml(String(p.year||'-'))+'年','');
       }),15)):''});
   }
@@ -1065,24 +1146,47 @@ function ringChart(pct,label){
     '<circle class="ring-f" cx="64" cy="64" r="'+R+'" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+C.toFixed(1)+'" data-off="'+off.toFixed(1)+'"/>'+
     '</svg><div class="ring-center"><div class="ring-v"><span class="cv" data-cnt="'+pct+'">0</span><span class="unit">%</span></div><div class="ring-l">'+label+'</div></div></div>';
 }
+// ポジション別頭数×稼働マトリクスのHTML
+function renderPosMatrix(){
+  var rows=positionMatrix();
+  var h='<div class="card">';
+  h+=rows.map(function(r){
+    var rowBg=r.crit?'background:var(--red-bg);':r.warn?'background:var(--amber-bg);':'';
+    var h2='<div class="row" style="'+rowBg+(rowBg?'margin:0 -9px;padding-left:9px;padding-right:9px;border-radius:10px':'')+'">';
+    h2+='<div style="width:48px;font-weight:800;font-size:13px'+(r.crit?';color:var(--red)':'')+'">'+r.pos+'</div>';
+    h2+='<div style="flex:1;min-width:0;font-size:10.5px;color:var(--txt-3)">登録 '+r.total+'名</div>';
+    h2+='<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+
+      '<span class="bd '+(r.ok>0?'bd-g':'bd-n')+'">フル '+r.ok+'</span>'+
+      '<span class="bd '+(r.lim>0?'bd-a':'bd-n')+'">制限 '+r.lim+'</span>'+
+      '<span class="bd '+(r.out>0?'bd-r':'bd-n')+'">離脱 '+r.out+'</span>'+
+      '</div></div>';
+    if(r.crit)h2+='<div style="font-size:10.5px;color:var(--red);font-weight:700;padding:0 0 10px">⚠ フル稼働が'+POS_CRIT_MIN[r.pos]+'名未満です</div>';
+    else if(r.warn)h2+='<div style="font-size:10.5px;color:var(--amber);font-weight:700;padding:0 0 10px">⚠ フル稼働できる選手がいません</div>';
+    return h2;
+  }).join('');
+  return h+'</div>';
+}
 // ========================================================
 // ⓪ 概況（ホーム）
 // ========================================================
 function renderHomeView(){
   var today=todayStr();
-  var av=availability();
-  var pct=av.total?Math.round(av.ok/av.total*100):0;
+  var rb=rtpBuckets();
+  var pct=rb.total?Math.round(rb.ok/rb.total*100):0;
   var h='';
   h+=heroBlock('今日の<em>チーム概況</em>','怪我・コンディション・トレーニングの状態をひと目で。各タブでさらに詳しく確認できます。');
-  // 稼働率カード
+  // 出場可否カード（RTPレベルを現場言葉に翻訳）
   h+='<div class="sec">'+rv(
-    '<div class="card"><div class="ring-wrap">'+ringChart(pct,'稼働率')+
+    '<div class="card"><div class="ring-wrap">'+ringChart(pct,'出場可')+
     '<div class="ring-legend">'+
-    '<div class="rl-row"><span class="rl-dot" style="background:var(--green)"></span>フル稼働<span class="rl-n" style="color:var(--green)">'+av.ok+'<span style="font-size:10px;color:var(--txt-3);font-weight:600">名</span></span></div>'+
-    '<div class="rl-row"><span class="rl-dot" style="background:var(--amber)"></span>制限付き参加<span class="rl-n" style="color:var(--amber)">'+av.lim+'<span style="font-size:10px;color:var(--txt-3);font-weight:600">名</span></span></div>'+
-    '<div class="rl-row"><span class="rl-dot" style="background:var(--red)"></span>離脱中<span class="rl-n" style="color:var(--red)">'+av.out+'<span style="font-size:10px;color:var(--txt-3);font-weight:600">名</span></span></div>'+
-    '<div class="rl-row" style="border-top:1px solid var(--line);padding-top:9px;color:var(--txt-2)">登録選手<span class="rl-n">'+av.total+'<span style="font-size:10px;color:var(--txt-3);font-weight:600">名</span></span></div>'+
+    '<div class="rl-row"><span class="rl-dot" style="background:var(--green)"></span>出場可<span class="rl-n" style="color:var(--green)">'+rb.ok+'<span style="font-size:10px;color:var(--txt-3);font-weight:600">名</span></span></div>'+
+    '<div class="rl-row"><span class="rl-dot" style="background:var(--blue)"></span>練習のみ<span class="rl-n" style="color:var(--blue)">'+rb.train+'<span style="font-size:10px;color:var(--txt-3);font-weight:600">名</span></span></div>'+
+    '<div class="rl-row"><span class="rl-dot" style="background:var(--red)"></span>不可<span class="rl-n" style="color:var(--red)">'+rb.out+'<span style="font-size:10px;color:var(--txt-3);font-weight:600">名</span></span></div>'+
+    '<div class="rl-row"><span class="rl-dot" style="background:var(--purple)"></span>判断待ち<span class="rl-n" style="color:var(--purple)">'+rb.pending+'<span style="font-size:10px;color:var(--txt-3);font-weight:600">名</span></span></div>'+
+    '<div class="rl-row" style="border-top:1px solid var(--line);padding-top:9px;color:var(--txt-2)">登録選手<span class="rl-n">'+rb.total+'<span style="font-size:10px;color:var(--txt-3);font-weight:600">名</span></span></div>'+
     '</div></div></div>',0)+'</div>';
+  // ポジション別頭数×稼働マトリクス
+  h+='<div class="sec">'+secH('ROSTER','ポジション別 頭数×稼働','土曜の編成に即答')+rv(renderPosMatrix(),1)+'</div>';
   // KPI
   var active=D.i.filter(function(x){return !x.resolved;});
   var soon=active.filter(function(x){
@@ -1555,6 +1659,7 @@ function setTrExC(v){window._trEx=(v||'').trim();var y=window.scrollY;window._no
 function setTrMetricC(m){window._trMetric=m;var y=window.scrollY;window._noAnim=true;renderPlayerReport(_detailPid);window._noAnim=false;window.scrollTo(0,y);}
 function render(){
   renderTabs();
+  renderSyncStatus();
   dCA();
   if(_detailPid){renderPlayerReport(_detailPid);return;}
   if(curTab==='home')renderHomeView();
