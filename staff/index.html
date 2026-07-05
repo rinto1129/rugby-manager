@@ -517,7 +517,7 @@ var promises=keys.map(function(k){
       try{
         var parsed=JSON.parse(doc.data().data);
         if(k==='p'&&Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
-        else if(k!=='p'&&parsed!==undefined)D[k]=parsed;
+        else if(k!=='p'&&Array.isArray(parsed))D[k]=parsed;
       }catch(e){console.log('Parse error:',k,e);}
     }
   }).catch(function(e){console.log('Firestore load error:',k,e);});
@@ -614,8 +614,8 @@ function startListeners(){
       if(doc.exists){
         try{
           var parsed=JSON.parse(doc.data().data);
-          if(k==='p'&&parsed.length>0)D[k]=parsed;
-          else if(k!=='p')D[k]=parsed;
+          if(k==='p'&&Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
+          else if(k!=='p'&&Array.isArray(parsed))D[k]=parsed;
           // 入力中フォーム判定：input/textarea/selectがactiveElementなら再描画しない
           var ae=document.activeElement;
           var isInputting=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT');
@@ -1085,7 +1085,7 @@ rehab:function(){
       var p=D.p.find(function(x){return x.id===inj.pid;});if(!p)return'';
       var plan=D.rplan.find(function(x){return x.injId===inj.id;});
       var trainer=D.trainers.find(function(t){return t.id===inj.trainerId;});
-      var lastLog=D.rlog.filter(function(l){return l.injId===inj.id;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
+      var lastLog=D.rlog.filter(function(l){return l.injId===inj.id;}).sort(function(a,b){return (b.date||"").localeCompare(a.date||"");})[0];
       var tomorrowCats=plan?plan.tomorrowCats||[]:[];
       return'<div class="card card-click" style="margin-bottom:8px" onclick="goRPlanDetail('+inj.id+')">'+
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'+avH(p,30)+
@@ -1105,7 +1105,7 @@ rehab:function(){
     '<div id="resolved-rehab-list" style="display:none">'+
     resolvedRehabInj.map(function(inj){
       var p=D.p.find(function(x){return x.id===inj.pid;});if(!p)return'';
-      var lastLog=D.rlog.filter(function(l){return l.injId===inj.id;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
+      var lastLog=D.rlog.filter(function(l){return l.injId===inj.id;}).sort(function(a,b){return (b.date||"").localeCompare(a.date||"");})[0];
       return'<div class="card card-click" style="margin-bottom:6px;opacity:0.7" onclick="goRPlanDetail('+inj.id+')">'+
       '<div style="display:flex;align-items:center;gap:8px">'+avH(p,24)+
       '<div style="flex:1"><span style="font-weight:600">'+escapeHtml(p.name)+'</span>'+
@@ -1781,7 +1781,7 @@ function renderChartTimeline(iid){
       var dtxt=[];
       if(ch.medical.hospital)dtxt.push(escapeHtml(ch.medical.hospital));
       if(ch.medical.diagnosis)dtxt.push('診断: '+escapeHtml(ch.medical.diagnosis));
-      if(ch.medical.imgFindings&&ch.medical.imgFindings.length)dtxt.push(ch.medical.imgFindings.join('・'));
+      if(ch.medical.imgFindings&&ch.medical.imgFindings.length)dtxt.push(Array.isArray(ch.medical.imgFindings)?ch.medical.imgFindings.join('・'):escapeHtml(ch.medical.imgFindings));
       events.push({date:ddate,type:'hospital',title:'病院受診・診断',desc:dtxt.join('<br>')});
     }
     if(ch.medical.surgery&&ch.medical.surgeryDate){
@@ -1865,8 +1865,8 @@ function renderChartTimeline(iid){
       '<div class="tl-dot">'+(IC[ev.type]||'')+'</div>'+
       '<div class="tl-card" style="'+futureStyle+'">'+
         '<div class="tl-date">'+fmt(ev.date)+(ev._future?' ・ 予定':'')+'</div>'+
-        '<div class="tl-title">'+escapeHtml(ev.title)+'</div>'+
-        (ev.desc?'<div class="tl-desc">'+escapeHtml(ev.desc)+'</div>':'')+
+        '<div class="tl-title">'+ev.title+'</div>'+
+        (ev.desc?'<div class="tl-desc">'+ev.desc+'</div>':'')+
       '</div>'+
     '</div>';
   });
@@ -2866,7 +2866,7 @@ function goPlayerDetail(pid,openTab){
   '<div class="form-box"><div class="form-title">サマリー</div><div class="grid" style="grid-template-columns:repeat(5,1fr);gap:6px"><div class="mc"><div class="v" style="font-size:15px">'+(bSQ||'-')+'</div><div class="l">SQ</div></div><div class="mc"><div class="v" style="font-size:15px">'+(bBP||'-')+'</div><div class="l">BP</div></div><div class="mc"><div class="v" style="font-size:15px">'+(bDL||'-')+'</div><div class="l">DL</div></div><div class="mc"><div class="v" style="font-size:15px">'+(bBR?broncoFmt(bBR):'-')+'</div><div class="l">Bronco</div></div><div class="mc"><div class="v" style="font-size:15px;color:'+(ac>=3?'var(--red)':'var(--green)')+'">'+atc+'/'+ts+'</div><div class="l">出席</div></div></div></div>'+
   '<div style="display:flex;justify-content:space-between;margin-top:1rem;flex-wrap:wrap;gap:8px"><div style="display:flex;gap:6px"><button class="btn btn-d" onclick="doDelPlayer('+pid+')">削除</button>'+(p.pin?'<button class="btn" onclick="resetPlayerPIN('+pid+')">🔒 PINリセット</button>':'<span style="color:var(--amber);font-size:12px;align-self:center;margin-left:4px">⚠️ PIN未設定</span>')+'</div><button class="btn btn-p" onclick="doSavePlayer('+pid+')">保存</button></div></div>'+
   '<div class="tc" id="dt1"><div class="chart-wrap"><canvas id="ch-pp"></canvas></div>'+(pPh.length?pPh.sort(function(a,b){return b.date.localeCompare(a.date);}).map(function(r){return'<div class="log-row"><span style="min-width:70px;color:var(--text-secondary)">'+fmt(r.date)+'</span><span>SQ:'+(r.squat||'-')+'</span><span>BP:'+(r.bench||'-')+'</span><span>DL:'+(r.deadlift||'-')+'</span><span style="font-weight:600;color:var(--blue)">BIG3:'+big3(r)+'</span><span>Bronco:'+(r.bronco?broncoFmt(r.bronco):'-')+'</span></div>';}).join(''):'<div class="no">記録なし</div>')+'</div>'+
-  '<div class="tc" id="dt2">'+(pInj.length?pInj.sort(function(a,b){return b.date.localeCompare(a.date);}).map(function(i){var rh=D.r.find(function(x){return x.injId===i.id;});var plan=(D.rplan||[]).find(function(x){return x.injId===i.id;});var lastLog=(D.rlog||[]).filter(function(l){return l.injId===i.id;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];return'<div class="card card-click" style="margin-bottom:8px" onclick="goRPlanDetail('+i.id+')"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-weight:600">'+injLabel(i)+'</span><span class="bd '+(i.resolved?'bd-g':'bd-r')+'">'+(i.resolved?'回復済':'治療中')+'</span></div><div style="font-size:12px;color:var(--text-secondary)">'+fmt(i.date)+(i.returnDate?' | 復帰予定: '+fmt(i.returnDate):'')+'</div>'+(rh&&!i.resolved?'<div style="font-size:12px;color:var(--blue);font-weight:600;margin-top:4px">段階: '+STG[rh.stage]+'</div>':'')+( lastLog?'<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">最終記録: '+fmt(lastLog.date)+' / '+(lastLog.implementer||'')+'</div>':'')+'</div>';}).join(''):'<div class="no">なし</div>')+'</div>'+
+  '<div class="tc" id="dt2">'+(pInj.length?pInj.sort(function(a,b){return b.date.localeCompare(a.date);}).map(function(i){var rh=D.r.find(function(x){return x.injId===i.id;});var plan=(D.rplan||[]).find(function(x){return x.injId===i.id;});var lastLog=(D.rlog||[]).filter(function(l){return l.injId===i.id;}).sort(function(a,b){return (b.date||"").localeCompare(a.date||"");})[0];return'<div class="card card-click" style="margin-bottom:8px" onclick="goRPlanDetail('+i.id+')"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-weight:600">'+injLabel(i)+'</span><span class="bd '+(i.resolved?'bd-g':'bd-r')+'">'+(i.resolved?'回復済':'治療中')+'</span></div><div style="font-size:12px;color:var(--text-secondary)">'+fmt(i.date)+(i.returnDate?' | 復帰予定: '+fmt(i.returnDate):'')+'</div>'+(rh&&!i.resolved?'<div style="font-size:12px;color:var(--blue);font-weight:600;margin-top:4px">段階: '+STG[rh.stage]+'</div>':'')+( lastLog?'<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">最終記録: '+fmt(lastLog.date)+' / '+(lastLog.implementer||'')+'</div>':'')+'</div>';}).join(''):'<div class="no">なし</div>')+'</div>'+
   '<div class="tc" id="dt3"><div class="chart-wrap"><canvas id="ch-pftg"></canvas></div>'+(lf?'<div class="form-box"><div class="form-title">最新 ('+fmt(lf.date)+')</div><div class="grid g3" style="gap:8px"><div class="mc"><div class="v" style="font-size:18px;color:'+rpeColor(lf.rpe)+'">'+lf.rpe+'</div><div class="l">RPE</div></div><div class="mc"><div class="v" style="font-size:18px;color:'+sleepColor(lf.sleep)+'">'+lf.sleep+'h</div><div class="l">睡眠</div></div><div class="mc"><div class="v" style="font-size:18px;color:var(--purple)">'+(lf.rpe*(lf.duration||0))+'</div><div class="l">sRPE</div></div></div></div>':'')+(fRecs.length?fRecs.slice(0,15).map(function(r){return'<div class="log-row"><span style="min-width:65px;color:var(--text-secondary)">'+fmt(r.date)+'</span><div class="pain-dot" style="background:'+rpeColor(r.rpe)+'">'+r.rpe+'</div><span style="color:'+sleepColor(r.sleep)+'">'+r.sleep+'h</span><span style="color:var(--purple);font-weight:600">sRPE:'+(r.rpe*(r.duration||0))+'</span></div>';}).join(''):'<div class="no">記録なし</div>')+'</div>'+
   '<div class="tc" id="dt4"><div class="grid g3" style="margin-bottom:1rem"><div class="mc"><div class="v" style="font-size:18px;color:var(--green)">'+atc+'</div><div class="l">今月出席</div></div><div class="mc"><div class="v" style="font-size:18px;color:var(--red)">'+ac+'</div><div class="l">今月欠席</div></div><div class="mc"><div class="v" style="font-size:18px">'+absCntAll(pid)+'</div><div class="l">累計欠席</div></div></div>'+
   // 提出状況サマリー
@@ -3762,6 +3762,8 @@ function getConsecutiveSkipsStaff(pid){
 }
 
 
+// 予約rsvsのうち、slotId(枠)を占有しているものを返す（複数枠予約はslotIds配列全体を見る。旧データはslotIdのみへフォールバック）
+function tapeSlotBooked(rsvs,slotId){return rsvs.filter(function(t){return(t.slotIds||[t.slotId]).indexOf(slotId)>=0;});}
 V.tape=function(){
   if(!D.tapeslot)D.tapeslot=[];
   if(!D.tape)D.tape=[];
@@ -3796,7 +3798,7 @@ V.tape=function(){
     '</div></div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:4px">'+
     slots.map(function(s){
-      var booked=D.tape.filter(function(t){return t.slotId===s.id;}).length;
+      var booked=tapeSlotBooked(D.tape,s.id).length;
       var full=booked>=s.capacity;
       return'<div style="background:'+(full?'var(--red-bg)':'var(--green-bg)')+';padding:3px 8px;border-radius:99px;font-size:10px;font-weight:600;color:'+(full?'var(--red)':'var(--green)')+'">'+s.staff+' '+s.startTime+(full?' 満':'')+'</div>';
     }).join('')+
@@ -3817,7 +3819,7 @@ function goTapeDayDetail(date){
     var sSlots=allSlots.filter(function(s){return s.staff===staff;});
     h+='<div style="font-size:13px;font-weight:700;color:var(--blue);margin:12px 0 6px;padding:4px 10px;background:var(--blue-bg);border-radius:var(--radius)">👤 '+staff+'</div>';
     sSlots.forEach(function(s){
-      var booked=reservations.filter(function(t){return t.slotId===s.id;});
+      var booked=tapeSlotBooked(reservations,s.id);
       var full=booked.length>=s.capacity;
       h+='<div class="card" style="margin-bottom:8px;border-left:3px solid '+(full?'var(--red)':booked.length>0?'var(--amber)':'var(--green)')+'">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
@@ -4317,7 +4319,7 @@ function goRPlanDetail(injId){
   var inj=D.i.find(function(x){return x.id===injId;});if(!inj)return;
   var p=D.p.find(function(x){return x.id===inj.pid;});if(!p)return;
   var plan=(D.rplan||[]).find(function(x){return x.injId===injId;});
-  var logs=(D.rlog||[]).filter(function(l){return l.injId===injId;}).sort(function(a,b){return b.date.localeCompare(a.date);});
+  var logs=(D.rlog||[]).filter(function(l){return l.injId===injId;}).sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
   var trainer=D.trainers.find(function(t){return t.id===inj.trainerId;});
   var tpl=plan&&plan.tplId?(D.rtpl||[]).find(function(x){return x.id===plan.tplId;}):null;
   var tomorrowCats=plan?plan.tomorrowCats||[]:[];
@@ -4577,7 +4579,7 @@ function delRehabLogStaff(lid,injId){
 }
 
 function goEditRehabLogStaff(injId,li){
-  var logs=(D.rlog||[]).filter(function(l){return l.injId===injId;}).sort(function(a,b){return b.date.localeCompare(a.date);});
+  var logs=(D.rlog||[]).filter(function(l){return l.injId===injId;}).sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
   var l=logs[li];if(!l)return;
   var h='<div style="max-width:520px"><div class="form-box"><div class="form-title">記録を編集</div>'+
   '<div class="fl" style="margin-bottom:10px"><label>日付</label><input class="ipt" type="date" id="erl-date" value="'+(l.date||'')+'"></div>'+
