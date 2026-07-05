@@ -2,109 +2,172 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>福岡大学ラグビー部 コーチダッシュボード</title>
 <style>
 :root{
-  --bg-app:#0A1019;--bg-panel:#111B2A;--bg-panel-2:#16243A;--bg-elev:#1B2E49;
-  --line:rgba(255,255,255,.07);--line-2:rgba(255,255,255,.12);
-  --accent:#3DDC97;--accent-2:#2BB67E;--accent-glow:rgba(61,220,151,.25);
-  --blue:#4D9FFF;--blue-bg:rgba(77,159,255,.14);
-  --amber:#FFB454;--amber-bg:rgba(255,180,84,.14);
-  --red:#FF6B6B;--red-bg:rgba(255,107,107,.14);
-  --purple:#B388FF;--purple-bg:rgba(179,136,255,.14);
-  --green:#3DDC97;--green-bg:rgba(61,220,151,.14);
-  --txt:#EAF1FB;--txt-2:#93A4BC;--txt-3:#5E708A;
-  --radius:14px;--radius-sm:10px;
-  --shadow:0 8px 30px rgba(0,0,0,.4);
+  --bg-app:#050A12;
+  --bg-panel:rgba(255,255,255,.04);
+  --bg-panel-2:rgba(255,255,255,.055);
+  --bg-elev:rgba(255,255,255,.09);
+  --line:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.16);
+  --accent:#3DF0A4;--accent-2:#14B87D;--accent-glow:rgba(61,240,164,.28);
+  --blue:#5FA8FF;--blue-bg:rgba(95,168,255,.15);
+  --amber:#FFC069;--amber-bg:rgba(255,192,105,.15);
+  --red:#FF7B7B;--red-bg:rgba(255,123,123,.15);
+  --purple:#C7A4FF;--purple-bg:rgba(199,164,255,.15);
+  --green:#3DF0A4;--green-bg:rgba(61,240,164,.14);
+  --txt:#F1F6FF;--txt-2:#9DAEC7;--txt-3:#6F82A0;
+  --radius:18px;--radius-sm:12px;
+  --shadow:0 14px 44px rgba(0,0,0,.45);
   --font:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--font);background:var(--bg-app);color:var(--txt);min-height:100vh;-webkit-font-smoothing:antialiased;padding-bottom:40px}
-body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(61,220,151,.08),transparent 70%);pointer-events:none;z-index:0}
-.wrap{max-width:1100px;margin:0 auto;padding:0 16px;position:relative;z-index:1}
-/* ヘッダー */
-.topbar{position:sticky;top:0;z-index:50;background:rgba(10,16,25,.85);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
-.topbar-inner{max-width:1100px;margin:0 auto;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-.brand{display:flex;align-items:center;gap:10px}
-.brand-logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--blue));display:flex;align-items:center;justify-content:center;font-weight:800;color:#0A1019;font-size:16px}
-.brand-txt h1{font-size:15px;font-weight:700;letter-spacing:.01em}
-.brand-txt p{font-size:11px;color:var(--txt-2);font-weight:500}
-.view-badge{font-size:10px;font-weight:700;color:var(--accent);background:var(--accent-glow);padding:4px 9px;border-radius:99px;letter-spacing:.04em}
-/* タブナビ */
-.tabs{display:flex;gap:4px;overflow-x:auto;padding:10px 0 0;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+body{font-family:var(--font);background:var(--bg-app);color:var(--txt);min-height:100vh;-webkit-font-smoothing:antialiased;padding-bottom:calc(64px + env(safe-area-inset-bottom));overflow-x:hidden;font-variant-numeric:tabular-nums;-webkit-tap-highlight-color:transparent}
+/* ===== 背景エフェクト ===== */
+.fx-bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.orb{position:absolute;border-radius:50%;will-change:transform}
+@media(max-width:720px){.orb-3{display:none}}
+.orb-1{width:560px;height:560px;left:-180px;top:-200px;background:radial-gradient(circle,rgba(20,184,125,.17),transparent 64%);animation:drift1 26s ease-in-out infinite alternate}
+.orb-2{width:660px;height:660px;right:-240px;top:110px;background:radial-gradient(circle,rgba(95,168,255,.11),transparent 64%);animation:drift2 34s ease-in-out infinite alternate}
+.orb-3{width:500px;height:500px;left:28%;bottom:-260px;background:radial-gradient(circle,rgba(199,164,255,.09),transparent 64%);animation:drift1 40s ease-in-out infinite alternate-reverse}
+@keyframes drift1{from{transform:translate(0,0) scale(1)}to{transform:translate(60px,44px) scale(1.12)}}
+@keyframes drift2{from{transform:translate(0,0) scale(1)}to{transform:translate(-72px,52px) scale(1.08)}}
+.wrap{max-width:1080px;margin:0 auto;padding:0 18px;position:relative;z-index:1}
+/* ===== ヘッダー ===== */
+.topbar{position:sticky;top:0;z-index:50;background:rgba(5,10,18,.72);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}
+.topbar-inner{max-width:1080px;margin:0 auto;padding:12px 18px;padding-top:calc(12px + env(safe-area-inset-top));display:flex;align-items:center;gap:11px}
+.brand-logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#35E89C,#1FA2FF);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 18px var(--accent-glow);flex-shrink:0}
+.brand-txt h1{font-size:14.5px;font-weight:800;letter-spacing:.01em;line-height:1.25}
+.brand-txt p{font-size:10px;color:var(--txt-2);font-weight:700;letter-spacing:.09em}
+.view-badge{margin-left:auto;font-size:10px;font-weight:800;color:var(--accent);background:rgba(61,240,164,.1);border:1px solid rgba(61,240,164,.32);padding:5px 11px;border-radius:99px;letter-spacing:.08em;white-space:nowrap}
+/* ===== タブ ===== */
+.tabs-bar{position:sticky;top:63px;z-index:40;background:linear-gradient(180deg,rgba(5,10,18,.94) 68%,rgba(5,10,18,0));padding:10px 0 14px}
+.tabs{max-width:1080px;margin:0 auto;padding:0 44px 0 18px;display:flex;gap:7px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent)}
 .tabs::-webkit-scrollbar{display:none}
-.tab{flex-shrink:0;padding:9px 15px;border-radius:99px;font-size:13px;font-weight:600;color:var(--txt-2);cursor:pointer;white-space:nowrap;transition:all .15s;border:1px solid transparent}
-.tab:hover{color:var(--txt)}
-.tab.ac{background:var(--accent);color:#0A1019;font-weight:700}
-/* セクション */
-.sec{margin:22px 0}
-.sec-h{display:flex;align-items:center;gap:9px;margin-bottom:14px}
-.sec-h .ic{width:26px;height:26px;color:var(--accent)}
-.sec-h h2{font-size:17px;font-weight:700;letter-spacing:.01em}
-.sec-h .sub{font-size:12px;color:var(--txt-2);margin-left:auto}
-/* カード */
-.card{background:var(--bg-panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
-.card+.card{margin-top:10px}
+.tab{flex-shrink:0;padding:11px 17px;border-radius:99px;font-size:12.5px;font-weight:700;color:var(--txt-2);cursor:pointer;white-space:nowrap;transition:all .22s;border:1px solid var(--line);background:rgba(255,255,255,.03)}
+@media(hover:hover){.tab:hover{color:var(--txt);border-color:var(--line-2);transform:translateY(-1px)}}
+.tab.ac{background:linear-gradient(135deg,#35E89C,#1FA2FF);color:#04140C;border-color:transparent;box-shadow:0 5px 20px var(--accent-glow)}
+/* ===== ヒーロー ===== */
+.hero{padding:22px 0 2px}
+.hero-date{font-size:10.5px;font-weight:800;letter-spacing:.2em;color:var(--txt-3)}
+.hero-title{font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:5px;line-height:1.3}
+.hero-title em{font-style:normal;background:linear-gradient(90deg,var(--accent),#6EC3FF);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero-sub{font-size:12.5px;color:var(--txt-2);margin-top:6px;line-height:1.6}
+/* ===== セクション ===== */
+.sec{margin:30px 0}
+.sec-h{margin-bottom:14px}
+.sec-eyebrow{font-size:9.5px;font-weight:800;letter-spacing:.24em;color:var(--accent);margin-bottom:5px}
+.sec-h h2{font-size:18.5px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:baseline;gap:9px}
+.sec-h .sub{font-size:11.5px;color:var(--txt-3);font-weight:600}
+/* ===== カード ===== */
+.card{background:linear-gradient(165deg,rgba(255,255,255,.055),rgba(255,255,255,.018));border:1px solid var(--line);border-radius:var(--radius);padding:18px;position:relative}
+.card+.card{margin-top:12px}
+.card-hv{transition:transform .25s,border-color .25s,box-shadow .25s;cursor:pointer}
+.card-hv:active{transform:scale(.985);transition-duration:.08s}
+@media(hover:hover){.card-hv:hover{transform:translateY(-3px);border-color:var(--line-2);box-shadow:var(--shadow)}}
 .grid{display:grid;gap:12px}
 .g2{grid-template-columns:repeat(2,1fr)}
 .g3{grid-template-columns:repeat(3,1fr)}
 .g4{grid-template-columns:repeat(4,1fr)}
 @media(max-width:720px){.g3,.g4{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:460px){.g2{grid-template-columns:1fr}}
-/* KPIタイル */
-.kpi{background:linear-gradient(150deg,var(--bg-panel-2),var(--bg-panel));border:1px solid var(--line);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden}
-.kpi-v{font-size:32px;font-weight:800;line-height:1;letter-spacing:-.02em}
-.kpi-l{font-size:11px;color:var(--txt-2);margin-top:6px;font-weight:500}
-.kpi-ic{position:absolute;right:12px;top:12px;width:22px;height:22px;opacity:.5}
-/* バッジ */
-.bd{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:3px 9px;border-radius:99px}
+/* ===== KPI ===== */
+.kpi{background:linear-gradient(165deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid var(--line);border-radius:var(--radius);padding:17px 16px 15px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;left:16px;top:0;width:34px;height:3px;border-radius:0 0 4px 4px;background:var(--kc,var(--accent))}
+.kpi-v{font-size:33px;font-weight:800;line-height:1.05;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--kc,var(--txt))}
+.kpi-v .unit{font-size:13px;font-weight:700;color:var(--txt-3);letter-spacing:0;margin-left:2px}
+.kpi-l{font-size:11px;color:var(--txt-2);margin-top:7px;font-weight:600}
+/* ===== 考察カード ===== */
+.ins-list{display:flex;flex-direction:column;gap:10px}
+.ins{display:block;padding:15px 16px 14px;border-radius:16px;border:1px solid var(--line);background:linear-gradient(165deg,rgba(255,255,255,.05),rgba(255,255,255,.015));position:relative;overflow:hidden}
+.ins::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--ic-c)}
+.ins-main{display:flex;gap:13px;align-items:flex-start}
+.ins-tap{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .15s}
+.ins-tap:active{transform:scale(.985)}
+.ins-chev{margin-left:2px;flex-shrink:0;width:24px;height:24px;border-radius:8px;background:var(--bg-elev);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--txt-2);transition:transform .3s}
+.ins.open .ins-chev{transform:rotate(180deg)}
+.ins-hint{font-size:9.5px;color:var(--txt-3);font-weight:700;margin-top:7px;letter-spacing:.05em}
+.ins.open .ins-hint{display:none}
+.ins-detail{display:none;margin-top:11px;padding-top:4px;border-top:1px solid var(--line)}
+.ins.open .ins-detail{display:block;animation:insIn .35s cubic-bezier(.22,.65,.25,1)}
+@keyframes insIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.ins-ic{width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;background:var(--ic-bg);color:var(--ic-c)}
+.ins-t{font-size:13.5px;font-weight:700;margin-bottom:3px;line-height:1.45}
+.ins-d{font-size:12px;color:var(--txt-2);line-height:1.7}
+.ins-d b{color:var(--txt)}
+/* ===== 稼働率リング ===== */
+.ring-wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.ring-box{position:relative;width:134px;height:134px;flex-shrink:0}
+.ring-box svg{transform:rotate(-90deg);display:block}
+.ring-bgc{fill:none;stroke:rgba(255,255,255,.07);stroke-width:11}
+.ring-f{fill:none;stroke:url(#ringGrad);stroke-width:11;stroke-linecap:round;transition:stroke-dashoffset 1.4s cubic-bezier(.25,.65,.2,1) .25s}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-v{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.ring-v .unit{font-size:12px;color:var(--txt-3);font-weight:700}
+.ring-l{font-size:10px;color:var(--txt-2);font-weight:800;letter-spacing:.16em;margin-top:4px}
+.ring-legend{flex:1;min-width:170px;display:flex;flex-direction:column;gap:9px}
+.rl-row{display:flex;align-items:center;gap:9px;font-size:12.5px}
+.rl-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+.rl-n{margin-left:auto;font-weight:800;font-size:15px;font-variant-numeric:tabular-nums}
+/* ===== バッジ・チップ ===== */
+.bd{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;padding:3.5px 9px;border-radius:99px;letter-spacing:.02em;white-space:nowrap}
 .bd-g{background:var(--green-bg);color:var(--green)}.bd-b{background:var(--blue-bg);color:var(--blue)}
 .bd-a{background:var(--amber-bg);color:var(--amber)}.bd-r{background:var(--red-bg);color:var(--red)}
 .bd-p{background:var(--purple-bg);color:var(--purple)}.bd-n{background:var(--bg-elev);color:var(--txt-2)}
-/* アバター */
-.ava{border-radius:50%;background:var(--bg-elev);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);background-size:cover;background-position:center;flex-shrink:0}
-/* リスト行 */
+.chip{display:inline-block;font-size:11px;padding:3.5px 10px;border-radius:9px;background:var(--bg-elev);color:var(--txt-2);font-weight:600;margin:2px}
+.ava{border-radius:50%;background:var(--bg-elev);border:1px solid var(--line-2);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--accent);background-size:cover;background-position:center;flex-shrink:0}
+/* ===== 行 ===== */
 .row{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)}
 .row:last-child{border-bottom:none}
-.row-click{cursor:pointer;transition:background .12s;border-radius:8px;margin:0 -8px;padding-left:8px;padding-right:8px}
-.row-click:hover{background:var(--bg-panel-2)}
-/* プログレスバー */
-.pbar{height:7px;background:var(--bg-elev);border-radius:99px;overflow:hidden}
-.pbar-f{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent-2),var(--accent));transition:width .5s}
-/* 復帰タイムライン */
-.tl-track{position:relative;padding:6px 0}
-.no{text-align:center;color:var(--txt-3);font-size:13px;padding:24px}
+.row-click{cursor:pointer;transition:background .15s;border-radius:10px;margin:0 -9px;padding-left:9px;padding-right:9px}
+.row-click:active{background:rgba(255,255,255,.06)}
+@media(hover:hover){.row-click:hover{background:rgba(255,255,255,.045)}}
+/* ===== プログレスバー ===== */
+.pbar{height:7px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden}
+.pbar-f{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent-2),var(--accent));width:0;transition:width 1.1s cubic-bezier(.25,.65,.2,1) .2s;box-shadow:0 0 10px var(--accent-glow)}
+/* ===== 表彰台 ===== */
+.podium{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:end}
+.pod{text-align:center;border:1px solid var(--line);border-radius:var(--radius);padding:16px 8px 14px;background:linear-gradient(175deg,rgba(255,255,255,.06),rgba(255,255,255,.015));cursor:pointer;transition:transform .25s,box-shadow .25s}
+.pod:active{transform:scale(.985);transition-duration:.08s}
+@media(hover:hover){.pod:hover{transform:translateY(-3px);box-shadow:var(--shadow)}}
+.pod-1{padding-top:24px;padding-bottom:20px;border-color:rgba(255,192,105,.4);background:linear-gradient(175deg,rgba(255,192,105,.12),rgba(255,255,255,.015));box-shadow:0 8px 30px rgba(255,192,105,.12)}
+.pod-medal{font-size:22px;margin-bottom:6px}
+.pod-name{font-size:12.5px;font-weight:700;margin-top:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pod-meta{font-size:10.5px;color:var(--txt-3);margin-top:2px}
+.pod-val{font-size:17px;font-weight:800;color:var(--accent);margin-top:5px;font-variant-numeric:tabular-nums}
+.pod-val .unit{font-size:10px;color:var(--txt-3);font-weight:600}
+/* ===== その他 ===== */
+.no{text-align:center;color:var(--txt-3);font-size:13px;padding:26px 16px;line-height:1.7}
 .muted{color:var(--txt-2)}
-/* ボタン的リンク */
-.lnk{color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;background:none;border:none;font-family:inherit}
+.lnk{color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;background:none;border:none;font-family:inherit;padding:0 16px 0 0;min-height:44px;display:inline-flex;align-items:center}
 canvas{max-width:100%}
-.chip{display:inline-block;font-size:11px;padding:3px 10px;border-radius:8px;background:var(--bg-elev);color:var(--txt-2);font-weight:600;margin:2px}
-select.sel{background:var(--bg-elev);color:var(--txt);border:1px solid var(--line-2);border-radius:8px;padding:6px 10px;font-size:12px;font-family:inherit}
-.loading{text-align:center;padding:60px 20px;color:var(--txt-2)}
-.spinner{width:34px;height:34px;border:3px solid var(--line-2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px}
+select.sel{background:var(--bg-elev);color:var(--txt);border:1px solid var(--line-2);border-radius:10px;padding:8px 12px;font-size:16px;font-family:inherit;max-width:100%}
+.loading{text-align:center;padding:80px 20px;color:var(--txt-2)}
+.spinner{width:36px;height:36px;border:3px solid var(--line-2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
 @keyframes spin{to{transform:rotate(360deg)}}
-@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* ===== スクロールリビール ===== */
+.rv{opacity:0;transform:translateY(14px);transition:opacity .5s cubic-bezier(.22,.65,.25,1),transform .5s cubic-bezier(.22,.65,.25,1);transition-delay:var(--d,0s)}
+.rv.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.rv{opacity:1;transform:none}}
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </head>
 <body>
+<div class="fx-bg"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
 <div class="topbar">
   <div class="topbar-inner">
-    <div class="brand">
-      <div class="brand-logo">🏉</div>
-      <div class="brand-txt"><h1>福岡大学ラグビー部</h1><p>コーチダッシュボード</p></div>
-    </div>
+    <div class="brand-logo">🏉</div>
+    <div class="brand-txt"><h1>福岡大学ラグビー部</h1><p>COACH DASHBOARD</p></div>
     <span class="view-badge">閲覧専用</span>
   </div>
 </div>
+<div class="tabs-bar"><div class="tabs" id="tabs"></div></div>
 <div class="wrap">
-  <div class="tabs" id="tabs"></div>
   <div id="main"><div class="loading"><div class="spinner"></div>データを読み込んでいます…</div></div>
 </div>
-
 <script>
 // ========== Firebase ==========
 firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
@@ -116,13 +179,18 @@ function dC(k){if(charts[k]){try{charts[k].destroy();}catch(e){}charts[k]=null;}
 function dCA(){Object.keys(charts).forEach(dC);}
 var _loaded={};
 var _allKeys=Object.keys(SK);
-// データ読み込み（全キーをリッスン）
+var _rawCache={};
+var _renderTimer=null;
+// データ読み込み（全キーをリッスン。中身が変わらない通知では再描画しない）
 function loadData(){
   _allKeys.forEach(function(k){
     db.collection('appdata').doc(k).onSnapshot(function(doc){
-      if(doc.exists){try{var p=JSON.parse(doc.data().data);if(Array.isArray(p))D[k]=p;}catch(e){}}
+      var raw=doc.exists?doc.data().data:'';
+      var changed=_rawCache[k]!==raw;
+      _rawCache[k]=raw;
+      if(changed&&raw){try{var p=JSON.parse(raw);if(Array.isArray(p))D[k]=p;}catch(e){}}
       _loaded[k]=true;
-      maybeRender();
+      if(changed||!_firstRender)maybeRender();
     },function(err){_loaded[k]=true;maybeRender();});
   });
 }
@@ -130,10 +198,16 @@ var _firstRender=false;
 function maybeRender(){
   // 主要キーが揃ったら描画（全部待たずに）
   var essential=['p','i','r','ph'];
-  if(essential.every(function(k){return _loaded[k];})){
-    if(!_firstRender){_firstRender=true;render();}
-    else render();
-  }
+  if(!essential.every(function(k){return _loaded[k];}))return;
+  if(!_firstRender){_firstRender=true;render();return;}
+  // 2回目以降＝リアルタイム更新: 300msまとめて・アニメなし・スクロール位置維持で静かに再描画
+  if(_renderTimer)clearTimeout(_renderTimer);
+  _renderTimer=setTimeout(function(){
+    _renderTimer=null;
+    var y=window.scrollY;
+    window._noAnim=true;render();window._noAnim=false;
+    window.scrollTo(0,y);
+  },300);
 }
 $M=function(){return document.getElementById('main');};
 </script>
@@ -176,7 +250,6 @@ function idEq(a,b){if(a==null||b==null)return false;return a===b||String(a)===St
 function toDateStr(d){var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
 function todayStr(){var d=new Date();var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-function avH(p,sz){var i=p.id%AVC.length,ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';return p.photo?'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background-image:url('+p.photo+')"></div>':'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background:'+AVC[i][0]+';color:'+AVC[i][1]+';font-size:'+Math.round(sz*.35)+'px">'+escapeHtml(ini)+'</div>';}
 function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
 function getBest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null;});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
 function getBestBIG3(pid){var sq=getBest(pid,'squat')||0;var bp=getBest(pid,'bench')||0;var dl=getBest(pid,'deadlift')||0;return(sq||bp||dl)?(sq+bp+dl):null;}
@@ -242,385 +315,496 @@ function getPlayer1RM(pid,estBase){
 </script>
 <script>
 // ========================================================
-// ① 怪我・リハビリビュー
+// スクロールリビール＋カウントアップ基盤
 // ========================================================
-function renderInjuryView(){
-  var active=D.i.filter(function(x){return!x.resolved;});
-  var today=todayStr();
-  // 復帰間近（7日以内）
-  var soon=active.filter(function(inj){
-    if(!inj.returnDate)return false;
-    var d=Math.ceil((new Date(inj.returnDate)-new Date(today))/86400000);
-    return d>=0&&d<=7;
+var _io=null;
+function runFx(el){
+  var i,noAn=!!window._noAnim;
+  var cvs=el.querySelectorAll('.cv[data-cnt]');
+  for(i=0;i<cvs.length;i++)countUp(cvs[i]);
+  var rings=el.querySelectorAll('.ring-f[data-off]');
+  for(i=0;i<rings.length;i++){if(noAn)rings[i].style.transition='none';rings[i].style.strokeDashoffset=rings[i].getAttribute('data-off');}
+  var bars=el.querySelectorAll('.pbar-f[data-w]');
+  for(i=0;i<bars.length;i++){if(noAn)bars[i].style.transition='none';bars[i].style.width=bars[i].getAttribute('data-w')+'%';}
+}
+function countUp(el){
+  if(el.getAttribute('data-done'))return;
+  el.setAttribute('data-done','1');
+  var raw=el.getAttribute('data-cnt');var target=parseFloat(raw);
+  if(isNaN(target)){return;}
+  var dec=(String(raw).split('.')[1]||'').length;
+  // サイレント再描画時・reduced-motion時は即確定（0からの再カウントを防ぐ）
+  if(window._noAnim||(window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches)){
+    el.textContent=dec?target.toFixed(dec):String(Math.round(target));return;
+  }
+  var dur=950,t0=null;
+  function step(ts){
+    if(!t0)t0=ts;
+    var p=Math.min((ts-t0)/dur,1);
+    var e=1-Math.pow(1-p,3);
+    var v=target*e;
+    el.textContent=dec?v.toFixed(dec):String(Math.round(v));
+    if(p<1)requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+function revealNow(el){el.classList.add('in');runFx(el);}
+function initReveal(instant){
+  if(_io){_io.disconnect();_io=null;}
+  var els=document.querySelectorAll('.rv'),i;
+  var noIO=!('IntersectionObserver' in window);
+  var reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  if(instant||noIO||reduced){for(i=0;i<els.length;i++)revealNow(els[i]);return;}
+  _io=new IntersectionObserver(function(ents){
+    for(var j=0;j<ents.length;j++){
+      if(ents[j].isIntersecting){revealNow(ents[j].target);_io.unobserve(ents[j].target);}
+    }
+  },{threshold:.05,rootMargin:'0px 0px 160px 0px'});
+  for(i=0;i<els.length;i++)_io.observe(els[i]);
+}
+function paint(h){
+  $M().innerHTML=h;
+  initReveal(!!window._noAnim);
+}
+// rv付きセクションラッパー（d=遅延段数）
+function rv(inner,d){return '<div class="rv"'+(d?' style="--d:'+(d*0.07).toFixed(2)+'s"':'')+'>'+inner+'</div>';}
+
+// ========================================================
+// 分析ヘルパー（考察エンジン用）
+// ========================================================
+function agoStr(n){return toDateStr(new Date(Date.now()-n*86400000));}
+function heroDateStr(){
+  var d=new Date();var w=['日','月','火','水','木','金','土'][d.getDay()];
+  return d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0')+' '+w+'曜日';
+}
+function pName(pid){var p=D.p.find(function(x){return idEq(x.id,pid);});return p?p.name:'?';}
+// チーム稼働状況: out=離脱(完全休養/リハビリのみ) lim=制限付き ok=フル
+function availability(){
+  var total=D.p.length;
+  var outP={},limP={};
+  D.i.filter(function(x){return !x.resolved;}).forEach(function(inj){
+    var lv=getChart(inj.id).rtpLevel||'rest';
+    if(lv==='rest'||lv==='rehab')outP[inj.pid]=1;
+    else if(lv!=='full')limP[inj.pid]=1;
   });
-  // 今週復帰予定
-  var h='';
-  // KPIタイル
-  h+='<div class="sec">';
-  h+='<div class="grid g4">';
-  h+=kpiTile(active.length,'現在の怪我人','#FF6B6B','M12 2L4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5z');
-  h+=kpiTile(soon.length,'7日以内に復帰予定','#FFB454','M12 2a10 10 0 100 20 10 10 0 000-20zm1 5h-2v6l5 3 1-1.6-4-2.4z');
-  var fullRehab=active.filter(function(inj){var ch=getChart(inj.id);return ch&&ch.rtpLevel&&ch.rtpLevel!=='rest'&&ch.rtpLevel!=='full';}).length;
-  h+=kpiTile(fullRehab,'リハビリ・部分参加中','#4D9FFF','M13 3v6h8l-9 12v-8H4z');
-  var recovered30=D.i.filter(function(x){return x.resolved&&x.resolvedDate&&Math.ceil((new Date(today)-new Date(x.resolvedDate))/86400000)<=30;}).length;
-  h+=kpiTile(recovered30,'過去30日で復帰','#3DDC97','M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z');
-  h+='</div></div>';
-
-  // 復帰タイムライン
-  var withReturn=active.filter(function(x){return x.returnDate;}).sort(function(a,b){return a.returnDate.localeCompare(b.returnDate);});
-  if(withReturn.length){
-    h+='<div class="sec"><div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 5h-2v6l5 3 1-1.6-4-2.4z"/></svg><h2>復帰予定タイムライン</h2><span class="sub">早い順</span></div>';
-    h+='<div class="card">';
-    withReturn.forEach(function(inj){
-      var p=D.p.find(function(x){return idEq(x.id,inj.pid);});if(!p)return;
-      var days=Math.ceil((new Date(inj.returnDate)-new Date(today))/86400000);
-      var dayLabel,dayColor;
-      if(days<0){dayLabel=(-days)+'日超過';dayColor='var(--red)';}
-      else if(days===0){dayLabel='本日';dayColor='var(--amber)';}
-      else if(days<=7){dayLabel='あと'+days+'日';dayColor='var(--amber)';}
-      else{dayLabel='あと'+days+'日';dayColor='var(--txt-2)';}
-      h+='<div class="row row-click" onclick="openPlayer('+p.id+')">'+ava(p,34)+
-        '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px">'+escapeHtml(p.name)+'</div>'+
-        '<div style="font-size:11px;color:var(--txt-2)">'+(inj.side||'')+inj.part+' '+inj.type+'</div></div>'+
-        '<div style="text-align:right"><div style="font-size:13px;font-weight:700;color:'+dayColor+'">'+dayLabel+'</div>'+
-        '<div style="font-size:10px;color:var(--txt-3)">'+fmt(inj.returnDate)+'</div></div></div>';
-    });
-    h+='</div></div>';
-  }
-
-  // 怪我人一覧（詳細カード）
-  h+='<div class="sec"><div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5z"/></svg><h2>怪我人の状況</h2><span class="sub">'+active.length+'名</span></div>';
-  if(!active.length){
-    h+='<div class="card"><div class="no">現在、怪我で離脱している選手はいません 🎉</div></div>';
-  }else{
-    active.sort(function(a,b){
-      // 練習参加レベルが低い（重い）順
-      var ra=rtpOrder(getChart(a.id).rtpLevel),rb=rtpOrder(getChart(b.id).rtpLevel);
-      return ra-rb;
-    });
-    active.forEach(function(inj){
-      var p=D.p.find(function(x){return idEq(x.id,inj.pid);});if(!p)return;
-      var ch=getChart(inj.id);
-      var rh=D.r.find(function(x){return idEq(x.injId,inj.id);});
-      // 練習参加レベル
-      var rtp=ch.rtpLevel?RTP_LEVELS.find(function(x){return x.k===ch.rtpLevel;}):null;
-      // リハビリ進捗（stage / STG.length）
-      var stage=rh?(rh.stage||0):0;
-      var progPct=Math.round((stage/(STG.length-1))*100);
-      var daysSince=Math.floor((new Date(today)-new Date(inj.date))/86400000);
-      h+='<div class="card" style="cursor:pointer" onclick="openPlayer('+p.id+')">';
-      h+='<div style="display:flex;align-items:center;gap:11px;margin-bottom:12px">'+ava(p,40)+
-        '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15px">'+escapeHtml(p.name)+'</div>'+
-        '<div style="font-size:11px;color:var(--txt-2)">'+(p.position||'-')+'・'+(p.year||'-')+'年 ・ 受傷から'+daysSince+'日</div></div>';
-      if(rtp)h+='<span class="bd" style="background:'+hexA(rtp.color,.16)+';color:'+rtp.color+'">'+rtp.label+'</span>';
-      h+='</div>';
-      // 怪我内容
-      h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+
-        '<span class="chip">'+(inj.side||'')+inj.part+'</span><span class="chip">'+inj.type+'</span>'+
-        (inj.returnDate?'<span class="chip" style="color:var(--amber)">復帰予定 '+fmt(inj.returnDate)+'</span>':'')+'</div>';
-      // リハビリ進捗バー
-      h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><span style="font-size:11px;color:var(--txt-2)">リハビリ進捗</span><span style="font-size:11px;font-weight:600;color:var(--accent)">'+STG[stage]+'</span></div>';
-      h+='<div class="pbar"><div class="pbar-f" style="width:'+progPct+'%"></div></div>';
-      h+='</div>';
-    });
-  }
-  h+='</div>';
-  $M().innerHTML=h;
+  Object.keys(outP).forEach(function(k){delete limP[k];});
+  var out=Object.keys(outP).length,lim=Object.keys(limP).length;
+  return {total:total,out:out,lim:lim,ok:Math.max(total-out-lim,0)};
 }
-function rtpOrder(k){var i=RTP_LEVELS.findIndex(function(x){return x.k===k;});return i<0?99:i;}
-function kpiTile(val,label,color,iconPath){
-  return '<div class="kpi"><svg class="kpi-ic" viewBox="0 0 24 24" fill="'+color+'"><path d="'+iconPath+'"/></svg>'+
-    '<div class="kpi-v" style="color:'+color+'">'+val+'</div><div class="kpi-l">'+label+'</div></div>';
-}
-function ava(p,sz){
-  var ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';
-  var style='width:'+sz+'px;height:'+sz+'px;font-size:'+Math.round(sz*.36)+'px;';
-  if(p.photo)return '<div class="ava" style="'+style+'background-image:url('+p.photo+')"></div>';
-  return '<div class="ava" style="'+style+'">'+escapeHtml(ini)+'</div>';
-}
-function hexA(hex,a){
-  var h=hex.replace('#','');if(h.length===3)h=h.split('').map(function(c){return c+c;}).join('');
-  var r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
-  return 'rgba('+r+','+g+','+b+','+a+')';
-}
-function openPlayer(pid){window._trEx=null;window._trMetric='top';_detailPid=pid;render();window.scrollTo(0,0);}
-
-// ========================================================
-// ② フィジカルビュー
-// ========================================================
-function getLatestPhys(pid){
-  return D.ph.filter(function(x){return idEq(x.pid,pid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');})[0];
-}
-function renderPhysicalView(){
-  var h='';
-  // BIG3ランキング（合計ベスト）
-  var ranked=D.p.map(function(p){return{p:p,big3:getBestBIG3(p.id)||0};}).filter(function(x){return x.big3>0;}).sort(function(a,b){return b.big3-a.big3;});
-  // KPI: チーム平均
-  if(ranked.length){
-    var avgBig3=Math.round(ranked.reduce(function(s,x){return s+x.big3;},0)/ranked.length);
-    var maxBig3=ranked[0].big3;
-    h+='<div class="sec"><div class="grid g3">';
-    h+=kpiTile(ranked.length,'記録のある選手','#4D9FFF','M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z');
-    h+=kpiTile(avgBig3+'kg','BIG3平均','#3DDC97','M3.5 18.5l6-6 4 4L22 6.9z');
-    h+=kpiTile(maxBig3+'kg','BIG3最高','#FFB454','M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z');
-    h+='</div></div>';
-  }
-  // ポジション別平均（FW/BK）
-  var FW=['PR','HO','LO','FL','No.8'],BK=['SH','SO','CTB','WTB','FB'];
-  function groupAvg(positions,field){
-    var vals=D.p.filter(function(p){return positions.indexOf(p.position)>=0;}).map(function(p){return getBest(p.id,field);}).filter(function(v){return v!=null;});
-    if(!vals.length)return null;
-    return Math.round(vals.reduce(function(s,v){return s+v;},0)/vals.length);
-  }
-  h+='<div class="sec"><div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 18.5l6-6 4 4L22 6.9l-1.4-1.4-7.1 7.9-4-4L2 17z"/></svg><h2>ポジション別 平均（FW / BK）</h2></div>';
-  h+='<div class="card"><div style="position:relative;height:240px"><canvas id="pos-chart"></canvas></div></div></div>';
-
-  // BIG3ランキング（表彰台＋リスト）
-  h+='<div class="sec"><div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg><h2>BIG3 ランキング</h2><span class="sub">合計ベスト</span></div>';
-  if(!ranked.length){h+='<div class="card"><div class="no">記録がありません</div></div>';}
-  else{
-    h+='<div class="card">';
-    ranked.slice(0,15).forEach(function(r,i){
-      var medal=i<3?['🥇','🥈','🥉'][i]:(i+1);
-      var pct=Math.round(r.big3/ranked[0].big3*100);
-      h+='<div class="row row-click" onclick="openPlayer('+r.p.id+')" style="position:relative">'+
-        '<div style="width:26px;font-weight:700;font-size:14px;color:'+(i<3?'var(--amber)':'var(--txt-2)')+';text-align:center">'+medal+'</div>'+
-        ava(r.p,30)+
-        '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">'+escapeHtml(r.p.name)+'</div>'+
-        '<div style="font-size:10px;color:var(--txt-2)">'+(r.p.position||'-')+'・'+(r.p.year||'-')+'年</div></div>'+
-        '<div style="font-weight:800;font-size:15px;color:var(--accent)">'+r.big3+'<span style="font-size:10px;color:var(--txt-2);font-weight:400"> kg</span></div></div>';
-    });
-    h+='</div></div>';
-  }
-  $M().innerHTML=h;
-  // ポジション別チャート
-  setTimeout(function(){
-    var e=document.getElementById('pos-chart');if(!e)return;
-    var fields=[{k:'squat',l:'SQ'},{k:'bench',l:'BP'},{k:'deadlift',l:'DL'}];
-    var fwData=fields.map(function(f){return groupAvg(FW,f.k)||0;});
-    var bkData=fields.map(function(f){return groupAvg(BK,f.k)||0;});
-    dC('pos');
-    charts.pos=new Chart(e,{type:'bar',data:{labels:fields.map(function(f){return f.l;}),datasets:[
-      {label:'FW',data:fwData,backgroundColor:'#4D9FFF',borderRadius:6},
-      {label:'BK',data:bkData,backgroundColor:'#3DDC97',borderRadius:6}
-    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#93A4BC',usePointStyle:true,pointStyle:'circle',padding:14}},tooltip:{backgroundColor:'rgba(10,16,25,.95)',padding:12,cornerRadius:10,callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y+' kg';}}}},scales:{y:{grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#93A4BC'}},x:{grid:{display:false},ticks:{color:'#93A4BC',font:{size:13,weight:'600'}}}}}});
-  },60);
-}
-// ========================================================
-// ③ 出欠・トレーニングビュー
-// ========================================================
-function renderTrainingView(){
-  var today=todayStr();
-  var h='';
-  var logs=D.tlog.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
-  // 直近14日の実施率
-  var cutoff=toDateStr(new Date(new Date(today).getTime()-14*86400000));
-  var recent=logs.filter(function(l){return l.date>=cutoff;});
-  var doneCount=recent.filter(function(l){return!l.absent;}).length;
-  var absentCount=recent.filter(function(l){return l.absent;}).length;
-  var injuryAbsent=recent.filter(function(l){return l.absent&&l.absentReason==='痛み・怪我';}).length;
-  h+='<div class="sec"><div class="grid g3">';
-  h+=kpiTile(doneCount,'実施記録（14日）','#3DDC97','M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43z');
-  h+=kpiTile(absentCount,'欠席（14日）','#FFB454','M19 13H5v-2h14z');
-  h+=kpiTile(injuryAbsent,'怪我による欠席','#FF6B6B','M12 2L4 5v6c0 5 3.4 9.7 8 11z');
-  h+='</div></div>';
-
-  // 怪我でできなかった種目の通知
-  var injNotices=[];
-  recent.forEach(function(lg){
-    if(lg.absent&&lg.absentReason==='痛み・怪我'){var pa=D.p.find(function(x){return idEq(x.id,lg.pid);});if(pa)injNotices.push({name:pa.name,pid:lg.pid,ex:'全体欠席',date:lg.date});return;}
-    (lg.results||[]).forEach(function(r){if(r.skipped&&r.skipReason==='痛み・怪我'){var p=D.p.find(function(x){return idEq(x.id,lg.pid);});if(p)injNotices.push({name:p.name,pid:lg.pid,ex:r.exName,date:lg.date});}});
+// 同一部位の過去の怪我（再発検出）
+function samePartBefore(inj){
+  return D.i.filter(function(x){
+    return idEq(x.pid,inj.pid)&&!idEq(x.id,inj.id)&&x.part===inj.part&&(x.date||'')<(inj.date||'');
   });
-  if(injNotices.length){
-    h+='<div class="sec"><div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="#FF6B6B"><path d="M12 2L4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5z"/></svg><h2>痛み・怪我でできなかった</h2></div><div class="card" style="border-left:3px solid var(--red)">';
-    injNotices.slice(0,12).forEach(function(n){
-      h+='<div class="row row-click" onclick="openPlayer('+n.pid+')"><span style="flex:1;font-size:13px;font-weight:600">'+escapeHtml(n.name)+'</span><span style="font-size:12px;color:var(--txt-2)">'+escapeHtml(n.ex)+'</span><span style="font-size:10px;color:var(--txt-3);margin-left:8px">'+fmt(n.date)+'</span></div>';
-    });
-    h+='</div></div>';
-  }
-
-  // 実施記録一覧
-  h+='<div class="sec"><div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17z"/></svg><h2>トレーニング記録</h2></div>';
-  if(!logs.length){h+='<div class="card"><div class="no">まだ記録がありません</div></div>';}
-  else{
-    h+='<div class="card">';
-    logs.slice(0,25).forEach(function(lg){
-      var p=D.p.find(function(x){return idEq(x.id,lg.pid);});if(!p)return;
-      if(lg.absent){
-        var rc=lg.absentReason==='痛み・怪我'?'bd-r':'bd-n';
-        h+='<div class="row row-click" onclick="openPlayer('+lg.pid+')">'+ava(p,30)+'<div style="flex:1"><div style="font-weight:600;font-size:13px">'+escapeHtml(p.name)+' <span class="bd '+rc+'">欠席</span></div><div style="font-size:10px;color:var(--txt-2)">'+fmt(lg.date)+' ・ '+escapeHtml(lg.absentReason||'')+'</div></div></div>';
-      }else{
-        h+='<div class="row row-click" onclick="openPlayer('+lg.pid+')">'+ava(p,30)+'<div style="flex:1"><div style="font-weight:600;font-size:13px">'+escapeHtml(p.name)+'</div><div style="font-size:10px;color:var(--txt-2)">'+fmt(lg.date)+' ・ '+(lg.results?lg.results.length:0)+'種目</div></div><div style="font-weight:700;color:var(--accent);font-size:14px">'+(lg.totalVolume||0).toLocaleString()+'<span style="font-size:10px;color:var(--txt-2)"> kg</span></div></div>';
-      }
-    });
-    h+='</div></div>';
-  }
-  $M().innerHTML=h;
 }
-// ========================================================
-// ④ コンディションビュー
-// ========================================================
-function renderConditionView(){
-  var today=todayStr();
-  var h='';
-  // 直近のコンディション記録から、疲労が高い・睡眠が短い選手を抽出
-  var recent7=toDateStr(new Date(new Date(today).getTime()-7*86400000));
-  var alerts=[];
+// 選手ごとの最新測定と前回測定のBIG3差
+function physDeltas(){
+  var res=[];
   D.p.forEach(function(p){
-    var recs=D.f.filter(function(x){return idEq(x.pid,p.id)&&x.date>=recent7;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
-    if(!recs.length)return;
-    var latest=recs[0];
-    var avgRpe=recs.reduce(function(s,x){return s+(x.rpe||0);},0)/recs.length;
-    var flag=null;
-    if(latest.sleep!=null&&latest.sleep>0&&latest.sleep<6)flag='睡眠不足';
-    if(avgRpe>=8)flag='疲労蓄積';
-    if(flag)alerts.push({p:p,flag:flag,sleep:latest.sleep,avgRpe:avgRpe.toFixed(1)});
+    var recs=D.ph.filter(function(x){return idEq(x.pid,p.id);}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+    if(recs.length<2)return;
+    var last=recs[recs.length-1],prev=recs[recs.length-2];
+    var lb=big3(last),pb=big3(prev);
+    if(lb>0&&pb>0)res.push({p:p,delta:lb-pb,last:lb,date:last.date});
   });
-  h+='<div class="sec"><div class="grid g3">';
-  var inputToday=D.f.filter(function(x){return x.date===today;}).length;
-  h+=kpiTile(inputToday,'本日のコンディション入力','#4D9FFF','M9 11H7v2h2zm4 0h-2v2h2z');
-  h+=kpiTile(alerts.length,'要注意（疲労・睡眠）','#FFB454','M1 21h22L12 2z');
-  var avgSleep7=avgSleepCalc(recent7);
-  h+=kpiTile(avgSleep7?avgSleep7+'h':'-','平均睡眠（7日）','#B388FF','M12 3a9 9 0 109 9c0-.46-.04-.92-.1-1.36A5.4 5.4 0 0112 3z');
-  h+='</div></div>';
-
-  // 要注意選手
-  h+='<div class="sec"><div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="#FFB454"><path d="M1 21h22L12 2z"/></svg><h2>コンディション要注意</h2></div>';
-  if(!alerts.length){h+='<div class="card"><div class="no">特に注意が必要な選手はいません</div></div>';}
-  else{
-    h+='<div class="card">';
-    alerts.forEach(function(a){
-      h+='<div class="row row-click" onclick="openPlayer('+a.p.id+')">'+ava(a.p,32)+'<div style="flex:1"><div style="font-weight:600;font-size:13px">'+escapeHtml(a.p.name)+'</div><div style="font-size:10px;color:var(--txt-2)">'+(a.sleep!=null?'睡眠'+a.sleep+'h ・ ':'')+'平均RPE'+a.avgRpe+'</div></div><span class="bd bd-a">'+a.flag+'</span></div>';
-    });
-    h+='</div></div>';
+  return res;
+}
+// 期間内の日別チーム平均（コンディション）
+function condDaily(days){
+  var out=[];
+  for(var n=days-1;n>=0;n--){
+    var ds=agoStr(n);
+    var recs=D.f.filter(function(x){return x.date===ds;});
+    var rpes=recs.filter(function(x){return x.rpe!=null;}).map(function(x){return x.rpe;});
+    var sleeps=recs.filter(function(x){return x.sleep!=null&&x.sleep>0;}).map(function(x){return x.sleep;});
+    out.push({date:ds,
+      rpe:rpes.length?rpes.reduce(function(s,v){return s+v;},0)/rpes.length:null,
+      sleep:sleeps.length?sleeps.reduce(function(s,v){return s+v;},0)/sleeps.length:null,
+      n:recs.length});
   }
-  $M().innerHTML=h;
+  return out;
 }
-function avgSleepCalc(since){
-  var vals=D.f.filter(function(x){return x.date>=since&&x.sleep!=null&&x.sleep>0;}).map(function(x){return x.sleep;});
-  if(!vals.length)return null;
-  return (vals.reduce(function(s,v){return s+v;},0)/vals.length).toFixed(1);
-}
-// ========================================================
-// ⑤ 選手一覧
-// ========================================================
-function renderPlayersView(){
-  var h='<div class="sec"><div class="sec-h"><svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3z"/></svg><h2>選手一覧</h2><span class="sub">'+D.p.length+'名</span></div>';
-  h+='<div style="margin-bottom:12px"><select class="sel" id="pos-filter" onchange="render()"><option value="">全ポジション</option>'+POS.map(function(p){return'<option>'+p+'</option>';}).join('')+'</select></div>';
-  var filter=(document.getElementById('pos-filter')||{}).value||'';
-  var players=D.p.filter(function(p){return!filter||p.position===filter;}).sort(function(a,b){return (a.position||'').localeCompare(b.position||'')||(b.id-a.id);});
-  h+='<div class="grid g2">';
-  players.forEach(function(p){
-    var inj=D.i.find(function(x){return idEq(x.pid,p.id)&&!x.resolved;});
-    var big3=getBestBIG3(p.id);
-    h+='<div class="card" style="cursor:pointer" onclick="openPlayer('+p.id+')"><div style="display:flex;align-items:center;gap:10px">'+ava(p,38)+
-      '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">'+escapeHtml(p.name)+'</div><div style="font-size:10px;color:var(--txt-2)">'+(p.position||'-')+'・'+(p.year||'-')+'年</div></div></div>'+
-      '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'+
-      (big3?'<span class="chip">BIG3 '+big3+'kg</span>':'')+
-      (inj?'<span class="bd bd-r">怪我中</span>':'<span class="bd bd-g">健康</span>')+
-      '</div></div>';
-  });
-  h+='</div></div>';
-  $M().innerHTML=h;
+function avgOf(arr){var v=arr.filter(function(x){return x!=null;});if(!v.length)return null;return v.reduce(function(s,x){return s+x;},0)/v.length;}
+// 期間のチーム総ボリューム
+function teamVolume(from,to){
+  return D.tlog.filter(function(l){return !l.absent&&l.date>=from&&l.date<=to;})
+    .reduce(function(s,l){return s+(l.totalVolume||0);},0);
 }
 
 // ========================================================
-// 個人レポート（選手1人の全データ）
+// 考察エンジン（ルールベース）
 // ========================================================
-function renderPlayerReport(pid){
+var _insOpen={};
+// 考察の安定キー（タイトルから数値・HTMLを除いてハッシュ化＝再描画後も開閉状態を維持）
+function insKey(t){
+  var s=String(t).replace(/<[^>]*>/g,'').replace(/[0-9０-９.,%．]/g,'');
+  var h=0;for(var i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))>>>0;}
+  return 'k'+h.toString(36);
+}
+function insCard(ins,i){
+  var C={good:['var(--green)','var(--green-bg)','✓'],info:['var(--blue)','var(--blue-bg)','i'],warn:['var(--amber)','var(--amber-bg)','!'],bad:['var(--red)','var(--red-bg)','!']};
+  var c=C[ins.lv]||C.info;
+  var hasD=!!ins.detail;
+  var key=insKey(ins.t);
+  var open=hasD&&_insOpen[key];
+  var h='<div class="ins rv'+(hasD?' ins-tap':'')+(open?' open':'')+'" style="--ic-c:'+c[0]+';--ic-bg:'+c[1]+';--d:'+(i*0.08).toFixed(2)+'s"'+(hasD?' id="ins-'+key+'" onclick="toggleIns(\''+key+'\')"':'')+'>';
+  h+='<div class="ins-main"><div class="ins-ic">'+c[2]+'</div>'+
+    '<div style="flex:1;min-width:0"><div class="ins-t">'+ins.t+'</div><div class="ins-d">'+ins.d+'</div>'+
+    (hasD?'<div class="ins-hint">タップで詳細を見る ▾</div>':'')+'</div>'+
+    (hasD?'<div class="ins-chev">▾</div>':'')+'</div>';
+  if(hasD)h+='<div class="ins-detail" onclick="event.stopPropagation()">'+ins.detail+'</div>';
+  return h+'</div>';
+}
+function toggleIns(key){
+  _insOpen[key]=!_insOpen[key];
+  var el=document.getElementById('ins-'+key);
+  if(el){if(_insOpen[key])el.classList.add('open');else el.classList.remove('open');}
+}
+// 考察詳細の選手行（タップで個人レポートへ）
+function insRowP(pid,sub,right){
   var p=D.p.find(function(x){return idEq(x.id,pid);});
-  if(!p){_detailPid=null;render();return;}
-  var today=todayStr();
-  var h='<div class="sec">';
-  // 戻るボタン
-  h+='<button class="lnk" style="margin-bottom:14px;font-size:13px" onclick="backFromReport()">‹ 戻る</button>';
-  // ヘッダー
-  h+='<div class="card" style="background:linear-gradient(150deg,var(--bg-elev),var(--bg-panel))"><div style="display:flex;align-items:center;gap:14px">'+ava(p,56)+
-    '<div style="flex:1"><div style="font-size:20px;font-weight:800">'+escapeHtml(p.name)+'</div>'+
-    '<div style="font-size:12px;color:var(--txt-2);margin-top:2px">'+(p.position||'-')+' ・ '+(p.year||'-')+'年'+(p.height?' ・ '+p.height+'cm':'')+(p.weight?' / '+p.weight+'kg':'')+'</div></div></div></div>';
-
-  // 現在の怪我
-  var activeInj=D.i.filter(function(x){return idEq(x.pid,pid)&&!x.resolved;});
-  if(activeInj.length){
-    h+='<div class="card" style="border-left:3px solid var(--red);margin-top:12px"><div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:10px">🏥 現在の怪我・リハビリ</div>';
-    activeInj.forEach(function(inj){
-      var ch=getChart(inj.id);var rh=D.r.find(function(x){return idEq(x.injId,inj.id);});
-      var rtp=ch.rtpLevel?RTP_LEVELS.find(function(x){return x.k===ch.rtpLevel;}):null;
-      var stage=rh?(rh.stage||0):0;var progPct=Math.round((stage/(STG.length-1))*100);
-      var days=inj.returnDate?Math.ceil((new Date(inj.returnDate)-new Date(today))/86400000):null;
-      h+='<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-weight:600;font-size:14px">'+(inj.side||'')+inj.part+' '+inj.type+'</span>'+(rtp?'<span class="bd" style="background:'+hexA(rtp.color,.16)+';color:'+rtp.color+'">'+rtp.label+'</span>':'')+'</div>';
-      h+='<div style="font-size:11px;color:var(--txt-2);margin-bottom:6px">受傷: '+fmt(inj.date)+(inj.returnDate?' ／ 復帰予定: '+fmt(inj.returnDate)+(days!=null?'（'+(days<0?(-days)+'日超過':days===0?'本日':'あと'+days+'日')+'）':''):'')+'</div>';
-      h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:10px;color:var(--txt-2)">リハビリ進捗</span><span style="font-size:10px;color:var(--accent);font-weight:600">'+STG[stage]+'</span></div><div class="pbar"><div class="pbar-f" style="width:'+progPct+'%"></div></div></div>';
-    });
-    h+='</div>';
-  }else{
-    h+='<div class="card" style="margin-top:12px"><div style="font-size:13px;color:var(--green);font-weight:600">✓ 現在、怪我はありません</div></div>';
-  }
-
-  // フィジカル
-  var latestPh=getLatestPhys(pid);
-  h+='<div class="card" style="margin-top:12px"><div style="font-size:13px;font-weight:700;margin-bottom:10px">💪 フィジカル</div>';
-  var sq=getBest(pid,'squat'),bp=getBest(pid,'bench'),dl=getBest(pid,'deadlift'),b3=getBestBIG3(pid);
-  h+='<div class="grid g4" style="gap:8px">';
-  h+=miniStat('SQ',sq);h+=miniStat('BP',bp);h+=miniStat('DL',dl);h+=miniStat('BIG3',b3,'var(--accent)');
-  h+='</div>';
-  // 推定1RM
-  var e1=getLatestE1RMReport(pid);
-  if(Object.keys(e1).length){
-    h+='<div style="margin-top:10px;font-size:11px;color:var(--txt-2)">推定1RM（参考）: '+Object.keys(e1).map(function(k){var l=(EST_BASES.find(function(b){return b.k===k;})||{}).label||k;return l+' '+e1[k]+'kg';}).join(' / ')+'</div>';
-  }
-  // BIG3推移グラフ
-  var phRecs=D.ph.filter(function(x){return idEq(x.pid,pid);}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
-  if(phRecs.length>=2){
-    h+='<div style="position:relative;height:180px;margin-top:14px"><canvas id="rep-phys-chart"></canvas></div>';
-  }
-  h+='</div>';
-
-  // トレーニング（種目推移＋セッション履歴）
-  h+=buildTrendCoach(pid);
-  h+=buildHistCoach(pid);
-
-  // コンディション（直近7日の平均）
-  var recent7=toDateStr(new Date(new Date(today).getTime()-7*86400000));
-  var condRecs=D.f.filter(function(x){return idEq(x.pid,pid)&&x.date>=recent7;});
-  if(condRecs.length){
-    var avgSleep=(condRecs.filter(function(x){return x.sleep;}).reduce(function(s,x){return s+x.sleep;},0)/condRecs.filter(function(x){return x.sleep;}).length)||0;
-    var avgRpe=(condRecs.reduce(function(s,x){return s+(x.rpe||0);},0)/condRecs.length)||0;
-    h+='<div class="card" style="margin-top:12px"><div style="font-size:13px;font-weight:700;margin-bottom:10px">📊 コンディション（7日平均）</div><div class="grid g2" style="gap:8px">';
-    h+=miniStat('平均睡眠',avgSleep?avgSleep.toFixed(1)+'h':'-');
-    h+=miniStat('平均RPE',avgRpe?avgRpe.toFixed(1):'-');
-    h+='</div></div>';
-  }
-
-  // 怪我歴
-  var pastInj=D.i.filter(function(x){return idEq(x.pid,pid)&&x.resolved;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
-  if(pastInj.length){
-    h+='<div class="card" style="margin-top:12px"><div style="font-size:13px;font-weight:700;margin-bottom:10px">📋 過去の怪我歴</div>';
-    pastInj.slice(0,8).forEach(function(inj){
-      h+='<div class="row"><div style="flex:1"><div style="font-size:12px;font-weight:600">'+(inj.side||'')+inj.part+' '+inj.type+'</div><div style="font-size:10px;color:var(--txt-2)">'+fmt(inj.date)+(inj.resolvedDate?' 〜 '+fmt(inj.resolvedDate):'')+'</div></div></div>';
-    });
-    h+='</div>';
-  }
-  h+='</div>';
-  $M().innerHTML=h;
-  // BIG3推移グラフ描画
-  if(phRecs.length>=2){
-    setTimeout(function(){
-      var e=document.getElementById('rep-phys-chart');if(!e)return;
-      var ctx=e.getContext('2d');
-      function grad(c1,c2){var g=ctx.createLinearGradient(0,0,0,180);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;}
-      function mk(label,key,color,ft){return{label:label,data:phRecs.map(function(r){return r[key]||null;}),borderColor:color,backgroundColor:grad(ft,'rgba(0,0,0,0)'),borderWidth:2.5,fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'#16243A',pointBorderColor:color,pointBorderWidth:2};}
-      dC('repphys');
-      charts.repphys=new Chart(e,{type:'line',data:{labels:phRecs.map(function(r){return r.date.slice(5);}),datasets:[
-        mk('SQ','squat','#4D9FFF','rgba(77,159,255,.2)'),
-        mk('BP','bench','#3DDC97','rgba(61,220,151,.2)'),
-        mk('DL','deadlift','#FFB454','rgba(255,180,84,.2)')
-      ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#93A4BC',usePointStyle:true,pointStyle:'circle',boxWidth:7,padding:12,font:{size:11}}},tooltip:{backgroundColor:'rgba(10,16,25,.95)',padding:10,cornerRadius:10,callbacks:{label:function(c){return c.dataset.label+': '+(c.parsed.y!=null?c.parsed.y+'kg':'-');}}}},scales:{y:{grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#93A4BC',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#93A4BC',font:{size:10}}}}}});
-    },60);
-  }
-  // トレーニング種目推移グラフ描画（常時表示＝display:none問題なし）
-  setTimeout(function(){drawTrChartC(pid,window._trEx,window._trMetric);},60);
+  if(!p)return '';
+  return '<div class="row row-click" onclick="openPlayer('+p.id+')">'+ava(p,30)+
+    '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+escapeHtml(p.name)+'</div>'+
+    (sub?'<div style="font-size:10.5px;color:var(--txt-2)">'+sub+'</div>':'')+'</div>'+
+    (right?'<div style="text-align:right">'+right+'</div>':'')+'</div>';
 }
+// 行数の多い詳細リストを制限
+function capRows(rows,limit){
+  if(rows.length<=limit)return rows.join('');
+  return rows.slice(0,limit).join('')+'<div style="font-size:11px;color:var(--txt-3);padding:8px 0 2px;text-align:center">ほか '+(rows.length-limit)+'名</div>';
+}
+function insightSec(list,sub){
+  if(!list.length)return '';
+  var h='<div class="sec"><div class="sec-h rv"><div class="sec-eyebrow">INSIGHT</div><h2>考察 <span class="sub">'+(sub||'このデータから読み取れること')+'</span></h2></div>';
+  h+='<div class="ins-list">'+list.map(insCard).join('')+'</div></div>';
+  return h;
+}
+// --- 怪我 ---
+function insInjury(){
+  var out=[],today=todayStr();
+  var active=D.i.filter(function(x){return !x.resolved;});
+  if(!active.length){
+    out.push({lv:'good',t:'現在、離脱者はゼロです',d:'全選手が怪我なく稼働できています。この状態を保つには、コンディション面（疲労・睡眠）の要注意サインの早期対応が有効です。'});
+    return out;
+  }
+  // 復帰予定超過
+  var overdue=active.filter(function(x){return x.returnDate&&x.returnDate<today;});
+  if(overdue.length){
+    var names=overdue.slice(0,3).map(function(x){return escapeHtml(pName(x.pid));}).join('・');
+    out.push({lv:'bad',t:'復帰予定日を過ぎている選手が'+overdue.length+'名います',
+      d:'<b>'+names+(overdue.length>3?' ほか':'')+'</b>。回復が予定より遅れているか、復帰予定の更新漏れです。トレーナー・スタッフと再評価のすり合わせを推奨します。',
+      detail:overdue.map(function(x){
+        var over=Math.ceil((new Date(today)-new Date(x.returnDate))/86400000);
+        return insRowP(x.pid,escapeHtml((x.side||'')+x.part+' '+(x.type||'')),'<span style="color:var(--red);font-weight:800;font-size:13px">'+over+'日超過</span><div style="font-size:10px;color:var(--txt-3)">予定 '+fmt(x.returnDate)+'</div>');
+      }).join('')});
+  }
+  // 再発
+  var recur=active.filter(function(x){return samePartBefore(x).length>0;});
+  if(recur.length){
+    var rn=recur.slice(0,3).map(function(x){return escapeHtml(pName(x.pid))+'（'+escapeHtml(x.part)+'）';}).join('・');
+    out.push({lv:'warn',t:'同じ部位の再受傷が'+recur.length+'件あります',
+      d:'<b>'+rn+(recur.length>3?' ほか':'')+'</b>。再発は離脱が長期化しやすい傾向があります。復帰基準の達成確認と、復帰後の段階的な負荷管理が特に重要です。',
+      detail:recur.map(function(x){
+        var prev=samePartBefore(x).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');})[0];
+        return insRowP(x.pid,escapeHtml((x.side||'')+x.part+' '+(x.type||'')),prev?'<div style="font-size:10px;color:var(--txt-3)">前回 '+fmt(prev.date)+'</div>':'');
+      }).join('')});
+  }
+  // 長期離脱
+  var resolved=D.i.filter(function(x){return x.resolved&&x.date&&x.resolvedDate;});
+  var avgDays=null;
+  if(resolved.length){
+    avgDays=Math.round(resolved.reduce(function(s,x){return s+Math.max(0,(new Date(x.resolvedDate)-new Date(x.date))/86400000);},0)/resolved.length);
+    var longActive=active.filter(function(x){return x.date&&(new Date(today)-new Date(x.date))/86400000>avgDays;});
+    if(longActive.length&&avgDays>0){
+      out.push({lv:'info',t:'チームの平均離脱期間は約'+avgDays+'日です',
+        d:'現在それを超えて離脱中なのは<b>'+longActive.length+'名</b>。重症度が高いか回復が停滞している可能性があり、経過の確認価値があります。',
+        detail:longActive.map(function(x){
+          var ds=Math.floor((new Date(today)-new Date(x.date))/86400000);
+          return insRowP(x.pid,escapeHtml((x.side||'')+x.part+' '+(x.type||'')),'<span style="color:var(--amber);font-weight:800;font-size:13px">'+ds+'日経過</span>');
+        }).join('')});
+    }else if(avgDays>0){
+      out.push({lv:'info',t:'チームの平均離脱期間は約'+avgDays+'日です',d:'現在離脱中の選手は全員この平均の範囲内で経過しています。'});
+    }
+  }
+  // 部位傾向（90日）
+  var recent=D.i.filter(function(x){return (x.date||'')>=agoStr(90);});
+  if(recent.length>=3){
+    var byPart={};recent.forEach(function(x){byPart[x.part]=(byPart[x.part]||0)+1;});
+    var top=Object.keys(byPart).sort(function(a,b){return byPart[b]-byPart[a];})[0];
+    if(byPart[top]>=2){
+      var partList=recent.filter(function(x){return x.part===top;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+      out.push({lv:'info',t:'直近90日で最も多いのは「'+escapeHtml(top)+'」の怪我です（'+byPart[top]+'件）',
+        d:'発生が特定部位に偏っている場合、練習内容・ウォームアップ・予防エクササイズを見直す材料になります。',
+        detail:capRows(partList.map(function(x){
+          return insRowP(x.pid,escapeHtml((x.side||'')+x.part+' '+(x.type||''))+(x.resolved?' <span style="color:var(--green)">復帰済</span>':''),'<div style="font-size:10px;color:var(--txt-3)">'+fmt(x.date)+'</div>');
+        }),12)});
+    }
+  }
+  // コンタクト可否
+  var noContact=active.filter(function(x){var lv=getChart(x.id).rtpLevel;return lv&&lv!=='full'&&lv!=='rest'&&lv!=='rehab';});
+  if(noContact.length){
+    out.push({lv:'info',t:'部分参加（制限付き）は'+noContact.length+'名です',
+      d:'コンタクト制限中の選手はチーム練習の設計時に考慮が必要です。各選手の詳細は下の一覧から確認できます。',
+      detail:noContact.map(function(x){
+        var lv=RTP_LEVELS.find(function(r){return r.k===getChart(x.id).rtpLevel;});
+        return insRowP(x.pid,escapeHtml((x.side||'')+x.part+' '+(x.type||'')),lv?'<span class="bd" style="background:'+hexA(rtpC(lv.k),.16)+';color:'+rtpC(lv.k)+'">'+lv.label+'</span>':'');
+      }).join('')});
+  }
+  return out;
+}
+// --- フィジカル ---
+function insPhysical(){
+  var out=[];
+  var deltas=physDeltas();
+  if(deltas.length){
+    var up=deltas.filter(function(d){return d.delta>0;}).sort(function(a,b){return b.delta-a.delta;});
+    var down=deltas.filter(function(d){return d.delta<-5;}).sort(function(a,b){return a.delta-b.delta;});
+    if(up.length){
+      var top=up[0];
+      out.push({lv:'good',t:'前回測定からBIG3が向上した選手は'+up.length+'名です',
+        d:'最大の伸びは<b>'+escapeHtml(top.p.name)+'（+'+top.delta+'kg）</b>。トレーニングの成果が数字に表れています。',
+        detail:capRows(up.map(function(d){
+          return insRowP(d.p.id,'BIG3 '+d.last+'kg（'+fmt(d.date)+'測定）','<span style="color:var(--green);font-weight:800;font-size:13px">+'+d.delta+'kg</span>');
+        }),15)});
+    }
+    if(down.length){
+      var nm=down.slice(0,3).map(function(d){return escapeHtml(d.p.name);}).join('・');
+      out.push({lv:'warn',t:'前回測定からBIG3が5kg以上低下した選手が'+down.length+'名います',
+        d:'<b>'+nm+(down.length>3?' ほか':'')+'</b>。怪我・疲労・測定条件の影響が考えられます。個人レポートでトレーニング推移と合わせて確認してください。',
+        detail:capRows(down.map(function(d){
+          return insRowP(d.p.id,'BIG3 '+d.last+'kg（'+fmt(d.date)+'測定）','<span style="color:var(--red);font-weight:800;font-size:13px">'+d.delta+'kg</span>');
+        }),15)});
+    }
+  }
+  // 測定の鮮度
+  var stale=D.p.filter(function(p){
+    var last=getLatestPhys(p.id);
+    return last&&last.date&&last.date<agoStr(90);
+  });
+  var never=D.p.filter(function(p){return !getLatestPhys(p.id);});
+  if(stale.length){
+    stale.sort(function(a,b){return ((getLatestPhys(a.id)||{}).date||'').localeCompare((getLatestPhys(b.id)||{}).date||'');});
+    out.push({lv:'warn',t:'90日以上測定していない選手が'+stale.length+'名います',
+      d:'数値が古いと推定重量やトレーニング強度の基準もズレていきます。次回測定日の設定を推奨します。',
+      detail:capRows(stale.map(function(p){
+        return insRowP(p.id,escapeHtml(p.position||'-')+'・'+escapeHtml(String(p.year||'-'))+'年','<div style="font-size:10px;color:var(--txt-3)">最終測定 '+fmt((getLatestPhys(p.id)||{}).date)+'</div>');
+      }),20)});
+  }
+  if(never.length&&never.length<D.p.length){
+    out.push({lv:'info',t:'まだ一度も測定記録がない選手が'+never.length+'名います',d:'全員のベースラインが揃うと、ポジション別比較や成長率の分析精度が上がります。',
+      detail:capRows(never.map(function(p){
+        return insRowP(p.id,escapeHtml(p.position||'-')+'・'+escapeHtml(String(p.year||'-'))+'年','');
+      }),20)});
+  }
+  // FW/BK
+  var FW=['PR','HO','LO','FL','No.8'],BK=['SH','SO','CTB','WTB','FB'];
+  function grpB3(pos){
+    var vals=D.p.filter(function(p){return pos.indexOf(p.position)>=0;}).map(function(p){return getBestBIG3(p.id);}).filter(function(v){return v;});
+    return vals.length?Math.round(vals.reduce(function(s,v){return s+v;},0)/vals.length):null;
+  }
+  var fw=grpB3(FW),bk=grpB3(BK);
+  if(fw&&bk){
+    out.push({lv:'info',t:'BIG3平均: FW '+fw+'kg / BK '+bk+'kg（差 '+Math.abs(fw-bk)+'kg）',
+      d:(fw>=bk?'FWが上回っています。':'BKが上回っています。')+'ポジション特性を考慮しつつ、下のグラフで種目別の内訳を確認できます。'});
+  }
+  return out;
+}
+// --- トレーニング ---
+function insTraining(){
+  var out=[],today=todayStr();
+  var logs=D.tlog||[];
+  if(!logs.length)return out;
+  // 週間ボリューム比較
+  var v1=teamVolume(agoStr(6),today);
+  var v2=teamVolume(agoStr(13),agoStr(7));
+  if(v2>0){
+    var pct=Math.round((v1-v2)/v2*100);
+    // 選手別の内訳（変化の大きい順）
+    var perP=D.p.map(function(p){
+      var a=D.tlog.filter(function(l){return idEq(l.pid,p.id)&&!l.absent&&l.date>=agoStr(6);}).reduce(function(s,l){return s+(l.totalVolume||0);},0);
+      var b=D.tlog.filter(function(l){return idEq(l.pid,p.id)&&!l.absent&&l.date>=agoStr(13)&&l.date<=agoStr(7);}).reduce(function(s,l){return s+(l.totalVolume||0);},0);
+      return{p:p,a:a,b:b,d:a-b};
+    }).filter(function(x){return x.a>0||x.b>0;}).sort(function(x,y){return Math.abs(y.d)-Math.abs(x.d);});
+    var volDetail=capRows(perP.map(function(x){
+      return insRowP(x.p.id,'今週 '+x.a.toLocaleString()+'kg / 先週 '+x.b.toLocaleString()+'kg','<span style="font-weight:800;font-size:13px;color:'+(x.d>=0?'var(--green)':'var(--red)')+'">'+(x.d>=0?'+':'')+x.d.toLocaleString()+'kg</span>');
+    }),10);
+    if(pct<=-25){
+      out.push({lv:'warn',t:'チーム総ボリュームが先週比'+pct+'%と大きく減少しています',
+        d:'直近7日 <b>'+v1.toLocaleString()+'kg</b> / その前7日 <b>'+v2.toLocaleString()+'kg</b>。テスト期間・オフ・怪我などの要因がないか確認を。意図的なディロードなら問題ありません。',detail:volDetail});
+    }else if(pct>=25){
+      out.push({lv:'warn',t:'チーム総ボリュームが先週比+'+pct+'%と急増しています',
+        d:'急激な負荷増は怪我リスクを高めます。漸進的な増加（週あたり±10%程度）が理想です。',detail:volDetail});
+    }else{
+      out.push({lv:'good',t:'チーム総ボリュームは先週比'+(pct>=0?'+':'')+pct+'%で安定しています',
+        d:'直近7日 <b>'+v1.toLocaleString()+'kg</b>。大きな負荷変動がなく、コントロールされた状態です。',detail:volDetail});
+    }
+  }
+  // 欠席率
+  var recent=logs.filter(function(l){return l.date>=agoStr(13);});
+  var absList=recent.filter(function(l){return l.absent;});
+  var abs=absList.length;
+  if(recent.length>=5){
+    var rate=Math.round(abs/recent.length*100);
+    if(rate>=25){
+      out.push({lv:'warn',t:'直近14日の欠席率が'+rate+'%あります',
+        d:'欠席'+abs+'件/'+recent.length+'件。理由の内訳（怪我・疲労・その他）を下の記録から確認できます。',
+        detail:capRows(absList.sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).map(function(l){
+          return insRowP(l.pid,escapeHtml(l.absentReason||'理由未記入'),'<div style="font-size:10px;color:var(--txt-3)">'+fmt(l.date)+'</div>');
+        }),10)});
+    }
+  }
+  // 痛みスキップの偏り
+  var skipEx={};
+  logs.filter(function(l){return l.date>=agoStr(29)&&!l.absent;}).forEach(function(l){
+    (l.results||[]).forEach(function(r){
+      if(r.skipped&&r.skipReason==='痛み・怪我'){var nm=(r.exName||'').trim();if(nm)skipEx[nm]=(skipEx[nm]||0)+1;}
+    });
+  });
+  var skipTop=Object.keys(skipEx).sort(function(a,b){return skipEx[b]-skipEx[a];})[0];
+  if(skipTop&&skipEx[skipTop]>=2){
+    var skipRows=[];
+    logs.filter(function(l){return l.date>=agoStr(29)&&!l.absent;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).forEach(function(l){
+      (l.results||[]).forEach(function(r){
+        if(r.skipped&&r.skipReason==='痛み・怪我'&&(r.exName||'').trim()===skipTop){
+          skipRows.push(insRowP(l.pid,escapeHtml(skipTop),'<div style="font-size:10px;color:var(--txt-3)">'+fmt(l.date)+'</div>'));
+        }
+      });
+    });
+    out.push({lv:'warn',t:'「'+escapeHtml(skipTop)+'」が痛みでスキップされることが多い種目です（30日で'+skipEx[skipTop]+'回）',
+      d:'特定種目に痛みが集中している場合、フォーム・重量設定・怪我との相性を見直す材料になります。',
+      detail:capRows(skipRows,10)});
+  }
+  return out;
+}
+// --- コンディション ---
+function insCondition(){
+  var out=[],today=todayStr();
+  var recs7=D.f.filter(function(x){return x.date>=agoStr(6);});
+  if(!recs7.length){
+    if(D.f.length)out.push({lv:'warn',t:'直近7日間のコンディション入力がありません',d:'入力が途切れると疲労・睡眠の変化を見逃します。選手への声かけを推奨します。'});
+    return out;
+  }
+  // 睡眠トレンド
+  var s1=avgOf(recs7.map(function(x){return x.sleep>0?x.sleep:null;}));
+  var prevRecs=D.f.filter(function(x){return x.date>=agoStr(13)&&x.date<agoStr(6);});
+  var s2=avgOf(prevRecs.map(function(x){return x.sleep>0?x.sleep:null;}));
+  // 選手別の7日平均睡眠（短い順）
+  var perSleep=D.p.map(function(p){
+    var rs=recs7.filter(function(x){return idEq(x.pid,p.id)&&x.sleep!=null&&x.sleep>0;});
+    if(!rs.length)return null;
+    return{p:p,s:rs.reduce(function(a,x){return a+x.sleep;},0)/rs.length};
+  }).filter(function(x){return x;}).sort(function(a,b){return a.s-b.s;});
+  var sleepDetail=capRows(perSleep.map(function(x){
+    return insRowP(x.p.id,'直近7日の平均睡眠','<span style="font-weight:800;font-size:13px;color:'+(x.s<6?'var(--red)':x.s<7?'var(--amber)':'var(--green)')+'">'+x.s.toFixed(1)+'h</span>');
+  }),10);
+  if(s1!=null){
+    if(s1<6.5){
+      out.push({lv:'warn',t:'チーム平均睡眠が'+s1.toFixed(1)+'時間と不足気味です',
+        d:'睡眠不足は回復・パフォーマンス・怪我リスクに直結します。'+(s2!=null?'先週は'+s2.toFixed(1)+'時間でした。':'')+'7時間以上を目安に働きかけを。',detail:sleepDetail});
+    }else if(s2!=null&&s1-s2<=-0.7){
+      out.push({lv:'warn',t:'チーム平均睡眠が先週から'+(s1-s2).toFixed(1)+'時間減っています',
+        d:'今週 '+s1.toFixed(1)+'h / 先週 '+s2.toFixed(1)+'h。テスト期間や行事の影響が考えられます。負荷設定に反映する価値があります。',detail:sleepDetail});
+    }else{
+      out.push({lv:'good',t:'チーム平均睡眠は'+s1.toFixed(1)+'時間を確保できています',d:(s2!=null?'先週は'+s2.toFixed(1)+'時間。':'')+'回復の土台となる睡眠が維持されています。',detail:sleepDetail});
+    }
+  }
+  // 連続高RPE
+  var streak=[];
+  D.p.forEach(function(p){
+    var vals=[];
+    for(var n=0;n<3;n++){
+      var r=D.f.find(function(x){return idEq(x.pid,p.id)&&x.date===agoStr(n);});
+      if(r&&r.rpe>=8)vals.push(r.rpe);
+    }
+    if(vals.length>=3)streak.push({p:p,vals:vals});
+  });
+  if(streak.length){
+    out.push({lv:'bad',t:'3日連続で疲労度8以上の選手が'+streak.length+'名います',
+      d:'<b>'+streak.slice(0,4).map(function(x){return escapeHtml(x.p.name);}).join('・')+(streak.length>4?' ほか':'')+'</b>。疲労の蓄積が続くと怪我・体調不良につながります。負荷を落とすか休養日の検討を。',
+      detail:streak.map(function(x){
+        return insRowP(x.p.id,'直近3日の疲労度','<span style="color:var(--red);font-weight:800;font-size:13px">'+x.vals.join(' / ')+'</span>');
+      }).join('')});
+  }
+  // 入力率
+  var todayN=D.f.filter(function(x){return x.date===today;}).length;
+  if(D.p.length){
+    var rate=Math.round(todayN/D.p.length*100);
+    var noInput=D.p.filter(function(p){return !D.f.some(function(x){return idEq(x.pid,p.id)&&x.date===today;});});
+    out.push({lv:rate>=60?'good':'info',t:'本日のコンディション入力率は'+rate+'%です（'+todayN+'/'+D.p.length+'名）',
+      d:rate>=60?'高い入力率が保たれており、データの信頼性が高い状態です。':'入力率が上がるほどチーム状態の把握精度が上がります。',
+      detail:noInput.length?('<div style="font-size:11px;color:var(--txt-2);padding:6px 0 2px;font-weight:700">本日未入力の選手</div>'+capRows(noInput.map(function(p){
+        return insRowP(p.id,escapeHtml(p.position||'-')+'・'+escapeHtml(String(p.year||'-'))+'年','');
+      }),15)):''});
+  }
+  return out;
+}
+// --- 概況（各カテゴリから重要なものを抽出） ---
+function insHome(){
+  var all=[];
+  function tag(list,cat){list.forEach(function(x){x.cat=cat;all.push(x);});}
+  tag(insInjury(),'怪我');tag(insCondition(),'コンディション');tag(insTraining(),'トレーニング');tag(insPhysical(),'フィジカル');
+  var order={bad:0,warn:1,good:2,info:3};
+  all.sort(function(a,b){return order[a.lv]-order[b.lv];});
+  var picked=all.slice(0,5);
+  picked.forEach(function(x){x.t='<span style="font-size:10px;font-weight:800;color:var(--txt-3);letter-spacing:.06em;margin-right:7px">'+x.cat+'</span>'+x.t;});
+  return picked;
+}
+// --- 個人 ---
+function insPlayer(pid){
+  var out=[],today=todayStr();
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  if(!p)return out;
+  // BIG3順位
+  var b3=getBestBIG3(pid);
+  if(b3){
+    var ranked=D.p.map(function(x){return{id:x.id,v:getBestBIG3(x.id)||0};}).filter(function(x){return x.v>0;}).sort(function(a,b){return b.v-a.v;});
+    var rank=ranked.findIndex(function(x){return idEq(x.id,pid);})+1;
+    var posMates=D.p.filter(function(x){return x.position===p.position;}).map(function(x){return{id:x.id,v:getBestBIG3(x.id)||0};}).filter(function(x){return x.v>0;}).sort(function(a,b){return b.v-a.v;});
+    var posRank=posMates.findIndex(function(x){return idEq(x.id,pid);})+1;
+    out.push({lv:rank<=3?'good':'info',t:'BIG3合計 '+b3+'kg — チーム'+rank+'位 / '+escapeHtml(p.position||'-')+'内'+posRank+'位',
+      d:'記録のある'+ranked.length+'名中の順位です。'+(rank<=3?'チームトップクラスの筋力です。':'')});
+  }
+  // 測定間の伸び
+  var recs=D.ph.filter(function(x){return idEq(x.pid,pid);}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+  if(recs.length>=2){
+    var d=big3(recs[recs.length-1])-big3(recs[recs.length-2]);
+    if(d>0)out.push({lv:'good',t:'前回測定からBIG3が+'+d+'kg伸びています',d:fmt(recs[recs.length-2].date)+' → '+fmt(recs[recs.length-1].date)+'の比較。トレーニングが結果につながっています。'});
+    else if(d<0)out.push({lv:'warn',t:'前回測定からBIG3が'+d+'kg低下しています',d:'怪我・疲労・測定条件の影響が考えられます。下のトレーニング推移と合わせて確認してください。'});
+  }
+  // 怪我再発リスク
+  var byPart={};
+  D.i.filter(function(x){return idEq(x.pid,pid);}).forEach(function(x){byPart[x.part]=(byPart[x.part]||0)+1;});
+  Object.keys(byPart).forEach(function(part){
+    if(byPart[part]>=2){
+      var hist=D.i.filter(function(x){return idEq(x.pid,pid)&&x.part===part;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+      out.push({lv:'warn',t:'「'+escapeHtml(part)+'」を過去に'+byPart[part]+'回負傷しています',
+        d:'同一部位の反復受傷は構造的な弱点や動作パターンの問題を示すことがあります。予防エクササイズの継続が重要です。',
+        detail:hist.map(function(x){
+          return '<div class="row"><div style="flex:1"><div style="font-size:12px;font-weight:700">'+escapeHtml((x.side||'')+x.part+' '+(x.type||''))+(x.resolved?'':' <span class="bd bd-r">現在</span>')+'</div><div style="font-size:10px;color:var(--txt-2)">'+fmt(x.date)+(x.resolvedDate?' 〜 '+fmt(x.resolvedDate):'')+'</div></div></div>';
+        }).join('')});
+    }
+  });
+  // 直近のコンディション
+  var cond7=D.f.filter(function(x){return idEq(x.pid,pid)&&x.date>=agoStr(6);});
+  if(cond7.length){
+    var avgR=avgOf(cond7.map(function(x){return x.rpe;}));
+    var avgS=avgOf(cond7.map(function(x){return x.sleep>0?x.sleep:null;}));
+    if(avgR!=null&&avgR>=8)out.push({lv:'bad',t:'直近7日の平均疲労度が'+avgR.toFixed(1)+'と高い状態です',d:(avgS!=null?'平均睡眠は'+avgS.toFixed(1)+'時間。':'')+'負荷の調整または休養を検討する段階です。'});
+    else if(avgS!=null&&avgS<6)out.push({lv:'warn',t:'直近7日の平均睡眠が'+avgS.toFixed(1)+'時間と不足しています',d:'回復が追いつかないと怪我・パフォーマンス低下につながります。'});
+  }
+  // 週間ボリューム推移
+  var w1=D.tlog.filter(function(l){return idEq(l.pid,pid)&&!l.absent&&l.date>=agoStr(6);}).reduce(function(s,l){return s+(l.totalVolume||0);},0);
+  var w2=D.tlog.filter(function(l){return idEq(l.pid,pid)&&!l.absent&&l.date>=agoStr(13)&&l.date<agoStr(6);}).reduce(function(s,l){return s+(l.totalVolume||0);},0);
+  if(w1&&w2){
+    var vp=Math.round((w1-w2)/w2*100);
+    if(vp>=30)out.push({lv:'warn',t:'週間トレーニングボリュームが先週比+'+vp+'%と急増しています',d:'今週 '+w1.toLocaleString()+'kg / 先週 '+w2.toLocaleString()+'kg。急な負荷増は怪我リスク要因です。'});
+    else if(vp<=-30)out.push({lv:'info',t:'週間トレーニングボリュームが先週比'+vp+'%に減少しています',d:'今週 '+w1.toLocaleString()+'kg / 先週 '+w2.toLocaleString()+'kg。怪我・欠席・ディロードなど要因の確認を。'});
+  }
+  return out;
+}
+</script>
+<script>
 function miniStat(label,val,color){
   return '<div style="background:var(--bg-elev);border-radius:10px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:800;color:'+(color||'var(--txt)')+'">'+(val!=null&&val!==''?val:'-')+'</div><div style="font-size:10px;color:var(--txt-2);margin-top:2px">'+label+'</div></div>';
 }
@@ -721,7 +905,7 @@ function buildTrendCoach(pid){
   var metricBtns=[['top','トップセット重量'],['e1rm','推定1RM'],['vol','ボリューム']];
   var togHtml=metricBtns.map(function(mb){
     var disabled=mb[0]==='e1rm'&&!estBase;var active=mb[0]===metric;
-    return '<span style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--line-2);'+(active?'background:var(--blue);color:#0A1019;border-color:var(--blue);font-weight:700':'color:var(--txt-2)')+(disabled?';opacity:.35':';cursor:pointer')+'"'+(disabled?' title="実測1RM基準なし＝推定1RM不可"':' onclick="setTrMetricC(\''+mb[0]+'\')"')+'>'+mb[1]+'</span>';
+    return '<span style="font-size:12px;padding:9px 13px;border-radius:10px;border:1px solid var(--line-2);'+(active?'background:var(--blue);color:#0A1019;border-color:var(--blue);font-weight:700':'color:var(--txt-2)')+(disabled?';opacity:.35':';cursor:pointer')+'"'+(disabled?' title="実測1RM基準なし＝推定1RM不可"':' onclick="setTrMetricC(\''+mb[0]+'\')"')+'>'+mb[1]+'</span>';
   }).join('');
   var h='<div class="card" style="margin-top:12px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px"><div style="font-size:13px;font-weight:700">📈 種目推移</div>'+
     '<select class="sel" onchange="setTrExC(this.value)">'+exList.map(function(e){return'<option'+(e.name===sel?' selected':'')+'>'+escapeHtml(e.name)+(e.estBase?'':' (手入力)')+'</option>';}).join('')+'</select></div>'+
@@ -829,31 +1013,552 @@ function drawTrChartC(pid,exName,metric){
   if(metric==='vol'){yBase.beginAtZero=true;}else{yBase.beginAtZero=false;yBase.suggestedMax=Math.ceil(maxV*1.05);}
   charts.tr1rm=new Chart(e,{type:'line',data:{labels:labels,datasets:datasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#93A4BC',usePointStyle:true,pointStyle:'circle',boxWidth:7,padding:10,font:{size:10}}},tooltip:{backgroundColor:'rgba(10,16,25,.95)',padding:10,cornerRadius:10}},scales:{y:yBase,x:{grid:{display:false},ticks:{color:'#93A4BC',font:{size:10}}}}}});
 }
-function backFromReport(){_detailPid=null;render();window.scrollTo(0,0);}
-
+</script>
+<script>
+// ========================================================
+// 共通UI部品
+// ========================================================
+function ava(p,sz){
+  var ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';
+  var style='width:'+sz+'px;height:'+sz+'px;font-size:'+Math.round(sz*.36)+'px;';
+  if(p.photo)return '<div class="ava" style="'+style+'background-image:url('+p.photo+')"></div>';
+  return '<div class="ava" style="'+style+'">'+escapeHtml(ini)+'</div>';
+}
+function hexA(hex,a){
+  var h=hex.replace('#','');if(h.length===3)h=h.split('').map(function(c){return c+c;}).join('');
+  var r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+  return 'rgba('+r+','+g+','+b+','+a+')';
+}
+function rtpOrder(k){var i=RTP_LEVELS.findIndex(function(x){return x.k===k;});return i<0?99:i;}
+// RTPレベルのダークテーマ用表示色（共通定数RTP_LEVELSは4サイト一致の鉄則があるため触らずcoach側で変換）
+var RTP_DARK={rest:'#FF7B7B',rehab:'#FFA45C',partial_nocontact:'#FFC069',full_nocontact:'#5FA8FF',full_limited:'#C7A4FF',full:'#3DF0A4'};
+function rtpC(k){return RTP_DARK[k]||'#9DAEC7';}
+function openPlayer(pid){window._trEx=null;window._trMetric='top';_detailPid=pid;try{history.pushState({pid:pid},'','#p'+pid);}catch(e){}render();window.scrollTo(0,0);}
+function getLatestPhys(pid){
+  return D.ph.filter(function(x){return idEq(x.pid,pid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');})[0];
+}
+function avgSleepCalc(since){
+  var vals=D.f.filter(function(x){return x.date>=since&&x.sleep!=null&&x.sleep>0;}).map(function(x){return x.sleep;});
+  if(!vals.length)return null;
+  return (vals.reduce(function(s,v){return s+v;},0)/vals.length).toFixed(1);
+}
+// KPIタイル: valが数値ならカウントアップ
+function kpiTile(val,label,color,unit){
+  var num=(typeof val==='number');
+  var vh=num?'<span class="cv" data-cnt="'+val+'">0</span>':String(val);
+  if(unit)vh+='<span class="unit">'+unit+'</span>';
+  return '<div class="kpi" style="--kc:'+color+'"><div class="kpi-v">'+vh+'</div><div class="kpi-l">'+label+'</div></div>';
+}
+function secH(eyebrow,title,sub){
+  return '<div class="sec-h rv"><div class="sec-eyebrow">'+eyebrow+'</div><h2>'+title+(sub?' <span class="sub">'+sub+'</span>':'')+'</h2></div>';
+}
+function heroBlock(title,sub){
+  return '<div class="hero rv"><div class="hero-date">'+heroDateStr()+'</div><div class="hero-title">'+title+'</div>'+(sub?'<div class="hero-sub">'+sub+'</div>':'')+'</div>';
+}
+// 稼働率リング（SVGドーナツ）
+function ringChart(pct,label){
+  var R=54,C=2*Math.PI*R;
+  var off=C*(1-pct/100);
+  return '<div class="ring-box"><svg viewBox="0 0 128 128" width="134" height="134">'+
+    '<defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#35E89C"/><stop offset="100%" stop-color="#1FA2FF"/></linearGradient></defs>'+
+    '<circle class="ring-bgc" cx="64" cy="64" r="'+R+'"/>'+
+    '<circle class="ring-f" cx="64" cy="64" r="'+R+'" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+C.toFixed(1)+'" data-off="'+off.toFixed(1)+'"/>'+
+    '</svg><div class="ring-center"><div class="ring-v"><span class="cv" data-cnt="'+pct+'">0</span><span class="unit">%</span></div><div class="ring-l">'+label+'</div></div></div>';
+}
+// ========================================================
+// ⓪ 概況（ホーム）
+// ========================================================
+function renderHomeView(){
+  var today=todayStr();
+  var av=availability();
+  var pct=av.total?Math.round(av.ok/av.total*100):0;
+  var h='';
+  h+=heroBlock('今日の<em>チーム概況</em>','怪我・コンディション・トレーニングの状態をひと目で。各タブでさらに詳しく確認できます。');
+  // 稼働率カード
+  h+='<div class="sec">'+rv(
+    '<div class="card"><div class="ring-wrap">'+ringChart(pct,'稼働率')+
+    '<div class="ring-legend">'+
+    '<div class="rl-row"><span class="rl-dot" style="background:var(--green)"></span>フル稼働<span class="rl-n" style="color:var(--green)">'+av.ok+'<span style="font-size:10px;color:var(--txt-3);font-weight:600">名</span></span></div>'+
+    '<div class="rl-row"><span class="rl-dot" style="background:var(--amber)"></span>制限付き参加<span class="rl-n" style="color:var(--amber)">'+av.lim+'<span style="font-size:10px;color:var(--txt-3);font-weight:600">名</span></span></div>'+
+    '<div class="rl-row"><span class="rl-dot" style="background:var(--red)"></span>離脱中<span class="rl-n" style="color:var(--red)">'+av.out+'<span style="font-size:10px;color:var(--txt-3);font-weight:600">名</span></span></div>'+
+    '<div class="rl-row" style="border-top:1px solid var(--line);padding-top:9px;color:var(--txt-2)">登録選手<span class="rl-n">'+av.total+'<span style="font-size:10px;color:var(--txt-3);font-weight:600">名</span></span></div>'+
+    '</div></div></div>',0)+'</div>';
+  // KPI
+  var active=D.i.filter(function(x){return !x.resolved;});
+  var soon=active.filter(function(x){
+    if(!x.returnDate)return false;
+    var d=Math.ceil((new Date(x.returnDate)-new Date(today))/86400000);
+    return d>=0&&d<=7;
+  });
+  var inputToday=D.f.filter(function(x){return x.date===today;}).length;
+  var trained14=D.tlog.filter(function(l){return !l.absent&&l.date>=agoStr(13);}).length;
+  h+='<div class="sec"><div class="grid g4">'+
+    rv(kpiTile(active.length,'現在の怪我','var(--red)','件'),0)+
+    rv(kpiTile(soon.length,'7日以内に復帰予定','var(--amber)','名'),1)+
+    rv(kpiTile(inputToday,'本日のコンディション入力','var(--blue)','名'),2)+
+    rv(kpiTile(trained14,'トレーニング記録（14日）','var(--green)','件'),3)+
+    '</div></div>';
+  // 考察ダイジェスト
+  h+=insightSec(insHome(),'チーム全体のハイライト');
+  // 復帰間近
+  var withReturn=active.filter(function(x){return x.returnDate;}).sort(function(a,b){return a.returnDate.localeCompare(b.returnDate);}).slice(0,5);
+  if(withReturn.length){
+    h+='<div class="sec">'+secH('RETURN','復帰が近い選手','タップで個人レポート')+rv('<div class="card">'+withReturn.map(returnRow).join('')+'</div>',1)+'</div>';
+  }
+  // 要注意コンディション
+  var alerts=condAlerts().slice(0,5);
+  if(alerts.length){
+    h+='<div class="sec">'+secH('CONDITION','コンディション要注意')+rv('<div class="card">'+alerts.map(function(a){
+      return '<div class="row row-click" onclick="openPlayer('+a.p.id+')">'+ava(a.p,32)+
+        '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+escapeHtml(a.p.name)+'</div>'+
+        '<div style="font-size:10.5px;color:var(--txt-2)">'+(a.sleep!=null?'睡眠'+a.sleep+'h ・ ':'')+'平均疲労度'+a.avgRpe+'</div></div>'+
+        '<span class="bd bd-a">'+a.flag+'</span></div>';
+    }).join('')+'</div>',1)+'</div>';
+  }
+  paint(h);
+}
+function returnRow(inj){
+  var p=D.p.find(function(x){return idEq(x.id,inj.pid);});if(!p)return '';
+  var today=todayStr();
+  var days=Math.ceil((new Date(inj.returnDate)-new Date(today))/86400000);
+  var dayLabel,dayColor;
+  if(days<0){dayLabel=(-days)+'日超過';dayColor='var(--red)';}
+  else if(days===0){dayLabel='本日';dayColor='var(--amber)';}
+  else if(days<=7){dayLabel='あと'+days+'日';dayColor='var(--amber)';}
+  else{dayLabel='あと'+days+'日';dayColor='var(--txt-2)';}
+  return '<div class="row row-click" onclick="openPlayer('+p.id+')">'+ava(p,34)+
+    '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">'+escapeHtml(p.name)+'</div>'+
+    '<div style="font-size:11px;color:var(--txt-2)">'+escapeHtml((inj.side||'')+inj.part+' '+inj.type)+'</div></div>'+
+    '<div style="text-align:right"><div style="font-size:13px;font-weight:800;color:'+dayColor+'">'+dayLabel+'</div>'+
+    '<div style="font-size:10px;color:var(--txt-3)">'+fmt(inj.returnDate)+'</div></div></div>';
+}
+function condAlerts(){
+  var recent7=agoStr(6),alerts=[];
+  D.p.forEach(function(p){
+    var recs=D.f.filter(function(x){return idEq(x.pid,p.id)&&x.date>=recent7;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+    if(!recs.length)return;
+    var latest=recs[0];
+    var avgRpe=recs.reduce(function(s,x){return s+(x.rpe||0);},0)/recs.length;
+    var flag=null;
+    if(latest.sleep!=null&&latest.sleep>0&&latest.sleep<6)flag='睡眠不足';
+    if(avgRpe>=8)flag='疲労蓄積';
+    if(flag)alerts.push({p:p,flag:flag,sleep:latest.sleep,avgRpe:avgRpe.toFixed(1)});
+  });
+  return alerts;
+}
+// ========================================================
+// ① 怪我・リハビリビュー
+// ========================================================
+function renderInjuryView(){
+  var active=D.i.filter(function(x){return !x.resolved;});
+  var today=todayStr();
+  var soon=active.filter(function(inj){
+    if(!inj.returnDate)return false;
+    var d=Math.ceil((new Date(inj.returnDate)-new Date(today))/86400000);
+    return d>=0&&d<=7;
+  });
+  var h='';
+  h+=heroBlock('<em>怪我・リハビリ</em>の状況','離脱者の現在地と復帰までの道のりを追跡します。');
+  var fullRehab=active.filter(function(inj){var ch=getChart(inj.id);return ch&&ch.rtpLevel&&ch.rtpLevel!=='rest'&&ch.rtpLevel!=='full';}).length;
+  var recovered30=D.i.filter(function(x){return x.resolved&&x.resolvedDate&&Math.ceil((new Date(today)-new Date(x.resolvedDate))/86400000)<=30;}).length;
+  h+='<div class="sec"><div class="grid g4">'+
+    rv(kpiTile(active.length,'現在の怪我人','var(--red)','名'),0)+
+    rv(kpiTile(soon.length,'7日以内に復帰予定','var(--amber)','名'),1)+
+    rv(kpiTile(fullRehab,'リハビリ・部分参加中','var(--blue)','名'),2)+
+    rv(kpiTile(recovered30,'過去30日で復帰','var(--green)','名'),3)+
+    '</div></div>';
+  // 考察
+  h+=insightSec(insInjury());
+  // 復帰タイムライン
+  var withReturn=active.filter(function(x){return x.returnDate;}).sort(function(a,b){return a.returnDate.localeCompare(b.returnDate);});
+  if(withReturn.length){
+    h+='<div class="sec">'+secH('TIMELINE','復帰予定タイムライン','早い順')+rv('<div class="card">'+withReturn.map(returnRow).join('')+'</div>',1)+'</div>';
+  }
+  // 怪我人一覧
+  h+='<div class="sec">'+secH('INJURY LIST','怪我人の状況',active.length+'名');
+  if(!active.length){
+    h+=rv('<div class="card"><div class="no">現在、怪我で離脱している選手はいません 🎉</div></div>',1);
+  }else{
+    active.sort(function(a,b){
+      var ra=rtpOrder(getChart(a.id).rtpLevel),rb=rtpOrder(getChart(b.id).rtpLevel);
+      return ra-rb;
+    });
+    active.forEach(function(inj,idx){
+      var p=D.p.find(function(x){return idEq(x.id,inj.pid);});if(!p)return;
+      var ch=getChart(inj.id);
+      var rh=D.r.find(function(x){return idEq(x.injId,inj.id);});
+      var rtp=ch.rtpLevel?RTP_LEVELS.find(function(x){return x.k===ch.rtpLevel;}):null;
+      var stage=rh?(rh.stage||0):0;
+      var progPct=Math.round((stage/(STG.length-1))*100);
+      var daysSince=Math.floor((new Date(today)-new Date(inj.date))/86400000);
+      var recur=samePartBefore(inj).length>0;
+      var c='<div class="card card-hv" onclick="openPlayer('+p.id+')">';
+      c+='<div style="display:flex;align-items:center;gap:11px;margin-bottom:12px">'+ava(p,42)+
+        '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:15px">'+escapeHtml(p.name)+'</div>'+
+        '<div style="font-size:11px;color:var(--txt-2)">'+escapeHtml(p.position||'-')+'・'+escapeHtml(String(p.year||'-'))+'年 ・ 受傷から'+daysSince+'日</div></div>';
+      if(rtp)c+='<span class="bd" style="background:'+hexA(rtpC(rtp.k),.16)+';color:'+rtpC(rtp.k)+'">'+rtp.label+'</span>';
+      c+='</div>';
+      c+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">'+
+        '<span class="chip">'+escapeHtml((inj.side||'')+inj.part)+'</span><span class="chip">'+escapeHtml(inj.type||'')+'</span>'+
+        (recur?'<span class="chip" style="background:var(--red-bg);color:var(--red)">再発</span>':'')+
+        (inj.returnDate?'<span class="chip" style="color:var(--amber)">復帰予定 '+fmt(inj.returnDate)+'</span>':'')+'</div>';
+      c+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><span style="font-size:11px;color:var(--txt-2)">リハビリ進捗</span><span style="font-size:11px;font-weight:700;color:var(--accent)">'+STG[stage]+'</span></div>';
+      c+='<div class="pbar"><div class="pbar-f" data-w="'+progPct+'"></div></div>';
+      c+='</div>';
+      h+=rv(c,Math.min(idx,4));
+    });
+  }
+  h+='</div>';
+  paint(h);
+}
+// ========================================================
+// ② フィジカルビュー
+// ========================================================
+function renderPhysicalView(){
+  var h='';
+  h+=heroBlock('<em>フィジカル</em>データ','BIG3を軸にチームの筋力レベルと成長を可視化します。');
+  var ranked=D.p.map(function(p){return{p:p,big3:getBestBIG3(p.id)||0};}).filter(function(x){return x.big3>0;}).sort(function(a,b){return b.big3-a.big3;});
+  if(ranked.length){
+    var avgBig3=Math.round(ranked.reduce(function(s,x){return s+x.big3;},0)/ranked.length);
+    var maxBig3=ranked[0].big3;
+    h+='<div class="sec"><div class="grid g3">'+
+      rv(kpiTile(ranked.length,'記録のある選手','var(--blue)','名'),0)+
+      rv(kpiTile(avgBig3,'BIG3平均','var(--green)','kg'),1)+
+      rv(kpiTile(maxBig3,'BIG3最高','var(--amber)','kg'),2)+
+      '</div></div>';
+  }
+  // 考察
+  h+=insightSec(insPhysical());
+  // ポジション別平均
+  h+='<div class="sec">'+secH('POSITION','ポジション別 平均','FW / BK')+
+    rv('<div class="card"><div style="position:relative;height:240px"><canvas id="pos-chart"></canvas></div></div>',1)+'</div>';
+  // ランキング（表彰台＋リスト）
+  h+='<div class="sec">'+secH('RANKING','BIG3 ランキング','合計ベスト');
+  if(!ranked.length){h+=rv('<div class="card"><div class="no">記録がありません</div></div>',1);}
+  else{
+    var top3=ranked.slice(0,3);
+    if(top3.length===3){
+      var podOrder=[1,0,2];
+      var pods=podOrder.map(function(oi,vi){
+        var r=top3[oi];if(!r)return '';
+        return '<div class="pod'+(oi===0?' pod-1':'')+'" onclick="openPlayer('+r.p.id+')">'+
+          '<div class="pod-medal">'+['🥇','🥈','🥉'][oi]+'</div>'+
+          '<div style="display:flex;justify-content:center">'+ava(r.p,oi===0?52:42)+'</div>'+
+          '<div class="pod-name">'+escapeHtml(r.p.name)+'</div>'+
+          '<div class="pod-meta">'+escapeHtml(r.p.position||'-')+'・'+escapeHtml(String(r.p.year||'-'))+'年</div>'+
+          '<div class="pod-val"><span class="cv" data-cnt="'+r.big3+'">0</span><span class="unit">kg</span></div></div>';
+      }).join('');
+      h+=rv('<div class="podium">'+pods+'</div>',1);
+    }
+    var rest=ranked.slice(top3.length===3?3:0,15);
+    if(rest.length){
+      var rows=rest.map(function(r,i){
+        var rank=(top3.length===3?4:1)+i;
+        return '<div class="row row-click" onclick="openPlayer('+r.p.id+')">'+
+          '<div style="width:26px;font-weight:800;font-size:13px;color:var(--txt-3);text-align:center">'+rank+'</div>'+
+          ava(r.p,30)+
+          '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+escapeHtml(r.p.name)+'</div>'+
+          '<div style="font-size:10px;color:var(--txt-2)">'+escapeHtml(r.p.position||'-')+'・'+escapeHtml(String(r.p.year||'-'))+'年</div></div>'+
+          '<div style="font-weight:800;font-size:15px;color:var(--accent)">'+r.big3+'<span style="font-size:10px;color:var(--txt-2);font-weight:500"> kg</span></div></div>';
+      }).join('');
+      h+=rv('<div class="card" style="margin-top:12px">'+rows+'</div>',2);
+    }
+  }
+  h+='</div>';
+  paint(h);
+  // ポジション別チャート
+  setTimeout(function(){
+    var e=document.getElementById('pos-chart');if(!e)return;
+    var FW=['PR','HO','LO','FL','No.8'],BK=['SH','SO','CTB','WTB','FB'];
+    function groupAvg(positions,field){
+      var vals=D.p.filter(function(p){return positions.indexOf(p.position)>=0;}).map(function(p){return getBest(p.id,field);}).filter(function(v){return v!=null;});
+      if(!vals.length)return null;
+      return Math.round(vals.reduce(function(s,v){return s+v;},0)/vals.length);
+    }
+    var fields=[{k:'squat',l:'SQ'},{k:'bench',l:'BP'},{k:'deadlift',l:'DL'}];
+    var fwData=fields.map(function(f){return groupAvg(FW,f.k)||0;});
+    var bkData=fields.map(function(f){return groupAvg(BK,f.k)||0;});
+    dC('pos');
+    charts.pos=new Chart(e,{type:'bar',data:{labels:fields.map(function(f){return f.l;}),datasets:[
+      {label:'FW',data:fwData,backgroundColor:'#5FA8FF',borderRadius:8},
+      {label:'BK',data:bkData,backgroundColor:'#3DF0A4',borderRadius:8}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9DAEC7',usePointStyle:true,pointStyle:'circle',padding:14}},tooltip:{backgroundColor:'rgba(5,10,18,.95)',padding:12,cornerRadius:10,callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y+' kg';}}}},scales:{y:{grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#9DAEC7'}},x:{grid:{display:false},ticks:{color:'#9DAEC7',font:{size:13,weight:'600'}}}}}});
+  },60);
+}
+</script>
+<script>
+// ========================================================
+// ③ トレーニングビュー
+// ========================================================
+function renderTrainingView(){
+  var today=todayStr();
+  var h='';
+  h+=heroBlock('<em>トレーニング</em>の実施状況','実施記録・ボリューム・怪我による制限をチェックします。');
+  var logs=D.tlog.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var cutoff=agoStr(13);
+  var recent=logs.filter(function(l){return l.date>=cutoff;});
+  var doneCount=recent.filter(function(l){return !l.absent;}).length;
+  var absentCount=recent.filter(function(l){return l.absent;}).length;
+  var injuryAbsent=recent.filter(function(l){return l.absent&&l.absentReason==='痛み・怪我';}).length;
+  var vol7=teamVolume(agoStr(6),today);
+  h+='<div class="sec"><div class="grid g4">'+
+    rv(kpiTile(doneCount,'実施記録（14日）','var(--green)','件'),0)+
+    rv(kpiTile(absentCount,'欠席（14日）','var(--amber)','件'),1)+
+    rv(kpiTile(injuryAbsent,'怪我による欠席','var(--red)','件'),2)+
+    rv(kpiTile(Math.round(vol7/1000),'総ボリューム（7日）','var(--blue)','t'),3)+
+    '</div></div>';
+  // 考察
+  h+=insightSec(insTraining());
+  // 怪我でできなかった種目
+  var injNotices=[];
+  recent.forEach(function(lg){
+    if(lg.absent&&lg.absentReason==='痛み・怪我'){var pa=D.p.find(function(x){return idEq(x.id,lg.pid);});if(pa)injNotices.push({name:pa.name,pid:lg.pid,ex:'全体欠席',date:lg.date});return;}
+    (lg.results||[]).forEach(function(r){if(r.skipped&&r.skipReason==='痛み・怪我'){var p=D.p.find(function(x){return idEq(x.id,lg.pid);});if(p)injNotices.push({name:p.name,pid:lg.pid,ex:r.exName,date:lg.date});}});
+  });
+  if(injNotices.length){
+    h+='<div class="sec">'+secH('ALERT','痛み・怪我でできなかった種目','直近14日')+
+      rv('<div class="card" style="border-left:3px solid var(--red)">'+injNotices.slice(0,12).map(function(n){
+        return '<div class="row row-click" onclick="openPlayer('+n.pid+')"><span style="flex:1;font-size:13px;font-weight:700">'+escapeHtml(n.name)+'</span><span style="font-size:12px;color:var(--txt-2)">'+escapeHtml(n.ex)+'</span><span style="font-size:10px;color:var(--txt-3);margin-left:8px">'+fmt(n.date)+'</span></div>';
+      }).join('')+'</div>',1)+'</div>';
+  }
+  // 実施記録一覧
+  h+='<div class="sec">'+secH('LOG','トレーニング記録','新しい順');
+  if(!logs.length){h+=rv('<div class="card"><div class="no">まだ記録がありません</div></div>',1);}
+  else{
+    var rows='';
+    logs.slice(0,25).forEach(function(lg){
+      var p=D.p.find(function(x){return idEq(x.id,lg.pid);});if(!p)return;
+      if(lg.absent){
+        var rc=lg.absentReason==='痛み・怪我'?'bd-r':'bd-n';
+        rows+='<div class="row row-click" onclick="openPlayer('+lg.pid+')">'+ava(p,30)+'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+escapeHtml(p.name)+' <span class="bd '+rc+'">欠席</span></div><div style="font-size:10px;color:var(--txt-2)">'+fmt(lg.date)+' ・ '+escapeHtml(lg.absentReason||'')+'</div></div></div>';
+      }else{
+        rows+='<div class="row row-click" onclick="openPlayer('+lg.pid+')">'+ava(p,30)+'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+escapeHtml(p.name)+'</div><div style="font-size:10px;color:var(--txt-2)">'+fmt(lg.date)+' ・ '+(lg.results?lg.results.length:0)+'種目</div></div><div style="font-weight:800;color:var(--accent);font-size:14px">'+(lg.totalVolume||0).toLocaleString()+'<span style="font-size:10px;color:var(--txt-2)"> kg</span></div></div>';
+      }
+    });
+    h+=rv('<div class="card">'+rows+'</div>',1);
+  }
+  h+='</div>';
+  paint(h);
+}
+// ========================================================
+// ④ コンディションビュー
+// ========================================================
+function renderConditionView(){
+  var today=todayStr();
+  var h='';
+  h+=heroBlock('チームの<em>コンディション</em>','疲労と睡眠のトレンドから、無理のきかない選手を早期発見します。');
+  var alerts=condAlerts();
+  var inputToday=D.f.filter(function(x){return x.date===today;}).length;
+  var avgSleep7=avgSleepCalc(agoStr(6));
+  h+='<div class="sec"><div class="grid g3">'+
+    rv(kpiTile(inputToday,'本日のコンディション入力','var(--blue)','名'),0)+
+    rv(kpiTile(alerts.length,'要注意（疲労・睡眠）','var(--amber)','名'),1)+
+    rv(kpiTile(avgSleep7!=null?parseFloat(avgSleep7):'-','平均睡眠（7日）','var(--purple)',avgSleep7!=null?'h':''),2)+
+    '</div></div>';
+  // 考察
+  h+=insightSec(insCondition());
+  // 14日トレンドチャート
+  var daily=condDaily(14);
+  var hasData=daily.some(function(d){return d.rpe!=null||d.sleep!=null;});
+  if(hasData){
+    h+='<div class="sec">'+secH('TREND','チーム平均の推移','直近14日')+
+      rv('<div class="card"><div style="position:relative;height:220px"><canvas id="cond-chart"></canvas></div></div>',1)+'</div>';
+  }
+  // 要注意選手
+  h+='<div class="sec">'+secH('ALERT','コンディション要注意');
+  if(!alerts.length){h+=rv('<div class="card"><div class="no">特に注意が必要な選手はいません</div></div>',1);}
+  else{
+    h+=rv('<div class="card">'+alerts.map(function(a){
+      return '<div class="row row-click" onclick="openPlayer('+a.p.id+')">'+ava(a.p,32)+'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+escapeHtml(a.p.name)+'</div><div style="font-size:10.5px;color:var(--txt-2)">'+(a.sleep!=null?'睡眠'+a.sleep+'h ・ ':'')+'平均疲労度'+a.avgRpe+'</div></div><span class="bd bd-a">'+a.flag+'</span></div>';
+    }).join('')+'</div>',1);
+  }
+  h+='</div>';
+  paint(h);
+  if(hasData){
+    setTimeout(function(){
+      var e=document.getElementById('cond-chart');if(!e)return;
+      dC('cond');
+      charts.cond=new Chart(e,{type:'line',data:{labels:daily.map(function(d){return d.date.slice(5);}),datasets:[
+        {label:'平均疲労度',data:daily.map(function(d){return d.rpe!=null?Math.round(d.rpe*10)/10:null;}),borderColor:'#FFC069',backgroundColor:'rgba(255,192,105,.12)',borderWidth:2.5,fill:true,tension:.4,spanGaps:true,pointRadius:3,pointBackgroundColor:'#0D1520',pointBorderColor:'#FFC069',pointBorderWidth:2,yAxisID:'y'},
+        {label:'平均睡眠(h)',data:daily.map(function(d){return d.sleep!=null?Math.round(d.sleep*10)/10:null;}),borderColor:'#C7A4FF',borderWidth:2.5,fill:false,tension:.4,spanGaps:true,pointRadius:3,pointBackgroundColor:'#0D1520',pointBorderColor:'#C7A4FF',pointBorderWidth:2,yAxisID:'y2'}
+      ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#9DAEC7',usePointStyle:true,pointStyle:'circle',boxWidth:7,padding:12,font:{size:11}}},tooltip:{backgroundColor:'rgba(5,10,18,.95)',padding:10,cornerRadius:10}},scales:{y:{min:0,max:10,grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#FFC069',font:{size:10}}},y2:{position:'right',min:0,max:12,grid:{display:false},ticks:{color:'#C7A4FF',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#9DAEC7',font:{size:10}}}}}});
+    },60);
+  }
+}
+// ========================================================
+// ⑤ 選手一覧
+// ========================================================
+function renderPlayersView(){
+  var h='';
+  h+=heroBlock('<em>選手</em>一覧','タップすると個人レポート（怪我・フィジカル・トレーニング・考察）が開きます。');
+  var filter=window._posFilter||'';
+  h+=rv('<div style="margin-bottom:2px"><select class="sel" id="pos-filter" onchange="setPosFilter(this.value)"><option value="">全ポジション</option>'+POS.map(function(p){return '<option'+(p===filter?' selected':'')+'>'+p+'</option>';}).join('')+'</select></div>',0);
+  var players=D.p.filter(function(p){return !filter||p.position===filter;}).sort(function(a,b){return (a.position||'').localeCompare(b.position||'')||(b.id-a.id);});
+  h+='<div class="sec"><div class="grid g2">';
+  players.forEach(function(p,idx){
+    var inj=D.i.find(function(x){return idEq(x.pid,p.id)&&!x.resolved;});
+    var b3=getBestBIG3(p.id);
+    h+=rv('<div class="card card-hv" style="margin-top:0" onclick="openPlayer('+p.id+')"><div style="display:flex;align-items:center;gap:10px">'+ava(p,40)+
+      '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px">'+escapeHtml(p.name)+'</div><div style="font-size:10px;color:var(--txt-2)">'+escapeHtml(p.position||'-')+'・'+escapeHtml(String(p.year||'-'))+'年</div></div></div>'+
+      '<div style="display:flex;gap:6px;margin-top:11px;flex-wrap:wrap;align-items:center">'+
+      (b3?'<span class="chip" style="margin:0">BIG3 '+b3+'kg</span>':'')+
+      (inj?'<span class="bd bd-r">怪我中</span>':'<span class="bd bd-g">健康</span>')+
+      '</div></div>',Math.min(idx%6,5));
+  });
+  h+='</div></div>';
+  if(!players.length)h+=rv('<div class="card"><div class="no">該当する選手がいません</div></div>',0);
+  paint(h);
+}
+function setPosFilter(v){window._posFilter=v;window._noAnim=true;render();window._noAnim=false;}
+// ========================================================
+// 個人レポート
+// ========================================================
+function renderPlayerReport(pid){
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  if(!p){_detailPid=null;render();return;}
+  var today=todayStr();
+  var h='<div class="sec">';
+  h+='<button class="lnk" style="margin-bottom:14px;font-size:13px" onclick="backFromReport()">‹ 一覧へ戻る</button>';
+  // ヘッダー
+  h+=rv('<div class="card" style="background:linear-gradient(150deg,rgba(61,240,164,.1),rgba(255,255,255,.02));border-color:rgba(61,240,164,.22)"><div style="display:flex;align-items:center;gap:15px">'+ava(p,58)+
+    '<div style="flex:1;min-width:0"><div class="sec-eyebrow">PLAYER REPORT</div><div style="font-size:21px;font-weight:800;letter-spacing:-.01em">'+escapeHtml(p.name)+'</div>'+
+    '<div style="font-size:12px;color:var(--txt-2);margin-top:3px">'+escapeHtml(p.position||'-')+' ・ '+escapeHtml(String(p.year||'-'))+'年'+(p.height?' ・ '+p.height+'cm':'')+(p.weight?' / '+p.weight+'kg':'')+'</div></div></div></div>',0);
+  // 個人考察
+  var pIns=insPlayer(pid);
+  if(pIns.length){
+    h+='<div style="margin-top:14px"></div>';
+    h+='<div class="ins-list">'+pIns.map(insCard).join('')+'</div>';
+  }
+  // 現在の怪我
+  var activeInj=D.i.filter(function(x){return idEq(x.pid,pid)&&!x.resolved;});
+  if(activeInj.length){
+    var ic='<div style="font-size:13px;font-weight:800;color:var(--red);margin-bottom:10px">現在の怪我・リハビリ</div>';
+    activeInj.forEach(function(inj){
+      var ch=getChart(inj.id);var rh=D.r.find(function(x){return idEq(x.injId,inj.id);});
+      var rtp=ch.rtpLevel?RTP_LEVELS.find(function(x){return x.k===ch.rtpLevel;}):null;
+      var stage=rh?(rh.stage||0):0;var progPct=Math.round((stage/(STG.length-1))*100);
+      var days=inj.returnDate?Math.ceil((new Date(inj.returnDate)-new Date(today))/86400000):null;
+      ic+='<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap"><span style="font-weight:700;font-size:14px">'+escapeHtml((inj.side||'')+inj.part+' '+inj.type)+'</span>'+(rtp?'<span class="bd" style="background:'+hexA(rtpC(rtp.k),.16)+';color:'+rtpC(rtp.k)+'">'+rtp.label+'</span>':'')+'</div>';
+      ic+='<div style="font-size:11px;color:var(--txt-2);margin-bottom:7px">受傷: '+fmt(inj.date)+(inj.returnDate?' ／ 復帰予定: '+fmt(inj.returnDate)+(days!=null?'（'+(days<0?(-days)+'日超過':days===0?'本日':'あと'+days+'日')+'）':''):'')+'</div>';
+      ic+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><span style="font-size:10px;color:var(--txt-2)">リハビリ進捗</span><span style="font-size:10px;color:var(--accent);font-weight:700">'+STG[stage]+'</span></div><div class="pbar"><div class="pbar-f" data-w="'+progPct+'"></div></div></div>';
+    });
+    h+=rv('<div class="card" style="border-left:3px solid var(--red);margin-top:14px">'+ic+'</div>',1);
+  }else{
+    h+=rv('<div class="card" style="margin-top:14px"><div style="font-size:13px;color:var(--green);font-weight:700">✓ 現在、怪我はありません</div></div>',1);
+  }
+  // フィジカル
+  var sq=getBest(pid,'squat'),bp=getBest(pid,'bench'),dl=getBest(pid,'deadlift'),b3=getBestBIG3(pid);
+  var phRecs=D.ph.filter(function(x){return idEq(x.pid,pid);}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+  var pc='<div style="font-size:13px;font-weight:800;margin-bottom:10px">フィジカル <span style="font-size:10px;color:var(--txt-3);font-weight:600">ベスト記録</span></div>';
+  pc+='<div class="grid g4" style="gap:8px">'+miniStat('SQ',sq)+miniStat('BP',bp)+miniStat('DL',dl)+miniStat('BIG3',b3,'var(--accent)')+'</div>';
+  var e1=getLatestE1RMReport(pid);
+  if(Object.keys(e1).length){
+    pc+='<div style="margin-top:10px;font-size:11px;color:var(--txt-2)">推定1RM（参考）: '+Object.keys(e1).map(function(k){var l=(EST_BASES.find(function(b){return b.k===k;})||{}).label||k;return l+' '+e1[k]+'kg';}).join(' / ')+'</div>';
+  }
+  if(phRecs.length>=2){
+    pc+='<div style="position:relative;height:180px;margin-top:14px"><canvas id="rep-phys-chart"></canvas></div>';
+  }
+  h+=rv('<div class="card" style="margin-top:12px">'+pc+'</div>',2);
+  // トレーニング（種目推移＋セッション履歴: 既存ヘルパー流用）
+  h+='<div class="rv" style="--d:.1s">'+buildTrendCoach(pid)+'</div>';
+  h+='<div class="rv" style="--d:.1s">'+buildHistCoach(pid)+'</div>';
+  // コンディション
+  var recent7=agoStr(6);
+  var condRecs=D.f.filter(function(x){return idEq(x.pid,pid)&&x.date>=recent7;});
+  if(condRecs.length){
+    var sleepRecs=condRecs.filter(function(x){return x.sleep;});
+    var avgSleep=sleepRecs.length?sleepRecs.reduce(function(s,x){return s+x.sleep;},0)/sleepRecs.length:0;
+    var avgRpe=condRecs.reduce(function(s,x){return s+(x.rpe||0);},0)/condRecs.length;
+    h+=rv('<div class="card" style="margin-top:12px"><div style="font-size:13px;font-weight:800;margin-bottom:10px">コンディション <span style="font-size:10px;color:var(--txt-3);font-weight:600">直近7日平均</span></div><div class="grid g2" style="gap:8px">'+
+      miniStat('平均睡眠',avgSleep?avgSleep.toFixed(1)+'h':'-')+
+      miniStat('平均疲労度',avgRpe?avgRpe.toFixed(1):'-')+
+      '</div></div>',1);
+  }
+  // 怪我歴
+  var pastInj=D.i.filter(function(x){return idEq(x.pid,pid)&&x.resolved;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  if(pastInj.length){
+    var hist='<div style="font-size:13px;font-weight:800;margin-bottom:10px">過去の怪我歴</div>';
+    pastInj.slice(0,8).forEach(function(inj){
+      hist+='<div class="row"><div style="flex:1"><div style="font-size:12px;font-weight:700">'+escapeHtml((inj.side||'')+inj.part+' '+inj.type)+'</div><div style="font-size:10px;color:var(--txt-2)">'+fmt(inj.date)+(inj.resolvedDate?' 〜 '+fmt(inj.resolvedDate):'')+'</div></div></div>';
+    });
+    h+=rv('<div class="card" style="margin-top:12px">'+hist+'</div>',1);
+  }
+  h+='</div>';
+  paint(h);
+  // BIG3推移グラフ
+  if(phRecs.length>=2){
+    setTimeout(function(){
+      var e=document.getElementById('rep-phys-chart');if(!e)return;
+      var ctx=e.getContext('2d');
+      function grad(c1,c2){var g=ctx.createLinearGradient(0,0,0,180);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;}
+      function mk(label,key,color,ft){return{label:label,data:phRecs.map(function(r){return r[key]||null;}),borderColor:color,backgroundColor:grad(ft,'rgba(0,0,0,0)'),borderWidth:2.5,fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'#0D1520',pointBorderColor:color,pointBorderWidth:2};}
+      dC('repphys');
+      charts.repphys=new Chart(e,{type:'line',data:{labels:phRecs.map(function(r){return r.date.slice(5);}),datasets:[
+        mk('SQ','squat','#5FA8FF','rgba(95,168,255,.2)'),
+        mk('BP','bench','#3DF0A4','rgba(61,240,164,.2)'),
+        mk('DL','deadlift','#FFC069','rgba(255,192,105,.2)')
+      ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#9DAEC7',usePointStyle:true,pointStyle:'circle',boxWidth:7,padding:12,font:{size:11}}},tooltip:{backgroundColor:'rgba(5,10,18,.95)',padding:10,cornerRadius:10,callbacks:{label:function(c){return c.dataset.label+': '+(c.parsed.y!=null?c.parsed.y+'kg':'-');}}}},scales:{y:{grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#9DAEC7',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#9DAEC7',font:{size:10}}}}}});
+    },60);
+  }
+  // 種目推移グラフ
+  setTimeout(function(){drawTrChartC(pid,window._trEx,window._trMetric);},60);
+}
 </script>
 <script>
 // ========== ナビ ==========
 var TABS=[
+  {k:'home',label:'概況'},
   {k:'injury',label:'怪我・リハビリ'},
   {k:'physical',label:'フィジカル'},
-  {k:'training',label:'出欠・トレーニング'},
+  {k:'training',label:'トレーニング'},
   {k:'condition',label:'コンディション'},
   {k:'players',label:'選手一覧'}
 ];
-var curTab='injury';
-function renderTabs(){
-  document.getElementById('tabs').innerHTML=TABS.map(function(t){
-    return '<div class="tab'+(t.k===curTab?' ac':'')+'" onclick="goTab(\''+t.k+'\')">'+t.label+'</div>';
-  }).join('');
-}
-function goTab(k){curTab=k;_detailPid=null;renderTabs();render();window.scrollTo(0,0);}
+var curTab='home';
 var _detailPid=null;
+var _seenTabs={home:1};
+function renderTabs(){
+  // 個人レポート表示中はタブのハイライトを外す（現在地の嘘を防ぐ）
+  var activeK=(_detailPid==null)?curTab:null;
+  document.getElementById('tabs').innerHTML=TABS.map(function(t){
+    return '<div class="tab'+(t.k===activeK?' ac':'')+'" onclick="goTab(\''+t.k+'\')">'+t.label+'</div>';
+  }).join('');
+  if(document.querySelector){
+    var ac=document.querySelector('.tab.ac');
+    if(ac&&ac.scrollIntoView){try{ac.scrollIntoView({inline:'center',block:'nearest'});}catch(e){}}
+  }
+}
+function goTab(k){
+  var first=!_seenTabs[k];_seenTabs[k]=1;
+  curTab=k;_detailPid=null;
+  try{history.replaceState({tab:k},'','#'+k);}catch(e){}
+  renderTabs();
+  if(!first)window._noAnim=true;  // 2回目以降のタブはアニメなしで即表示
+  render();
+  window._noAnim=false;
+  window.scrollTo(0,0);
+}
+function backFromReport(){
+  if(window.history&&history.state&&history.state.pid!=null){history.back();return;}
+  _detailPid=null;render();window.scrollTo(0,0);
+}
+// iPhoneのエッジスワイプ／ブラウザバックで個人レポートから戻れるように
+if(window.addEventListener){
+  window.addEventListener('popstate',function(e){
+    _detailPid=(e.state&&e.state.pid!=null)?e.state.pid:null;
+    window._noAnim=true;render();window._noAnim=false;
+    window.scrollTo(0,0);
+  });
+}
+// 種目セレクタ／指標トグル変更（blk_train版を上書き: 再描画アニメなし・スクロール位置維持）
+function setTrExC(v){window._trEx=(v||'').trim();var y=window.scrollY;window._noAnim=true;renderPlayerReport(_detailPid);window._noAnim=false;window.scrollTo(0,y);}
+function setTrMetricC(m){window._trMetric=m;var y=window.scrollY;window._noAnim=true;renderPlayerReport(_detailPid);window._noAnim=false;window.scrollTo(0,y);}
 function render(){
   renderTabs();
   dCA();
   if(_detailPid){renderPlayerReport(_detailPid);return;}
-  if(curTab==='injury')renderInjuryView();
+  if(curTab==='home')renderHomeView();
+  else if(curTab==='injury')renderInjuryView();
   else if(curTab==='physical')renderPhysicalView();
   else if(curTab==='training')renderTrainingView();
   else if(curTab==='condition')renderConditionView();
