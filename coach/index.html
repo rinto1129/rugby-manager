@@ -174,8 +174,8 @@ select.sel{background:var(--bg-elev);color:var(--txt);border:1px solid var(--lin
 // ========== Firebase ==========
 firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
 var db=firebase.firestore();
-var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],phskip:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[]};
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',phskip:'rm_phskip',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm'};
+var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],phskip:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],std:[]};
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',phskip:'rm_phskip',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm',std:'rm_standards'};
 var charts={};
 function dC(k){if(charts[k]){try{charts[k].destroy();}catch(e){}charts[k]=null;}}
 function dCA(){Object.keys(charts).forEach(dC);}
@@ -274,6 +274,189 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
 function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
 function getBest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null;});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
 function getBestBIG3(pid){var sq=getBest(pid,'squat')||0;var bp=getBest(pid,'bench')||0;var dl=getBest(pid,'deadlift')||0;return(sq||bp||dl)?(sq+bp+dl):null;}
+// ===== BIG3基準・体重帯エンジン（player/index.htmlよりverbatimコピー。1つ直したら3ファイル揃える） =====
+var STD_LIFTS=[{k:'sq',ph:'squat',label:'スクワット',short:'SQ'},{k:'bp',ph:'bench',label:'ベンチプレス',short:'BP'},{k:'dl',ph:'deadlift',label:'デッドリフト',short:'DL'}];
+var STD_DEFAULT={
+  pos:{
+    'PR':  {sq:1.55,bp:1.25,dl:1.90,ffmiLo:25,  ffmiHi:28,  bfLo:14,bfHi:20},
+    'HO':  {sq:1.60,bp:1.25,dl:1.95,ffmiLo:24,  ffmiHi:27,  bfLo:13,bfHi:18},
+    'LO':  {sq:1.55,bp:1.20,dl:1.90,ffmiLo:24,  ffmiHi:27,  bfLo:12,bfHi:17},
+    'FL':  {sq:1.65,bp:1.30,dl:2.00,ffmiLo:24,  ffmiHi:26.5,bfLo:11,bfHi:16},
+    'No.8':{sq:1.65,bp:1.30,dl:2.00,ffmiLo:24,  ffmiHi:27,  bfLo:12,bfHi:17},
+    'SH':  {sq:1.70,bp:1.25,dl:2.00,ffmiLo:22,  ffmiHi:24.5,bfLo:9, bfHi:13},
+    'SO':  {sq:1.65,bp:1.25,dl:1.95,ffmiLo:22,  ffmiHi:25,  bfLo:9, bfHi:14},
+    'CTB': {sq:1.70,bp:1.30,dl:2.05,ffmiLo:23,  ffmiHi:25.5,bfLo:10,bfHi:14},
+    'WTB': {sq:1.70,bp:1.25,dl:2.00,ffmiLo:22.5,ffmiHi:25,  bfLo:8, bfHi:13},
+    'FB':  {sq:1.70,bp:1.25,dl:2.00,ffmiLo:22.5,ffmiHi:25,  bfLo:9, bfHi:13}
+  },
+  ranks:[
+    {k:'bronze',label:'ブロンズ',pct:0.70,color:'#E8A05C'},
+    {k:'silver',label:'シルバー',pct:0.85,color:'#C9D4E4'},
+    {k:'gold',label:'ゴールド',pct:1.00,color:'#FFD24A'},
+    {k:'platinum',label:'プラチナ',pct:1.10,color:'#6FE3E1'},
+    {k:'diamond',label:'ダイヤ',pct:1.20,color:'#C084FC'}
+  ],
+  allo:{sq:0.33,bp:0.45,dl:0.33},
+  rx:{
+    sq:[{name:'フロントスクワット',sets:3,reps:6,rir:2},{name:'ブルガリアンスクワット',sets:3,reps:8,rir:2},{name:'レッグプレス',sets:3,reps:10,rir:2}],
+    bp:[{name:'ナローベンチプレス',sets:3,reps:6,rir:2},{name:'ダンベルプレス',sets:3,reps:8,rir:2},{name:'ディップス',sets:3,reps:8,rir:2}],
+    dl:[{name:'ルーマニアンデッドリフト',sets:3,reps:8,rir:2},{name:'ヒップスラスト',sets:3,reps:10,rir:2},{name:'グッドモーニング',sets:3,reps:10,rir:3}]
+  }
+};
+// 'std'の保存値をデフォルトへフィールド単位でマージ（部分保存でも欠けが出ない）
+function getStdCfg(){
+  var saved=(D.std&&D.std[0])||null;
+  if(!saved)return STD_DEFAULT;
+  var cfg={pos:{},ranks:(saved.ranks&&saved.ranks.length?saved.ranks:STD_DEFAULT.ranks),allo:saved.allo||STD_DEFAULT.allo,rx:saved.rx||STD_DEFAULT.rx};
+  Object.keys(STD_DEFAULT.pos).forEach(function(pk){
+    var d=STD_DEFAULT.pos[pk],s=(saved.pos||{})[pk]||{},m={};
+    Object.keys(d).forEach(function(f){m[f]=(s[f]!=null&&s[f]!==''?s[f]:d[f]);});
+    cfg.pos[pk]=m;
+  });
+  return cfg;
+}
+// 現在体重: 直近30日の実測（コンディションの毎日体重＋体組成）の平均 → 期間外は最新実測 → 選手登録の体重
+function getCurrentWeightInfo(pid){
+  var since=toDateStr(new Date(Date.now()-29*86400000));
+  var recs=[];
+  (D.f||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date)recs.push({date:r.date,w:w});});
+  (D.bc||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date)recs.push({date:r.date,w:w});});
+  var recent=recs.filter(function(x){return x.date>=since;});
+  if(recent.length){
+    var avg=recent.reduce(function(s,x){return s+x.w;},0)/recent.length;
+    return{w:Math.round(avg*10)/10,src:'直近30日平均・'+recent.length+'回',live:true};
+  }
+  if(recs.length){
+    recs.sort(function(a,b){return(b.date||'').localeCompare(a.date||'');});
+    return{w:recs[0].w,src:fmt(recs[0].date)+'の実測',live:false};
+  }
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  var pw=p?parseFloat(p.weight):NaN;
+  if(pw>0)return{w:pw,src:'選手登録の体重',live:false};
+  return null;
+}
+// 種目ランク判定。ratio=1RM÷(ゴールド倍率×体重)。ranks昇順でratio以上の最上位が現ランク。
+function getLiftRankInfo(pid,liftK){
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  if(!p||!p.position)return null;
+  var cfg=getStdCfg(),posStd=cfg.pos[p.position];
+  if(!posStd||!posStd[liftK])return null;
+  var wInfo=getCurrentWeightInfo(pid);
+  if(!wInfo)return{noWeight:true,lift:liftK};
+  var lift=STD_LIFTS.find(function(l){return l.k===liftK;});
+  var oneRM=getBest(pid,lift.ph);
+  var goldTarget=posStd[liftK]*wInfo.w;
+  var ratio=oneRM?oneRM/goldTarget:0;
+  var ranks=cfg.ranks.slice().sort(function(a,b){return a.pct-b.pct;});
+  var cur=null,next=null;
+  for(var i=0;i<ranks.length;i++){
+    if(oneRM&&ratio>=ranks[i].pct)cur=ranks[i];
+    else if(!next)next=ranks[i];
+  }
+  return{
+    lift:liftK,label:lift.label,short:lift.short,
+    oneRM:oneRM,weight:wInfo.w,weightSrc:wInfo.src,mult:posStd[liftK],
+    goldTarget:Math.round(goldTarget*10)/10,
+    ratio:ratio,
+    relBW:oneRM?Math.round(oneRM/wInfo.w*100)/100:null,
+    rank:cur,next:next,
+    nextTargetKg:next?Math.round(next.pct*goldTarget*10)/10:null,
+    nextNeedKg:(next&&oneRM)?Math.max(0,Math.ceil((next.pct*goldTarget-oneRM)*2)/2):null
+  };
+}
+// アロメトリック補正スコア = 1RM ÷ 体重^b（体格差を除いた公平比較用）
+function getAlloScore(pid,liftK){
+  var cfg=getStdCfg(),b=cfg.allo[liftK];
+  if(b==null)return null;
+  var wInfo=getCurrentWeightInfo(pid);
+  if(!wInfo)return null;
+  var lift=STD_LIFTS.find(function(l){return l.k===liftK;});
+  var oneRM=getBest(pid,lift.ph);
+  if(!oneRM)return null;
+  return Math.round(oneRM/Math.pow(wInfo.w,b)*10)/10;
+}
+// 体重推奨帯: 下限=FFMI下限×身長²÷(1−体脂肪下限)、上限=FFMI上限×身長²÷(1−体脂肪上限)
+function getWeightBandInfo(pid){
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  if(!p||!p.position)return null;
+  var cfg=getStdCfg(),s=cfg.pos[p.position];
+  if(!s)return null;
+  var hCm=parseFloat(p.height);
+  if(!(hCm>0))return{noHeight:true};
+  var hM=hCm/100;
+  var lo=s.ffmiLo*hM*hM/(1-s.bfLo/100);
+  var hi=s.ffmiHi*hM*hM/(1-s.bfHi/100);
+  var wInfo=getCurrentWeightInfo(pid);
+  var st=null,diff=null;
+  if(wInfo){
+    if(wInfo.w<lo){st='under';diff=lo-wInfo.w;}
+    else if(wInfo.w>hi){st='over';diff=wInfo.w-hi;}
+    else st='in';
+  }
+  return{lo:Math.round(lo*10)/10,hi:Math.round(hi*10)/10,w:wInfo?wInfo.w:null,weightSrc:wInfo?wInfo.src:null,status:st,diff:diff!=null?Math.round(diff*10)/10:null,ffmiLo:s.ffmiLo,ffmiHi:s.ffmiHi,bfLo:s.bfLo,bfHi:s.bfHi};
+}
+// 現在FFMI（直近の体脂肪率つき体組成から。無ければnull→測定CTA表示に使う）
+function getCurrentFFMIInfo(pid){
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  var hCm=parseFloat(p&&p.height);
+  if(!(hCm>0))return null;
+  var recs=(D.bc||[]).filter(function(r){return idEq(r.pid,pid)&&parseFloat(r.weight)>0&&r.fat!=null&&r.fat!=='';}).sort(function(a,b){return(b.date||'').localeCompare(a.date||'');});
+  if(!recs.length)return null;
+  var fat=parseFloat(recs[0].fat),w=parseFloat(recs[0].weight);
+  if(!(w>0)||isNaN(fat))return null;
+  var hM=hCm/100,ffm=w*(1-fat/100);
+  return{ffmi:Math.round(ffm/(hM*hM)*10)/10,ffm:Math.round(ffm*10)/10,fat:fat,date:recs[0].date};
+}
+// 弱点種目 = 測定済み種目のうち達成率(ratio)最小。2種目以上の測定が無いと判定しない
+function getWeakLift(pid){
+  var infos=[];
+  STD_LIFTS.forEach(function(l){
+    var inf=getLiftRankInfo(pid,l.k);
+    if(inf&&inf.oneRM)infos.push(inf);
+  });
+  if(infos.length<2)return null;
+  infos.sort(function(a,b){return a.ratio-b.ratio;});
+  return infos[0];
+}
+// アロメトリック補正スコアのチーム内順位（スコア算出可能な選手のみ母数）
+function getAlloTeamRank(pid,liftK){
+  var scores=D.p.map(function(pp){return{pid:pp.id,s:getAlloScore(pp.id,liftK)};}).filter(function(x){return x.s!=null;});
+  if(!scores.length)return null;
+  scores.sort(function(a,b){return b.s-a.s;});
+  var idx=scores.findIndex(function(x){return idEq(x.pid,pid);});
+  if(idx<0)return null;
+  return{rank:idx+1,total:scores.length,score:scores[idx].s};
+}
+// 弱点種目に効くボリュームの週次推移（月曜始まり・直近weeks週）。
+// 対象= estBaseが弱点種目 or 種目名がメイン種目名/処方箋(rx)の種目名に一致（skippedは除外）
+function getWeakWeeklyVolume(pid,liftK,weeks){
+  var lift=STD_LIFTS.find(function(l){return l.k===liftK;});
+  if(!lift)return[];
+  var cfg=getStdCfg();
+  var rxNames=(cfg.rx[liftK]||[]).map(function(r){return r.name;});
+  var now=new Date();var dow=(now.getDay()+6)%7;// 月曜=0
+  var thisMon=new Date(now);thisMon.setDate(now.getDate()-dow);
+  var out=[];
+  for(var wi=weeks-1;wi>=0;wi--){
+    var st=new Date(thisMon);st.setDate(thisMon.getDate()-7*wi);
+    var en=new Date(st);en.setDate(st.getDate()+6);
+    var stS=toDateStr(st),enS=toDateStr(en);
+    var vol=0;
+    (D.tlog||[]).forEach(function(l){
+      if(!idEq(l.pid,pid)||l.absent||!l.results)return;
+      if(!(l.date>=stS&&l.date<=enS))return;
+      l.results.forEach(function(r){
+        if(r.skipped)return;
+        var isTarget=(r.estBase===lift.ph)||(r.exName===lift.label)||rxNames.indexOf(r.exName)>=0;
+        if(!isTarget)return;
+        (r.sets||[]).forEach(function(s){vol+=(parseFloat(s.weight)||0)*(parseInt(s.reps)||0);});
+      });
+    });
+    out.push({label:(st.getMonth()+1)+'/'+st.getDate()+'週',vol:Math.round(vol)});
+  }
+  return out;
+}
+
 function fmt(d){return d?d.replace(/-/g,'/'):'-';}
 function getChart(injId){
   var ch=D.chart.find(function(x){return idEq(x.injId,injId);});
@@ -1514,6 +1697,31 @@ function renderPlayersView(){
   paint(h);
 }
 function setPosFilter(v){window._posFilter=v;window._noAnim=true;render();window._noAnim=false;}
+// 個人レポート用: BIG3ランクバッジ＋体重帯（staff選手詳細と同じ基準エンジンを使用。閲覧専用のため書込は一切なし）
+function renderStdBadgesCoach(pid){
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  if(!p)return'';
+  if(!p.position)return'<div class="card" style="margin-top:12px"><div class="no">ポジション未登録のため基準未表示</div></div>';
+  var weak=getWeakLift(pid);
+  var liftsHtml=STD_LIFTS.map(function(l){
+    var inf=getLiftRankInfo(pid,l.k);
+    var isWeak=weak&&weak.lift===l.k;
+    if(!inf||inf.noWeight||!inf.oneRM)return'<div style="background:var(--bg-elev);border-radius:10px;padding:10px;text-align:center"><div style="font-size:15px;font-weight:800;color:var(--txt-3)">-</div><div style="font-size:10px;color:var(--txt-2);margin-top:2px">'+l.short+(inf&&inf.noWeight?' (体重なし)':'')+'</div></div>';
+    var rankLabel=inf.rank?inf.rank.label:'未到達';
+    var rankColor=inf.rank?inf.rank.color:'var(--txt-3)';
+    return'<div style="background:var(--bg-elev);border-radius:10px;padding:10px;text-align:center"><div style="font-size:15px;font-weight:800;color:'+rankColor+'">'+rankLabel+(isWeak?' 🎯':'')+'</div><div style="font-size:10px;color:var(--txt-2);margin-top:2px">'+l.short+' '+inf.oneRM+'kg</div></div>';
+  }).join('');
+  var band=getWeightBandInfo(pid);
+  var bandHtml='';
+  if(band&&band.noHeight)bandHtml='<div style="font-size:11px;color:var(--txt-3);margin-top:10px">身長未登録のため推奨体重帯は非表示</div>';
+  else if(band){
+    var stChip=band.status==='in'?'<span class="bd bd-g">帯内 ✓</span>'
+      :band.status==='under'?'<span class="bd bd-a">帯まで +'+band.diff+'kg</span>'
+      :band.status==='over'?'<span class="bd bd-r">帯上限 +'+band.diff+'kg</span>':'';
+    bandHtml='<div style="font-size:11.5px;margin-top:10px;color:var(--txt-2)">推奨体重帯 <b style="color:var(--txt)">'+band.lo+'〜'+band.hi+'kg</b>'+(band.w!=null?'（現在 '+band.w+'kg）':'')+' '+stChip+'</div>';
+  }
+  return'<div class="card" style="margin-top:12px"><div style="font-size:13px;font-weight:800;margin-bottom:10px">BIG3基準・体重帯</div><div class="grid g3" style="gap:8px">'+liftsHtml+'</div>'+bandHtml+'</div>';
+}
 // ========================================================
 // 個人レポート
 // ========================================================
@@ -1563,6 +1771,8 @@ function renderPlayerReport(pid){
     pc+='<div style="position:relative;height:180px;margin-top:14px"><canvas id="rep-phys-chart"></canvas></div>';
   }
   h+=rv('<div class="card" style="margin-top:12px">'+pc+'</div>',2);
+  var stdHtml=renderStdBadgesCoach(pid);
+  if(stdHtml)h+=rv(stdHtml,2);
   // トレーニング（種目推移＋セッション履歴: 既存ヘルパー流用）
   h+='<div class="rv" style="--d:.1s">'+buildTrendCoach(pid)+'</div>';
   h+='<div class="rv" style="--d:.1s">'+buildHistCoach(pid)+'</div>';
@@ -1573,10 +1783,13 @@ function renderPlayerReport(pid){
     var sleepRecs=condRecs.filter(function(x){return x.sleep;});
     var avgSleep=sleepRecs.length?sleepRecs.reduce(function(s,x){return s+x.sleep;},0)/sleepRecs.length:0;
     var avgRpe=condRecs.reduce(function(s,x){return s+(x.rpe||0);},0)/condRecs.length;
-    h+=rv('<div class="card" style="margin-top:12px"><div style="font-size:13px;font-weight:800;margin-bottom:10px">コンディション <span style="font-size:10px;color:var(--txt-3);font-weight:600">直近7日平均</span></div><div class="grid g2" style="gap:8px">'+
-      miniStat('平均睡眠',avgSleep?avgSleep.toFixed(1)+'h':'-')+
-      miniStat('平均疲労度',avgRpe?avgRpe.toFixed(1):'-')+
-      '</div></div>',1);
+    var condStats=miniStat('平均睡眠',avgSleep?avgSleep.toFixed(1)+'h':'-')+miniStat('平均疲労度',avgRpe?avgRpe.toFixed(1):'-');
+    // 拡張項目（任意入力のため記録がある期間のみ平均を出す）
+    [['mood','平均気分'],['stress','平均ストレス'],['soreness','平均筋肉痛']].forEach(function(f){
+      var recs=condRecs.filter(function(x){return x[f[0]];});
+      if(recs.length)condStats+=miniStat(f[1],(recs.reduce(function(s,x){return s+x[f[0]];},0)/recs.length).toFixed(1));
+    });
+    h+=rv('<div class="card" style="margin-top:12px"><div style="font-size:13px;font-weight:800;margin-bottom:10px">コンディション <span style="font-size:10px;color:var(--txt-3);font-weight:600">直近7日平均</span></div><div class="grid g4" style="gap:8px">'+condStats+'</div></div>',1);
   }
   // 怪我歴
   var pastInj=D.i.filter(function(x){return idEq(x.pid,pid)&&x.resolved;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});

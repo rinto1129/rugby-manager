@@ -167,6 +167,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 <div class="ni-group">その他</div>
 <div class="ni" onclick="nav('rank')"><span class="ni-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg></span><span>ランキング</span></div>
 <div class="ni" onclick="nav('trainer')"><span class="ni-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 13.5c0 .28-.22.5-.5.5s-.5-.22-.5-.5.22-.5.5-.5.5.22.5.5zm4 0c0 .28-.22.5-.5.5s-.5-.22-.5-.5.22-.5.5-.5.5.22.5.5zM20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm3 11.5c-2.33 0-4.31-1.46-5.11-3.5h10.22c-.8 2.04-2.78 3.5-5.11 3.5z"/></svg></span><span>トレーナー管理</span></div>
+<div class="ni" onclick="nav('standards')"><span class="ni-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg></span><span>基準設定</span></div>
 <div class="ni" onclick="nav('export')"><span class="ni-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg></span><span>CSV出力</span></div>
 <div class="ni" onclick="nav('help')"><span class="ni-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"/></svg></span><span>使い方ガイド</span></div>
 </div></div>
@@ -182,7 +183,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 if(window.Chart){Chart.defaults.color='#5A6473';Chart.defaults.borderColor='rgba(16,24,40,0.10)';Chart.defaults.scale.grid.color='rgba(16,24,40,0.07)';}
 firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
 var db=firebase.firestore();
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',phskip:'rm_phskip',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm',pp:'rm_pushpull'};
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',phskip:'rm_phskip',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm',pp:'rm_pushpull',std:'rm_standards'};
 var STG=['ウォーキング','ランニング','スプリント','ジャンプ','コンタクト以外の練習','フルコンタクト','完全復帰'];
 var RCATS=['ケア','ROM改善','患部外トレーニング','トレーニング','アジリティ','フィットネス','サポート','オフ'];
 var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'#0891B2',サポート:'#059669',オフ:'var(--text-secondary)'};
@@ -284,6 +285,217 @@ function estimateOneRM(weight,reps,rir){
 function getPlayer1RM(pid,estBase){
   if(!estBase)return null;
   return getBest(pid,estBase);
+}
+
+// ============================================================
+// ===== BIG3・体重基準エンジン（'std'設定＋ランク/帯判定） =====
+// ============================================================
+// 基準設定のデフォルト。'std'（Firestore・単一要素配列[cfg]）が保存されていればgetStdCfg()でマージされる。
+// 倍率=ゴールド基準（文献の大学〜エリート中上位目安をポジション特性で補正した叩き台）
+var STD_LIFTS=[{k:'sq',ph:'squat',label:'スクワット',short:'SQ'},{k:'bp',ph:'bench',label:'ベンチプレス',short:'BP'},{k:'dl',ph:'deadlift',label:'デッドリフト',short:'DL'}];
+var STD_DEFAULT={
+  pos:{
+    'PR':  {sq:1.55,bp:1.25,dl:1.90,ffmiLo:25,  ffmiHi:28,  bfLo:14,bfHi:20},
+    'HO':  {sq:1.60,bp:1.25,dl:1.95,ffmiLo:24,  ffmiHi:27,  bfLo:13,bfHi:18},
+    'LO':  {sq:1.55,bp:1.20,dl:1.90,ffmiLo:24,  ffmiHi:27,  bfLo:12,bfHi:17},
+    'FL':  {sq:1.65,bp:1.30,dl:2.00,ffmiLo:24,  ffmiHi:26.5,bfLo:11,bfHi:16},
+    'No.8':{sq:1.65,bp:1.30,dl:2.00,ffmiLo:24,  ffmiHi:27,  bfLo:12,bfHi:17},
+    'SH':  {sq:1.70,bp:1.25,dl:2.00,ffmiLo:22,  ffmiHi:24.5,bfLo:9, bfHi:13},
+    'SO':  {sq:1.65,bp:1.25,dl:1.95,ffmiLo:22,  ffmiHi:25,  bfLo:9, bfHi:14},
+    'CTB': {sq:1.70,bp:1.30,dl:2.05,ffmiLo:23,  ffmiHi:25.5,bfLo:10,bfHi:14},
+    'WTB': {sq:1.70,bp:1.25,dl:2.00,ffmiLo:22.5,ffmiHi:25,  bfLo:8, bfHi:13},
+    'FB':  {sq:1.70,bp:1.25,dl:2.00,ffmiLo:22.5,ffmiHi:25,  bfLo:9, bfHi:13}
+  },
+  ranks:[
+    {k:'bronze',label:'ブロンズ',pct:0.70,color:'#E8A05C'},
+    {k:'silver',label:'シルバー',pct:0.85,color:'#C9D4E4'},
+    {k:'gold',label:'ゴールド',pct:1.00,color:'#FFD24A'},
+    {k:'platinum',label:'プラチナ',pct:1.10,color:'#6FE3E1'},
+    {k:'diamond',label:'ダイヤ',pct:1.20,color:'#C084FC'}
+  ],
+  allo:{sq:0.33,bp:0.45,dl:0.33},
+  rx:{
+    sq:[{name:'フロントスクワット',sets:3,reps:6,rir:2},{name:'ブルガリアンスクワット',sets:3,reps:8,rir:2},{name:'レッグプレス',sets:3,reps:10,rir:2}],
+    bp:[{name:'ナローベンチプレス',sets:3,reps:6,rir:2},{name:'ダンベルプレス',sets:3,reps:8,rir:2},{name:'ディップス',sets:3,reps:8,rir:2}],
+    dl:[{name:'ルーマニアンデッドリフト',sets:3,reps:8,rir:2},{name:'ヒップスラスト',sets:3,reps:10,rir:2},{name:'グッドモーニング',sets:3,reps:10,rir:3}]
+  }
+};
+// 'std'の保存値をデフォルトへフィールド単位でマージ（部分保存でも欠けが出ない）
+function getStdCfg(){
+  var saved=(D.std&&D.std[0])||null;
+  if(!saved)return STD_DEFAULT;
+  var cfg={pos:{},ranks:(saved.ranks&&saved.ranks.length?saved.ranks:STD_DEFAULT.ranks),allo:saved.allo||STD_DEFAULT.allo,rx:saved.rx||STD_DEFAULT.rx};
+  Object.keys(STD_DEFAULT.pos).forEach(function(pk){
+    var d=STD_DEFAULT.pos[pk],s=(saved.pos||{})[pk]||{},m={};
+    Object.keys(d).forEach(function(f){m[f]=(s[f]!=null&&s[f]!==''?s[f]:d[f]);});
+    cfg.pos[pk]=m;
+  });
+  return cfg;
+}
+// 現在体重: 直近30日の実測（コンディションの毎日体重＋体組成）の平均 → 期間外は最新実測 → 選手登録の体重
+function getCurrentWeightInfo(pid){
+  var since=toDateStr(new Date(Date.now()-29*86400000));
+  var recs=[];
+  (D.f||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date)recs.push({date:r.date,w:w});});
+  (D.bc||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date)recs.push({date:r.date,w:w});});
+  var recent=recs.filter(function(x){return x.date>=since;});
+  if(recent.length){
+    var avg=recent.reduce(function(s,x){return s+x.w;},0)/recent.length;
+    return{w:Math.round(avg*10)/10,src:'直近30日平均・'+recent.length+'回',live:true};
+  }
+  if(recs.length){
+    recs.sort(function(a,b){return(b.date||'').localeCompare(a.date||'');});
+    return{w:recs[0].w,src:fmt(recs[0].date)+'の実測',live:false};
+  }
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  var pw=p?parseFloat(p.weight):NaN;
+  if(pw>0)return{w:pw,src:'選手登録の体重',live:false};
+  return null;
+}
+// 種目ランク判定。ratio=1RM÷(ゴールド倍率×体重)。ranks昇順でratio以上の最上位が現ランク。
+function getLiftRankInfo(pid,liftK){
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  if(!p||!p.position)return null;
+  var cfg=getStdCfg(),posStd=cfg.pos[p.position];
+  if(!posStd||!posStd[liftK])return null;
+  var wInfo=getCurrentWeightInfo(pid);
+  if(!wInfo)return{noWeight:true,lift:liftK};
+  var lift=STD_LIFTS.find(function(l){return l.k===liftK;});
+  var oneRM=getBest(pid,lift.ph);
+  var goldTarget=posStd[liftK]*wInfo.w;
+  var ratio=oneRM?oneRM/goldTarget:0;
+  var ranks=cfg.ranks.slice().sort(function(a,b){return a.pct-b.pct;});
+  var cur=null,next=null;
+  for(var i=0;i<ranks.length;i++){
+    if(oneRM&&ratio>=ranks[i].pct)cur=ranks[i];
+    else if(!next)next=ranks[i];
+  }
+  return{
+    lift:liftK,label:lift.label,short:lift.short,
+    oneRM:oneRM,weight:wInfo.w,weightSrc:wInfo.src,mult:posStd[liftK],
+    goldTarget:Math.round(goldTarget*10)/10,
+    ratio:ratio,
+    relBW:oneRM?Math.round(oneRM/wInfo.w*100)/100:null,
+    rank:cur,next:next,
+    nextTargetKg:next?Math.round(next.pct*goldTarget*10)/10:null,
+    nextNeedKg:(next&&oneRM)?Math.max(0,Math.ceil((next.pct*goldTarget-oneRM)*2)/2):null
+  };
+}
+// アロメトリック補正スコア = 1RM ÷ 体重^b（体格差を除いた公平比較用）
+function getAlloScore(pid,liftK){
+  var cfg=getStdCfg(),b=cfg.allo[liftK];
+  if(b==null)return null;
+  var wInfo=getCurrentWeightInfo(pid);
+  if(!wInfo)return null;
+  var lift=STD_LIFTS.find(function(l){return l.k===liftK;});
+  var oneRM=getBest(pid,lift.ph);
+  if(!oneRM)return null;
+  return Math.round(oneRM/Math.pow(wInfo.w,b)*10)/10;
+}
+// 体重推奨帯: 下限=FFMI下限×身長²÷(1−体脂肪下限)、上限=FFMI上限×身長²÷(1−体脂肪上限)
+function getWeightBandInfo(pid){
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  if(!p||!p.position)return null;
+  var cfg=getStdCfg(),s=cfg.pos[p.position];
+  if(!s)return null;
+  var hCm=parseFloat(p.height);
+  if(!(hCm>0))return{noHeight:true};
+  var hM=hCm/100;
+  var lo=s.ffmiLo*hM*hM/(1-s.bfLo/100);
+  var hi=s.ffmiHi*hM*hM/(1-s.bfHi/100);
+  var wInfo=getCurrentWeightInfo(pid);
+  var st=null,diff=null;
+  if(wInfo){
+    if(wInfo.w<lo){st='under';diff=lo-wInfo.w;}
+    else if(wInfo.w>hi){st='over';diff=wInfo.w-hi;}
+    else st='in';
+  }
+  return{lo:Math.round(lo*10)/10,hi:Math.round(hi*10)/10,w:wInfo?wInfo.w:null,weightSrc:wInfo?wInfo.src:null,status:st,diff:diff!=null?Math.round(diff*10)/10:null,ffmiLo:s.ffmiLo,ffmiHi:s.ffmiHi,bfLo:s.bfLo,bfHi:s.bfHi};
+}
+// 現在FFMI（直近の体脂肪率つき体組成から。無ければnull→測定CTA表示に使う）
+function getCurrentFFMIInfo(pid){
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  var hCm=parseFloat(p&&p.height);
+  if(!(hCm>0))return null;
+  var recs=(D.bc||[]).filter(function(r){return idEq(r.pid,pid)&&parseFloat(r.weight)>0&&r.fat!=null&&r.fat!=='';}).sort(function(a,b){return(b.date||'').localeCompare(a.date||'');});
+  if(!recs.length)return null;
+  var fat=parseFloat(recs[0].fat),w=parseFloat(recs[0].weight);
+  if(!(w>0)||isNaN(fat))return null;
+  var hM=hCm/100,ffm=w*(1-fat/100);
+  return{ffmi:Math.round(ffm/(hM*hM)*10)/10,ffm:Math.round(ffm*10)/10,fat:fat,date:recs[0].date};
+}
+// 弱点種目 = 測定済み種目のうち達成率(ratio)最小。2種目以上の測定が無いと判定しない
+function getWeakLift(pid){
+  var infos=[];
+  STD_LIFTS.forEach(function(l){
+    var inf=getLiftRankInfo(pid,l.k);
+    if(inf&&inf.oneRM)infos.push(inf);
+  });
+  if(infos.length<2)return null;
+  infos.sort(function(a,b){return a.ratio-b.ratio;});
+  return infos[0];
+}
+// アロメトリック補正スコアのチーム内順位（スコア算出可能な選手のみ母数）
+function getAlloTeamRank(pid,liftK){
+  var scores=D.p.map(function(pp){return{pid:pp.id,s:getAlloScore(pp.id,liftK)};}).filter(function(x){return x.s!=null;});
+  if(!scores.length)return null;
+  scores.sort(function(a,b){return b.s-a.s;});
+  var idx=scores.findIndex(function(x){return idEq(x.pid,pid);});
+  if(idx<0)return null;
+  return{rank:idx+1,total:scores.length,score:scores[idx].s};
+}
+// 弱点種目に効くボリュームの週次推移（月曜始まり・直近weeks週）。
+// 対象= estBaseが弱点種目 or 種目名がメイン種目名/処方箋(rx)の種目名に一致（skippedは除外）
+function getWeakWeeklyVolume(pid,liftK,weeks){
+  var lift=STD_LIFTS.find(function(l){return l.k===liftK;});
+  if(!lift)return[];
+  var cfg=getStdCfg();
+  var rxNames=(cfg.rx[liftK]||[]).map(function(r){return r.name;});
+  var now=new Date();var dow=(now.getDay()+6)%7;// 月曜=0
+  var thisMon=new Date(now);thisMon.setDate(now.getDate()-dow);
+  var out=[];
+  for(var wi=weeks-1;wi>=0;wi--){
+    var st=new Date(thisMon);st.setDate(thisMon.getDate()-7*wi);
+    var en=new Date(st);en.setDate(st.getDate()+6);
+    var stS=toDateStr(st),enS=toDateStr(en);
+    var vol=0;
+    (D.tlog||[]).forEach(function(l){
+      if(!idEq(l.pid,pid)||l.absent||!l.results)return;
+      if(!(l.date>=stS&&l.date<=enS))return;
+      l.results.forEach(function(r){
+        if(r.skipped)return;
+        var isTarget=(r.estBase===lift.ph)||(r.exName===lift.label)||rxNames.indexOf(r.exName)>=0;
+        if(!isTarget)return;
+        (r.sets||[]).forEach(function(s){vol+=(parseFloat(s.weight)||0)*(parseInt(s.reps)||0);});
+      });
+    });
+    out.push({label:(st.getMonth()+1)+'/'+st.getDate()+'週',vol:Math.round(vol)});
+  }
+  return out;
+}
+// 選手詳細「基本情報」タブ用: BIG3ランクバッジ＋体重帯ステータス（選手サイトのマイステータスと同じ基準エンジンを使用）
+function renderStdSummaryHTML(pid){
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  if(!p||!p.position)return'<div class="form-box"><div class="form-title">🏋️ BIG3基準・体重帯</div><div class="no">ポジション未登録のため基準未表示</div></div>';
+  var weak=getWeakLift(pid);
+  var liftsHtml=STD_LIFTS.map(function(l){
+    var inf=getLiftRankInfo(pid,l.k);
+    var isWeak=weak&&weak.lift===l.k;
+    if(!inf||inf.noWeight||!inf.oneRM)return'<div class="mc"><div class="v" style="font-size:13px;color:var(--text-tertiary)">-</div><div class="l">'+l.short+(inf&&inf.noWeight?' (体重なし)':'')+'</div></div>';
+    var rankLabel=inf.rank?inf.rank.label:'未到達';
+    var rankColor=inf.rank?inf.rank.color:'var(--text-tertiary)';
+    return'<div class="mc"><div class="v" style="font-size:14px;color:'+rankColor+'">'+rankLabel+(isWeak?' 🎯':'')+'</div><div class="l">'+l.short+' '+inf.oneRM+'kg</div></div>';
+  }).join('');
+  var band=getWeightBandInfo(pid);
+  var bandHtml='';
+  if(band&&band.noHeight)bandHtml='<div style="font-size:12px;color:var(--text-tertiary);margin-top:8px">身長未登録のため推奨体重帯は非表示</div>';
+  else if(band){
+    var stChip=band.status==='in'?'<span class="bd bd-g">帯内 ✓</span>'
+      :band.status==='under'?'<span class="bd bd-a">帯まで +'+band.diff+'kg</span>'
+      :band.status==='over'?'<span class="bd bd-r">帯上限 +'+band.diff+'kg</span>':'';
+    bandHtml='<div style="font-size:12px;margin-top:8px">推奨体重帯 <b>'+band.lo+'〜'+band.hi+'kg</b>'+(band.w!=null?'（現在 '+band.w+'kg・'+escapeHtml(band.weightSrc||'')+'）':'')+' '+stChip+'</div>';
+  }
+  return'<div class="form-box"><div class="form-title">🏋️ BIG3基準・体重帯</div><div class="grid" style="grid-template-columns:repeat(3,1fr);gap:8px">'+liftsHtml+'</div>'+bandHtml+'</div>';
 }
 
 var PARTS=['頭部','頸部','肩','鎖骨','肘','手首','指','腰','股関節','大腿','膝','すね','足首','踵','アキレス腱','ふくらはぎ','足の甲','足趾','その他'];
@@ -499,7 +711,7 @@ var EVAL_MASTER={
 };
 
 var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
-var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],phskip:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],pp:[]};
+var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],phskip:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],pp:[],std:[]};
 var curPage='dash',charts={},viewStack=[];
 
 function ld(){
@@ -551,7 +763,7 @@ function svSafe(k,newRec,onDone){
   }).then(function(latest){D[k]=latest;if(onDone)onDone();}).catch(function(e){console.error('svSafe error:',k,e);alert('保存に失敗しました');});
 }
 // 配列を直接更新する場合のsvSafe
-function svSafeUpdate(k,updateFn,onDone){
+function svSafeUpdate(k,updateFn,onDone,onError){
   var ref=db.collection('appdata').doc(k);
   return db.runTransaction(function(tx){
     return tx.get(ref).then(function(doc){
@@ -560,7 +772,7 @@ function svSafeUpdate(k,updateFn,onDone){
       tx.set(ref,{data:JSON.stringify(latest)});
       return latest;
     });
-  }).then(function(latest){D[k]=latest;if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);alert('保存に失敗しました');});
+  }).then(function(latest){D[k]=latest;if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);if(onError)onError(e);else alert('保存に失敗しました');});
 }
 // 単一レコードをトランザクションで安全にupsert（id一致で置換、なければ追加）
 function svRec(k,rec,onDone){
@@ -687,7 +899,7 @@ function nav(pg){
     var m=onclickAttr.match(/nav\(['"]([^'"]+)['"]\)/);
     e.classList.toggle('ac',m&&m[1]===pg);
   });
-  var t={dash:'ダッシュボード',players:'選手一覧',injury:'怪我管理',rehab:'リハビリ管理',training:'トレーニング',fatigue:'疲労度管理',absence:'欠席管理',bodycomp:'体組成',physical:'フィジカル記録',matchview:'試合日レポート',tape:'テーピング予約',calendar:'カレンダー',trainer:'トレーナー管理',rank:'ランキング',export:'CSV出力',msess:'測定会管理',rtest:'復帰テスト',help:'使い方ガイド'};
+  var t={dash:'ダッシュボード',players:'選手一覧',injury:'怪我管理',rehab:'リハビリ管理',training:'トレーニング',fatigue:'疲労度管理',absence:'欠席管理',bodycomp:'体組成',physical:'フィジカル記録',matchview:'試合日レポート',tape:'テーピング予約',calendar:'カレンダー',trainer:'トレーナー管理',rank:'ランキング',export:'CSV出力',msess:'測定会管理',rtest:'復帰テスト',standards:'基準設定（BIG3・体重帯）',help:'使い方ガイド'};
   document.getElementById('pg-title').textContent=t[pg]||pg;
   var acts={players:'<button class="btn btn-p" onclick="goAddPlayer()">+ 選手追加</button>',injury:'<button class="btn btn-p" onclick="goAddInjury()">+ 怪我登録</button>',absence:'<button class="btn btn-p" onclick="goRecordAbsence()">+ 欠席記録</button>',bodycomp:'<button class="btn btn-p" onclick="goAddBC()">+ 体組成記録</button>',physical:'<button class="btn btn-p" onclick="goAddPhys()">+ 記録追加</button> <button class="btn" onclick="goBulkPhys()" style="margin-left:6px">一括入力</button>',fatigue:'<button class="btn btn-p" onclick="goAddFatigue()">+ コンディション入力</button>',rehab:'<button class="btn btn-p" onclick="goAddRTpl()">+ テンプレ作成</button>',calendar:'<button class="btn btn-p" onclick="goAddCalEvent()">+ イベント追加</button> <button class="btn" onclick="goImportCal()" style="margin-left:6px">📋 一括インポート</button>',tape:'<button class="btn btn-p" onclick="goAddTapeSlot()">+ 枠を設定</button>',msess:'<button class="btn btn-p" onclick="goAddMSess()">+ 測定会を作成</button>',rtest:'<button class="btn btn-p" onclick="goAddRTestTpl()">+ テンプレ作成</button>',trainer:'<button class="btn btn-p" onclick="goAddTrainer()">+ トレーナー追加</button>'};
   document.getElementById('tb-act').innerHTML=(acts[pg]||'')+(pg==='dash'?'<button class="btn" style="margin-left:6px" onclick="checkYearUpdate()">📅 学年更新</button>':'');
@@ -3202,6 +3414,7 @@ function goPlayerDetail(pid,openTab){
   '<div class="form-box"><div class="form-title">既往歴</div><div style="font-size:13px;line-height:1.7">'+medH(pid)+'</div></div>'+
   '<div class="form-box"><div class="form-title">特記事項</div><textarea class="ipt" id="ep-note">'+escapeHtml(p.note||'')+'</textarea></div>'+
   '<div class="form-box"><div class="form-title">サマリー</div><div class="grid" style="grid-template-columns:repeat(5,1fr);gap:6px"><div class="mc"><div class="v" style="font-size:15px">'+(bSQ||'-')+'</div><div class="l">SQ</div></div><div class="mc"><div class="v" style="font-size:15px">'+(bBP||'-')+'</div><div class="l">BP</div></div><div class="mc"><div class="v" style="font-size:15px">'+(bDL||'-')+'</div><div class="l">DL</div></div><div class="mc"><div class="v" style="font-size:15px">'+(bBR?broncoFmt(bBR):'-')+'</div><div class="l">Bronco</div></div><div class="mc"><div class="v" style="font-size:15px;color:'+(ac>=3?'var(--red)':'var(--green)')+'">'+atc+'/'+ts+'</div><div class="l">出席</div></div></div></div>'+
+  renderStdSummaryHTML(pid)+
   '<div style="display:flex;justify-content:space-between;margin-top:1rem;flex-wrap:wrap;gap:8px"><div style="display:flex;gap:6px"><button class="btn btn-d" onclick="doDelPlayer('+pid+')">削除</button>'+(p.pin?'<button class="btn" onclick="resetPlayerPIN('+pid+')">🔒 PINリセット</button>':'<span style="color:var(--amber);font-size:12px;align-self:center;margin-left:4px">⚠️ PIN未設定</span>')+'</div><button class="btn btn-p" onclick="doSavePlayer('+pid+')">保存</button></div></div>'+
   '<div class="tc" id="dt1"><div class="chart-wrap"><canvas id="ch-pp"></canvas></div>'+(pPh.length?pPh.sort(function(a,b){return b.date.localeCompare(a.date);}).map(function(r){return'<div class="log-row"><span style="min-width:70px;color:var(--text-secondary)">'+fmt(r.date)+'</span><span>SQ:'+(r.squat||'-')+'</span><span>BP:'+(r.bench||'-')+'</span><span>DL:'+(r.deadlift||'-')+'</span><span style="font-weight:600;color:var(--blue)">BIG3:'+big3(r)+'</span><span>Bronco:'+(r.bronco?broncoFmt(r.bronco):'-')+'</span></div>';}).join(''):'<div class="no">記録なし</div>')+'</div>'+
   '<div class="tc" id="dt2">'+(pInj.length?pInj.sort(function(a,b){return b.date.localeCompare(a.date);}).map(function(i){var rh=D.r.find(function(x){return x.injId===i.id;});var plan=(D.rplan||[]).find(function(x){return x.injId===i.id;});var lastLog=(D.rlog||[]).filter(function(l){return l.injId===i.id;}).sort(function(a,b){return (b.date||"").localeCompare(a.date||"");})[0];return'<div class="card card-click" style="margin-bottom:8px" onclick="goRPlanDetail('+i.id+')"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-weight:600">'+injLabel(i)+'</span><span class="bd '+(i.resolved?'bd-g':'bd-r')+'">'+(i.resolved?'回復済':'治療中')+'</span></div><div style="font-size:12px;color:var(--text-secondary)">'+fmt(i.date)+(i.returnDate?' | 復帰予定: '+fmt(i.returnDate):'')+'</div>'+(rh&&!i.resolved?'<div style="font-size:12px;color:var(--blue);font-weight:600;margin-top:4px">段階: '+STG[rh.stage]+'</div>':'')+( lastLog?'<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">最終記録: '+fmt(lastLog.date)+' / '+(lastLog.implementer||'')+'</div>':'')+'</div>';}).join(''):'<div class="no">なし</div>')+'</div>'+
@@ -5569,6 +5782,117 @@ function saveMatchSel(){
   var sel=Object.keys(matchSelTemp).filter(function(k){return matchSelTemp[k];}).map(function(k){return parseInt(k);});
   // 試合選出は「現在の選出を丸ごと置換」が意図的な仕様。トランザクション経路に統一。
   svSafeUpdate('matchsel',function(){return sel;},function(){alert('保存しました ✓');popView();});
+}
+
+// ===== BIG3・体重基準の設定画面（'std'編集。保存は svSafeUpdate で単一要素配列 [cfg] に置き換え） =====
+V.standards=function(){
+  var cfg=getStdCfg();
+  var saved=!!(D.std&&D.std[0]);
+  var POSF=[{k:'sq',label:'SQ倍率'},{k:'bp',label:'BP倍率'},{k:'dl',label:'DL倍率'},{k:'ffmiLo',label:'FFMI下限'},{k:'ffmiHi',label:'FFMI上限'},{k:'bfLo',label:'脂肪%下限'},{k:'bfHi',label:'脂肪%上限'}];
+  var h='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.7">選手サイトの<b>BIG3ランク</b>（ブロンズ〜ダイヤ）と<b>推奨体重帯</b>の基準値です。保存するとチーム共通で全サイトに即反映されます。 '+
+    (saved?'<span class="bd bd-b">カスタム設定を使用中</span>':'<span class="bd bd-a">未保存（コード内の初期値で動作中）</span>')+'</div>';
+  // --- ポジション別テーブル ---
+  h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:700;margin-bottom:4px">ポジション別基準</div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">ゴールド基準1RM＝体重×倍率。推奨体重帯＝FFMI帯×身長²÷(1−体脂肪率)で算出。</div>'+
+    '<div style="overflow-x:auto"><table style="border-collapse:collapse;min-width:660px">'+
+    '<tr><th style="text-align:left;padding:4px 8px;font-size:11px">ポジ</th>'+POSF.map(function(f){return'<th style="padding:4px 4px;font-size:10px;color:var(--text-secondary);font-weight:600">'+f.label+'</th>';}).join('')+'</tr>'+
+    POS.map(function(ps,pi){
+      var row=cfg.pos[ps]||{};
+      return'<tr><td style="padding:3px 8px;font-weight:700;font-size:12px;white-space:nowrap">'+ps+'</td>'+POSF.map(function(f){
+        return'<td style="padding:3px 3px"><input class="ipt" style="width:66px;padding:6px 4px;text-align:center;font-size:13px" type="number" step="0.01" id="std-pos-'+pi+'-'+f.k+'" value="'+row[f.k]+'"></td>';
+      }).join('')+'</tr>';
+    }).join('')+'</table></div></div>';
+  // --- ランク閾値 ---
+  h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:700;margin-bottom:4px">ランク閾値（×ゴールド基準）</div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">昇順で設定。例: ブロンズ0.70＝ゴールド基準の70%到達でブロンズ。</div>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap">'+cfg.ranks.map(function(r,i){
+      return'<div style="text-align:center"><div style="font-size:11px;font-weight:700;color:'+r.color+';text-shadow:0 0 1px rgba(0,0,0,.15)">'+escapeHtml(r.label)+'</div><input class="ipt" style="width:72px;text-align:center" type="number" step="0.01" id="std-rank-'+i+'" value="'+r.pct+'"></div>';
+    }).join('')+'</div></div>';
+  // --- アロメトリック指数 ---
+  h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:700;margin-bottom:4px">アロメトリック補正指数 b（補正スコア＝1RM÷体重^b）</div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">体格差を除いた公平比較用。文献目安: SQ 0.33 / BP 0.45 / DL 0.33（暫定値）。</div>'+
+    '<div style="display:flex;gap:10px">'+STD_LIFTS.map(function(l){
+      return'<div style="text-align:center"><div style="font-size:11px;font-weight:700">'+l.short+'</div><input class="ipt" style="width:72px;text-align:center" type="number" step="0.01" id="std-allo-'+l.k+'" value="'+cfg.allo[l.k]+'"></div>';
+    }).join('')+'</div></div>';
+  // --- 処方箋 ---
+  h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:700;margin-bottom:4px">処方箋（弱点種目→推奨補助種目）</div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">弱点種目の選手のマイフィジカル詳細に表示。目安重量はメイン種目1RM×RPE表から自動計算。空欄の行は保存されません。</div>';
+  STD_LIFTS.forEach(function(l){
+    h+='<div style="font-weight:700;font-size:12px;margin:10px 0 6px">'+l.label+'が弱点のとき</div>';
+    for(var ri=0;ri<3;ri++){
+      var rx=(cfg.rx[l.k]||[])[ri]||{name:'',sets:3,reps:8,rir:2};
+      h+='<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;flex-wrap:wrap">'+
+        '<input class="ipt" style="flex:2;min-width:170px" id="std-rx-'+l.k+'-'+ri+'-name" value="'+escapeHtml(rx.name)+'" placeholder="種目名（空欄=行を削除）">'+
+        '<input class="ipt" style="width:58px;text-align:center" type="number" id="std-rx-'+l.k+'-'+ri+'-sets" value="'+rx.sets+'">'+
+        '<span style="font-size:11px;color:var(--text-secondary)">set×</span>'+
+        '<input class="ipt" style="width:58px;text-align:center" type="number" id="std-rx-'+l.k+'-'+ri+'-reps" value="'+rx.reps+'">'+
+        '<span style="font-size:11px;color:var(--text-secondary)">回 RIR</span>'+
+        '<input class="ipt" style="width:58px;text-align:center" type="number" id="std-rx-'+l.k+'-'+ri+'-rir" value="'+rx.rir+'">'+
+        '</div>';
+    }
+  });
+  h+='</div>';
+  h+='<div style="display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap">'+
+    '<button class="btn btn-p" style="flex:1;min-width:220px" onclick="doSaveStd(this)">💾 保存（チーム共通で反映）</button>'+
+    (saved?'<button class="btn btn-d" onclick="doResetStd(this)">初期値に戻す</button>':'')+
+    '</div>';
+  $m().innerHTML=h;
+};
+function doSaveStd(btn){
+  var cur=getStdCfg();
+  var cfg={pos:{},ranks:[],allo:{},rx:{}};
+  var errs=[];
+  function num(id,name,lo,hi){
+    var v=parseFloat((document.getElementById(id)||{}).value);
+    if(!(v>=lo&&v<=hi)){errs.push(name+'（'+lo+'〜'+hi+'）');return null;}
+    return v;
+  }
+  POS.forEach(function(ps,pi){
+    var row={};
+    row.sq=num('std-pos-'+pi+'-sq',ps+' SQ倍率',0.5,3);
+    row.bp=num('std-pos-'+pi+'-bp',ps+' BP倍率',0.5,3);
+    row.dl=num('std-pos-'+pi+'-dl',ps+' DL倍率',0.5,3);
+    row.ffmiLo=num('std-pos-'+pi+'-ffmiLo',ps+' FFMI下限',15,35);
+    row.ffmiHi=num('std-pos-'+pi+'-ffmiHi',ps+' FFMI上限',15,35);
+    row.bfLo=num('std-pos-'+pi+'-bfLo',ps+' 脂肪%下限',3,35);
+    row.bfHi=num('std-pos-'+pi+'-bfHi',ps+' 脂肪%上限',3,35);
+    if(row.ffmiLo!=null&&row.ffmiHi!=null&&row.ffmiLo>row.ffmiHi)errs.push(ps+' FFMIが下限>上限');
+    if(row.bfLo!=null&&row.bfHi!=null&&row.bfLo>row.bfHi)errs.push(ps+' 脂肪%が下限>上限');
+    cfg.pos[ps]=row;
+  });
+  cur.ranks.forEach(function(r,i){
+    var v=num('std-rank-'+i,'ランク%（'+r.label+'）',0.3,2);
+    cfg.ranks.push({k:r.k,label:r.label,pct:v!=null?v:r.pct,color:r.color});
+  });
+  for(var i=1;i<cfg.ranks.length;i++){if(cfg.ranks[i].pct<=cfg.ranks[i-1].pct){errs.push('ランク%は昇順にしてください（'+cfg.ranks[i-1].label+'＜'+cfg.ranks[i].label+'）');break;}}
+  STD_LIFTS.forEach(function(l){
+    cfg.allo[l.k]=num('std-allo-'+l.k,l.short+' 補正指数',0.1,1);
+    var arr=[];
+    for(var ri=0;ri<3;ri++){
+      var nm=((document.getElementById('std-rx-'+l.k+'-'+ri+'-name')||{}).value||'').trim();
+      if(!nm)continue;
+      var st=num('std-rx-'+l.k+'-'+ri+'-sets',l.short+' 処方'+(ri+1)+' セット',1,10);
+      var rp=num('std-rx-'+l.k+'-'+ri+'-reps',l.short+' 処方'+(ri+1)+' 回数',1,20);
+      var rr=num('std-rx-'+l.k+'-'+ri+'-rir',l.short+' 処方'+(ri+1)+' RIR',0,5);
+      arr.push({name:nm,sets:st,reps:rp,rir:rr});
+    }
+    cfg.rx[l.k]=arr;
+  });
+  if(errs.length)return alert('入力値を確認してください:\n・'+errs.slice(0,8).join('\n・')+(errs.length>8?'\n…他'+(errs.length-8)+'件':''));
+  if(!confirm('基準値を保存しますか？\n選手・スタッフ・コーチの全サイトに即反映されます'))return;
+  btn.disabled=true;var orig=btn.textContent;btn.textContent='保存中…';
+  svSafeUpdate('std',function(){return [cfg];},function(){
+    btn.disabled=false;btn.textContent=orig;
+    alert('保存しました ✓');V.standards();
+  },function(){
+    btn.disabled=false;btn.textContent=orig;
+    alert('保存できませんでした。電波状況を確認してもう一度お試しください。入力内容は残っています。');
+  });
+}
+function doResetStd(btn){
+  if(!confirm('カスタム基準を削除して初期値（コード内デフォルト）に戻しますか？'))return;
+  btn.disabled=true;
+  svSafeUpdate('std',function(){return [];},function(){btn.disabled=false;alert('初期値に戻しました');V.standards();},function(){btn.disabled=false;alert('通信エラーで戻せませんでした。もう一度お試しください。');});
 }
 
 ld().then(function(){document.getElementById('loading-screen').style.display='none';startListeners();V.dash();}).catch(function(e){console.error(e);document.getElementById('loading-screen').innerHTML='<div style="text-align:center"><div style="font-size:40px;margin-bottom:16px">⚠️</div><div>読み込みエラー</div><button onclick="location.reload()" style="margin-top:12px;padding:8px 16px;cursor:pointer">再試行</button></div>';});
