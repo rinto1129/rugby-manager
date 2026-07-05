@@ -106,7 +106,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 if(window.Chart){Chart.defaults.color='#9FB0C8';Chart.defaults.borderColor='rgba(255,255,255,0.10)';Chart.defaults.scale.grid.color='rgba(255,255,255,0.08)';}
 firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
 var db=firebase.firestore();
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',phskip:'rm_phskip',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm'};
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',phskip:'rm_phskip',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm',pp:'rm_pushpull'};
 var RCATS=['ケア','ROM改善','患部外トレーニング','トレーニング','アジリティ','フィットネス','サポート','オフ'];
 var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'#0891B2',サポート:'#059669',オフ:'var(--text-secondary)'};
 var RCAT_BG={ケア:'var(--blue-bg)',ROM改善:'var(--green-bg)',患部外トレーニング:'var(--amber-bg)',トレーニング:'var(--red-bg)',アジリティ:'var(--purple-bg)',フィットネス:'#E0F2FE',サポート:'#D1FAE5',オフ:'var(--bg-tertiary)'};
@@ -394,7 +394,7 @@ function getChart(injId){
 var PARTS=['頭部','頸部','肩','鎖骨','肘','手首','指','腰','股関節','大腿','膝','すね','足首','踵','アキレス腱','ふくらはぎ','足の甲','足趾','その他'];
 var INJ_TYPES=['捻挫','肉離れ','骨折','脱臼','打撲','靭帯損傷','半月板損傷','脳震盪','裂傷','腱炎','疲労骨折','その他'];
 var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
-var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],phskip:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[]};
+var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],phskip:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],pp:[]};
 var myPid=null,curTab='home',charts={},subView=null;
 
 function ld(){
@@ -581,6 +581,62 @@ function markInjNotifRead(iid){
 
 // ===== 怪我コメント機能（3者共有） =====
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+// ===== ウエイトPUSH/PULL交互管理（pp）＝チーム全員共通・グローバル1列（playerは表示のみ） =====
+function ppNext(){
+  var a=Array.isArray(D.pp)?D.pp:[]; if(!a.length)return null;
+  var t=a[a.length-1]&&a[a.length-1].type; return(t==='push'||t==='pull')?t:null;
+}
+function ppNextWeightDay(){
+  var t=todayStr();
+  var doneToday=Array.isArray(D.pp)&&D.pp.length>=2&&D.pp[D.pp.length-1].date===t;
+  var ds=(D.cal||[]).filter(function(e){return e&&e.type==='weight'&&typeof e.date==='string'&&(doneToday?e.date>t:e.date>=t);}).map(function(e){return e.date;});
+  if(!ds.length)return null; ds.sort();
+  return{date:ds[0],isToday:ds[0]===t};
+}
+function ppDateLabel(ds){
+  var d=new Date(ds+'T00:00:00'); if(isNaN(d))return fmt(ds);
+  var W=['日','月','火','水','木','金','土'];
+  return(d.getMonth()+1)+'/'+d.getDate()+'('+W[d.getDay()]+')';
+}
+function ppCardHtml(showCtrl){
+  var next=ppNext();
+  if(next===null){
+    if(!showCtrl)return '';
+    return '<div class="card" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem">'+
+      '<div style="font-size:13px;font-weight:700;margin-bottom:10px">🏋️ ウエイト PUSH/PULL 初期設定</div>'+
+      '<div style="display:flex;gap:10px">'+
+      '<button class="btn" style="flex:1;background:var(--blue-bg);color:var(--blue);font-weight:700" onclick="ppStart(\'push\')">🟦 PUSHから開始</button>'+
+      '<button class="btn" style="flex:1;background:var(--red-bg);color:var(--red);font-weight:700" onclick="ppStart(\'pull\')">🟥 PULLから開始</button>'+
+      '</div></div>';
+  }
+  var isPush=next==='push';
+  var color=isPush?'var(--blue)':'var(--red)';
+  var bg=isPush?'var(--blue-bg)':'var(--red-bg)';
+  var label=isPush?'🟦 PUSH':'🟥 PULL';
+  var wd=ppNextWeightDay();
+  var wdTxt=wd?'・'+ppDateLabel(wd.date):'';
+  var lastRec=D.pp[D.pp.length-1];
+  var byLabel=lastRec.by==='trainer'?'トレーナー':'スタッフ';
+  var metaTxt='最終操作: '+fmt(lastRec.date)+' ('+byLabel+')';
+  var todayStrong=(wd&&wd.isToday)?'<div style="font-size:12px;font-weight:700;color:'+color+';margin-bottom:4px">今日は'+(isPush?'PUSH':'PULL')+'の日！</div>':'';
+  var borderStyle=(wd&&wd.isToday)?'border:2px solid '+color+';box-shadow:0 0 16px '+bg:'';
+  var ctrlHtml='';
+  if(showCtrl){
+    ctrlHtml='<div style="display:flex;gap:8px;margin-top:10px">'+
+      '<button class="btn" style="flex:1;font-size:12px" onclick="ppFlip(\''+next+'\')">✅ '+(isPush?'PUSH':'PULL')+'実施済み → '+(isPush?'PULL':'PUSH')+'へ</button>'+
+      '<button class="btn" style="font-size:12px" onclick="ppUndo()">↩ 1つ戻す</button>'+
+      '</div>';
+  }
+  return '<div class="card" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem;background:linear-gradient(135deg,'+bg+',transparent 70%);'+borderStyle+'">'+
+    todayStrong+
+    '<div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:4px">🏋️ 次のウエイト'+wdTxt+'</div>'+
+    '<div style="font-size:24px;font-weight:800;color:'+color+'">'+label+'</div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-top:6px">'+metaTxt+'</div>'+
+    ctrlHtml+
+    '</div>';
+}
+
 // 機能カード用SVGアイコン（面スタイル、accentカラー）
 function navIcon(name,size){
   size=size||30;
@@ -870,6 +926,7 @@ home:function(){
   if(broncoMissedAll.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--amber)">🏃 昨日のブロンコ未入力 <span style="font-size:12px;font-weight:400">'+broncoMissedAll.length+'名</span></div>'+broncoMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';}
   // Announcements
   if(teamAnns.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px">📢 お知らせ</div>';teamAnns.forEach(function(a){h+='<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:0.5px solid var(--border-tertiary)"><div style="font-size:11px;color:var(--text-secondary)">'+fmt(a.date)+'</div><div style="font-size:13px;white-space:pre-wrap;margin-top:2px">'+escapeHtml(a.text)+'</div></div>';});h+='</div>';}
+  h+=ppCardHtml(false);
   // This week schedule
   if(weekEvts.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px">📅 今週のスケジュール</div>';weekEvts.forEach(function(e){var dot=e.type==='match'?'🏟️':e.type==='practice'?'⚽':e.type==='off'?'😴':e.type==='weight'?'🏋️':'📌';h+='<div class="log-row"><span style="min-width:16px">'+dot+'</span><div style="flex:1"><span style="font-weight:600;font-size:13px">'+fmt(e.date)+' '+escapeHtml(e.title)+'</span>'+(e.detail?'<div style="font-size:11px;color:var(--text-secondary)">'+escapeHtml(e.detail)+'</div>':'')+'</div></div>';});h+='</div>';}
   // Body comp targets

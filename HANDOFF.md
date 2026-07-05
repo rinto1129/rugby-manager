@@ -11,13 +11,12 @@
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
-- **🆕🆕🆕 最優先タスク＝TimeTree連携フェーズ1「チーム共通プッシュ/プル表示」の実装プランが確定・ユーザー承認済み（2026-07-05、別セッションでplan mode作成）。プランファイル: `/Users/nakayamarinnin/.claude/plans/sleepy-spinning-stardust.md`。まだ1行もコード着手していない＝次セッションはこのプランのステップ1（staff/index.html）から着手する。**
-  - プラン要旨: 新短キー`pp`（履歴配列、最新レコードのtype=次のウエイト種別）をFirestoreに追加。player/staff/trainerのホームに「次のウエイト: PUSH/PULL」バッジ。進行はstaff/trainerの1タップ反転（confirm無し）＋「1つ戻す」。playerは表示のみ。**coachには一切追加しない**。calのweight種別と連動するのは**表示のみ**（直近weight日の併記＋今日がweight日なら強調。自動反転はしない）。
-  - プランで発見した重要事実（実装時に必ず踏まえる）: ①**trainerのSKに`cal`が無い**ので追加が必要（trainer:141）。②**trainerのld/onSnapshotは空配列を受け取らない**ガード（trainer:597, trainer:3602）があり、「戻す」で空配列に戻すと他trainer端末に古いバッジが残る→`k==='pp'`の特例を両箇所に追加する設計込み。③関数名`ppNext`等は3ファイルで衝突なし確認済み。
-  - 実装順序: ステップ1=staff（書き込み経路を先に作る）→ステップ2=trainer（cal購読追加・構造変更最大）→ステップ3=player（表示のみ）→ステップ4=整合チェック（grep+diff）。各ステップ直後に構文チェック＋モック模擬実行。詳細・エッジケースガード・検証手順の全文はプランファイル参照。
-  - **注意**: プラン作成時点ではstaff/trainerに怪我×リハビリPhase2の未コミット変更が乗っていたため「並行注意」を書いたが、その後別セッションがコミット済み（`9c5d4fa`）＝作業ツリーは既にクリーン。着手前に`git status`で再確認すること。
-- **✅ push完了（2026-07-05・コミット9c5d4fa）。** `staff/index.html` / `trainer/index.html` / `HANDOFF.md` の3ファイルをcommit&push済み。`.DS_Store`・`.claude/launch.json`は意図的に除外（コミット対象外のローカルファイル）。
-  - **未実施のまま**: GitHub Pages反映後、Cmd+Shift+R で staff/trainer のカルテ「📊評価」タブを開いて不足ゲージ（SVGネオンリング）の実機確認（このMacはsandbox制約でpreview不可＝Claude側では実機確認できない、既知の環境制約）。Phase2の実装内容・検証状況は下の「✅✅ 怪我×リハビリ連携 Phase2」ログ参照。TimeTree実装と並行、またはその前後にユーザーに確認を促してよい。
+- **✅✅ TimeTree連携フェーズ1「チーム共通プッシュ/プル表示」実装完了・検証済み・未push（2026-07-05・このセッション）。** プランファイル: `/Users/nakayamarinnin/.claude/plans/sleepy-spinning-stardust.md`通りにステップ1〜4を全完走。
+  - **実装内容**: 新短キー`pp`（履歴配列、最新レコードのtype=次のウエイト種別）をSK/Dに追加（player/staff/trainer。coachは意図的に無変更＝grep 0件確認済み）。共通ヘルパー`ppNext/ppNextWeightDay/ppDateLabel/ppCardHtml`を3ファイルにverbatimで追加。staff/trainerには操作関数`ppFlip/ppUndo/ppStart`（`by`と再描画呼び出し[`V.dash()`/`T.home()`]のみが差分）を追加、playerは表示のみ（`ppCardHtml(false)`）。staffダッシュ・trainerホーム・playerホームにバッジ表示を配線。
+  - **trainer固有の構造変更**: SKに`cal:'rm_calendar'`を新規追加（従来「軽量・低頻度」の除外方針の対象外という注記コメント付き。trainer:141）。ld()とonSnapshot()の空配列ガード2箇所（従来`parsed.length>0`のみ）を`(parsed.length>0||k==='pp')`に変更＝「1つ戻す」で空配列に戻した時も全trainer端末に同期されるようにした。
+  - **検証方法（この環境の制約への対応）**: このMacには`node`が入っておらず、CLAUDE.md記載の`node --check`は使えなかった（`preview_start`もsandbox制約で不可、既知の環境制約）。代わりに`pip3 install --user esprima`で全文構文チェック（3ファイルともOK）、`pip3 install --user js2py`でpp関数群を抽出しPythonから実行するモックテストを実施——staff/trainer各20アサート・player6アサート、全てパス（ppNext/ppNextWeightDay/ppDateLabel/ppFlip/ppUndo/ppStart/ppCardHtmlの全エッジケース：空/破損データ・反転レース・100件トリム・weight日判定・today反転済みの表示分岐等）。trainerのld/onSnapshotガード変更もPythonロジックで再現し、`k==='pp'`のみ空配列可・他キーは従来通り拒否を確認。整合チェック（grep+diff）でcoach 0件・staff/trainer/playerのppブロック差分が許容範囲（by/redraw/player操作関数なしのみ）であることも確認済み。
+  - **実機ブラウザ確認は未実施**（環境制約は他の未push項目と同じ）。
+  - **次にやること**: ユーザーにcommit&push可否を確認してから、push→実機で「staffでPUSHから開始→playerでバッジ出現→staff反転→playerがPULLに→trainerで戻す→PUSHに戻る→calに今日のweightイベントを入れ「今日は」強調確認→coachに何も出ていないこと確認」の一連を試験する（プランの検証方法セクション参照）。
 - **ユーザー方針（継続）**: 「実装は全部済ませてから、pushは最後に一気に行う」。実機確認・push・逐一確認は保留したまま実装を進めてよい（「あなたの判断で続けていいよ」を明示承認済み）。push/実機確認は必ず最後にまとめて行う。
 - **🆕 未着手の設計検討＝trainer側での「怪我の基本情報編集」解禁（2026-07-05・別の会話スレッド。コードは一切未着手・設計段階のみ）。**
   - **発端の質問と回答**: ユーザーから「トレーナーサイトで復帰時期の変更ができないのはなぜだったか」と質問された。回答: ①`goEditInjury`（部位・受傷日・**復帰予定日**・受診情報等の基本情報編集）は**このセッション以前から**スタッフ権限スタブ（[trainer/index.html:426](trainer/index.html:426)、専門学生が怪我の根幹情報を編集できない元からの設計）。②「回復済みにする」(`resolveInj`)は今回のガイド付き評価フローT1-3で**意図的に**スタッフ権限スタブ化した（元は`popView()`未定義でクラッシュしていたバグを、AT役レビューの指摘「見習いが単独で復帰確定できるのは臨床的に危険。バグが偶然安全弁になっていた」を踏まえ、あえてバグを直さずスタブのまま確定した）。

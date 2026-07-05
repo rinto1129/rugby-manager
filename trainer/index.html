@@ -138,9 +138,10 @@ firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDom
 var db=firebase.firestore();
 // tmenu/tlog/texlist/e1rmはtrainer内で一切読まれない（トレーニング関連はstaff/player/coach専用）。
 // 購読すると選手のセット保存の度に全trainer端末がtlog(数百KB)を再ダウンロード＋画面リセットされるため対象外にする。
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec'};
+// cal/ppは軽量・低頻度更新のため上記除外方針の対象外（ppの「次のweight日」表示にcalが必要）。
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',cal:'rm_calendar',pp:'rm_pushpull'};
 var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
-var D={p:[],i:[],r:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[]};
+var D={p:[],i:[],r:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],cal:[],pp:[]};
 var myTrainer=null;
 var RCATS=['ケア','ROM改善','患部外トレーニング','トレーニング','アジリティ','フィットネス','サポート','オフ'];
 var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'#0891B2',サポート:'#059669',オフ:'var(--text-secondary)'};
@@ -594,7 +595,7 @@ function ld(){
       if(doc.exists){
         try{
           var parsed=JSON.parse(doc.data().data);
-          if(Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
+          if(Array.isArray(parsed)&&(parsed.length>0||k==='pp'))D[k]=parsed;
         }catch(e){console.log('parse error:',k);}
       }
     }).catch(function(e){console.log('load error:',k,e);});
@@ -792,6 +793,85 @@ function delInjComment(cid,iid,role){
   });
 }
 function fmt(d){return d?d.replace(/-/g,'/'):'−';}
+// ===== ウエイトPUSH/PULL交互管理（pp）＝チーム全員共通・グローバル1列 =====
+function ppNext(){
+  var a=Array.isArray(D.pp)?D.pp:[]; if(!a.length)return null;
+  var t=a[a.length-1]&&a[a.length-1].type; return(t==='push'||t==='pull')?t:null;
+}
+function ppNextWeightDay(){
+  var t=todayStr();
+  var doneToday=Array.isArray(D.pp)&&D.pp.length>=2&&D.pp[D.pp.length-1].date===t;
+  var ds=(D.cal||[]).filter(function(e){return e&&e.type==='weight'&&typeof e.date==='string'&&(doneToday?e.date>t:e.date>=t);}).map(function(e){return e.date;});
+  if(!ds.length)return null; ds.sort();
+  return{date:ds[0],isToday:ds[0]===t};
+}
+function ppDateLabel(ds){
+  var d=new Date(ds+'T00:00:00'); if(isNaN(d))return fmt(ds);
+  var W=['日','月','火','水','木','金','土'];
+  return(d.getMonth()+1)+'/'+d.getDate()+'('+W[d.getDay()]+')';
+}
+function ppCardHtml(showCtrl){
+  var next=ppNext();
+  if(next===null){
+    if(!showCtrl)return '';
+    return '<div class="card" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem">'+
+      '<div style="font-size:13px;font-weight:700;margin-bottom:10px">🏋️ ウエイト PUSH/PULL 初期設定</div>'+
+      '<div style="display:flex;gap:10px">'+
+      '<button class="btn" style="flex:1;background:var(--blue-bg);color:var(--blue);font-weight:700" onclick="ppStart(\'push\')">🟦 PUSHから開始</button>'+
+      '<button class="btn" style="flex:1;background:var(--red-bg);color:var(--red);font-weight:700" onclick="ppStart(\'pull\')">🟥 PULLから開始</button>'+
+      '</div></div>';
+  }
+  var isPush=next==='push';
+  var color=isPush?'var(--blue)':'var(--red)';
+  var bg=isPush?'var(--blue-bg)':'var(--red-bg)';
+  var label=isPush?'🟦 PUSH':'🟥 PULL';
+  var wd=ppNextWeightDay();
+  var wdTxt=wd?'・'+ppDateLabel(wd.date):'';
+  var lastRec=D.pp[D.pp.length-1];
+  var byLabel=lastRec.by==='trainer'?'トレーナー':'スタッフ';
+  var metaTxt='最終操作: '+fmt(lastRec.date)+' ('+byLabel+')';
+  var todayStrong=(wd&&wd.isToday)?'<div style="font-size:12px;font-weight:700;color:'+color+';margin-bottom:4px">今日は'+(isPush?'PUSH':'PULL')+'の日！</div>':'';
+  var borderStyle=(wd&&wd.isToday)?'border:2px solid '+color+';box-shadow:0 0 16px '+bg:'';
+  var ctrlHtml='';
+  if(showCtrl){
+    ctrlHtml='<div style="display:flex;gap:8px;margin-top:10px">'+
+      '<button class="btn" style="flex:1;font-size:12px" onclick="ppFlip(\''+next+'\')">✅ '+(isPush?'PUSH':'PULL')+'実施済み → '+(isPush?'PULL':'PUSH')+'へ</button>'+
+      '<button class="btn" style="font-size:12px" onclick="ppUndo()">↩ 1つ戻す</button>'+
+      '</div>';
+  }
+  return '<div class="card" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem;background:linear-gradient(135deg,'+bg+',transparent 70%);'+borderStyle+'">'+
+    todayStrong+
+    '<div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:4px">🏋️ 次のウエイト'+wdTxt+'</div>'+
+    '<div style="font-size:24px;font-weight:800;color:'+color+'">'+label+'</div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-top:6px">'+metaTxt+'</div>'+
+    ctrlHtml+
+    '</div>';
+}
+function ppFlip(expected){
+  svSafeUpdate('pp',function(latest){
+    if(!Array.isArray(latest))latest=[];
+    var last=latest.length?latest[latest.length-1]:null;
+    if(!last||(last.type!=='push'&&last.type!=='pull'))return latest;
+    if(expected&&last.type!==expected)return latest;
+    latest.push({id:Date.now(),type:last.type==='push'?'pull':'push',date:todayStr(),by:'trainer'});
+    if(latest.length>100)latest=latest.slice(-100);
+    return latest;
+  },function(){if(curTab==='home')T.home();});
+}
+function ppUndo(){
+  svSafeUpdate('pp',function(latest){
+    if(!Array.isArray(latest)||!latest.length)return latest;
+    latest.pop();
+    return latest;
+  },function(){if(curTab==='home')T.home();});
+}
+function ppStart(type){
+  if(type!=='push'&&type!=='pull')return;
+  svSafeUpdate('pp',function(latest){
+    if(Array.isArray(latest)&&latest.length)return latest;
+    return[{id:Date.now(),type:type,date:todayStr(),by:'trainer'}];
+  },function(){if(curTab==='home')T.home();});
+}
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
 function getCurrentMSess(){var today=todayStr();return(D.msess||[]).find(function(s){return s.startDate<=today&&s.endDate>=today;})||null;}
 function numStepHTML(id,min,max,oninput){
@@ -1000,6 +1080,7 @@ home:function(){
   '<button class="btn btn-sm" onclick="go(\'help\')" style="font-size:11px">📖 ガイド</button>'+
   '</div>'+
   '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">'+fmt(today)+'</div>';
+  h+=ppCardHtml(true);
   // 今日のテーピング
   h+='<div class="card"><div style="font-weight:600;margin-bottom:10px">🩻 今日のテーピング予約</div>';
   if(mySlots.length){
@@ -3599,7 +3680,7 @@ function startListeners(){
       if(doc.exists){
         try{
           var parsed=JSON.parse(doc.data().data);
-          if(Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
+          if(Array.isArray(parsed)&&(parsed.length>0||k==='pp'))D[k]=parsed;
           // 入力中フォーム判定
           var ae=document.activeElement;
           var isInputting=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT');
