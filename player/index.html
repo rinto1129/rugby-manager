@@ -27,13 +27,16 @@ body{font-family:var(--font-sans);background:var(--bg-app);color:var(--text-prim
 .btn-s{color:var(--green);border-color:var(--green)}
 .btn-back{color:var(--text-secondary);border:none;background:none;padding:8px 0;font-size:14px;cursor:pointer;font-family:var(--font-sans);width:auto;font-weight:500}.btn-back:hover{color:var(--accent)}
 .btn-match{background:var(--purple);color:#fff;border-color:var(--purple);padding:14px;font-size:15px}
-.ipt{padding:11px 12px;border:1.5px solid var(--border-secondary);border-radius:var(--radius);background:var(--navy);font-size:14px;color:var(--text-primary);font-family:var(--font-sans);width:100%}
+.ipt{padding:11px 12px;border:1.5px solid var(--border-secondary);border-radius:var(--radius);background:var(--navy);font-size:16px;color:var(--text-primary);font-family:var(--font-sans);width:100%}
 .ipt:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
 .ipt::placeholder{color:var(--text-tertiary)}
 select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 .bd{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600}
 .bd-g{background:var(--green-bg);color:var(--green)}.bd-r{background:var(--red-bg);color:var(--red)}.bd-a{background:var(--amber-bg);color:var(--amber)}.bd-b{background:var(--blue-bg);color:var(--blue)}.bd-p{background:var(--purple-bg);color:var(--purple)}
 .card{background:var(--bg-primary);border:1px solid var(--border-tertiary);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:12px;box-shadow:var(--shadow-sm)}
+.card-click{cursor:pointer;transition:all .12s}
+@media(hover:hover){.card-click:hover{border-color:var(--blue);background:var(--bg-secondary)}}
+.card-click:active{transform:scale(.98);background:var(--bg-secondary)}
 .mc{background:var(--bg-secondary);border-radius:var(--radius);padding:.75rem;text-align:center}.mc .v{font-size:20px;font-weight:700}.mc .l{font-size:10px;color:var(--text-secondary);margin-top:3px}
 .fl{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}.fl label{font-size:13px;color:var(--text-secondary);font-weight:600}
 .form-box{background:var(--bg-secondary);border:1px solid var(--border-tertiary);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:16px}
@@ -48,7 +51,8 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 .nav-bottom{position:fixed;bottom:0;left:0;right:0;background:var(--navy);border-top:1px solid var(--border-tertiary);display:flex;z-index:10;max-width:600px;margin:0 auto}
 .nav-btn{flex:1;padding:8px 2px 6px;text-align:center;cursor:pointer;color:var(--text-secondary);font-size:9px;transition:all .12s;border:none;background:none;font-family:var(--font-sans)}
 .nav-btn.ac{color:var(--accent);font-weight:600}
-.nav-btn-icon{font-size:16px;display:flex;align-items:center;justify-content:center;margin-bottom:3px}.nav-btn-icon svg{width:22px;height:22px}
+.nav-btn-icon{font-size:16px;display:flex;align-items:center;justify-content:center;margin-bottom:3px;position:relative}.nav-btn-icon svg{width:22px;height:22px}
+.nav-dot{position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:var(--red);display:none;border:2px solid var(--navy)}
 .select-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:12px}
 .select-card{border:1.5px solid var(--border-tertiary);border-radius:var(--radius-lg);padding:12px 8px;cursor:pointer;text-align:center;transition:all .15s}
 .select-card:hover{border-color:var(--blue);background:var(--bg-secondary)}
@@ -57,6 +61,8 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 .alert-card{padding:.65rem .85rem;border-radius:var(--radius);margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:8px;font-weight:500}
 .alert-info{background:var(--blue-bg);color:var(--blue);border-left:3px solid var(--blue)}
 .alert-down{background:var(--red-bg);color:var(--red);border-left:3px solid var(--red)}
+.alert-warn{background:var(--amber-bg);color:var(--amber);border-left:3px solid var(--amber)}
+.alert-up{background:var(--green-bg);color:var(--green);border-left:3px solid var(--green)}
 .cond-toggle{display:flex;border:1.5px solid var(--border-secondary);border-radius:var(--radius);overflow:hidden;margin-bottom:14px}
 .cond-toggle-btn{flex:1;padding:10px;text-align:center;font-size:13px;cursor:pointer;background:var(--bg-primary);color:var(--text-secondary);border:none;font-family:var(--font-sans);font-weight:500}
 .cond-toggle-btn.ac{background:var(--blue);color:#fff;font-weight:600}
@@ -66,7 +72,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 .rk-podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin-bottom:20px}
 .rk-col{flex:1;text-align:center;min-width:0}
 .rk-col.first{flex:1.15}
-.rk-ava{border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;background-size:cover;background-position:center;cursor:pointer}
+.rk-ava{border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;background-size:cover;background-position:center}
 .rk-name{font-size:13px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rk-sub{font-size:10px;color:var(--text-secondary);margin-bottom:6px}
 .rk-stand{border-radius:10px 10px 0 0;padding:14px 6px 12px;display:flex;flex-direction:column;justify-content:flex-end;color:#fff}
@@ -84,7 +90,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 <div id="best-banner"></div>
 <div class="header">
 <div><h1>🏉 Rugby Manager</h1><div class="header-sub" id="hdr-name">選手を選択</div></div>
-<button class="btn-back" id="logout-btn" style="display:none" onclick="logout()">選手切替</button>
+<button class="btn-back" id="logout-btn" style="display:none" onclick="logout()">ログアウト</button>
 </div>
 <div class="main" id="main"></div>
 <div id="loading-screen" style="position:fixed;inset:0;background:var(--bg-primary);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column"><div style="font-size:40px;margin-bottom:16px">🏉</div><div style="font-size:16px;font-weight:600;margin-bottom:8px">Rugby Manager</div><div style="color:var(--text-secondary);font-size:13px">読み込み中...</div></div>
@@ -93,7 +99,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 <div class="nav-bottom" id="nav-bar">
 <div class="nav-btn ac" onclick="go('home')"><span class="nav-btn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>ホーム</div>
 <div class="nav-btn" onclick="go('training')"><span class="nav-btn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z"/></svg></span>トレーニング</div>
-<div class="nav-btn" onclick="go('mypage')"><span class="nav-btn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span>マイページ</div>
+<div class="nav-btn" onclick="go('mypage')"><span class="nav-btn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span class="nav-dot" id="nav-badge-mypage"></span></span>マイページ</div>
 </div>
 <script>
 // Chart.js ダークテーマ（軸・凡例・グリッドを明るい色に）
@@ -402,7 +408,7 @@ var promises=keys.map(function(k){
       try{
         var parsed=JSON.parse(doc.data().data);
         if(k==='p'&&Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
-        else if(k!=='p'&&parsed!==undefined)D[k]=parsed;
+        else if(k!=='p'&&Array.isArray(parsed))D[k]=parsed;
       }catch(e){console.log('Parse error:',k,e);}
     }
   }).catch(function(e){console.log('Load error:',k,e);});
@@ -500,8 +506,10 @@ function startListeners(){
       if(doc.exists){
         try{
           var parsed=JSON.parse(doc.data().data);
-          if(k==='p'&&parsed.length>0)D[k]=parsed;
-          else if(k!=='p')D[k]=parsed;
+          if(k==='p'&&Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
+          else if(k!=='p'&&Array.isArray(parsed))D[k]=parsed;
+          // ナビの未読バッジは入力中でも構わず更新（入力欄の内容には触れないため）
+          if(k==='ann'||k==='i')updateNavBadge();
           // 入力中フォーム判定：input/textarea/selectがactiveElementなら再描画しない
           var ae=document.activeElement;
           var isInputting=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT');
@@ -516,6 +524,9 @@ function startListeners(){
 function todayStr(){var d=new Date();var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
 function toDateStr(d){var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
 function idEq(a,b){if(a==null||b==null)return false;return a===b||String(a)===String(b);}
+// レコードid採番。同一ミリ秒に複数選手が保存するとDate.now()だけでは衝突し、削除時に他人の記録を巻き込む事故になるため乱数サフィックスで回避。
+// 数値のまま返す（既存コードのonclick埋め込み・===比較を一切変更せずに使えるようにするため。文字列化はしない）
+function newId(){return Date.now()*1000+Math.floor(Math.random()*1000);}
 function fmtDateTime(iso){if(!iso)return'';var d=new Date(iso);if(isNaN(d))return'';var now=new Date();var ys=d.getFullYear()!==now.getFullYear()?(d.getFullYear()+'/'):'';return ys+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function fmt(d){return d?d.replace(/-/g,'/'):'-';}
 function avH(p,sz){var i=p.id%AVC.length,ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';return p.photo?'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background-image:url('+p.photo+')"></div>':'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background:'+AVC[i][0]+';color:'+AVC[i][1]+';font-size:'+Math.round(sz*.35)+'px">'+escapeHtml(ini)+'</div>';}
@@ -551,7 +562,7 @@ function showAutoLoginConfirm(pid){
 function confirmAutoLogin(pid){
   myPid=pid;
   initUI();
-  go('home');
+  go('mypage'); // doLoginと着地点を統一（「今日やること」はmypageにあるため、毎朝home→タブ移動の1タップを省く）
 }
 
 function rejectAutoLogin(){
@@ -768,6 +779,17 @@ function go(tab){
     e.classList.toggle('ac',m&&m[1]===tab);
   });
   T[tab]&&T[tab]();
+  updateNavBadge();
+}
+// 下部ナビ「マイページ」に未読通知(お知らせ/怪我承認結果)の赤ドットを表示。
+// home/トレーニング等どのタブにいても気づけるように、mypageを開かなくても更新する。
+function updateNavBadge(){
+  var dot=document.getElementById('nav-badge-mypage');
+  if(!dot)return;
+  if(!myPid){dot.style.display='none';return;}
+  var unreadAnns=(D.ann||[]).filter(function(a){return a.targetPid===myPid&&(!a.readBy||a.readBy.indexOf(myPid)<0);}).length;
+  var unreadInjNotif=(D.i||[]).filter(function(x){return idEq(x.pid,myPid)&&x.notifyPlayer&&(x.source==='player'||x.source==='match');}).length;
+  dot.style.display=(unreadAnns+unreadInjNotif)>0?'block':'none';
 }
 function showPlayerSelect(){
   dCA();
@@ -797,6 +819,8 @@ home:function(){
   // Match check alert: am I in selected players and haven't checked today?
   var todayS=todayStr();
   var selectedForMatch=D.matchsel||[];
+  var yesterday2=new Date();yesterday2.setDate(yesterday2.getDate()-1);
+  var yesterdayS2=toDateStr(yesterday2);
   // 昨日の試合日チェック未入力通知
   var myMatchDoneYesterday=D.md.some(function(m){return m.pid===myPid&&m.date===yesterdayS2;});
   var isSelectedForMatch=myPid&&selectedForMatch.indexOf(myPid)>=0;
@@ -808,8 +832,6 @@ home:function(){
     return selectedForMatch.indexOf(p.id)>=0&&!D.md.some(function(m){return m.pid===p.id&&m.date===yesterdayS2;});
   }):[];
   // 測定日アラート（昨日の測定日で未入力だったか翌日に通知）
-  var yesterday2=new Date();yesterday2.setDate(yesterday2.getDate()-1);
-  var yesterdayS2=toDateStr(yesterday2);
   var yesterdayCalEvts2=(D.cal||[]).filter(function(e){return e.date===yesterdayS2;});
   var physMeasureYesterday2=yesterdayCalEvts2.some(function(e){return e.type==='phys_measure';});
   var broncoMeasureYesterday2=yesterdayCalEvts2.some(function(e){return e.type==='bronco_measure';});
@@ -838,11 +860,11 @@ home:function(){
   }
   var h='<div style="text-align:center;margin-bottom:16px"><div style="font-size:28px;margin-bottom:4px">🏉</div><div style="font-size:18px;font-weight:600">福岡大学ラグビー部</div></div>';
   // Match check alert
-  if(showMatchAlert){h+='<div class="alert-card alert-down" style="margin-bottom:12px;cursor:pointer" onclick="T.match()">📝 昨日（'+fmt(yesterdayS2)+'）の試合日チェックが未入力です！タップして入力</div>';}
+  if(showMatchAlert){h+='<div class="alert-card alert-down" style="margin-bottom:12px;cursor:pointer" onclick="go(\'match\')">📝 昨日（'+fmt(yesterdayS2)+'）の試合日チェックが未入力です！タップして入力</div>';}
   if(matchMissedAll.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--red)">🏟️ 試合日チェック未入力 <span style="font-size:12px;font-weight:400">'+matchMissedAll.length+'名</span></div>'+matchMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';}
   // 自分の未入力通知（昨日の測定日）
-  if(physMeasureYesterday2&&!phSkipYesterday2&&!physDoneYesterday){h+='<div class="alert-card alert-warn" style="margin-bottom:8px;cursor:pointer" onclick="T.physical()">📊 昨日（'+fmt(yesterdayS2)+'）のフィジカル測定が未入力です！ → タップして入力</div>';}
-  if(broncoMeasureYesterday2&&!phSkipYesterday2&&!broncoDoneYesterday){h+='<div class="alert-card alert-warn" style="margin-bottom:8px;cursor:pointer" onclick="T.physical()">🏃 昨日（'+fmt(yesterdayS2)+'）のブロンコ測定が未入力です！ → タップして入力</div>';}
+  if(physMeasureYesterday2&&!phSkipYesterday2&&!physDoneYesterday){h+='<div class="alert-card alert-warn" style="margin-bottom:8px;cursor:pointer" onclick="go(\'physical\')">📊 昨日（'+fmt(yesterdayS2)+'）のフィジカル測定が未入力です！ → タップして入力</div>';}
+  if(broncoMeasureYesterday2&&!phSkipYesterday2&&!broncoDoneYesterday){h+='<div class="alert-card alert-warn" style="margin-bottom:8px;cursor:pointer" onclick="go(\'physical\')">🏃 昨日（'+fmt(yesterdayS2)+'）のブロンコ測定が未入力です！ → タップして入力</div>';}
   // 全体未入力者一覧（昨日分）
   if(physMissedAll.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--amber)">📊 昨日のフィジカル未入力 <span style="font-size:12px;font-weight:400">'+physMissedAll.length+'名</span></div>'+physMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';}
   if(broncoMissedAll.length){h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--amber)">🏃 昨日のブロンコ未入力 <span style="font-size:12px;font-weight:400">'+broncoMissedAll.length+'名</span></div>'+broncoMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';}
@@ -855,7 +877,7 @@ home:function(){
   else if(isOff){h+='<div class="alert-card alert-info" style="margin-bottom:12px">📅 本日は体組成測定オフです</div>';}
   // Rankings
   var rankItems=[{field:'squat',label:'スクワット',unit:'kg'},{field:'bench',label:'ベンチプレス',unit:'kg'},{field:'deadlift',label:'デッドリフト',unit:'kg'},{field:'big3',label:'BIG3合計',unit:'kg'},{field:'bronco',label:'ブロンコ',unit:''}];
-  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px"><span style="font-weight:600;display:flex;align-items:center;gap:7px"><svg viewBox="0 0 24 24" width="18" height="18" fill="var(--amber)"><path d="M7 4V2h10v2h3a1 1 0 011 1v3a4 4 0 01-4 4h-.54A6.01 6.01 0 0113 18.91V21h3v2H8v-2h3v-2.09A6.01 6.01 0 016.54 15H6a4 4 0 01-4-4V5a1 1 0 011-1h3zm0 2H4v3a2 2 0 002 2h1V6zm10 5h1a2 2 0 002-2V6h-3v5z"/></svg>ランキング TOP3</span><button class="btn btn-sm" onclick="showFullRanking()">全体を見る</button></div>';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px"><span style="font-weight:600;display:flex;align-items:center;gap:7px"><svg viewBox="0 0 24 24" width="18" height="18" fill="var(--amber)"><path d="M7 4V2h10v2h3a1 1 0 011 1v3a4 4 0 01-4 4h-.54A6.01 6.01 0 0113 18.91V21h3v2H8v-2h3v-2.09A6.01 6.01 0 016.54 15H6a4 4 0 01-4-4V5a1 1 0 011-1h3zm0 2H4v3a2 2 0 002 2h1V6zm10 5h1a2 2 0 002-2V6h-3v5z"/></svg>ランキング TOP3</span><button class="btn btn-sm" onclick="go(\'ranking\')">全体を見る</button></div>';
   var medals=['🥇','🥈','🥉'];
   rankItems.forEach(function(ri){var top=getTop3(ri.field);if(!top.length)return;
   h+='<div class="card" style="margin-bottom:8px;padding:.75rem 1rem"><div style="font-weight:600;font-size:12px;color:var(--text-secondary);margin-bottom:6px">'+ri.label+'</div>';
@@ -883,15 +905,14 @@ mypage:function(){
   var yesterdayS=toDateStr(yesterday);
   var wasMatchYesterdayMyPage=(D.cal||[]).some(function(e){return e.date===yesterdayS&&e.type==='match';});
   var myMatchDoneYesterdayMyPage=D.md.some(function(m){return idEq(m.pid,myPid)&&m.date===yesterdayS;});
-  var selectedYesterday=(D.matchsel||[]).find(function(m){return m.date===yesterdayS;});
-  var wasSelected=selectedYesterday&&selectedYesterday.pids&&selectedYesterday.pids.indexOf(myPid)>=0;
+  var wasSelected=myPid&&(D.matchsel||[]).indexOf(myPid)>=0;
   var showMatchDayAlert=wasMatchYesterdayMyPage&&wasSelected&&!myMatchDoneYesterdayMyPage;
   var h='<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">'+avH(p,50)+'<div style="flex:1"><div style="font-size:17px;font-weight:600">'+p.name+(totalUnread?' <span style="display:inline-block;background:var(--red);color:#fff;font-size:11px;padding:2px 8px;border-radius:99px;vertical-align:middle;margin-left:6px">🔔 '+totalUnread+'</span>':'')+'</div><div style="color:var(--text-secondary);font-size:12px">'+p.position+' / '+p.year+'年'+(p.note?' / '+p.note:'')+'</div></div></div>';
   // === 今日やること ===
   var todoItems=[];
-  todoItems.push({done:todayDone,label:'コンディション入力',icon:'condition',onclick:"T.condition()"});
+  todoItems.push({done:todayDone,label:'コンディション入力',icon:'condition',onclick:"go('condition')"});
   if(isPickup)todoItems.push({done:bcDone,label:'体組成測定（本日対象）',icon:'bodycomp',onclick:"showBCForm()"});
-  if(showMatchDayAlert)todoItems.push({done:false,label:'昨日の試合日チェック',icon:'match',onclick:"T.match()"});
+  if(showMatchDayAlert)todoItems.push({done:false,label:'昨日の試合日チェック',icon:'match',onclick:"go('match')"});
   // 週次怪我チェック（怪我中＆今週未提出）
   if(pInj.length){
     var weekStart=new Date();weekStart.setDate(weekStart.getDate()-weekStart.getDay()+1);// 月曜
@@ -922,7 +943,7 @@ mypage:function(){
   }
   // 試合日翌日アラート
   if(showMatchDayAlert){
-    h+='<div class="alert-card alert-down" style="margin-bottom:12px;cursor:pointer;padding:10px 14px" onclick="T.match()">'+
+    h+='<div class="alert-card alert-down" style="margin-bottom:12px;cursor:pointer;padding:10px 14px" onclick="go(\'match\')">'+
     '<div><div style="font-weight:600">🏟️ 昨日（'+fmt(yesterdayS)+'）の試合日チェックが未入力です</div>'+
     '<div style="font-size:11px;margin-top:2px;opacity:.85">タップして入力してください</div></div>'+
     '</div>';
@@ -1004,21 +1025,21 @@ mypage:function(){
   // Action menu
   h+='<div style="font-weight:600;margin:4px 0 10px;display:flex;align-items:center;gap:7px"><svg viewBox="0 0 24 24" width="18" height="18" fill="var(--accent)"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>入力・記録</div><div class="grid2" style="margin-bottom:16px">';
   // Condition
-  if(!todayDone)h+='<div class="card card-click" onclick="T.condition()" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('condition')+'</div><div style="font-weight:600;font-size:13px">コンディション入力</div><div style="font-size:11px;color:var(--red);margin-top:4px">未入力</div></div>';
+  if(!todayDone)h+='<div class="card card-click" onclick="go(\'condition\')" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('condition')+'</div><div style="font-weight:600;font-size:13px">コンディション入力</div><div style="font-size:11px;color:var(--red);margin-top:4px">未入力</div></div>';
   else{var myLatestF=D.f.filter(function(r){return r.pid===myPid&&r.date===todayStr();}).sort(function(a,b){return b.inputAt.localeCompare(a.inputAt);})[0];h+='<div class="card" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('condition')+'</div><div style="font-weight:600;font-size:13px">コンディション</div><div style="font-size:11px;color:var(--green);margin-top:4px">✅ 入力済み</div>'+(myLatestF?'<div style="display:flex;gap:4px;justify-content:center;margin-top:6px"><button class="btn btn-sm" onclick="showEditCondition(\''+myLatestF.id+'\')">修正</button><button class="btn btn-sm btn-d" onclick="delCondition(\''+myLatestF.id+'\')">削除</button></div>':'')+'</div>';}
   // Body comp
   if(isPickup&&!bcDone)h+='<div class="card card-click" onclick="showBCForm()" style="text-align:center;padding:16px;border-color:var(--purple)"><div style="margin-bottom:8px">'+navIcon('bodycomp')+'</div><div style="font-weight:600;font-size:13px">体組成測定</div><div style="font-size:11px;color:var(--red);margin-top:4px">本日の対象です</div></div>';
   else if(isPickup&&bcDone){var myLatestBC2=D.bc.filter(function(r){return r.pid===myPid&&r.date===todayStr();})[0];h+='<div class="card" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('bodycomp')+'</div><div style="font-weight:600;font-size:13px">体組成</div><div style="font-size:11px;color:var(--green);margin-top:4px">✅ 入力済み</div>'+(myLatestBC2?'<div style="display:flex;gap:4px;justify-content:center;margin-top:6px"><button class="btn btn-sm" onclick="showEditBC(\''+myLatestBC2.id+'\')">修正</button><button class="btn btn-sm btn-d" onclick="delBC(\''+myLatestBC2.id+'\')">削除</button></div>':'')+'</div>';}
   else h+='<div class="card card-click" onclick="showBCForm()" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('bodycomp')+'</div><div style="font-weight:600;font-size:13px">体組成を記録</div></div>';
   // Physical
-  h+='<div class="card card-click" onclick="T.physical()" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('physical')+'</div><div style="font-weight:600;font-size:13px">記録入力</div></div>';
+  h+='<div class="card card-click" onclick="go(\'physical\')" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('physical')+'</div><div style="font-weight:600;font-size:13px">フィジカル測定</div></div>';
   // Injury
-  h+='<div class="card card-click" onclick="T.injury()" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('injury')+'</div><div style="font-weight:600;font-size:13px">怪我・リハビリ</div>'+(pInj.length?'<div style="font-size:11px;color:var(--red);margin-top:4px">治療中: '+pInj.length+'件</div>':'')+'</div>';
+  h+='<div class="card card-click" onclick="go(\'injury\')" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('injury')+'</div><div style="font-weight:600;font-size:13px">怪我・リハビリ</div>'+(pInj.length?'<div style="font-size:11px;color:var(--red);margin-top:4px">治療中: '+pInj.length+'件</div>':'')+'</div>';
   // Match
-  h+='<div class="card card-click" onclick="T.match()" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('match')+'</div><div style="font-weight:600;font-size:13px">試合日チェック</div></div>';
+  h+='<div class="card card-click" onclick="go(\'match\')" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('match')+'</div><div style="font-weight:600;font-size:13px">試合日チェック</div></div>';
   // Taping
   var myNextTape=(D.tape||[]).filter(function(t){return t.pid===myPid&&t.date>=todayStr();}).sort(function(a,b){return a.date.localeCompare(b.date);})[0];
-  h+='<div class="card card-click" onclick="T.tape()" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('tape')+'</div><div style="font-weight:600;font-size:13px">テーピング予約</div>'+(myNextTape?'<div style="font-size:11px;color:var(--purple);margin-top:4px">'+fmt(myNextTape.date)+' '+myNextTape.startTime+'</div>':'<div style="font-size:11px;color:var(--text-secondary);margin-top:4px">予約する</div>')+'</div>';
+  h+='<div class="card card-click" onclick="go(\'tape\')" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('tape')+'</div><div style="font-weight:600;font-size:13px">テーピング予約</div>'+(myNextTape?'<div style="font-size:11px;color:var(--purple);margin-top:4px">'+fmt(myNextTape.date)+' '+myNextTape.startTime+'</div>':'<div style="font-size:11px;color:var(--text-secondary);margin-top:4px">予約する</div>')+'</div>';
   // Absence
   var myAbsToday=D.a.some(function(s){return s.date===todayStr()&&s.absentees.some(function(a){return a.pid===myPid;});});
   h+='<div class="card card-click" onclick="showAbsenceForm()" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('absence')+'</div><div style="font-weight:600;font-size:13px">欠席・遅刻申告</div>'+(myAbsToday?'<div style="font-size:11px;color:var(--amber);margin-top:4px">本日申告済み</div><button class="btn btn-sm btn-d" style="margin-top:6px" onclick="event.stopPropagation();cancelAbsence()">取り消す</button>':'')+'</div>';
@@ -1093,7 +1114,7 @@ help:function(){
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--green)">'+
   '<div style="font-weight:600;font-size:15px;margin-bottom:8px">💪 MAX測定のとき</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
-  '・「フィジカル記録」から入力<br>'+
+  '・「フィジカル測定」から入力<br>'+
   '・SQ／BP／DL／チンニング／クリーン／ブロンコ<br>'+
   '・測定会期間中なら自動で測定会に紐づく<br>'+
   '・測れなかった場合は「測定なし申告」<br>'+
@@ -1127,6 +1148,7 @@ help:function(){
   '<div style="text-align:center;font-size:11px;color:var(--text-secondary);margin-top:20px">困ったらスタッフ・トレーナーに聞いてね！</div>';
 },
 condition:function(){
+  subView=true; // 入力フォームなので、他端末の保存によるリアルタイム再描画から保護（go('mypage')で解除）
   var lf=D.f.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
   var todayDone=lf.length&&lf[0].date===todayStr();var td=todayStr();
   $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">コンディション入力</div>'+
@@ -1147,7 +1169,7 @@ physical:function(){
   var recs=D.ph.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
   var bSQ=getBest(myPid,'squat'),bBP=getBest(myPid,'bench'),bDL=getBest(myPid,'deadlift'),bBR=getBest(myPid,'bronco');
   var lastPhysRec=D.ph.filter(function(r){return r.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
-  $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">フィジカル記録</div>'+
+  $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">フィジカル測定</div>'+
   '<div class="grid2" style="margin-bottom:12px"><div class="mc"><div class="v" style="font-size:16px">'+(bSQ||'-')+'</div><div class="l">SQ Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bBP||'-')+'</div><div class="l">BP Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bDL||'-')+'</div><div class="l">DL Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(getBest(myPid,'chinning')||'-')+'</div><div class="l">チンニング Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(getBest(myPid,'clean')||'-')+'</div><div class="l">クリーン Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+broncoFmt(bBR)+'</div><div class="l">Bronco Best</div></div></div>'+
   '<button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="showPhysForm()">📝 記録を入力する</button>'+
   (recs.length>=2?'<div class="chart-wrap"><canvas id="ch-ph"></canvas></div>':'')+
@@ -1270,9 +1292,16 @@ function doCondition(btnEl){
   // RPEは1〜10の必須項目（isFilledで空のみ未入力扱い→範囲チェックで0や範囲外を弾く）
   var rpe=parseFloat(document.getElementById('cf-rpe').value);
   if(!isFilled(rpe)||rpe<1||rpe>10)return alert('RPE（1〜10）を入力してください');
+  var dateV=document.getElementById('cf-date').value;
+  // 同日重複防止：同じ日付の記録が既にあれば新規作成せず修正画面へ誘導する
+  var dupF=D.f.find(function(r){return idEq(r.pid,myPid)&&r.date===dateV;});
+  if(dupF){
+    if(confirm(fmt(dateV)+'のコンディションは既に入力済みです。\n新規に記録すると重複します。修正画面を開きますか？'))showEditCondition(dupF.id);
+    return;
+  }
   // 二重送信ガード（連打で f レコードが重複作成されるのを防ぐ）
   if(!guardSubmit(btnEl,'記録中…'))return;
-  var rec={id:Date.now(),pid:myPid,date:document.getElementById('cf-date').value,inputAt:new Date().toISOString(),rpe:rpe,sleep:parseFloat(document.getElementById('cf-sleep').value)||0,duration:parseInt(document.getElementById('cf-dur').value)||0,note:document.getElementById('cf-note').value};
+  var rec={id:newId(),pid:myPid,date:dateV,inputAt:new Date().toISOString(),rpe:rpe,sleep:parseFloat(document.getElementById('cf-sleep').value)||0,duration:parseInt(document.getElementById('cf-dur').value)||0,note:document.getElementById('cf-note').value};
   // svSafeSeqで成否を捕捉（svSafeは失敗時に内部alert＋ボタン固着するため使わない）
   svSafeSeq([{k:'f',rec:rec}],function(){
     alert('記録しました ✓');go('mypage');
@@ -1348,7 +1377,7 @@ function doBronco(btnEl){
   if(!br)return alert('タイムを入力してください');
   if(!guardSubmit(btnEl,'記録中…'))return; // 二重送信ガード
   var date=document.getElementById('br-date').value;
-  var newRec={id:Date.now(),pid:myPid,date:date,squat:null,bench:null,deadlift:null,bronco:br};
+  var newRec={id:newId(),pid:myPid,date:date,squat:null,bench:null,deadlift:null,bronco:br};
   svSafeSeq([{k:'ph',rec:newRec}],function(){
     var pBR=getBest(myPid,'bronco');
     var msg=pBR&&br<pBR?'🎉 ブロンコ自己ベスト更新！\n'+broncoFmt(pBR)+' → '+broncoFmt(br):'記録しました ✓\n'+broncoFmt(br);
@@ -1421,10 +1450,10 @@ function showPhysSkipForm(){
   '<div class="fl"><label>詳細（任意）</label>'+
   '<input class="ipt" id="skip-reason-detail" placeholder="詳細を入力..."></div>'+
   '</div>'+
-  '<button class="btn btn-p" style="width:100%" onclick="doPhysSkipWithReason()">申告する</button>');
+  '<button class="btn btn-p" style="width:100%" onclick="doPhysSkipWithReason(this)">申告する</button>');
 }
 
-function doPhysSkipWithReason(){
+function doPhysSkipWithReason(btnEl){
   var reasonType=document.getElementById('skip-reason-type').value;
   var detail=document.getElementById('skip-reason-detail').value;
   var reason=reasonType+(detail?' ('+detail+')':'');
@@ -1432,8 +1461,13 @@ function doPhysSkipWithReason(){
   var curSess=getCurrentMSess();
   if(!D.phskip)D.phskip=[];
   if(D.phskip.find(function(s){return s.pid===myPid&&s.date===today;})){alert('すでに申告済みです');return;}
-  svSafe('phskip',{pid:myPid,date:today,msessId:curSess?curSess.id:null,reason:reason,by:'player'},function(){
+  if(!guardSubmit(btnEl,'申告中…'))return; // 二重送信ガード
+  svSafeSeq([{k:'phskip',rec:{pid:myPid,date:today,msessId:curSess?curSess.id:null,reason:reason,by:'player'}}],function(){
     alert('申告しました ✓');go('mypage');
+  },function(){
+    // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
   });
 }
 
@@ -1441,7 +1475,7 @@ function doPhysSkipWithReason(){
 
 // コンディション編集
 function showEditCondition(fid){
-  var rec=D.f.find(function(r){return r.id===fid;});if(!rec)return;
+  var rec=D.f.find(function(r){return r.id===fid||String(r.id)===String(fid);});if(!rec)return;
   showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">😴 コンディション修正</div>'+
   '<div class="form-box"><div class="form-title">内容を修正</div>'+
   '<div class="fl" style="margin-bottom:10px"><label>RPE（1-10）</label>'+numStepHTML('ef-rpe',1,10,'updESrpe()')+'</div>'+
@@ -1523,9 +1557,9 @@ function cancelAbsence(){
   },function(){alert('取り消しました ✓');go('mypage');});
 }
 
-// フィジカル記録の修正（選手側）
+// フィジカル測定の修正（選手側）
 function showEditPhysRec(phid){
-  var rec=D.ph.find(function(r){return r.id===phid;});if(!rec)return;
+  var rec=D.ph.find(function(r){return r.id===phid||String(r.id)===String(phid);});if(!rec)return;
   var brM=rec.bronco?Math.floor(rec.bronco/60):0,brS=rec.bronco?Math.round(rec.bronco%60):0;
   showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">💪 記録を修正</div>'+
   '<div class="form-box"><div class="form-title">'+fmt(rec.date)+'の記録</div>'+
@@ -1550,7 +1584,7 @@ function delWeekCheck(wid){
     var nx=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(wid);});
     if(nx.length===before){notFound=true;return latest;}
     return nx;
-  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');T.injury();});
+  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');go('injury');});
 }
 
 function delMatchDay(mid){
@@ -1562,7 +1596,7 @@ function delMatchDay(mid){
     var nx=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(mid);});
     if(nx.length===before){notFound=true;return latest;}
     return nx;
-  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');T.match();});
+  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');go('match');});
 }
 
 function delCondition(fid){
@@ -1598,7 +1632,7 @@ function delPhysRec(phid){
     var nx=latest.filter(function(r){return r.id!==pid&&String(r.id)!==String(phid);});
     if(nx.length===before){notFound=true;return latest;}
     return nx;
-  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');T.physical();});
+  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');go('physical');});
 }
 
 function doEditPhysRec(phid,btnEl){
@@ -1623,7 +1657,7 @@ function doEditPhysRec(phid,btnEl){
     latest[idx].bronco=br||null;
     latest[idx].editedAt=new Date().toISOString();
     return latest;
-  },function(){if(notFound){releaseSubmit(btnEl);alert('記録が見つかりませんでした');return;}alert('修正しました ✓');T.physical();},function(){
+  },function(){if(notFound){releaseSubmit(btnEl);alert('記録が見つかりませんでした');return;}alert('修正しました ✓');go('physical');},function(){
     // 失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
     alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
@@ -1647,15 +1681,16 @@ function showAbsenceForm(){
   '<div class="fl"><label>理由</label>'+
   '<textarea class="ipt" id="abs-reason" placeholder="理由を入力してください（例: 発熱、授業、怪我のため）..." style="min-height:80px"></textarea></div>'+
   '</div>'+
-  '<button class="btn btn-p" style="width:100%" onclick="doPlayerAbsence()">申告する</button>');
+  '<button class="btn btn-p" style="width:100%" onclick="doPlayerAbsence(this)">申告する</button>');
 }
 
-function doPlayerAbsence(){
+function doPlayerAbsence(btnEl){
   var date=document.getElementById('abs-date').value;
   var type=document.getElementById('abs-type').value;
   var reason=document.getElementById('abs-reason').value.trim();
   if(!date)return alert('日付を入力してください');
   if(!reason)return alert('理由を入力してください');
+  if(!guardSubmit(btnEl,'送信中…'))return;
   // 既存の欠席記録に追加 or 新規作成
   var dupFlag=false;
   svSafeUpdate('a',function(latest){
@@ -1667,13 +1702,17 @@ function doPlayerAbsence(){
       if(alreadyIn){dupFlag=true;return latest;}
       existing.absentees.push({pid:myPid,reason:type+'：'+reason,source:'player'});
     } else {
-      latest.push({id:Date.now(),date:date,label:'',absentees:[{pid:myPid,reason:type+'：'+reason,source:'player'}]});
+      latest.push({id:newId(),date:date,label:'',absentees:[{pid:myPid,reason:type+'：'+reason,source:'player'}]});
     }
     return latest;
   },function(){
+    releaseSubmit(btnEl);
     if(dupFlag){alert('この日はすでに申告済みです');return;}
     alert('申告しました ✓\nスタッフに通知されます');
     go('mypage');
+  },function(){
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
   });
 }
 
@@ -1715,7 +1754,7 @@ function markPhysSkip(){
 }
 
 // 全体ランキング表示
-function showFullRanking(){
+T.ranking=function(){
   var FW=['PR','HO','LO','FL','No.8'];
   var BK=['SH','SO','CTB','WTB','FB'];
   var POS_LIST=['PR','HO','LO','FL','No.8','SH','SO','CTB','WTB','FB'];
@@ -1778,7 +1817,7 @@ function showFullRanking(){
     }).filter(function(x){return x.v!==null;});
     curField==='bronco'?rk.sort(function(a,b){return a.v-b.v;}):rk.sort(function(a,b){return b.v-a.v;});
 
-    var h='<div style="font-size:18px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="22" height="22" fill="var(--amber)"><path d="M7 4V2h10v2h3a1 1 0 011 1v3a4 4 0 01-4 4h-.54A6.01 6.01 0 0113 18.91V21h3v2H8v-2h3v-2.09A6.01 6.01 0 016.54 15H6a4 4 0 01-4-4V5a1 1 0 011-1h3zm0 2H4v3a2 2 0 002 2h1V6zm10 5h1a2 2 0 002-2V6h-3v5z"/></svg>ランキング</div>';
+    var h='<button class="btn-back" onclick="go(\'home\')">← ホーム</button><div style="font-size:18px;font-weight:700;margin:10px 0 14px;display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="22" height="22" fill="var(--amber)"><path d="M7 4V2h10v2h3a1 1 0 011 1v3a4 4 0 01-4 4h-.54A6.01 6.01 0 0113 18.91V21h3v2H8v-2h3v-2.09A6.01 6.01 0 016.54 15H6a4 4 0 01-4-4V5a1 1 0 011-1h3zm0 2H4v3a2 2 0 002 2h1V6zm10 5h1a2 2 0 002-2V6h-3v5z"/></svg>ランキング</div>';
     // 測定会セレクター
     h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">測定会</div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
@@ -1845,7 +1884,7 @@ function showFullRanking(){
         var avaInner=p.photo?'background-image:url('+p.photo+')':'background:linear-gradient(135deg,'+avaC[o.pos][0]+','+avaC[o.pos][1]+')';
         h+='<div class="rk-col'+(isFirst?' first':'')+'">'+
           (isFirst?'<div style="font-size:20px;margin-bottom:2px">👑</div>':'')+
-          '<div class="rk-ava" style="'+avaStyle+avaInner+'" onclick="showOtherPlayer&&showOtherPlayer('+p.id+')">'+(p.photo?'':iniOf(p))+'</div>'+
+          '<div class="rk-ava" style="'+avaStyle+avaInner+'">'+(p.photo?'':iniOf(p))+'</div>'+
           '<div class="rk-name"'+(isMe?' style="color:var(--blue)"':'')+'>'+escapeHtml(p.name)+(isMe?' (自分)':'')+'</div>'+
           '<div class="rk-sub">'+(p.position||'-')+'・'+(p.year||'-')+'年'+(diffStrOf(o.r)?' '+diffStrOf(o.r):'')+'</div>'+
           '<div class="rk-stand" style="height:'+standHt[o.pos]+'px;background:linear-gradient(180deg,'+standC[o.pos][0]+','+standC[o.pos][1]+')'+(isFirst?';box-shadow:0 -2px 16px rgba(251,191,36,.3)':'')+'">'+
@@ -1898,16 +1937,23 @@ function showFullRanking(){
   window.rankSP=function(p){curPos=p;renderRank();};
   window.rankSY=function(y){curYear=y;renderRank();};
   renderRank();
-}
+};
 
 
 function doPhys(btnEl){
   var sq=parseFloat(document.getElementById('pf-sq').value)||null,bp=parseFloat(document.getElementById('pf-bp').value)||null,dl=parseFloat(document.getElementById('pf-dl').value)||null,br=broncoFromInputs('pf-br-m','pf-br-s');
   var cn=parseFloat(document.getElementById('pf-cn').value)||null,cl=parseFloat(document.getElementById('pf-cl').value)||null;
   if(!sq&&!bp&&!dl&&!cn&&!cl&&!br)return alert('少なくとも1つ入力してください');
+  var dateV=document.getElementById('pf-date').value;
+  // 同日重複防止：同じ日付の記録が既にあれば新規作成せず修正画面へ誘導する
+  var dupPh=D.ph.find(function(r){return idEq(r.pid,myPid)&&r.date===dateV;});
+  if(dupPh){
+    if(confirm(fmt(dateV)+'の記録は既に入力済みです。\n新規に記録すると重複します。修正画面を開きますか？'))showEditPhysRec(dupPh.id);
+    return;
+  }
   if(!guardSubmit(btnEl,'記録中…'))return; // 二重送信ガード
   var curSess=getCurrentMSess();
-  var newRec={id:Date.now(),pid:myPid,date:document.getElementById('pf-date').value,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br,msessId:curSess?curSess.id:null,inputAt:new Date().toISOString()};
+  var newRec={id:newId(),pid:myPid,date:dateV,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br,msessId:curSess?curSess.id:null,inputAt:new Date().toISOString()};
   svSafeSeq([{k:'ph',rec:newRec}],function(){
     var m=[];var pSQ=getBest(myPid,'squat'),pBP=getBest(myPid,'bench'),pDL=getBest(myPid,'deadlift');
     if(sq&&pSQ&&sq>=pSQ)m.push('🎉 SQ自己ベスト更新！');if(bp&&pBP&&bp>=pBP)m.push('🎉 BP自己ベスト更新！');if(dl&&pDL&&dl>=pDL)m.push('🎉 DL自己ベスト更新！');
@@ -1990,10 +2036,11 @@ function showPainSelfForm(iid){
   });
   h+='</div>';
   h+='<div class="form-box"><div class="form-title">メモ（任意）</div><textarea class="ipt" id="self-note" placeholder="気になること、調子など" style="min-height:60px"></textarea></div>';
-  h+='<button class="btn btn-p" style="width:100%" onclick="savePainSelf('+iid+')">💾 記録する</button>';
+  h+='<button class="btn btn-p" style="width:100%" onclick="savePainSelf('+iid+',this)">💾 記録する</button>';
   showSub(h);
 }
-function savePainSelf(iid){
+function savePainSelf(iid,btnEl){
+  if(!guardSubmit(btnEl,'記録中…'))return;
   var pain={};
   document.querySelectorAll('.self-pain').forEach(function(e){pain[e.dataset.k]=parseFloat(e.value);});
   var note=document.getElementById('self-note').value;
@@ -2007,17 +2054,21 @@ function savePainSelf(iid){
   },function(){
     alert('記録しました！トレーナーに共有されます。');
     showMyChart(iid);
+  },function(){
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
   });
 }
 
 // Rehab log
-function showRehabForm(rid){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">リハビリログ</div><div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">今日やったリハビリ内容を記録します。痛みは「カルテを見る・痛みを記録」から記録してください。</div><div class="form-box"><div class="form-title">今日のリハビリ</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="rl-date" value="'+td+'"></div><div class="fl"><label>実施内容</label><textarea class="ipt" id="rl-ct" placeholder="今日のリハビリ内容..." style="min-height:90px"></textarea></div><button class="btn btn-p" onclick="doRehab('+rid+')">記録する</button></div>');}
-function doRehab(rid){
-  var r=D.r.find(function(x){return x.id===rid;});if(!r)return;
+function showRehabForm(rid){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">リハビリログ</div><div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">今日やったリハビリ内容を記録します。痛みは「カルテを見る・痛みを記録」から記録してください。</div><div class="form-box"><div class="form-title">今日のリハビリ</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="rl-date" value="'+td+'"></div><div class="fl"><label>実施内容</label><textarea class="ipt" id="rl-ct" placeholder="今日のリハビリ内容..." style="min-height:90px"></textarea></div><button class="btn btn-p" onclick="doRehab('+rid+',this)">記録する</button></div>');}
+function doRehab(rid,btnEl){
+  if(!guardSubmit(btnEl,'記録中…'))return;
+  var r=D.r.find(function(x){return x.id===rid;});if(!r){releaseSubmit(btnEl);return;}
   var injId=r.injId;
   var me=D.p.find(function(x){return x.id===myPid;});
   var newLog={
-    id:Date.now(),
+    id:newId(),
     injId:injId,
     date:document.getElementById('rl-date').value,
     content:document.getElementById('rl-ct').value,
@@ -2025,18 +2076,27 @@ function doRehab(rid){
     by:'player',
     inputAt:new Date().toISOString()
   };
-  // D.rlog（新式）に保存
-  svSafe('rlog',newLog,function(){
+  // D.rlog（新式）に保存。svSafeSeqで成否を捕捉（svSafeは失敗時に内部alert＋ボタン固着するため使わない）
+  svSafeSeq([{k:'rlog',rec:newLog}],function(){
     alert('記録しました ✓');
     go('mypage');
+  },function(){
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
   });
 }
 
 // Weekly injury check
-function showWeekCheck(injId){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">📋 週次怪我チェック</div><div class="form-box"><div class="form-title">今週の状態を教えてください</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="wc-date" value="'+td+'"></div><div class="fl"><label>現在の痛み（1-10）</label>'+numStepHTML('wc-pain',1,10,'')+'</div><div class="fl"><label>いつ復帰できそう？</label><select class="ipt" id="wc-ret"><option value="今週中">今週中</option><option value="来週中">来週中（約1週間）</option><option value="2週間以内">2週間以内</option><option value="3週間以内">3週間以内</option><option value="1ヶ月以内">1ヶ月以内</option><option value="1.5ヶ月以内">1.5ヶ月以内</option><option value="2ヶ月以内">2ヶ月以内</option><option value="3ヶ月以内">3ヶ月以内</option><option value="3ヶ月以上">3ヶ月以上かかりそう</option><option value="わからない">わからない</option></select></div><div class="fl"><label>今週練習に参加できる？</label><select class="ipt" id="wc-prac"><option>部分的に参加できる</option><option>全体練習に参加できる</option><option>参加できない</option></select></div><div class="fl"><label>メモ（状態の変化など）</label><textarea class="ipt" id="wc-note" placeholder="先週からの変化..."></textarea></div><button class="btn btn-p" onclick="doWeekCheck('+injId+')">送信する</button></div>');}
-function doWeekCheck(injId){
-  var rec={id:Date.now(),pid:myPid,injId:injId,date:document.getElementById('wc-date').value,inputAt:new Date().toISOString(),pain:parseInt(document.getElementById('wc-pain').value)||5,returnEst:document.getElementById('wc-ret').value,practiceStatus:document.getElementById('wc-prac').value,note:document.getElementById('wc-note').value};
-  svSafe('wc',rec,function(){alert('送信しました ✓');go('mypage');});
+function showWeekCheck(injId){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">📋 週次怪我チェック</div><div class="form-box"><div class="form-title">今週の状態を教えてください</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="wc-date" value="'+td+'"></div><div class="fl"><label>現在の痛み（1-10）</label>'+numStepHTML('wc-pain',1,10,'')+'</div><div class="fl"><label>いつ復帰できそう？</label><select class="ipt" id="wc-ret"><option value="今週中">今週中</option><option value="来週中">来週中（約1週間）</option><option value="2週間以内">2週間以内</option><option value="3週間以内">3週間以内</option><option value="1ヶ月以内">1ヶ月以内</option><option value="1.5ヶ月以内">1.5ヶ月以内</option><option value="2ヶ月以内">2ヶ月以内</option><option value="3ヶ月以内">3ヶ月以内</option><option value="3ヶ月以上">3ヶ月以上かかりそう</option><option value="わからない">わからない</option></select></div><div class="fl"><label>今週練習に参加できる？</label><select class="ipt" id="wc-prac"><option>部分的に参加できる</option><option>全体練習に参加できる</option><option>参加できない</option></select></div><div class="fl"><label>メモ（状態の変化など）</label><textarea class="ipt" id="wc-note" placeholder="先週からの変化..."></textarea></div><button class="btn btn-p" onclick="doWeekCheck('+injId+',this)">送信する</button></div>');}
+function doWeekCheck(injId,btnEl){
+  if(!guardSubmit(btnEl,'送信中…'))return;
+  var rec={id:newId(),pid:myPid,injId:injId,date:document.getElementById('wc-date').value,inputAt:new Date().toISOString(),pain:parseInt(document.getElementById('wc-pain').value)||5,returnEst:document.getElementById('wc-ret').value,practiceStatus:document.getElementById('wc-prac').value,note:document.getElementById('wc-note').value};
+  svSafeSeq([{k:'wc',rec:rec}],function(){
+    alert('送信しました ✓');go('mypage');
+  },function(){
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+  });
 }
 
 // === MATCH DAY FORM ===
@@ -2062,19 +2122,29 @@ function showMatchForm(){var td=todayStr();showSub('<div style="font-size:18px;f
 '<div class="form-box"><div class="form-title">足の攣りについて</div>'+
 '<div class="fl"><label>試合中に足が攣ったか</label><select class="ipt" id="md-cramp" onchange="document.getElementById(\'md-cramp-detail\').style.display=this.value===\'はい\'?\'block\':\'none\'"><option>いいえ</option><option>はい</option></select></div>'+
 '<div id="md-cramp-detail" style="display:none"><div class="fl"><label>足の攣りの頻度</label><select class="ipt" id="md-crampfreq"><option>今回が初めて</option><option>たまにある</option><option>よく攣る</option></select></div></div></div>'+
-'<button class="btn btn-match" onclick="doMatch()">記録を送信する</button>');}
+'<button class="btn btn-match" onclick="doMatch(this)">記録を送信する</button>');}
 
-function doMatch(){
+function doMatch(btnEl){
   var injured=document.getElementById('md-inj').value==='はい';
   var cramp=document.getElementById('md-cramp').value==='はい';
-  var rec={id:Date.now(),pid:myPid,date:document.getElementById('md-date').value,inputAt:new Date().toISOString(),role:document.getElementById('md-role').value,fatiguePre:parseInt(document.getElementById('md-fpre').value)||0,fatiguePost:parseInt(document.getElementById('md-fpost').value)||0,sleepTime:document.getElementById('md-stime').value,wakeTime:document.getElementById('md-wtime').value,breakfast:document.getElementById('md-bf').value,breakfastDetail:document.getElementById('md-bftext').value,injured:injured,cramp:cramp};
+  if(!guardSubmit(btnEl,'送信中…'))return;
+  var rec={id:newId(),pid:myPid,date:document.getElementById('md-date').value,inputAt:new Date().toISOString(),role:document.getElementById('md-role').value,fatiguePre:parseInt(document.getElementById('md-fpre').value)||0,fatiguePost:parseInt(document.getElementById('md-fpost').value)||0,sleepTime:document.getElementById('md-stime').value,wakeTime:document.getElementById('md-wtime').value,breakfast:document.getElementById('md-bf').value,breakfastDetail:document.getElementById('md-bftext').value,injured:injured,cramp:cramp};
+  var items=[];
   if(injured){rec.injSide=document.getElementById('md-side').value;rec.injPart=document.getElementById('md-part').value;rec.injType=document.getElementById('md-type').value;rec.injHistory=document.getElementById('md-hist').value;rec.injHow=document.getElementById('md-how').value;rec.injPainAt=parseInt(document.getElementById('md-painat').value)||0;rec.injPainNow=parseInt(document.getElementById('md-painnow').value)||0;rec.injContinued=document.getElementById('md-cont').value;rec.canPractice=document.getElementById('md-canprac').value;
-    var injRec={id:Date.now()+100,pid:myPid,side:rec.injSide,part:rec.injPart,partOther:'',type:rec.injType,typeOther:'',date:rec.date,returnDate:'',hospitalVisited:false,hospitalDate:'',note:'【試合で受傷】'+rec.injHow+' / 痛み:受傷時'+rec.injPainAt+' 現在'+rec.injPainNow+' / '+rec.injHistory+' / プレー続行:'+rec.injContinued+' / 来週練習:'+rec.canPractice,resolved:false,source:'match',canPractice:rec.canPractice,approved:null};
-    var rehabRec={id:Date.now()+101,injId:injRec.id,pid:myPid,stage:0,logs:[],stageDates:[]};
-    svSafe('i',injRec,function(){svSafe('r',rehabRec,null);});
+    var injRec={id:newId(),pid:myPid,side:rec.injSide,part:rec.injPart,partOther:'',type:rec.injType,typeOther:'',date:rec.date,returnDate:'',hospitalVisited:false,hospitalDate:'',note:'【試合で受傷】'+rec.injHow+' / 痛み:受傷時'+rec.injPainAt+' 現在'+rec.injPainNow+' / '+rec.injHistory+' / プレー続行:'+rec.injContinued+' / 来週練習:'+rec.canPractice,resolved:false,source:'match',canPractice:rec.canPractice,approved:null};
+    var rehabRec={id:newId(),injId:injRec.id,pid:myPid,stage:0,logs:[],stageDates:[]};
+    items.push({k:'i',rec:injRec});
+    items.push({k:'r',rec:rehabRec});
   }
   if(cramp){rec.crampFreq=document.getElementById('md-crampfreq').value;}
-  svSafe('md',rec,function(){alert('記録しました ✓');go('mypage');});
+  items.push({k:'md',rec:rec});
+  // svSafeSeqで怪我(i)→リハビリ(r)→試合記録(md)を順番に保存。svSafeは失敗時に内部alert＋ボタン固着するため使わない（連打で怪我+リハビリが複製される問題の修正）
+  svSafeSeq(items,function(){
+    alert('記録しました ✓');go('mypage');
+  },function(){
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+  });
 }
 
 function showMatchDetail(mid){
@@ -2113,7 +2183,7 @@ function doBCInput(btnEl){
   var w=parseFloat(document.getElementById('bc-w').value);
   if(!isFilled(w)||w<=0)return alert('体重を入力してください');
   if(!guardSubmit(btnEl,'記録中…'))return; // 二重送信ガード
-  var rec={id:Date.now(),pid:myPid,date:document.getElementById('bc-date').value,inputAt:new Date().toISOString(),weight:w,fat:parseFloat(document.getElementById('bc-fat').value)||null,muscle:parseFloat(document.getElementById('bc-muscle').value)||null};
+  var rec={id:newId(),pid:myPid,date:document.getElementById('bc-date').value,inputAt:new Date().toISOString(),weight:w,fat:parseFloat(document.getElementById('bc-fat').value)||null,muscle:parseFloat(document.getElementById('bc-muscle').value)||null};
   svSafeSeq([{k:'bc',rec:rec}],function(){
     alert('記録しました ✓');go('mypage');
   },function(){
@@ -2141,9 +2211,9 @@ function doInjuryReport(btnEl){
   // 二重送信ガード（連打で i/r レコードが重複作成されるのを防ぐ）
   if(!guardSubmit(btnEl,'送信中…'))return;
   var dt=document.getElementById('ir-date').value,side=document.getElementById('ir-side').value,part=document.getElementById('ir-part').value,type=document.getElementById('ir-type').value,how=document.getElementById('ir-how').value,canprac=document.getElementById('ir-canprac').value,note=document.getElementById('ir-note').value;
-  var injId=Date.now();
+  var injId=newId();
   var injRec={id:injId,pid:myPid,side:side,part:part,partOther:'',type:type,typeOther:'',date:dt,returnDate:'',hospitalVisited:false,hospitalDate:'',note:'【選手報告】'+how+(note?' / '+note:'')+' / 痛み:'+pain+'/10 / 来週練習:'+canprac,resolved:false,source:'player',canPractice:canprac,painLevel:pain,approved:null};
-  var rehabRec={id:injId+1,injId:injId,pid:myPid,stage:0,logs:[],stageDates:[]};
+  var rehabRec={id:newId(),injId:injId,pid:myPid,stage:0,logs:[],stageDates:[]};
   // i(怪我)→r(リハビリ)を順次安全保存。svSafeSeqで成否を捕捉（svSafeは失敗時に内部alert＋ボタン固着するため使わない）
   svSafeSeq([{k:'i',rec:injRec},{k:'r',rec:rehabRec}],function(){
     alert('報告しました ✓ スタッフが確認後、怪我人リストに追加されます。');go('mypage');
@@ -2269,7 +2339,7 @@ function showTrainingAbsent(menuId){
 }
 // 欠席を記録（tlogにabsentフラグで保存。スタッフが把握できる）
 function saveTrainingAbsent(menuId,reason){
-  var log={id:Date.now(),pid:myPid,menuId:menuId,date:todayStr(),ts:new Date().toISOString(),absent:true,absentReason:reason,results:[],totalVolume:0};
+  var log={id:newId(),pid:myPid,menuId:menuId,date:todayStr(),ts:new Date().toISOString(),absent:true,absentReason:reason,results:[],totalVolume:0};
   svSafe('tlog',log,function(){
     clearTDraft();
     var h='<div style="text-align:center;padding:30px 10px"><div style="font-size:40px;margin-bottom:10px">📝</div><div style="font-size:16px;font-weight:700;margin-bottom:8px">欠席を記録しました</div><div style="font-size:13px;color:var(--text-secondary)">理由: '+escapeHtml(reason)+'</div>';
@@ -2389,7 +2459,7 @@ function startTrainingFresh(menuId){
     var at=a.ts||a.date,bt=b.ts||b.date;return bt.localeCompare(at);
   });
   _curTLog={
-    id:Date.now(),pid:myPid,menuId:menuId,date:today,ts:new Date().toISOString(),
+    id:newId(),pid:myPid,menuId:menuId,date:today,ts:new Date().toISOString(),
     results:(mn.exercises||[]).map(function(ex){
       var oneRM=ex.estBase?getPlayer1RM(myPid,ex.estBase):null;
       var estW=oneRM?estimateWeight(oneRM,ex.reps||1,ex.rir!=null?ex.rir:2):null;
@@ -2422,6 +2492,7 @@ function startTrainingFresh(menuId){
   renderTrainingExec(mn);
 }
 function renderTrainingExec(mn){
+  subView=true; // 実施中は他端末の保存によるリアルタイム再描画から保護（bottom navのgo()で解除）
   var compareMode=window._trCompareMode||'prev'; // prev | week
   var h='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><div style="font-size:17px;font-weight:700">'+escapeHtml(mn.name)+'</div></div>';
   h+='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">'+fmt(todayStr())+' <span style="color:var(--green)">・自動保存中（途中で閉じても復元できます）</span></div>';
@@ -2797,7 +2868,7 @@ function finishTraining(btnEl){
   // 4) tlog（必須）→ e1rm（任意）を順次安全保存。tlog成功時のみ下書きを消す。
   var items=[{k:'tlog',rec:log}];
   var hasE1rm=Object.keys(e1rmValues).length>0;
-  if(hasE1rm)items.push({k:'e1rm',rec:{id:Date.now()+1,pid:myPid,date:todayStr(),inputAt:new Date().toISOString(),values:e1rmValues}});
+  if(hasE1rm)items.push({k:'e1rm',rec:{id:newId(),pid:myPid,date:todayStr(),inputAt:new Date().toISOString(),values:e1rmValues}});
   svSafeSeq(items,function(done){
     clearTDraft();
     showTrainingResult(log,alerts,injurySkips,hasE1rm?e1rmValues:null);
@@ -3045,6 +3116,7 @@ T.tape=function(){
 };
 
 function showTapeBookForm(date){
+  subView=true; // 入力フォームなので、他端末の保存によるリアルタイム再描画から保護（go('tape')で解除）
   tapePartsSelected={};
   if(!D.tapeslot)D.tapeslot=[];
   if(!D.tape)D.tape=[];
@@ -3064,7 +3136,7 @@ function showTapeBookForm(date){
   '<div style="font-size:12px;color:var(--text-secondary)">部位数 × 5分 = 必要時間</div></div>'+
   '<div class="form-box" id="tape-slot-list"><div class="form-title">時間枠を選択</div>'+
   '<div id="tape-slots-wrap"><div style="color:var(--text-secondary);font-size:13px">担当者と部位を先に選択してください</div></div></div>'+
-  '<button class="btn btn-p" onclick="doTapeBook(\''+date+'\')" style="margin-top:8px;width:100%">予約を確定する</button>';
+  '<button class="btn btn-p" onclick="doTapeBook(\''+date+'\',this)" style="margin-top:8px;width:100%">予約を確定する</button>';
   $m().innerHTML=h;
   window._tapeCurrentDate=date;
   window._tapeCurrentStaff=null;
@@ -3086,6 +3158,8 @@ function toggleTapePart(el,part){
   updateTapeSlots();
 }
 
+// 予約rsvsのうち、slotId(枠)を占有しているものを返す（複数枠予約はslotIds配列全体を見る。旧データはslotIdのみへフォールバック）
+function tapeSlotBooked(rsvs,slotId){return rsvs.filter(function(t){return(t.slotIds||[t.slotId]).indexOf(slotId)>=0;});}
 function updateTapeSlots(){
   var wrap=document.getElementById('tape-slots-wrap');if(!wrap)return;
   var parts=Object.keys(tapePartsSelected).filter(function(k){return tapePartsSelected[k];});
@@ -3101,7 +3175,7 @@ function updateTapeSlots(){
     var ok=true;
     for(var j=0;j<needed;j++){
       var s=slots[i+j];
-      var booked=D.tape.filter(function(t){return t.slotId===s.id;}).length;
+      var booked=tapeSlotBooked(D.tape,s.id).length;
       if(booked>=s.capacity){ok=false;break;}
       if(j>0&&slots[i+j-1].endTime!==s.startTime){ok=false;break;}
     }
@@ -3128,7 +3202,7 @@ function selectTapeSlot(idx){
   if(el){el.style.borderColor='var(--blue)';el.style.background='var(--blue-bg)';}
 }
 
-function doTapeBook(date){
+function doTapeBook(date,btnEl){
   if(!D.tape)D.tape=[];
   var parts=Object.keys(tapePartsSelected).filter(function(k){return tapePartsSelected[k];});
   if(!parts.length)return alert('部位を選択してください');
@@ -3136,22 +3210,37 @@ function doTapeBook(date){
   // 重複チェック（同日に既に予約がないか）
   var already=D.tape.find(function(t){return t.pid===myPid&&t.date===date;});
   if(already)return alert('この日はすでに予約があります。キャンセルしてから再予約してください。');
-  var rsv={id:Date.now(),pid:myPid,date:date,slotId:selectedTapeSlot.slotIds[0],slotIds:selectedTapeSlot.slotIds,startTime:selectedTapeSlot.startTime,endTime:selectedTapeSlot.endTime,parts:parts,slots:parts.length,staff:window._tapeCurrentStaff||'',assignedTo:null,tapeNote:''};
-  var dup=false;
+  if(!guardSubmit(btnEl,'予約中…'))return;
+  var rsv={id:newId(),pid:myPid,date:date,slotId:selectedTapeSlot.slotIds[0],slotIds:selectedTapeSlot.slotIds,startTime:selectedTapeSlot.startTime,endTime:selectedTapeSlot.endTime,parts:parts,slots:parts.length,staff:window._tapeCurrentStaff||'',assignedTo:null,tapeNote:''};
+  var dup=false,slotFull=false;
   svSafeUpdate('tape',function(latest){
     if(latest.find(function(t){return t.pid===myPid&&t.date===date;})){dup=true;return latest;}
+    // 枠の残数をサーバー最新値で再検証（クライアント側の空き判定はスナップショット時点のものでレースが起こり得るため）
+    var full=rsv.slotIds.some(function(sid){
+      var slotDef=(D.tapeslot||[]).find(function(s){return s.id===sid;});
+      var cap=slotDef?slotDef.capacity:1;
+      return tapeSlotBooked(latest,sid).length>=cap;
+    });
+    if(full){slotFull=true;return latest;}
     latest.push(rsv);return latest;
   },function(){
-    if(dup){alert('この日はすでに予約があります。キャンセルしてから再予約してください。');return;}
-    alert('予約しました ✓');T.tape();
+    if(dup){releaseSubmit(btnEl);alert('この日はすでに予約があります。キャンセルしてから再予約してください。');return;}
+    if(slotFull){releaseSubmit(btnEl);alert('この時間枠はちょうど埋まってしまいました。別の時間を選択してください。');go('tape');return;}
+    alert('予約しました ✓');go('tape');
+  },function(){
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。');
   });
 }
 
 function cancelTapeRsv(rid){
   if(!confirm('この予約をキャンセルしますか？'))return;
-  svSafeUpdate('tape',function(latest){return latest.filter(function(t){return t.id!==rid;});},function(){T.tape();});
+  svSafeUpdate('tape',function(latest){return latest.filter(function(t){return t.id!==rid;});},function(){go('tape');});
 }
 
+// オフライン閲覧キャッシュを有効化（保存はこれまで通りオンライン必須。トランザクションはオフラインで実行できないため）。
+// 複数タブを開いている場合('failed-precondition')や非対応ブラウザ('unimplemented')では無効のまま通常動作を続ける。
+db.enablePersistence().catch(function(e){console.log('Firestore persistence not enabled:',e.code);});
 // Init
 ld().then(function(){
   document.getElementById('loading-screen').style.display='none';
