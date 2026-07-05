@@ -11,9 +11,8 @@
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
-- **🚨🚨🚨 最優先・このセッションで最初にやること＝push（ユーザー承認済み「pushしていいよ！」2026-07-05）。** ユーザーはこの直前に会話をクリアした。残っている未pushは**怪我×リハビリ連携 Phase2「不足ゲージ」の変更3ファイルだけ**（`staff/index.html` / `trainer/index.html` / `HANDOFF.md`）。`git log origin/main..HEAD` は空＝過去の全作業(trainer 9ステップ等)はコミット a320d54 で既にpush済み、今回のPhase2だけが作業ツリーに未コミットで残っている状態。
-  - **手順**: `git add staff/index.html trainer/index.html HANDOFF.md` → commit（メッセージ例「怪我×リハビリ連携 Phase2: カルテ評価タブに不足ゲージ(純SVGネオンリング)追加・staff/trainer共通19関数バイト一致」）→ `git push`。**`.DS_Store` と `.claude/launch.json` はコミットしない**（macOSゴミ / ローカルのプレビュー設定）。git add に上記3ファイルだけを明示指定すれば混入しない。
-  - **push後**: GitHub Pages反映（数十秒〜数分）を待ち、ユーザーに Cmd+Shift+R で staff/trainer のカルテ「📊評価」タブを開いて不足ゲージの実機確認を促す（このMacはsandbox制約でpreview不可＝Claude側では実機確認できない、既知の環境制約）。Phase2の実装内容・検証状況は下の「✅✅ 怪我×リハビリ連携 Phase2」ログ参照。
+- **✅ push完了（2026-07-05・コミット9c5d4fa）。** `staff/index.html` / `trainer/index.html` / `HANDOFF.md` の3ファイルをcommit&push済み。`.DS_Store`・`.claude/launch.json`は意図的に除外（コミット対象外のローカルファイル）。
+  - **次にやること**: ユーザーにGitHub Pages反映（数十秒〜数分）を待ち、Cmd+Shift+R で staff/trainer のカルテ「📊評価」タブを開いて不足ゲージ（SVGネオンリング）の実機確認を促す（このMacはsandbox制約でpreview不可＝Claude側では実機確認できない、既知の環境制約）。Phase2の実装内容・検証状況は下の「✅✅ 怪我×リハビリ連携 Phase2」ログ参照。実機確認後、問題なければ次の保留タスク（player 3系デザイン等）に進める。
 - **🆕 ユーザー方針が確定: 「実装は全部済ませてから、pushは最後に一気に行う」。実機確認・push・ユーザーへの逐一確認は全部保留したまま、こちらの判断で実装をどんどん進めてよい（「あなたの判断で続けていいよ」を明示承認済み）。次にやること・やる順序の選定もこちらに委ねられている。** push/実機確認だけは必ず最後にまとめて行う（それまでは作業ツリーが未コミットのまま積み上がる想定＝正常）。
 - **🎉🎉 trainer「ガイド付き評価フロー」9ステップ＝①〜⑨全完走（planファイル`4-player-staff-trainer-coach-1-ux-merry-harbor.md`末尾「実装順序（3体統合・確定案）」参照）。全て実装完了・検証済み・未push・未実機確認。以下は各ステップの実装ログ（時系列）。⑨後半のsupervised二層化だけ「凛人がORTHO_SOLO_OKにテスト名を追記して単独可を仕分ける」臨床TODOが残るが、既定＝全テスト監督下で安全に動作する（詳細は⑨のログ参照）。次はplayer 3系デザイン等の他保留か、実機確認＋push（ユーザー判断）。**
 - **✅✅ 怪我×リハビリ連携 Phase2「不足ゲージ」完了・検証済み・未push・未実機確認（2026-07-05・このセッション）。** プラン`/Users/nakayamarinnin/.claude/plans/wise-drifting-moonbeam.md`通りに実装。staff＋trainer両方のカルテ「📊評価」タブ冒頭に、`chart.metrics`(Phase1)の達成率%・「あと◯◯」を**Chart.js不使用の純SVGネオンリング**で可視化（読み取り＋描画のみ・書込ゼロ）。
