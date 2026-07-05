@@ -11,9 +11,25 @@
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
+- **🆕🆕🆕 最優先タスク＝TimeTree連携フェーズ1「チーム共通プッシュ/プル表示」の実装プランが確定・ユーザー承認済み（2026-07-05、別セッションでplan mode作成）。プランファイル: `/Users/nakayamarinnin/.claude/plans/sleepy-spinning-stardust.md`。まだ1行もコード着手していない＝次セッションはこのプランのステップ1（staff/index.html）から着手する。**
+  - プラン要旨: 新短キー`pp`（履歴配列、最新レコードのtype=次のウエイト種別）をFirestoreに追加。player/staff/trainerのホームに「次のウエイト: PUSH/PULL」バッジ。進行はstaff/trainerの1タップ反転（confirm無し）＋「1つ戻す」。playerは表示のみ。**coachには一切追加しない**。calのweight種別と連動するのは**表示のみ**（直近weight日の併記＋今日がweight日なら強調。自動反転はしない）。
+  - プランで発見した重要事実（実装時に必ず踏まえる）: ①**trainerのSKに`cal`が無い**ので追加が必要（trainer:141）。②**trainerのld/onSnapshotは空配列を受け取らない**ガード（trainer:597, trainer:3602）があり、「戻す」で空配列に戻すと他trainer端末に古いバッジが残る→`k==='pp'`の特例を両箇所に追加する設計込み。③関数名`ppNext`等は3ファイルで衝突なし確認済み。
+  - 実装順序: ステップ1=staff（書き込み経路を先に作る）→ステップ2=trainer（cal購読追加・構造変更最大）→ステップ3=player（表示のみ）→ステップ4=整合チェック（grep+diff）。各ステップ直後に構文チェック＋モック模擬実行。詳細・エッジケースガード・検証手順の全文はプランファイル参照。
+  - **注意**: プラン作成時点ではstaff/trainerに怪我×リハビリPhase2の未コミット変更が乗っていたため「並行注意」を書いたが、その後別セッションがコミット済み（`9c5d4fa`）＝作業ツリーは既にクリーン。着手前に`git status`で再確認すること。
 - **✅ push完了（2026-07-05・コミット9c5d4fa）。** `staff/index.html` / `trainer/index.html` / `HANDOFF.md` の3ファイルをcommit&push済み。`.DS_Store`・`.claude/launch.json`は意図的に除外（コミット対象外のローカルファイル）。
-  - **次にやること**: ユーザーにGitHub Pages反映（数十秒〜数分）を待ち、Cmd+Shift+R で staff/trainer のカルテ「📊評価」タブを開いて不足ゲージ（SVGネオンリング）の実機確認を促す（このMacはsandbox制約でpreview不可＝Claude側では実機確認できない、既知の環境制約）。Phase2の実装内容・検証状況は下の「✅✅ 怪我×リハビリ連携 Phase2」ログ参照。実機確認後、問題なければ次の保留タスク（player 3系デザイン等）に進める。
-- **🆕 ユーザー方針が確定: 「実装は全部済ませてから、pushは最後に一気に行う」。実機確認・push・ユーザーへの逐一確認は全部保留したまま、こちらの判断で実装をどんどん進めてよい（「あなたの判断で続けていいよ」を明示承認済み）。次にやること・やる順序の選定もこちらに委ねられている。** push/実機確認だけは必ず最後にまとめて行う（それまでは作業ツリーが未コミットのまま積み上がる想定＝正常）。
+  - **未実施のまま**: GitHub Pages反映後、Cmd+Shift+R で staff/trainer のカルテ「📊評価」タブを開いて不足ゲージ（SVGネオンリング）の実機確認（このMacはsandbox制約でpreview不可＝Claude側では実機確認できない、既知の環境制約）。Phase2の実装内容・検証状況は下の「✅✅ 怪我×リハビリ連携 Phase2」ログ参照。TimeTree実装と並行、またはその前後にユーザーに確認を促してよい。
+- **ユーザー方針（継続）**: 「実装は全部済ませてから、pushは最後に一気に行う」。実機確認・push・逐一確認は保留したまま実装を進めてよい（「あなたの判断で続けていいよ」を明示承認済み）。push/実機確認は必ず最後にまとめて行う。
+- **🆕 未着手の設計検討＝trainer側での「怪我の基本情報編集」解禁（2026-07-05・別の会話スレッド。コードは一切未着手・設計段階のみ）。**
+  - **発端の質問と回答**: ユーザーから「トレーナーサイトで復帰時期の変更ができないのはなぜだったか」と質問された。回答: ①`goEditInjury`（部位・受傷日・**復帰予定日**・受診情報等の基本情報編集）は**このセッション以前から**スタッフ権限スタブ（[trainer/index.html:426](trainer/index.html:426)、専門学生が怪我の根幹情報を編集できない元からの設計）。②「回復済みにする」(`resolveInj`)は今回のガイド付き評価フローT1-3で**意図的に**スタッフ権限スタブ化した（元は`popView()`未定義でクラッシュしていたバグを、AT役レビューの指摘「見習いが単独で復帰確定できるのは臨床的に危険。バグが偶然安全弁になっていた」を踏まえ、あえてバグを直さずスタブのまま確定した）。
+  - **ユーザーの意向（確定）**: トレーナー側でも「一定条件」で編集可能にしたい。ヒアリングの結果、**対象範囲＝基本情報全体**（`goEditInjury`の全項目。「回復済みにする」は今回は対象外＝T1-3の安全ゲートはそのまま維持）。**条件の軸＝①スタッフへの通知つき ＋ ②変更履歴を記録**（複数選択・承認制ではなく事後共有＋ログ型）。
+  - **設計時に使える下調べ（実装はまだ）**:
+    - 対象フィールドの一覧はstaff側の実装（[staff/index.html:2995](staff/index.html:2995) `goEditInjury`／[staff/index.html:3012](staff/index.html:3012) `doEditInjury`）が原本: `side`/`part`/`partOther`/`type`/`typeOther`/`date`(受傷日)/`returnDate`(復帰予定日)/`hospitalVisited`/`hospitalDate`/`note`。trainer側もこのフィールド構成をなぞればよい。
+    - trainerの`goEditInjury`スタブの呼び出し元は2箇所とも`chart-body`内（[trainer/index.html:1574](trainer/index.html:1574) `renderChartOverview`／[trainer/index.html:2179](trainer/index.html:2179) `renderChartReturn`、いずれも`renderChartTab()`経由）。編集フォームもここに描画し、キャンセル/保存後は`chartTab(curChartTab)`で戻す（呼び出し元タブが2つあるため固定タブ名でなく`curChartTab`を使うこと）。
+    - 保存は`svRec('i',rec,onDone)`（[trainer/index.html:641](trainer/index.html:641)）がそのまま使える＝既にトランザクションでid一致upsertする操作単位設計（staffの`doEditInjury`もこれと同型の`svRec`を使用済みなので、新たなロストアップデートのリスクは増えない）。
+    - **①スタッフ通知**: 既存の3者間コメント`injcomm`への投稿パターンをそのまま流用できる。参照実装＝`escalateChgChk`（[trainer/index.html:2664](trainer/index.html:2664)）＝`role:'trainer'`＋`getCurrentUserId/getCurrentUserName`＋定型文で`injcomm`にpush。新しい通知経路を作らずに済む。
+    - **②変更履歴の記録**: `renderChartTimeline`（[trainer/index.html:1393](trainer/index.html:1393)）が既に拡張しやすいイベント型システム（`IC`/`C`/`G`の辞書＋`typeOrder`。未知typeは`||9`で末尾フォールバックされるため既存typeに影響なく追加可能）を持っている。新設`type:'edit'`のイベントを、新設`inj.editLog[]`（変更日・実施者・変更内容の配列）から生成してタイムラインに合流させる案が有力（新しい表示UIを作らずに済む）。
+    - まだ決めていないこと: `editLog`の具体的なデータ構造（フィールド単位のfrom/toを全部持つか、変更点の要約文だけにするか）、通知文言の具体案、フォームの見た目（staffのグリッド2列レイアウトを踏襲するか、trainerの`.fl`縦積みスタイルに合わせるか）。
+  - **次にやること**: このメモをもとに実装を再開する（1機能ずつ→構文チェック→モック検証、の通常フロー）。急ぎではなく、TimeTree phase1やPhase2実機確認などと並行/後回しでよい。
 - **🎉🎉 trainer「ガイド付き評価フロー」9ステップ＝①〜⑨全完走（planファイル`4-player-staff-trainer-coach-1-ux-merry-harbor.md`末尾「実装順序（3体統合・確定案）」参照）。全て実装完了・検証済み・未push・未実機確認。以下は各ステップの実装ログ（時系列）。⑨後半のsupervised二層化だけ「凛人がORTHO_SOLO_OKにテスト名を追記して単独可を仕分ける」臨床TODOが残るが、既定＝全テスト監督下で安全に動作する（詳細は⑨のログ参照）。次はplayer 3系デザイン等の他保留か、実機確認＋push（ユーザー判断）。**
 - **✅✅ 怪我×リハビリ連携 Phase2「不足ゲージ」完了・検証済み・未push・未実機確認（2026-07-05・このセッション）。** プラン`/Users/nakayamarinnin/.claude/plans/wise-drifting-moonbeam.md`通りに実装。staff＋trainer両方のカルテ「📊評価」タブ冒頭に、`chart.metrics`(Phase1)の達成率%・「あと◯◯」を**Chart.js不使用の純SVGネオンリング**で可視化（読み取り＋描画のみ・書込ゼロ）。
   - **移植（staffへverbatim・バイト一致）**: `metricEvalRef`/`readEvalMetric`/`latestEvalForMetric`/`symPct`/`metricSeries`/`sparklineSVG`をtrainerから移植（staffの`toggleConcussion`直後に「追跡指標ヘルパー」ブロックとして追加）。
@@ -332,7 +348,7 @@
 
 ---
 
-## 🆕 TimeTree連携プロジェクト（全体設計）— 保留中（リハビリ連携を優先）
+## 🆕 TimeTree連携プロジェクト（全体設計）— フェーズ1は実装プラン確定・着手待ち
 
 > 「部の予定はTimeTreeに入っている。二重入力せずサイトに反映したい」が出発点。grillingで方向確定。
 
@@ -342,11 +358,12 @@
 - **サイトには既に自前カレンダー`cal`がある**（種別: match/practice/off/phys_measure/bronco_measure/other＋今回`weight`追加）。手入力が大変で実質使われていなかった→インポートで起こす。**試合後チェック催促・測定日催促はplayerに実装済み**で、`cal`に試合(match)が入れば自動稼働。
 
 ### フェーズ構成
-- **フェーズ2（連携の本体）= 予定一括インポート → ✅完成・push済み**（このコミット。現在地節に詳細）。毎月: スクショ→私に渡す→出た予定テキストをstaffの「📋一括インポート」に貼る、で運用。
-- **フェーズ1（次にやる）= チーム共通プッシュ/プル表示**【未着手】
-  - 確定仕様: **厳密に交互・チーム全員共通(グローバル1列)**。実施日はバラバラ(予定次第)。
-  - 実装案: 新短キー(例`pp`)にグローバル状態1件`{type,date}`を`svSafeUpdate`。player/staff/trainerに「次のウエイト: 🟦PUSH」バッジ表示。進行はstaff/trainerの1タップ反転＋「1つ戻す」。
-  - **`cal`にウエイト(weight)種別が入った今、発展形**: その日に`cal`のweightイベントがあれば「今日はPUSH」と断定表示、weight日のカウントで自動反転も可能（フル自動化）。プッシュ/プル自体はTimeTreeに書かれてない(「ウエイト①②」のみ)＝サイト側ロジックで持つ、で確定。
+- **フェーズ2（連携の本体）= 予定一括インポート → ✅完成・push済み**。毎月: スクショ→私に渡す→出た予定テキストをstaffの「📋一括インポート」に貼る、で運用。
+- **フェーズ1（次にやる）= チーム共通プッシュ/プル表示 →🆕 実装プラン確定・ユーザー承認済み（2026-07-05）。プランファイル: `/Users/nakayamarinnin/.claude/plans/sleepy-spinning-stardust.md`。未着手（コード変更ゼロ）。**
+  - 確定仕様: **厳密に交互・チーム全員共通(グローバル1列)**。「ウエイト①②」はグループ/時間帯分け＝同内容・1日=1進行（ユーザー確認済み）。
+  - データモデル: 新短キー`pp`＝**履歴配列**（`{id,type:'push'|'pull',date,by:'staff'|'trainer'}`）、最新レコードのtype=次の種別。反転=逆typeを追記／戻す=最新をpop／初期設定=1件目作成。player/staff/trainerに「次のウエイト: 🟦PUSH」バッジ表示。進行はstaff/trainerの1タップ反転（confirm無し）＋「1つ戻す」。**coachには追加しない**。
+  - cal連動は**表示のみ**に確定（ユーザー選択）: 直近のweightイベント日をバッジに併記、今日がweight日なら「今日は◯◯の日」と強調。自動反転はしない。
+  - 実装時の要注意点（プランに詳細）: trainerのSKに`cal`が無いので追加が必要／trainerのld・onSnapshotが空配列更新を受け取らないガードがあり「戻す」で空配列に戻すケースに`k==='pp'`特例が要る。
 - 後フェーズ候補: 画像直アップ全自動(案B/AIキー+サーバーレス必要なので保留)、trainer/coachへのカレンダー表示追加。
 
 ---
@@ -484,15 +501,17 @@
 - 直近push: `93c5d9c`(怪我×リハビリ Phase0 データ基盤) → `9ce97a3`(同 Phase1 追跡指標セクション＋種別テンプレ確定)。
 
 ## 次の一手
-- **🔴最優先＝trainerサイト「ガイド付き評価フロー」の実装**（詳細は最上部「次セッションが最初にやること」節）。プラン＝`/Users/nakayamarinnin/.claude/plans/4-player-staff-trainer-coach-1-ux-merry-harbor.md` 末尾のtrainer節（監査T1〜T5＋再設計確定版＋実装順序9ステップ、3体レビュー反映済み）。ユーザーに実装開始のGO（とステップ順の確認）をもらってから、①実バグバンチから1ステップずつ着手。その後coach監査（軽め）→4サイト横断の統合リスト。
-- **並行して保留中＝怪我管理×リハビリ連携の Phase 2（不足ゲージ, staff・カルテ内）**（プラン＝`/Users/nakayamarinnin/.claude/plans/rom-rom-tender-sundae.md`、要約は上の「怪我×リハビリ連携」節・現在地節にPhase2の要点）。**Chart.js不使用のCSS/SVGゲージ**で、各追跡指標の最新eval vs 基準(受傷前→健側→正常値＋手動目標優先)→達成率%・「あと◯◯」を表示。direction/0除算/NaN/Infinityガード・基準の出所ラベル・LSI・MMTドット。Phase0/1は完了・実機検証済み。**ユーザー承認済み(プラン全体)**。4サイト監査より前から進行中のプロジェクトなので、ユーザーが望めばこちらを先に再開してもよい。
-- （保留）TimeTree連携フェーズ1「チーム共通プッシュ/プル表示」（仕様は下の「TimeTree連携」節）。厳密交互・チーム共通・新キー`pp`・player/staff/trainerにバッジ＋1タップ反転。リハビリ連携を優先するため後回し。
+- **🔴最優先＝TimeTree連携フェーズ1「チーム共通プッシュ/プル表示」の実装**（詳細は最上部「次セッションが最初にやること」節・仕様は下の「TimeTree連携」節）。プラン＝`/Users/nakayamarinnin/.claude/plans/sleepy-spinning-stardust.md`。**ユーザー承認済み・未着手**。ステップ1(staff)→ステップ2(trainer)→ステップ3(player)→ステップ4(整合チェック)の順で1機能ずつ進める。
+- **✅完了済み（実機確認未実施）＝trainerサイト「ガイド付き評価フロー」9ステップ**（プラン＝`4-player-staff-trainer-coach-1-ux-merry-harbor.md`末尾）。実装・検証済み・push済み。凛人がORTHO_SOLO_OKにテスト名を追記して単独可を仕分ける臨床TODOのみ残（詳細は上のログ参照）。
+- **✅完了済み（実機確認未実施）＝怪我管理×リハビリ連携 Phase 2（不足ゲージ）**（プラン＝`/Users/nakayamarinnin/.claude/plans/wise-drifting-moonbeam.md`）。staff/trainer両方のカルテ評価タブに実装・検証済み・push済み（コミット9c5d4fa）。
 - 一括インポートの運用: 毎月スクショを私に渡す→出た予定テキストをstaff「📋一括インポート」に貼る。形式は `日付 | 種別 | タイトル | 時間`。
 - その他（任意・保留中の候補）:
-  - TimeTree連携の発展: 画像直アップ全自動(案B・AIキー+無料サーバーレス必要)、trainer/coachにカレンダー表示追加。
+  - TimeTree連携の発展: 画像直アップ全自動(案B・AIキー+無料サーバーレス必要)、trainer/coachにカレンダー表示追加。フェーズ1完了後に検討。
+  - player 3系デザイン（alert()のトースト化等）／coachレビュー未適用分／4サイト共通デッドコード削除。
   - （任意・保留中）フルセット横展開 — player で固めた `guardSubmit`/`svSafeSeq`/`svSafeUpdate(onError)` を staff/trainer に反映。trainer(15箇所)→staff(74箇所)の順。**ユーザー判断で現在は保留**。
   - 定期的な手動JSONバックアップの継続（staff「CSV出力」画面下部 `exportAllJSON`。PIN消失事故の再発防止）。
-- 着手時の作法: 1機能ずつ → 構文チェック → JXAモック模擬実行 → ユーザー確認の上で git push。
+  - staffダッシュの疲労度アラート不発バグ（`var todayS`の巻き上げでlf.date比較が常にfalse）。別タスクチップ化済み（task_15a0aecc）。
+- 着手時の作法: 1機能ずつ → 構文チェック → モック模擬実行 → 実装は溜めてpush/実機確認は最後にまとめて（ユーザー方針）。
 - 残課題メモ（明日のリハビリ予定バグ `78ebfbd` 関連、任意）:
   - **選手ごとの表示**（staff:1036 の「次回:」/ trainer:845「本日のメニュー」等）は今も `tomorrowCats` を日付フィルタ無しで表示する。単一選手の文脈なので実害は小さく今回はスコープ外。気になれば対象日表示や期限切れ非表示を検討。
   - 旧 `rplan`（`tomorrowDate` 無し）はDBに残るが**非表示なだけで無害**。実際に予定を出したい選手は「次回メニュー」を再設定すれば翌日分として正しく出る。
