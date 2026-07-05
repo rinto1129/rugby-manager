@@ -11,7 +11,7 @@
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
-- **✅✅ TimeTree連携フェーズ1「チーム共通プッシュ/プル表示」実装完了・検証済み・未push（2026-07-05・このセッション）。** プランファイル: `/Users/nakayamarinnin/.claude/plans/sleepy-spinning-stardust.md`通りにステップ1〜4を全完走。
+- **✅✅✅ TimeTree連携フェーズ1「チーム共通プッシュ/プル表示」実装完了・検証済み・push完了（2026-07-05・このセッション・コミット`6e751bd`）。** プランファイル: `/Users/nakayamarinnin/.claude/plans/sleepy-spinning-stardust.md`通りにステップ1〜4を全完走。`player/index.html`/`staff/index.html`/`trainer/index.html`/`HANDOFF.md`の4ファイルをcommit&push済み（ユーザー承認済み）。
   - **実装内容**: 新短キー`pp`（履歴配列、最新レコードのtype=次のウエイト種別）をSK/Dに追加（player/staff/trainer。coachは意図的に無変更＝grep 0件確認済み）。共通ヘルパー`ppNext/ppNextWeightDay/ppDateLabel/ppCardHtml`を3ファイルにverbatimで追加。staff/trainerには操作関数`ppFlip/ppUndo/ppStart`（`by`と再描画呼び出し[`V.dash()`/`T.home()`]のみが差分）を追加、playerは表示のみ（`ppCardHtml(false)`）。staffダッシュ・trainerホーム・playerホームにバッジ表示を配線。
   - **trainer固有の構造変更**: SKに`cal:'rm_calendar'`を新規追加（従来「軽量・低頻度」の除外方針の対象外という注記コメント付き。trainer:141）。ld()とonSnapshot()の空配列ガード2箇所（従来`parsed.length>0`のみ）を`(parsed.length>0||k==='pp')`に変更＝「1つ戻す」で空配列に戻した時も全trainer端末に同期されるようにした。
   - **検証方法（この環境の制約への対応）**: このMacには`node`が入っておらず、CLAUDE.md記載の`node --check`は使えなかった（`preview_start`もsandbox制約で不可、既知の環境制約）。代わりに`pip3 install --user esprima`で全文構文チェック（3ファイルともOK）、`pip3 install --user js2py`でpp関数群を抽出しPythonから実行するモックテストを実施——staff/trainer各20アサート・player6アサート、全てパス（ppNext/ppNextWeightDay/ppDateLabel/ppFlip/ppUndo/ppStart/ppCardHtmlの全エッジケース：空/破損データ・反転レース・100件トリム・weight日判定・today反転済みの表示分岐等）。trainerのld/onSnapshotガード変更もPythonロジックで再現し、`k==='pp'`のみ空配列可・他キーは従来通り拒否を確認。整合チェック（grep+diff）でcoach 0件・staff/trainer/playerのppブロック差分が許容範囲（by/redraw/player操作関数なしのみ）であることも確認済み。
