@@ -423,10 +423,114 @@ var ORTHO_SOLO_OK={
 };
 function orthoIsSupervised(testName){return !ORTHO_SOLO_OK[testName];}
 var curChartTab="overview";var _chartIid=null;
-// 専門学生サイトではケガの編集・削除・解決はスタッフ権限（スタブ）
-function goEditInjury(iid){alert('ケガ基本情報の編集はスタッフ画面から行ってください。');}
+// 専門学生サイトでは「回復済みにする」「削除」は引き続きスタッフ権限（T1-3で確定した安全ゲート）。
 function resolveInj(iid){alert('回復済みへの変更はスタッフ画面から行ってください。');}
 function deleteInjury(iid){alert('ケガの削除はスタッフ画面から行ってください。');}
+// === 基本情報編集（①スタッフへの通知 ②変更履歴の記録 を条件にトレーナーへ解禁） ===
+// フィールド定義はstaffのgoEditInjury/doEditInjuryと同一構成。差分検出・通知文生成・タイムライン表示で共有する。
+var INJ_EDIT_FIELDS=[
+  {k:'side',label:'左右'},
+  {k:'part',label:'部位'},
+  {k:'partOther',label:'部位詳細'},
+  {k:'type',label:'種類'},
+  {k:'typeOther',label:'種類詳細'},
+  {k:'date',label:'受傷日',fmt:function(v){return v?fmt(v):'未設定';}},
+  {k:'returnDate',label:'復帰予定日',fmt:function(v){return v?fmt(v):'未設定';}},
+  {k:'hospitalVisited',label:'受診状況',fmt:function(v){return v?'受診済み':'未受診';}},
+  {k:'hospitalDate',label:'受診日',fmt:function(v){return v?fmt(v):'未設定';}},
+  {k:'note',label:'メモ',fmt:function(v){return v?v:'（なし）';}}
+];
+function injEditFieldFmt(f,v){return f.fmt?f.fmt(v):(v||(f.k==='side'?'指定なし':''));}
+function injEditNormVal(k,v){return k==='hospitalVisited'?!!v:(v==null?'':v);}
+function goEditInjury(iid){
+  var body=document.getElementById('chart-body');
+  if(!body)return;
+  body.innerHTML=renderInjuryEditForm(iid);
+}
+function renderInjuryEditForm(iid){
+  var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return'';
+  var h='<div class="form-box"><div class="form-title">怪我の基本情報を編集</div>'+
+  '<div style="font-size:11.5px;color:var(--amber);background:var(--amber-bg);border-radius:8px;padding:8px 10px;margin-bottom:12px;line-height:1.5">📢 保存するとスタッフに自動で通知され、変更内容は「経過」タブの履歴に記録されます。</div>'+
+  '<div class="grid g2" style="gap:12px;margin-bottom:12px">'+
+    '<div class="fl"><label>左右</label><select class="ipt" id="ei-side"><option value=""'+(!inj.side?' selected':'')+'>指定なし</option><option value="右"'+(inj.side==='右'?' selected':'')+'>右</option><option value="左"'+(inj.side==='左'?' selected':'')+'>左</option><option value="両"'+(inj.side==='両'?' selected':'')+'>両方</option></select></div>'+
+    '<div class="fl"><label>部位</label><select class="ipt" id="ei-part" onchange="eiToggleOther()">'+PARTS.map(function(x){return'<option'+(inj.part===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></div>'+
+  '</div>'+
+  '<div class="fl" id="ei-partOther-wrap" style="margin-bottom:12px;'+(inj.part==='その他'?'':'display:none')+'"><label>部位詳細</label><input class="ipt" id="ei-partOther" value="'+escapeHtml(inj.partOther||'')+'"></div>'+
+  '<div class="fl" style="margin-bottom:12px"><label>種類</label><select class="ipt" id="ei-type" onchange="eiToggleOtherType()">'+INJ_TYPES.map(function(x){return'<option'+(inj.type===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></div>'+
+  '<div class="fl" id="ei-typeOther-wrap" style="margin-bottom:12px;'+(inj.type==='その他'?'':'display:none')+'"><label>種類詳細</label><input class="ipt" id="ei-typeOther" value="'+escapeHtml(inj.typeOther||'')+'"></div>'+
+  '<div class="grid g2" style="gap:12px;margin-bottom:12px">'+
+    '<div class="fl"><label>受傷日</label><input class="ipt" type="date" id="ei-date" value="'+(inj.date||'')+'"></div>'+
+    '<div class="fl"><label>復帰予定日</label><input class="ipt" type="date" id="ei-ret" value="'+(inj.returnDate||'')+'"></div>'+
+  '</div>'+
+  '<div class="grid g2" style="gap:12px;margin-bottom:12px">'+
+    '<div class="fl"><label>受診済み？</label><select class="ipt" id="ei-hv"><option value="0"'+(!inj.hospitalVisited?' selected':'')+'>未受診</option><option value="1"'+(inj.hospitalVisited?' selected':'')+'>受診済み</option></select></div>'+
+    '<div class="fl"><label>受診日</label><input class="ipt" type="date" id="ei-hd" value="'+(inj.hospitalDate||'')+'"></div>'+
+  '</div>'+
+  '<div class="fl"><label>メモ</label><textarea class="ipt" id="ei-note">'+escapeHtml(inj.note||'')+'</textarea></div>'+
+  '</div>'+
+  '<div style="display:flex;gap:8px;justify-content:flex-end">'+
+    '<button class="btn" onclick="chartTab(curChartTab)">キャンセル</button>'+
+    '<button class="btn btn-p" onclick="doEditInjuryTrainer('+iid+',this)">保存</button>'+
+  '</div>';
+  return h;
+}
+function eiToggleOther(){
+  var v=document.getElementById('ei-part').value;
+  document.getElementById('ei-partOther-wrap').style.display=(v==='その他')?'block':'none';
+}
+function eiToggleOtherType(){
+  var v=document.getElementById('ei-type').value;
+  document.getElementById('ei-typeOther-wrap').style.display=(v==='その他')?'block':'none';
+}
+function doEditInjuryTrainer(iid,btn){
+  var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return;
+  if(!myTrainer){alert('ログインし直してください');return;}
+  if(!guardSubmit(btn,'保存中…'))return;
+  var newVals={
+    side:document.getElementById('ei-side').value,
+    part:document.getElementById('ei-part').value,
+    type:document.getElementById('ei-type').value,
+    date:document.getElementById('ei-date').value,
+    returnDate:document.getElementById('ei-ret').value,
+    hospitalVisited:document.getElementById('ei-hv').value==='1',
+    hospitalDate:document.getElementById('ei-hd').value,
+    note:document.getElementById('ei-note').value
+  };
+  newVals.partOther=newVals.part==='その他'?document.getElementById('ei-partOther').value:'';
+  newVals.typeOther=newVals.type==='その他'?document.getElementById('ei-typeOther').value:'';
+  var changes=[];
+  INJ_EDIT_FIELDS.forEach(function(f){
+    var ov=injEditNormVal(f.k,inj[f.k]),nv=injEditNormVal(f.k,newVals[f.k]);
+    if(String(ov)!==String(nv)){
+      changes.push({field:f.label,from:injEditFieldFmt(f,inj[f.k]),to:injEditFieldFmt(f,newVals[f.k])});
+    }
+  });
+  if(!changes.length){
+    releaseSubmit(btn);
+    alert('変更点がありませんでした');
+    chartTab(curChartTab);
+    return;
+  }
+  INJ_EDIT_FIELDS.forEach(function(f){inj[f.k]=newVals[f.k];});
+  if(!Array.isArray(inj.editLog))inj.editLog=[];
+  inj.editLog.push({date:todayStr(),by:myTrainer.name,byId:myTrainer.id,changes:changes});
+  svRec('i',inj,function(){
+    alert('保存しました ✓');
+    var text='📝【基本情報編集】'+changes.map(function(c){return c.field+'：'+c.from+'→'+c.to;}).join('／')+'（'+myTrainer.name+'）';
+    var newComm={
+      id:'ic_'+Date.now()+'_'+Math.floor(Math.random()*1000),
+      injId:iid,role:'trainer',
+      authorId:getCurrentUserId('trainer'),
+      authorName:getCurrentUserName('trainer'),
+      text:text,createdAt:new Date().toISOString()
+    };
+    svSafeUpdate('injcomm',function(latest){latest.push(newComm);return latest;},null,function(e){console.error('injcomm notify error:',e);});
+    chartTab(curChartTab);
+  },function(){
+    releaseSubmit(btn);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+  });
+}
 // カルテデータ取得（なければ新規作成して返す）
 function getChart(injId){
   var ch=D.chart.find(function(x){return idEq(x.injId,injId);});
@@ -639,12 +743,13 @@ function svSafeUpdate(k,updateFn,onDone,onError){
   }).then(function(latest){D[k]=latest;if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);if(onError)onError(e);else alert('保存に失敗しました');});
 }
 // 単一レコードをトランザクションで安全にupsert（id一致で置換、なければ追加）
-function svRec(k,rec,onDone){
+// onError(任意・第4引数): svSafeUpdateと同様、指定時は失敗を呼び出し側へ委譲。
+function svRec(k,rec,onDone,onError){
   return svSafeUpdate(k,function(latest){
     var i=latest.findIndex(function(x){return idEq(x.id,rec.id);});
     if(i>=0)latest[i]=rec;else latest.push(rec);
     return latest;
-  },onDone);
+  },onDone,onError);
 }
 // 単一レコードをトランザクションで安全に削除（id一致）
 function svDel(k,id,onDone){
@@ -1485,10 +1590,11 @@ function renderChartTimeline(iid){
     soap:'<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>',
     stage:'<svg viewBox="0 0 24 24"><path d="M13 3v6h8l-9 12v-8H4l9-10z"/></svg>',
     rtp:'<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-2 15l-5-5 1.4-1.4L10 14.2l7.6-7.6L19 8l-9 9z"/></svg>',
-    goal:'<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm1-13h-2v6l5 3 1-1.6-4-2.4V7z"/></svg>'
+    goal:'<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm1-13h-2v6l5 3 1-1.6-4-2.4V7z"/></svg>',
+    edit:'<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>'
   };
-  var C={injury:'#EF4444',hospital:'#8B5CF6',eval:'#3B82F6',soap:'#10B981',stage:'#F59E0B',rtp:'#06B6D4',goal:'#EC4899'};
-  var G={injury:'rgba(239,68,68,.6)',hospital:'rgba(139,92,246,.6)',eval:'rgba(59,130,246,.6)',soap:'rgba(16,185,129,.6)',stage:'rgba(245,158,11,.6)',rtp:'rgba(6,182,212,.6)',goal:'rgba(236,72,153,.6)'};
+  var C={injury:'#EF4444',hospital:'#8B5CF6',eval:'#3B82F6',soap:'#10B981',stage:'#F59E0B',rtp:'#06B6D4',goal:'#EC4899',edit:'#64748B'};
+  var G={injury:'rgba(239,68,68,.6)',hospital:'rgba(139,92,246,.6)',eval:'rgba(59,130,246,.6)',soap:'rgba(16,185,129,.6)',stage:'rgba(245,158,11,.6)',rtp:'rgba(6,182,212,.6)',goal:'rgba(236,72,153,.6)',edit:'rgba(100,116,139,.6)'};
 
   // 1. 受傷
   events.push({date:inj.date,type:'injury',title:'受傷',desc:(inj.side||'')+inj.part+' '+inj.type+(inj.note?'<br>'+escapeHtml(inj.note):'')});
@@ -1506,6 +1612,11 @@ function renderChartTimeline(iid){
       events.push({date:ch.medical.surgeryDate,type:'hospital',title:'手術',desc:escapeHtml(ch.medical.surgeryName||'手術実施')});
     }
   }
+  // 2.5. 基本情報編集履歴（trainer「怪我の基本情報編集」解禁分＝inj.editLog）
+  (inj.editLog||[]).forEach(function(e){
+    var desc=(e.changes||[]).map(function(c){return escapeHtml(c.field)+': '+escapeHtml(c.from)+' → '+escapeHtml(c.to);}).join('<br>');
+    events.push({date:e.date,type:'edit',title:'基本情報編集'+(e.by?'（'+escapeHtml(e.by)+'）':''),desc:desc});
+  });
   // 3. 評価（痛み・ROMの推移をメトリクスで）
   (ch.evals||[]).forEach(function(ev){
     var metrics='';
@@ -1555,7 +1666,7 @@ function renderChartTimeline(iid){
   }
 
   // 日付順にソート（同日は受傷→診断→評価→SOAPの優先度）
-  var typeOrder={injury:0,hospital:1,stage:2,eval:3,soap:4,rtp:5,goal:6};
+  var typeOrder={injury:0,hospital:1,edit:1.5,stage:2,eval:3,soap:4,rtp:5,goal:6};
   events.sort(function(a,b){
     var dc=(a.date||'').localeCompare(b.date||'');
     if(dc!==0)return dc;
