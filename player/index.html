@@ -285,7 +285,6 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 <symbol id="i-pain-5" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2" fill="currentColor"/><path d="M12 5.5V3M12 21v-2.5M5.5 12H3M21 12h-2.5M7.4 7.4L5.6 5.6M18.4 18.4l-1.8-1.8M16.6 7.4l1.8-1.8M5.6 18.4l1.8-1.8"/></g></symbol>
 </defs>
 </svg>
-<div id="best-banner"></div>
 <div class="header">
 <div><h1><svg class="ic" width="18" height="18" style="vertical-align:-3px" aria-hidden="true"><use href="#i-ball" xlink:href="#i-ball"></use></svg> Rugby Manager</h1><div class="header-sub" id="hdr-name">選手を選択</div></div>
 <button class="btn-back" id="logout-btn" style="display:none" onclick="logout()">ログアウト</button>
@@ -1132,7 +1131,6 @@ function navIcon(name,size){
 }
 
 // ライトテーマではネオングロー廃止→maroonの淡い影に統一（ランク色そのものは面塗り+ink文字で表現する）
-function glowCol(c){return'rgba(141,0,0,.16)';}
 
 // BIG3合計クラブの閾値(kg)。表示専用のコード定数＝基準エンジン非接触
 var BIG3_CLUBS=[400,450,500];
@@ -1294,10 +1292,10 @@ function todayTodoHtml(){
 function renderInjComments(iid,role){
   var comments=(D.injcomm||[]).filter(function(c){return idEq(c.injId,iid);}).sort(function(a,b){return (a.createdAt||'').localeCompare(b.createdAt||'');});
   var commentsH=renderInjCommentsListOnly(iid,role);
-  return'<div class="form-box" style="margin-top:16px"><div class="form-title">💬 コメント（スタッフ・選手・専門学生で共有）</div>'+
+  return'<div class="form-box" style="margin-top:16px"><div class="form-title">'+ic('i-note',13)+' コメント（スタッフ・選手・専門学生で共有）</div>'+
   '<div id="injcomm-list-'+iid+'" style="max-height:300px;overflow-y:auto;margin-bottom:10px">'+commentsH+'</div>'+
   '<textarea class="ipt" id="injcomm-input-'+iid+'" placeholder="コメントを入力..." style="min-height:60px"></textarea>'+
-  '<button class="btn btn-p" style="width:100%;margin-top:6px" onclick="postInjComment('+iid+',\''+role+'\')">📤 投稿する</button>'+
+  '<button class="btn btn-p" style="width:100%;margin-top:6px" onclick="postInjComment('+iid+',\''+role+'\')">投稿する</button>'+
   '</div>';
 }
 
@@ -1339,7 +1337,7 @@ function getCurrentUserName(role){
 function showInjCommentDialog(iid){
   var inj=D.i.find(function(x){return idEq(x.id,iid);});
   if(!inj)return;
-  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">💬 '+(inj.side||'')+inj.part+' '+inj.type+' のコメント</div>'+renderInjComments(iid,'player'));
+  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">'+ic('i-note',16,'var(--maroon)')+' '+(inj.side||'')+inj.part+' '+inj.type+' のコメント</div>'+renderInjComments(iid,'player'));
 }
 
 function postInjComment(iid,role){
@@ -1949,23 +1947,23 @@ mypage:function(){
 },
 help:function(){
   $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button>'+
-  '<div style="font-size:20px;font-weight:700;margin-bottom:6px">📖 使い方ガイド</div>'+
+  '<div style="font-size:20px;font-weight:700;margin-bottom:6px">'+ic('i-book',18,'var(--maroon)')+' 使い方ガイド</div>'+
   '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">迷ったらここを見てね！</div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--blue)">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">😴 毎日やること</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-moon',14,'var(--blue)')+' 毎日やること</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '<b>1. コンディション入力（毎日朝）</b><br>'+
   '・RPE：昨日の練習がきつかったか1〜10で<br>'+
   '・睡眠時間：何時間寝たか<br>'+
   '・TR時間：練習や試合の時間（分）<br><br>'+
   '<b>2. 怪我があれば即報告</b><br>'+
-  '・「怪我・リハビリ」→「🚨 怪我を報告する」<br>'+
+  '・「怪我・リハビリ」→「痛み・違和感を伝える」<br>'+
   '・スタッフが確認するまで「確認待ち」表示<br>'+
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--purple)">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🏟️ 試合があった日</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-flag',14,'var(--purple)')+' 試合があった日</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '「試合日チェック」から入力<br>'+
   '・出場 / リザーブ / 出場なしから選択<br>'+
@@ -1974,7 +1972,7 @@ help:function(){
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--red)">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🩹 怪我中のとき</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-bandage',14,'var(--red)')+' 怪我中のとき</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '・「リハビリログ」を記録（痛み・ROM・実施内容）<br>'+
   '・週1回「週次怪我チェック」を提出<br>'+
@@ -1982,7 +1980,7 @@ help:function(){
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--green)">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">💪 MAX測定のとき</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-dumbbell',14,'var(--green)')+' MAX測定のとき</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '・「フィジカル測定」から入力<br>'+
   '・SQ／BP／DL／チンニング／クリーン／ブロンコ<br>'+
@@ -1991,7 +1989,7 @@ help:function(){
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--amber)">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">📋 欠席・遅刻するとき</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-clipboard',14,'var(--amber)')+' 欠席・遅刻するとき</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '・マイページの「欠席・遅刻申告」から<br>'+
   '・種別（欠席／遅刻／早退／部分参加）を選択<br>'+
@@ -2008,7 +2006,7 @@ help:function(){
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🔧 入力を間違えたとき</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-edit',14)+' 入力を間違えたとき</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '・各記録には「修正」と「削除」ボタンがある<br>'+
   '・MAX記録など入力ミスは削除すれば前のベストに戻る<br>'+
@@ -2054,18 +2052,18 @@ physical:function(){
   var lastPhysRec=D.ph.filter(function(r){return r.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
   $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">フィジカル測定</div>'+
   '<div class="grid2" style="margin-bottom:12px"><div class="mc"><div class="v" style="font-size:16px">'+(bSQ||'-')+'</div><div class="l">SQ Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bBP||'-')+'</div><div class="l">BP Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bDL||'-')+'</div><div class="l">DL Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(getBest(myPid,'chinning')||'-')+'</div><div class="l">チンニング Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(getBest(myPid,'clean')||'-')+'</div><div class="l">クリーン Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+broncoFmt(bBR)+'</div><div class="l">Bronco Best</div></div></div>'+
-  '<button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="showPhysForm()">📝 記録を入力する</button>'+
+  '<button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="showPhysForm()">'+ic('i-edit',13)+' 記録を入力する</button>'+
   (recs.length>=2?'<div class="chart-wrap"><canvas id="ch-ph"></canvas></div>':'')+
   (recs.length?recs.map(function(r){return'<div class="log-row" style="flex-wrap:wrap;gap:4px"><div style="min-width:60px"><div style="color:var(--text-secondary)">'+fmt(r.date)+'</div>'+(r.inputAt?'<div style="font-size:10px;color:var(--text-secondary);opacity:.7">入力 '+fmtDateTime(r.inputAt)+(r.editedAt?' (修正済)':'')+'</div>':'')+'</div>'+(r.squat?'<span>SQ:'+r.squat+'</span>':'')+(r.bench?'<span>BP:'+r.bench+'</span>':'')+(r.deadlift?'<span>DL:'+r.deadlift+'</span>':'')+(r.chinning?'<span>チンニング:'+r.chinning+'</span>':'')+(r.clean?'<span>クリーン:'+r.clean+'</span>':'')+(r.bronco?'<span style="font-weight:600;color:var(--blue)">Bronco:'+broncoFmt(r.bronco)+'</span>':'')+'<div style="margin-left:auto;display:flex;gap:4px"><button class="btn btn-sm" style="width:auto" onclick="showEditPhysRec('+r.id+')">修正</button><button class="btn btn-sm btn-d" style="width:auto" onclick="delPhysRec('+r.id+')">削除</button></div></div>';}).join(''):'<div class="no">記録なし</div>');
   if(recs.length>=2)setTimeout(function(){var s=recs.slice().reverse();var e=document.getElementById('ch-ph');if(!e)return;dC('ph');
     var ctx=e.getContext('2d');
     function grad(c1,c2){var g=ctx.createLinearGradient(0,0,0,220);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;}
-    function mk(label,key,color,ft,fb){return{label:label,data:s.map(function(r){return r[key]||null}),borderColor:color,backgroundColor:grad(ft,fb),borderWidth:3,fill:true,tension:.4,pointBackgroundColor:'#1E3251',pointBorderColor:color,pointBorderWidth:2,pointRadius:4,pointHoverRadius:7,pointHoverBackgroundColor:color};}
+    function mk(label,key,color,ft,fb){return{label:label,data:s.map(function(r){return r[key]||null}),borderColor:color,backgroundColor:grad(ft,fb),borderWidth:3,fill:true,tension:.4,pointBackgroundColor:'#fff',pointBorderColor:color,pointBorderWidth:2,pointRadius:4,pointHoverRadius:7,pointHoverBackgroundColor:color};}
     charts.ph=new Chart(e,{type:'line',data:{labels:s.map(function(r){return r.date.slice(5);}),datasets:[
-      mk('SQ','squat','#3B82F6','rgba(59,130,246,0.22)','rgba(59,130,246,0)'),
-      mk('BP','bench','#34D399','rgba(52,211,153,0.22)','rgba(52,211,153,0)'),
-      mk('DL','deadlift','#FBBF24','rgba(251,191,36,0.22)','rgba(251,191,36,0)')
-    ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'top',align:'end',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:12,color:'#9FB0C8',font:{size:12,weight:'600'}}},tooltip:{backgroundColor:'rgba(15,27,45,0.96)',titleColor:'#fff',bodyColor:'#cbd5e1',padding:12,cornerRadius:10,usePointStyle:true,borderColor:'rgba(255,255,255,0.1)',borderWidth:1,callbacks:{label:function(c){return ' '+c.dataset.label+': '+(c.parsed.y!==null?c.parsed.y+' kg':'-');}}}},scales:{y:{grid:{color:'rgba(159,176,200,0.12)',drawBorder:false},ticks:{color:'#9FB0C8',font:{size:11},padding:8},border:{display:false}},x:{grid:{display:false},ticks:{color:'#9FB0C8',font:{size:11}},border:{display:false}}}}});},80);
+      mk('SQ','squat','#1D4ED8','rgba(29,78,216,0.20)','rgba(29,78,216,0)'),
+      mk('BP','bench','#046C48','rgba(4,108,72,0.20)','rgba(4,108,72,0)'),
+      mk('DL','deadlift','#B45309','rgba(180,83,9,0.20)','rgba(180,83,9,0)')
+    ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'top',align:'end',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:12,color:'#6E5A5C',font:{size:12,weight:'600'}}},tooltip:{backgroundColor:'rgba(42,10,12,0.96)',titleColor:'#fff',bodyColor:'#F5E9E9',padding:12,cornerRadius:10,usePointStyle:true,borderColor:'rgba(255,255,255,0.1)',borderWidth:1,callbacks:{label:function(c){return ' '+c.dataset.label+': '+(c.parsed.y!==null?c.parsed.y+' kg':'-');}}}},scales:{y:{grid:{color:'rgba(60,10,12,0.08)',drawBorder:false},ticks:{color:'#6E5A5C',font:{size:11},padding:8},border:{display:false}},x:{grid:{display:false},ticks:{color:'#6E5A5C',font:{size:11}},border:{display:false}}}}});},80);
 },
 injury:function(){
   var pInj=D.i.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
@@ -2075,10 +2073,10 @@ injury:function(){
   // 復帰テスト目標
   var rtestH='';
   active.forEach(function(inj){
-    if(inj.rtestApproved){rtestH+='<div class="alert-card alert-up" style="margin-bottom:10px">🎉 復帰テスト承認済み！</div>';return;}
+    if(inj.rtestApproved){rtestH+='<div class="alert-card alert-up" style="margin-bottom:10px">'+ic('i-trophy',14)+' 復帰テスト承認済み！</div>';return;}
     if(inj.broncoTarget){
       rtestH+='<div class="card" style="margin-bottom:10px;border-left:3px solid var(--blue)">'+
-      '<div style="font-weight:600;color:var(--blue);margin-bottom:6px">🏁 復帰ブロンコ目標タイム</div>'+
+      '<div style="font-weight:600;color:var(--blue);margin-bottom:6px">'+ic('i-flag',13)+' 復帰ブロンコ目標タイム</div>'+
       '<div style="font-size:22px;font-weight:700;text-align:center;padding:8px 0">'+broncoFmt(inj.broncoTarget)+'</div>'+
       '<div style="font-size:12px;color:var(--text-secondary);text-align:center">このタイムを切れば復帰テストのフィット基準クリア</div>'+
       '</div>';
@@ -2092,7 +2090,7 @@ injury:function(){
     var cats=plan?plan.tomorrowCats||[]:[];
     var tpl=plan&&plan.tplId?(D.rtpl||[]).find(function(x){return x.id===plan.tplId;}):null;
     if(!cats.length&&!tpl)return;
-    menuH+='<div class="card" style="margin-bottom:10px;border-left:3px solid var(--blue)"><div style="font-weight:600;color:var(--blue);margin-bottom:8px">📋 本日のリハビリメニュー</div>';
+    menuH+='<div class="card" style="margin-bottom:10px;border-left:3px solid var(--blue)"><div style="font-weight:600;color:var(--blue);margin-bottom:8px">'+ic('i-clipboard',13)+' 本日のリハビリメニュー</div>';
     if(cats.length){menuH+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">'+cats.map(function(c){return'<span style="background:'+RCAT_BG[c]+';color:'+RCAT_COLOR[c]+';padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600">'+c+'</span>';}).join('')+'</div>';}
     if(tpl&&tpl.exercises){
       var todayCatExs=tpl.exercises.filter(function(ex){return cats.length===0||cats.indexOf(ex.cat)>=0;});
@@ -2115,10 +2113,10 @@ injury:function(){
         var tDt=new Date(stageTarget);
         var nDt=new Date(todayStr());
         var diff=Math.ceil((tDt-nDt)/86400000);
-        if(diff<0){overdueInfo='<div style="font-size:11px;color:var(--red);margin-bottom:6px">⚠️ 「'+STG[rh.stage+1]+'」への目標日を'+(-diff)+'日超過</div>';}
-        else if(diff===0){overdueInfo='<div style="font-size:11px;color:var(--amber);font-weight:600;margin-bottom:6px">🎯 今日が「'+STG[rh.stage+1]+'」への目標日</div>';}
-        else if(diff<=3){overdueInfo='<div style="font-size:11px;color:var(--amber);margin-bottom:6px">🎯 あと'+diff+'日で「'+STG[rh.stage+1]+'」へ目標</div>';}
-        else{overdueInfo='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">🎯 「'+STG[rh.stage+1]+'」目標: '+fmt(stageTarget)+'</div>';}
+        if(diff<0){overdueInfo='<div style="font-size:11px;color:var(--red);margin-bottom:6px">'+ic('i-warn',12)+' 「'+STG[rh.stage+1]+'」への目標日を'+(-diff)+'日超過</div>';}
+        else if(diff===0){overdueInfo='<div style="font-size:11px;color:var(--amber);font-weight:600;margin-bottom:6px">'+ic('i-target',12)+' 今日が「'+STG[rh.stage+1]+'」への目標日</div>';}
+        else if(diff<=3){overdueInfo='<div style="font-size:11px;color:var(--amber);margin-bottom:6px">'+ic('i-target',12)+' あと'+diff+'日で「'+STG[rh.stage+1]+'」へ目標</div>';}
+        else{overdueInfo='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">'+ic('i-target',12)+' 「'+STG[rh.stage+1]+'」目標: '+fmt(stageTarget)+'</div>';}
       }
       return'<div style="font-size:13px;color:var(--blue);font-weight:600;margin-bottom:6px">現在: '+STG[rh.stage]+'</div>'+
       overdueInfo+
@@ -2126,8 +2124,8 @@ injury:function(){
       STG.map(function(s,si){return'<div style="display:flex;flex-direction:column;align-items:center"><div class="stage-mini-dot'+(si<rh.stage?' done':si===rh.stage?' cur':'')+'"></div></div>';}).join('')+
       '</div><button class="btn" style="margin-bottom:6px" onclick="showRehabForm('+rh.id+')">リハビリログを記録</button>';
     })():'')+
-    '<button class="btn btn-s" onclick="showWeekCheck('+inj.id+')">📋 週次怪我チェック</button>'+
-    '<button class="btn" style="margin-top:6px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple)" onclick="showInjCommentDialog(\''+inj.id+'\')">💬 コメント'+(commentCount?' ('+commentCount+')':'')+'</button>'+
+    '<button class="btn btn-s" onclick="showWeekCheck('+inj.id+')">'+ic('i-clipboard',12)+' 週次怪我チェック</button>'+
+    '<button class="btn" style="margin-top:6px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple)" onclick="showInjCommentDialog(\''+inj.id+'\')">'+ic('i-note',12)+' コメント'+(commentCount?' ('+commentCount+')':'')+'</button>'+
     '</div>';
   }).join(''):'<div class="no" style="margin-bottom:12px">現在怪我はありません</div>';
 
@@ -2150,8 +2148,8 @@ injury:function(){
   var pendingInj=D.i.filter(function(x){return x.pid===myPid&&x.source&&(x.approved===null||x.approved===undefined)&&!x.resolved;});
   $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button>'+
   '<div style="font-size:18px;font-weight:600;margin-bottom:14px">怪我・リハビリ</div>'+
-  (pendingInj.length?'<div class="alert-card alert-warn" style="margin-bottom:10px">⏳ 怪我報告 '+pendingInj.length+'件がスタッフ確認待ちです</div>':'')+
-  '<button class="btn" style="margin-bottom:14px;border-color:var(--red);color:var(--red)" onclick="showInjuryReport()">🚨 怪我を報告する</button>'+
+  (pendingInj.length?'<div class="alert-card alert-warn" style="margin-bottom:10px">'+ic('i-clock',13)+' 怪我報告 '+pendingInj.length+'件がスタッフ確認待ちです</div>':'')+
+  '<button class="btn" style="margin-bottom:14px;border-color:var(--red);color:var(--red)" onclick="showInjuryReport()">'+ic('i-bandage',14)+' 痛み・違和感を伝える</button>'+
   rtestH+menuH+activeH+wcH+pastH;
 },
 match:function(){
@@ -2172,9 +2170,9 @@ function numStepHTML(id,min,max,oninput){
 function numStep(id,dir,min,max){var el=document.getElementById(id);var v=parseInt(el.value)||0;v=Math.min(max,Math.max(min,v+dir));el.value=v;el.dispatchEvent(new Event('input'));}
 
 // ===== コンディション拡張（mood/stress/soreness/部位/体重）用ヘルパー =====
-// 5段階アイコン（★変数名維持・中身のみic()化。サイズはic引数で明示＝旧font-size:17px依存の置換）
+// 5段階アイコン（変数名維持・中身のみic()化。サイズはic引数で明示＝旧font-size:17px依存の置換）
 var MOOD_EMO=[ic('i-face-1',22),ic('i-face-2',22),ic('i-face-3',22),ic('i-face-4',22),ic('i-face-5',22)];      // 1=どんより → 5=絶好調（悲→喜の素直な並び）
-var STRESS_EMO=[ic('i-face-5',22),ic('i-face-4',22),ic('i-face-3',22),ic('i-face-2',22),ic('i-face-1',22)];    // 1=なし=笑顔 → 5=強い（★i-faceを逆順格納。極性を崩さないこと）
+var STRESS_EMO=[ic('i-face-5',22),ic('i-face-4',22),ic('i-face-3',22),ic('i-face-2',22),ic('i-face-1',22)];    // 1=なし=笑顔 → 5=強い（i-faceを逆順格納。極性を崩さないこと）
 var SORE_EMO=[ic('i-pain-1',22),ic('i-pain-2',22),ic('i-pain-3',22),ic('i-pain-4',22),ic('i-pain-5',22)];      // 1=なし → 5=激痛
 // 5段階の日本語ラベル（アイコン下に併記）
 var RATE5_LABELS={mood:['どんより','いまいち','ふつう','良い','絶好調'],stress:['なし','少し','ふつう','強い','限界'],sore:['なし','軽い','ある','痛い','激痛']};
@@ -2266,7 +2264,7 @@ function doCondition(btnEl){
   if(sore){rec.soreness=sore;if(parts.length)rec.sorenessParts=parts;}
   // svSafeSeqで成否を捕捉（svSafeは失敗時に内部alert＋ボタン固着するため使わない）
   svSafeSeq([{k:'f',rec:rec}],function(){
-    alert('記録しました ✓');go('mypage');
+    go('mypage');toast('記録しました');
   },function(){
     // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
@@ -2283,7 +2281,7 @@ function showPhysForm(){
     '<div class="alert-card alert-info" style="margin-bottom:12px">'+ic('i-check-c',14)+' 本日は測定なしとして申告済みです <button class="btn btn-sm" onclick="cancelPhysSkip()" style="margin-left:8px">取消</button></div>':
     '<button class="btn" style="width:100%;margin-bottom:12px;color:var(--text-secondary)" onclick="markPhysSkip()">'+ic('i-x-c',13)+' 本日は測定なしとして申告する</button>';
   showSub(
-  '<div style="font-size:18px;font-weight:600;margin:12px 0 4px">📝 記録入力</div>'+
+  '<div style="font-size:18px;font-weight:600;margin:12px 0 4px">'+ic('i-edit',16,'var(--maroon)')+' 記録入力</div>'+
   '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">入力した項目だけ保存されます。空欄はスキップされます。</div>'+
   skipBtn+
   '<div class="form-box"><div class="form-title">測定日</div>'+
@@ -2324,7 +2322,7 @@ function showBroncoForm(){
 function showBroncoFormDirect(){
   var td=todayStr();
   $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button>'+
-  '<div style="font-size:18px;font-weight:600;margin:10px 0 14px">🏃 ブロンコを記録</div>'+
+  '<div style="font-size:18px;font-weight:600;margin:10px 0 14px">'+ic('i-run',16,'var(--maroon)')+' ブロンコを記録</div>'+
   '<div class="form-box"><div class="form-title">測定データ</div>'+
   '<div class="fl"><label>測定日</label><input class="ipt" type="date" id="br-date" value="'+td+'"></div>'+
   '<div class="fl"><label>ブロンコテスト</label>'+
@@ -2345,7 +2343,7 @@ function doBronco(btnEl){
     var isPB=pBR&&br<pBR;
     go('mypage');
     if(isPB)pbFlash('ブロンコ自己ベスト更新！ '+broncoFmt(pBR)+' → '+broncoFmt(br));
-    else toast('記録しました ✓ '+broncoFmt(br));
+    else toast('記録しました '+broncoFmt(br));
   },function(){
     // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
@@ -2401,8 +2399,8 @@ function switchPhysGraph(type){
 function showPhysSkipForm(){
   var td=todayStr();
   var curSess=getCurrentMSess();
-  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">📵 測定なし申告</div>'+
-  (curSess?'<div class="alert-card alert-info" style="margin-bottom:14px">📐 '+escapeHtml(curSess.name)+'の測定なしとして申告します</div>':'')+
+  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">'+ic('i-x-c',16,'var(--maroon)')+' 測定なし申告</div>'+
+  (curSess?'<div class="alert-card alert-info" style="margin-bottom:14px">'+ic('i-ruler',13)+' '+escapeHtml(curSess.name)+'の測定なしとして申告します</div>':'')+
   '<div class="form-box"><div class="form-title">申告内容</div>'+
   '<div class="fl" style="margin-bottom:10px"><label>理由</label>'+
   '<select class="ipt" id="skip-reason-type">'+
@@ -2427,7 +2425,7 @@ function doPhysSkipWithReason(btnEl){
   if(D.phskip.find(function(s){return s.pid===myPid&&s.date===today;})){alert('すでに申告済みです');return;}
   if(!guardSubmit(btnEl,'申告中…'))return; // 二重送信ガード
   svSafeSeq([{k:'phskip',rec:{pid:myPid,date:today,msessId:curSess?curSess.id:null,reason:reason,by:'player'}}],function(){
-    alert('申告しました ✓');go('mypage');
+    go('mypage');toast('申告しました');
   },function(){
     // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
@@ -2440,7 +2438,7 @@ function doPhysSkipWithReason(btnEl){
 // コンディション編集
 function showEditCondition(fid){
   var rec=D.f.find(function(r){return r.id===fid||String(r.id)===String(fid);});if(!rec)return;
-  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">😴 コンディション修正</div>'+
+  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">'+ic('i-moon',16,'var(--maroon)')+' コンディション修正</div>'+
   '<div class="form-box"><div class="form-title">内容を修正</div>'+
   '<div class="fl" style="margin-bottom:10px"><label>RPE（1-10）</label>'+numStepHTML('ef-rpe',1,10,'updESrpe()')+'</div>'+
   '<div class="fl" style="margin-bottom:10px"><label>睡眠時間（h）</label><input class="ipt" type="number" id="ef-sleep" step="0.5" value="'+(rec.sleep||'')+'"></div>'+
@@ -2497,7 +2495,7 @@ function doEditCondition(fid,btnEl){
     else{delete latest[idx].soreness;delete latest[idx].sorenessParts;}
     latest[idx].editedAt=new Date().toISOString();
     return latest;
-  },function(){alert('修正しました ✓');go('mypage');},function(){
+  },function(){go('mypage');toast('修正しました');},function(){
     // 失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
     alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
@@ -2507,7 +2505,7 @@ function doEditCondition(fid,btnEl){
 // 体組成編集
 function showEditBC(bcid){
   var rec=D.bc.find(function(r){return r.id===bcid;});if(!rec)return;
-  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">⚖️ 体組成修正</div>'+
+  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">'+ic('i-scale',16,'var(--maroon)')+' 体組成修正</div>'+
   '<div class="form-box"><div class="form-title">内容を修正</div>'+
   '<div class="fl" style="margin-bottom:10px"><label>体重（kg）</label><input class="ipt" type="number" step="0.1" id="ebc-w" value="'+(rec.weight||'')+'"></div>'+
   '<div class="fl" style="margin-bottom:10px"><label>体脂肪率（%）</label><input class="ipt" type="number" step="0.1" id="ebc-fat" value="'+(rec.fat||'')+'"></div>'+
@@ -2525,7 +2523,7 @@ function doEditBC(bcid,btnEl){
     latest[idx].muscle=parseFloat((document.getElementById('ebc-muscle')||{}).value)||null;
     latest[idx].editedAt=new Date().toISOString();
     return latest;
-  },function(){alert('修正しました ✓');go('mypage');},function(){
+  },function(){go('mypage');toast('修正しました');},function(){
     // 失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
     alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
@@ -2541,14 +2539,14 @@ function cancelAbsence(){
       if(s.date===td)s.absentees=s.absentees.filter(function(a){return a.pid!==myPid;});
     });
     return latest.filter(function(s){return s.absentees.length>0;});
-  },function(){alert('取り消しました ✓');go('mypage');});
+  },function(){go('mypage');toast('取り消しました');});
 }
 
 // フィジカル測定の修正（選手側）
 function showEditPhysRec(phid){
   var rec=D.ph.find(function(r){return r.id===phid||String(r.id)===String(phid);});if(!rec)return;
   var brM=rec.bronco?Math.floor(rec.bronco/60):0,brS=rec.bronco?Math.round(rec.bronco%60):0;
-  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">💪 記録を修正</div>'+
+  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">'+ic('i-dumbbell',16,'var(--maroon)')+' 記録を修正</div>'+
   '<div class="form-box"><div class="form-title">'+fmt(rec.date)+'の記録</div>'+
   '<div class="fl" style="margin-bottom:10px"><label>スクワット MAX（kg）</label><input class="ipt" type="number" id="eph-sq" value="'+(rec.squat||'')+'"></div>'+
   '<div class="fl" style="margin-bottom:10px"><label>ベンチプレス MAX（kg）</label><input class="ipt" type="number" id="eph-bp" value="'+(rec.bench||'')+'"></div>'+
@@ -2571,7 +2569,7 @@ function delWeekCheck(wid){
     var nx=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(wid);});
     if(nx.length===before){notFound=true;return latest;}
     return nx;
-  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');go('injury');});
+  },function(){if(notFound){alert('記録が見つかりませんでした');return;}go('injury');toast('削除しました');});
 }
 
 function delMatchDay(mid){
@@ -2583,7 +2581,7 @@ function delMatchDay(mid){
     var nx=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(mid);});
     if(nx.length===before){notFound=true;return latest;}
     return nx;
-  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');go('match');});
+  },function(){if(notFound){alert('記録が見つかりませんでした');return;}go('match');toast('削除しました');});
 }
 
 function delCondition(fid){
@@ -2595,7 +2593,7 @@ function delCondition(fid){
     var nx=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(fid);});
     if(nx.length===before){notFound=true;return latest;}
     return nx;
-  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');go('mypage');});
+  },function(){if(notFound){alert('記録が見つかりませんでした');return;}go('mypage');toast('削除しました');});
 }
 
 function delBC(bcid){
@@ -2607,7 +2605,7 @@ function delBC(bcid){
     var nx=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(bcid);});
     if(nx.length===before){notFound=true;return latest;}
     return nx;
-  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');go('mypage');});
+  },function(){if(notFound){alert('記録が見つかりませんでした');return;}go('mypage');toast('削除しました');});
 }
 
 function delPhysRec(phid){
@@ -2619,7 +2617,7 @@ function delPhysRec(phid){
     var nx=latest.filter(function(r){return r.id!==pid&&String(r.id)!==String(phid);});
     if(nx.length===before){notFound=true;return latest;}
     return nx;
-  },function(){if(notFound){alert('記録が見つかりませんでした');return;}alert('削除しました ✓');go('physical');});
+  },function(){if(notFound){alert('記録が見つかりませんでした');return;}go('physical');toast('削除しました');});
 }
 
 function doEditPhysRec(phid,btnEl){
@@ -2644,7 +2642,7 @@ function doEditPhysRec(phid,btnEl){
     latest[idx].bronco=br||null;
     latest[idx].editedAt=new Date().toISOString();
     return latest;
-  },function(){if(notFound){releaseSubmit(btnEl);alert('記録が見つかりませんでした');return;}alert('修正しました ✓');go('physical');},function(){
+  },function(){if(notFound){releaseSubmit(btnEl);alert('記録が見つかりませんでした');return;}go('physical');toast('修正しました');},function(){
     // 失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
     alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
@@ -2654,7 +2652,7 @@ function doEditPhysRec(phid,btnEl){
 function showAbsenceForm(){
   var td=todayStr();
   var existing=D.a.find(function(s){return s.date===td&&s.absentees.some(function(a){return a.pid===myPid;});});
-  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">📋 欠席・遅刻申告</div>'+
+  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px;display:flex;align-items:center;gap:7px">'+ic('i-clipboard',17,'var(--maroon)')+'欠席・遅刻申告</div>'+
   (existing?'<div class="alert-card alert-info" style="margin-bottom:14px">本日の申告はすでに送信済みです</div>':'')+
   '<div class="form-box"><div class="form-title">申告内容</div>'+
   '<div class="fl" style="margin-bottom:10px"><label>日付</label><input class="ipt" type="date" id="abs-date" value="'+td+'"></div>'+
@@ -2695,7 +2693,7 @@ function doPlayerAbsence(btnEl){
   },function(){
     releaseSubmit(btnEl);
     if(dupFlag){alert('この日はすでに申告済みです');return;}
-    alert('申告しました ✓\nスタッフに通知されます');
+    toast('申告しました。スタッフに通知されます');
     go('mypage');
   },function(){
     releaseSubmit(btnEl);
@@ -2736,7 +2734,7 @@ function markPhysSkip(){
     alert('すでに申告済みです');return;
   }
   svSafe('phskip',{pid:myPid,date:today,by:'player'},function(){
-    alert('測定なしとして申告しました ✓');go('mypage');
+    go('mypage');toast('測定なしとして申告しました');
   });
 }
 
@@ -2970,7 +2968,7 @@ function doPhys(btnEl){
     if(sq&&pSQ&&sq>=pSQ)m.push('SQ');if(bp&&pBP&&bp>=pBP)m.push('BP');if(dl&&pDL&&dl>=pDL)m.push('DL');
     go('mypage');
     if(m.length)pbFlash(m.join('・')+' 自己ベスト更新！');
-    else toast('記録しました ✓');
+    else toast('記録しました');
   },function(){
     // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
@@ -3095,8 +3093,8 @@ function savePainSelf(iid,btnEl){
     ch.evals.push(newEval);
     return latest;
   },function(){
-    alert('記録しました！トレーナーに共有されます。');
     showMyChart(iid);
+    toast('記録しました。トレーナーに共有されます');
   },function(){
     releaseSubmit(btnEl);
     alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
@@ -3121,8 +3119,8 @@ function doRehab(rid,btnEl){
   };
   // D.rlog（新式）に保存。svSafeSeqで成否を捕捉（svSafeは失敗時に内部alert＋ボタン固着するため使わない）
   svSafeSeq([{k:'rlog',rec:newLog}],function(){
-    alert('記録しました ✓');
     go('mypage');
+    toast('記録しました');
   },function(){
     releaseSubmit(btnEl);
     alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
@@ -3135,7 +3133,7 @@ function doWeekCheck(injId,btnEl){
   if(!guardSubmit(btnEl,'送信中…'))return;
   var rec={id:newId(),pid:myPid,injId:injId,date:document.getElementById('wc-date').value,inputAt:new Date().toISOString(),pain:parseInt(document.getElementById('wc-pain').value)||5,returnEst:document.getElementById('wc-ret').value,practiceStatus:document.getElementById('wc-prac').value,note:document.getElementById('wc-note').value};
   svSafeSeq([{k:'wc',rec:rec}],function(){
-    alert('送信しました ✓');go('mypage');
+    go('mypage');toast('送信しました');
   },function(){
     releaseSubmit(btnEl);
     alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
@@ -3183,7 +3181,7 @@ function doMatch(btnEl){
   items.push({k:'md',rec:rec});
   // svSafeSeqで怪我(i)→リハビリ(r)→試合記録(md)を順番に保存。svSafeは失敗時に内部alert＋ボタン固着するため使わない（連打で怪我+リハビリが複製される問題の修正）
   svSafeSeq(items,function(){
-    alert('記録しました ✓');go('mypage');
+    go('mypage');toast('記録しました');
   },function(){
     releaseSubmit(btnEl);
     alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
@@ -3228,7 +3226,7 @@ function doBCInput(btnEl){
   if(!guardSubmit(btnEl,'記録中…'))return; // 二重送信ガード
   var rec={id:newId(),pid:myPid,date:document.getElementById('bc-date').value,inputAt:new Date().toISOString(),weight:w,fat:parseFloat(document.getElementById('bc-fat').value)||null,muscle:parseFloat(document.getElementById('bc-muscle').value)||null};
   svSafeSeq([{k:'bc',rec:rec}],function(){
-    alert('記録しました ✓');go('mypage');
+    go('mypage');toast('記録しました');
   },function(){
     // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
@@ -3236,7 +3234,8 @@ function doBCInput(btnEl){
   });
 }
 
-function showInjuryReport(){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">🚨 怪我を報告する</div>'+
+function showInjuryReport(){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 6px;display:flex;align-items:center;gap:7px">'+ic('i-bandage',17,'var(--maroon)')+'痛み・違和感を伝える</div>'+
+'<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">早く伝えるほど早く復帰できます。小さな違和感でも遠慮なく報告してください。</div>'+
 '<div class="form-box"><div class="form-title">怪我の詳細</div>'+
 '<div class="fl"><label>受傷日</label><input class="ipt" type="date" id="ir-date" value="'+td+'"></div>'+
 '<div class="grid2"><div class="fl"><label>左右</label><select class="ipt" id="ir-side"><option value="">指定なし</option><option>右</option><option>左</option><option>両</option></select></div><div class="fl"><label>部位</label><select class="ipt" id="ir-part">'+PARTS.map(function(x){return'<option>'+x+'</option>';}).join('')+'</select></div></div>'+
@@ -3245,7 +3244,8 @@ function showInjuryReport(){var td=todayStr();showSub('<div style="font-size:18p
 '<div class="fl"><label>現在の痛み（1-10）</label>'+numStepHTML('ir-pain',1,10,'')+'</div>'+
 '<div class="fl"><label>来週の練習に参加できるか</label><select class="ipt" id="ir-canprac"><option>参加できる</option><option>参加できない</option><option>わからない</option></select></div>'+
 '<div class="fl"><label>メモ</label><textarea class="ipt" id="ir-note" placeholder="その他気になること..."></textarea></div>'+
-'<button class="btn btn-p" onclick="doInjuryReport(this)">報告を送信する</button></div>');}
+'<button class="btn btn-p" onclick="doInjuryReport(this)">報告を送信する</button></div>'+
+'<div class="card" style="margin-top:12px"><div class="kicker" style="margin-bottom:4px">この後の流れ</div><div style="font-size:12px;color:var(--text-secondary);line-height:1.9">1. スタッフが報告内容を確認します<br>2. 承認されるとリハビリが始まり、マイページに「カルテ」ができます<br>3. カルテから毎日の痛み記録・復帰までの進行が確認できます</div></div>');}
 
 function doInjuryReport(btnEl){
   // 痛みは1〜10の必須項目（isFilledで空のみ未入力扱い→範囲チェックで範囲外を弾く。素の!painは0や空を区別できず誤検知するため不可）
@@ -3259,7 +3259,7 @@ function doInjuryReport(btnEl){
   var rehabRec={id:newId(),injId:injId,pid:myPid,stage:0,logs:[],stageDates:[]};
   // i(怪我)→r(リハビリ)を順次安全保存。svSafeSeqで成否を捕捉（svSafeは失敗時に内部alert＋ボタン固着するため使わない）
   svSafeSeq([{k:'i',rec:injRec},{k:'r',rec:rehabRec}],function(){
-    alert('報告しました ✓ スタッフが確認後、怪我人リストに追加されます。');go('mypage');
+    go('mypage');toast('報告しました。スタッフが確認します');
   },function(){
     // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
@@ -3306,7 +3306,7 @@ T.training=function(){
   // 連続スキップアラート（自分の記録から）
   var skipAlerts=getConsecutiveSkips(myPid);
   if(skipAlerts.length){
-    h+='<div class="card" style="border-left:3px solid var(--amber);margin-bottom:14px"><div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:6px">⚠️ 連続でできていない種目</div>';
+    h+='<div class="card" style="border-left:3px solid var(--amber);margin-bottom:14px"><div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:6px">'+ic('i-warn',13)+' 連続でできていない種目</div>';
     skipAlerts.forEach(function(a){
       h+='<div style="font-size:12px;color:var(--text-secondary);padding:2px 0">'+escapeHtml(a.name)+'（'+a.count+'回連続）</div>';
     });
@@ -3316,7 +3316,7 @@ T.training=function(){
   var e1rms=getLatestE1RM(myPid);
   var e1rmKeys=Object.keys(e1rms);
   if(e1rmKeys.length){
-    h+='<div class="card" style="margin-bottom:14px"><div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">📈 推定1RM（参考値・トレーニングから自動算出）</div><div style="display:flex;gap:10px;flex-wrap:wrap">';
+    h+='<div class="card" style="margin-bottom:14px"><div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">'+ic('i-trend-up',13)+' 推定1RM（参考値・トレーニングから自動算出）</div><div style="display:flex;gap:10px;flex-wrap:wrap">';
     e1rmKeys.forEach(function(k){
       var label=(EST_BASES.find(function(b){return b.k===k;})||{}).label||k;
       h+='<div style="flex:1;min-width:80px;text-align:center;background:var(--bg-primary);border-radius:8px;padding:8px"><div style="font-size:10px;color:var(--text-secondary)">'+label+'</div><div style="font-size:18px;font-weight:800;color:var(--blue)">'+e1rms[k].e1rm+'<span style="font-size:10px;color:var(--text-secondary)">kg</span></div></div>';
@@ -3349,7 +3349,7 @@ T.training=function(){
     });
   }
   // 過去の記録へのリンク
-  h+='<button class="btn" style="width:100%;margin-top:12px" onclick="showTrainingHistory()">📊 トレーニング履歴・グラフ</button>';
+  h+='<button class="btn" style="width:100%;margin-top:12px" onclick="showTrainingHistory()">'+ic('i-chart',13)+' トレーニング履歴・グラフ</button>';
   $m().innerHTML=h;
 };
 
@@ -3361,7 +3361,7 @@ function startTraining(menuId){
   var h='<div style="font-size:17px;font-weight:700;margin:4px 0 6px">'+escapeHtml(mn.name)+'</div>';
   h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:20px">'+fmt(todayStr())+' のトレーニング</div>';
   h+='<div style="text-align:center;padding:20px 0"><div style="font-size:15px;font-weight:600;margin-bottom:20px">今日はトレーニングしますか？</div>';
-  h+='<button class="btn btn-p" style="width:100%;padding:14px;font-size:15px;margin-bottom:10px" onclick="beginTrainingExec(\''+menuId+'\')">💪 トレーニングする</button>';
+  h+='<button class="btn btn-p" style="width:100%;padding:14px;font-size:15px;margin-bottom:10px" onclick="beginTrainingExec(\''+menuId+'\')">'+ic('i-dumbbell',14)+' トレーニングする</button>';
   h+='<button class="btn" style="width:100%;padding:14px;font-size:15px" onclick="showTrainingAbsent(\''+menuId+'\')">今日は休む</button>';
   h+='</div>';
   h+='<button class="btn" style="width:100%;margin-top:8px" onclick="go(\'training\')">戻る</button>';
@@ -3385,7 +3385,7 @@ function saveTrainingAbsent(menuId,reason){
   var log={id:newId(),pid:myPid,menuId:menuId,date:todayStr(),ts:new Date().toISOString(),absent:true,absentReason:reason,results:[],totalVolume:0};
   svSafe('tlog',log,function(){
     clearTDraft();
-    var h='<div style="text-align:center;padding:30px 10px"><div style="font-size:40px;margin-bottom:10px">📝</div><div style="font-size:16px;font-weight:700;margin-bottom:8px">欠席を記録しました</div><div style="font-size:13px;color:var(--text-secondary)">理由: '+escapeHtml(reason)+'</div>';
+    var h='<div style="text-align:center;padding:30px 10px"><div style="margin-bottom:10px">'+ic('i-note',40,'var(--rose)')+'</div><div style="font-size:16px;font-weight:700;margin-bottom:8px">欠席を記録しました</div><div style="font-size:13px;color:var(--text-secondary)">理由: '+escapeHtml(reason)+'</div>';
     if(reason==='痛み・怪我')h+='<div style="font-size:12px;color:var(--text-secondary);margin-top:10px">スタッフに共有されました。お大事に。</div>';
     h+='</div><button class="btn btn-p" style="width:100%;margin-top:16px" onclick="go(\'training\')">完了</button>';
     showSub(h);
@@ -3470,10 +3470,10 @@ function beginTrainingExec(menuId){
 }
 function promptResumeTDraft(mn,menuId,savedT,fromCloud){
   var h='<div style="text-align:center;padding:24px 10px">'+
-    '<div style="font-size:40px;margin-bottom:10px">📝</div>'+
+    '<div style="margin-bottom:10px">'+ic('i-note',40,'var(--rose)')+'</div>'+
     '<div style="font-size:16px;font-weight:700;margin-bottom:6px">入力途中のデータがあります</div>'+
     '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">'+escapeHtml(mn.name)+'</div>'+
-    (fromCloud?'<div style="font-size:11px;color:var(--blue);margin-bottom:2px">📡 別の端末から引き継ぎ</div>':'')+
+    (fromCloud?'<div style="font-size:11px;color:var(--blue);margin-bottom:2px">'+ic('i-info',11)+' 別の端末から引き継ぎ</div>':'')+
     (savedT?'<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:18px">最終保存: '+fmtDateTime(savedT)+'</div>':'<div style="margin-bottom:18px"></div>')+
     '<button class="btn btn-p" style="width:220px;padding:14px;font-size:15px;margin-bottom:10px" onclick="resumeTDraft('+menuId+')">▶ 続きから入力する</button><br>'+
     '<button class="btn" style="width:220px;padding:10px;font-size:13px" onclick="startTrainingFresh('+menuId+')">最初からやり直す</button>'+
@@ -3551,8 +3551,8 @@ function renderTrainingExec(mn){
   // コンディション連動ヒント
   var cond=getTodayCondition();
   if(cond){
-    if(cond.bad){h+='<div class="card" style="border-left:3px solid var(--amber);margin-bottom:12px"><div style="font-size:12px;color:var(--amber);font-weight:600">⚠️ 今日は軽めでもいいかも</div><div style="font-size:11px;color:var(--text-secondary);margin-top:3px">'+(cond.reasons&&cond.reasons.length?cond.reasons.join('・')+'。':'')+'無理せず前回と同等〜控えめの重量で。痛みがあれば中止してください。</div></div>';}
-    else if(cond.good){h+='<div class="card" style="border-left:3px solid var(--green);margin-bottom:12px"><div style="font-size:12px;color:var(--green);font-weight:600">💪 今日はコンディション良好</div><div style="font-size:11px;color:var(--text-secondary);margin-top:3px">前回超えを狙えるかも。フォームを保てる範囲で。</div></div>';}
+    if(cond.bad){h+='<div class="card" style="border-left:3px solid var(--amber);margin-bottom:12px"><div style="font-size:12px;color:var(--amber);font-weight:600">'+ic('i-warn',13)+' 今日は軽めでもいいかも</div><div style="font-size:11px;color:var(--text-secondary);margin-top:3px">'+(cond.reasons&&cond.reasons.length?cond.reasons.join('・')+'。':'')+'無理せず前回と同等〜控えめの重量で。痛みがあれば中止してください。</div></div>';}
+    else if(cond.good){h+='<div class="card" style="border-left:3px solid var(--green);margin-bottom:12px"><div style="font-size:12px;color:var(--green);font-weight:600">'+ic('i-fire',13)+' 今日はコンディション良好</div><div style="font-size:11px;color:var(--text-secondary);margin-top:3px">前回超えを狙えるかも。フォームを保てる範囲で。</div></div>';}
   }
   // MD-1テーパーヒント（明日がD.calの試合日）
   var tomorrowS=toDateStr(new Date(new Date(todayStr()).getTime()+86400000));
@@ -3587,11 +3587,11 @@ function renderTrainingExec(mn){
       '<span style="display:inline-flex;flex-direction:column;align-items:center;background:var(--bg-tertiary);border-radius:8px;padding:5px 12px;min-width:52px"><span style="font-size:9px;color:var(--text-secondary)">RIR</span><span style="font-size:17px;font-weight:800;line-height:1.1">'+(r.targetRir!=null?r.targetRir:'-')+'</span></span>'+
       (r.estWeight?'<span style="display:inline-flex;flex-direction:column;align-items:center;background:var(--blue-bg);border-radius:8px;padding:5px 12px;min-width:62px"><span style="font-size:9px;color:var(--blue)">推定重量</span><span style="font-size:17px;font-weight:800;line-height:1.1;color:var(--blue)">'+r.estWeight+'<span style="font-size:9px">kg</span></span></span>':r.estBase?'<span style="display:inline-flex;align-items:center;font-size:11px;color:var(--text-tertiary);padding:5px 8px">1RM未登録</span>':'<span style="display:inline-flex;align-items:center;font-size:11px;color:var(--text-tertiary);padding:5px 8px">手入力</span>')+
       '</div>';
-    if(r.note)h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;padding:6px 8px;background:var(--bg-primary);border-radius:6px;white-space:pre-wrap">💡 '+escapeHtml(r.note)+'</div>';
+    if(r.note)h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;padding:6px 8px;background:var(--bg-primary);border-radius:6px;white-space:pre-wrap">'+ic('i-info',12)+' '+escapeHtml(r.note)+'</div>';
     if(r.videoUrl)h+='<a href="'+escapeHtml(r.videoUrl)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-bottom:8px;font-size:12px;color:var(--blue);text-decoration:none;font-weight:600">▶ 参考動画</a>';
     if(r.prevEx&&r.prevEx.sets&&!r.skipped){
       var prevSetsStr=(r.prevEx.sets||[]).map(function(s){return(s.weight||'?')+'kg×'+(s.reps||'?');}).join(' / ');
-      h+='<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px;padding:5px 8px;background:var(--bg-primary);border-radius:6px">📋 前回'+(r.prevEx.date?' ('+r.prevEx.date+')':'')+': '+escapeHtml(prevSetsStr)+'</div>';
+      h+='<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px;padding:5px 8px;background:var(--bg-primary);border-radius:6px">'+ic('i-clipboard',11)+' 前回'+(r.prevEx.date?' ('+r.prevEx.date+')':'')+': '+escapeHtml(prevSetsStr)+'</div>';
     }
 
     if(r.skipped){
@@ -3633,7 +3633,7 @@ function renderTrainingExec(mn){
     }
     h+='</div>';
   });
-  h+='<button class="btn btn-p" style="width:100%;margin-top:8px" onclick="finishTraining(this)">✓ トレーニングを記録</button>';
+  h+='<button class="btn btn-p" style="width:100%;margin-top:8px" onclick="finishTraining(this)">'+ic('i-check',13)+' トレーニングを記録</button>';
   h+='<button class="btn" style="width:100%;margin-top:8px" onclick="go(\'training\')">キャンセル</button>';
   showSub(h);
   // 初回のリアルタイム表示を反映＋タイマー表示初期化（稼働中の再描画でも現在状態を復元する）
@@ -4060,7 +4060,7 @@ function showTrainingResult(log,alerts,injurySkips,e1rmRecorded){
 // トレーニング履歴・グラフ
 function showTrainingHistory(){
   var logs=(D.tlog||[]).filter(function(l){return idEq(l.pid,myPid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
-  var h='<div style="font-size:18px;font-weight:700;margin:4px 0 14px">📊 トレーニング履歴</div>';
+  var h='<div style="font-size:18px;font-weight:700;margin:4px 0 14px">'+ic('i-chart',16,'var(--maroon)')+' トレーニング履歴</div>';
   if(!logs.length){h+='<div class="no">まだ記録がありません</div>';showSub(h);return;}
 
   // 総ボリューム推移グラフ
@@ -4182,7 +4182,7 @@ function renderDisabledExForm(){
   });}
   h+='</div><datalist id="dex-hist">'+hist.map(function(n){return'<option value="'+escapeHtml(n)+'">';}).join('')+'</datalist>';
   h+='<button class="btn" style="width:100%;margin-top:8px" onclick="addDisabledEx()">＋ 種目を追加</button>';
-  h+='<div style="display:flex;gap:8px;margin-top:16px"><button class="btn" style="flex:1" onclick="go(\'training\')">キャンセル</button><button class="btn btn-p" style="flex:2" onclick="saveDisabledEx()">💾 保存</button></div>';
+  h+='<div style="display:flex;gap:8px;margin-top:16px"><button class="btn" style="flex:1" onclick="go(\'training\')">キャンセル</button><button class="btn btn-p" style="flex:2" onclick="saveDisabledEx()">保存</button></div>';
   showSub(h);
 }
 function addDisabledEx(){window._disabledExEdit.push({name:'',reason:''});var el=document.getElementById('dex-list');if(el){renderDisabledExForm();}}
@@ -4190,7 +4190,7 @@ function delDisabledEx(i){window._disabledExEdit.splice(i,1);renderDisabledExFor
 function updDisabledEx(i,f,v){if(window._disabledExEdit[i])window._disabledExEdit[i][f]=v;}
 function saveDisabledEx(){
   var list=(window._disabledExEdit||[]).filter(function(d){return d.name&&d.name.trim();}).map(function(d){return{name:d.name.trim(),reason:(d.reason||'').trim(),by:'player',date:todayStr()};});
-  svSafeUpdate('p',function(latest){var me=latest.find(function(x){return idEq(x.id,myPid);});if(me)me.disabledEx=list;return latest;},function(){alert('保存しました ✓');go('training');});
+  svSafeUpdate('p',function(latest){var me=latest.find(function(x){return idEq(x.id,myPid);});if(me)me.disabledEx=list;return latest;},function(){go('training');toast('保存しました');});
 }
 
 T.tape=function(){
@@ -4217,7 +4217,7 @@ T.tape=function(){
       h+='<div class="log-row"><div style="flex:1"><div style="font-weight:600">'+fmt(rsv.date)+' '+rsv.startTime+'〜'+rsv.endTime+'</div>'+
       '<div style="font-size:12px;color:var(--text-secondary)">'+rsv.parts.join('・')+'</div>'+
       (rsv.assignedTo?'<div style="font-size:11px;color:var(--blue)">担当: '+rsv.assignedTo+'</div>':'')+'</div>'+
-      (rsv.date>=today?'<button class="btn btn-d" style="min-width:80px" onclick="cancelTapeRsv('+rsv.id+')">🗑 キャンセル</button>':'<span class="bd bd-g">完了</span>')+'</div>';
+      (rsv.date>=today?'<button class="btn btn-d" style="min-width:80px" onclick="cancelTapeRsv('+rsv.id+')">キャンセル</button>':'<span class="bd bd-g">完了</span>')+'</div>';
     });
     h+='</div>';
   }
@@ -4230,10 +4230,10 @@ T.tape=function(){
       var totalCap=slots.reduce(function(c,s){return c+s.capacity;},0);
       var totalBooked=D.tape.filter(function(t){return t.date===date;}).reduce(function(c,t){return c+t.slots;},0);
       var remaining=totalCap-totalBooked;
-      return'<div class="card card-click" style="margin-bottom:8px" onclick="showTapeBookForm(\''+date+'\')">'+
+      return'<div class="card card-click" style="margin-bottom:8px'+(slots[0].type==='match'?';border-left:3px solid var(--maroon)':'')+'" onclick="showTapeBookForm(\''+date+'\')">'+
       '<div style="display:flex;align-items:center;justify-content:space-between">'+
       '<div><div style="font-weight:600">'+fmt(date)+'</div>'+
-      '<div style="font-size:12px;color:var(--text-secondary)">'+(slots[0].type==='match'?'試合前':'練習前')+'</div></div>'+
+      '<div style="font-size:12px;color:var(--text-secondary)">'+(slots[0].type==='match'?'<span class="flag" style="background:var(--maroon);color:var(--pale)">MATCH DAY</span> 試合前':'練習前')+'</div></div>'+
       '<span class="bd '+(remaining>0?'bd-g':'bd-r')+'">'+(remaining>0?'予約可能':'満員')+'</span></div></div>';
     }).join('');
   } else {
@@ -4354,7 +4354,7 @@ function doTapeBook(date,btnEl){
   },function(){
     if(dup){releaseSubmit(btnEl);alert('この日はすでに予約があります。キャンセルしてから再予約してください。');return;}
     if(slotFull){releaseSubmit(btnEl);alert('この時間枠はちょうど埋まってしまいました。別の時間を選択してください。');go('tape');return;}
-    alert('予約しました ✓');go('tape');
+    go('tape');toast('予約しました');
   },function(){
     releaseSubmit(btnEl);
     alert('保存できませんでした。電波の良い場所でもう一度お試しください。');

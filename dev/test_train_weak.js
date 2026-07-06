@@ -56,7 +56,7 @@ ok('rest-timer-disp維持',has(h,'id="rest-timer-disp"'));
 ok('rest-timer-btn維持',has(h,'id="rest-timer-btn"'));
 ok('リング要素あり',has(h,'id="rest-timer-ring"'));
 ok('TIME OFF語彙',has(h,'TIME OFF・休憩'));
-ok('▶/⏱絵文字が消えic()化',!has(h,'▶ スタート')&&!has(h,'⏱')&&has(h,'#i-play')&&has(h,'#i-timer'));
+ok('タイマー絵文字が消えic()化',!has(h,'\u25B6 スタート')&&!has(h,'\u23F1')&&has(h,'#i-play')&&has(h,'#i-timer'));
 
 print('--- P7: 44px縦のみ ---');
 ok('±ボタンはwidth:40px維持+height:44px',has(h,'width:40px;height:44px')&&!has(h,'width:40px;height:40px'));
