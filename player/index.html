@@ -1896,7 +1896,7 @@ mypage:function(){
     '</div>';
   }
   if(latestF){
-    h+='<div style="font-weight:600;margin:12px 0 8px">最新コンディション <span style="font-weight:400;color:var(--text-secondary);font-size:12px">'+fmt(latestF.date)+'</span></div><div class="grid3"><div class="mc"><div class="v" style="color:'+rc(latestF.rpe)+'">'+latestF.rpe+'</div><div class="l">RPE</div></div><div class="mc"><div class="v" style="color:'+sc(latestF.sleep)+'">'+latestF.sleep+'h</div><div class="l">睡眠</div></div><div class="mc"><div class="v" style="color:var(--purple)">'+(latestF.rpe*(latestF.duration||0))+'</div><div class="l">sRPE</div></div></div>';
+    h+='<div style="font-weight:600;margin:12px 0 8px">最新コンディション <span style="font-weight:400;color:var(--text-secondary);font-size:12px">'+fmt(latestF.date)+'</span></div><div class="grid3"><div class="mc"><div class="v" style="color:'+rc(latestF.rpe)+'">'+latestF.rpe+'</div><div class="l">RPE</div></div><div class="mc"><div class="v" style="color:'+sc(latestF.sleep)+'">'+latestF.sleep+'h</div><div class="l">睡眠</div></div><div class="mc"><div class="v" style="color:var(--purple)">'+(latestF.rpe*(latestF.duration||0))+'</div><div class="l">セッションロード(AU)</div></div></div>';
     // 拡張項目（あるものだけ表示）
     var fx=[];
     if(latestF.weight)fx.push('<div class="mc"><div class="v" style="font-size:15px">'+latestF.weight+'</div><div class="l">体重(kg)</div></div>');
@@ -1984,17 +1984,17 @@ condition:function(){
   subView=true; // 入力フォームなので、他端末の保存によるリアルタイム再描画から保護（go('mypage')で解除）
   var lf=D.f.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
   var todayDone=lf.length&&lf[0].date===todayStr();var td=todayStr();
-  $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">コンディション入力</div>'+
-  (todayDone?'<div class="alert-card alert-info">✅ 本日入力済み (RPE:'+lf[0].rpe+' / 睡眠:'+lf[0].sleep+'h)</div>':'')+
+  $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">'+ic('i-back',14)+' マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">コンディション入力</div>'+
+  (todayDone?'<div class="alert-card alert-info">'+ic('i-check-c',14)+' 本日入力済み (RPE:'+lf[0].rpe+' / 睡眠:'+lf[0].sleep+'h)</div>':'')+
   '<div class="form-box"><div class="form-title">今日のコンディション</div>'+
   '<div class="fl"><label>日付</label><input class="ipt" type="date" id="cf-date" value="'+td+'"></div>'+
   '<div class="fl"><label>RPE（1-10）</label>'+numStepHTML('cf-rpe',1,10,'updSrpe()')+'</div>'+
   '<div class="fl"><label>睡眠時間（h）</label><input class="ipt" type="number" id="cf-sleep" step="0.5" min="0" max="24" placeholder="例: 7.5"></div>'+
   '<div class="fl"><label>トレーニング時間（分）</label><input class="ipt" type="number" id="cf-dur" placeholder="例: 90" oninput="updSrpe()"></div>'+
   '<div class="fl"><label>体重（kg・任意）</label><input class="ipt" type="number" step="0.1" id="cf-weight" placeholder="例: 92.5"><div style="font-size:10px;color:var(--text-tertiary);margin-top:2px">毎日記録するとBIG3ランク・推奨体重帯の判定が正確になります</div></div>'+
-  '<div class="fl"><label>気分（任意）</label>'+rate5HTML('cf-mood',MOOD_EMO,'どんより','絶好調')+'</div>'+
-  '<div class="fl"><label>ストレス（任意）</label>'+rate5HTML('cf-stress',STRESS_EMO,'なし','強い')+'</div>'+
-  '<div class="fl"><label>筋肉痛（任意）</label>'+rate5HTML('cf-sore',SORE_EMO,'なし','激痛')+'</div>'+
+  '<div class="fl"><label>気分（任意）</label>'+rate5HTML('cf-mood',MOOD_EMO,'どんより','絶好調',RATE5_LABELS.mood)+'</div>'+
+  '<div class="fl"><label>ストレス（任意）</label>'+rate5HTML('cf-stress',STRESS_EMO,'なし','強い',RATE5_LABELS.stress)+'</div>'+
+  '<div class="fl"><label>筋肉痛（任意）</label>'+rate5HTML('cf-sore',SORE_EMO,'なし','激痛',RATE5_LABELS.sore)+'</div>'+
   '<div class="fl" id="cf-parts-wrap" style="display:none"><label>筋肉痛の部位（複数可）</label>'+partChipsHTML('cf-parts')+'</div>'+
   '<div class="fl"><label>メモ</label><textarea class="ipt" id="cf-note" placeholder="体調メモ..."></textarea></div>'+
   '<div id="cf-pv"></div>'+
@@ -2006,10 +2006,10 @@ condition:function(){
     if(r.mood)ext+='<span title="気分">'+MOOD_EMO[r.mood-1]+'</span>';
     if(r.stress)ext+='<span style="font-size:10px;color:var(--text-secondary)">スト'+r.stress+'</span>';
     if(r.soreness)ext+='<span style="font-size:10px;color:var(--amber)">筋'+r.soreness+((r.sorenessParts&&r.sorenessParts.length)?'('+r.sorenessParts.map(escapeHtml).join('・')+')':'')+'</span>';
-    return'<div class="log-row" style="flex-wrap:wrap"><span style="min-width:60px;color:var(--text-secondary)">'+fmt(r.date)+'</span><div class="pain-dot" style="background:'+rc(r.rpe)+'">'+r.rpe+'</div><span style="color:'+sc(r.sleep)+'">'+r.sleep+'h</span><span style="color:var(--purple);font-weight:600">sRPE:'+(r.rpe*(r.duration||0))+'</span>'+ext+'</div>';
+    return'<div class="log-row" style="flex-wrap:wrap"><span style="min-width:60px;color:var(--text-secondary)">'+fmt(r.date)+'</span><div class="pain-dot" style="background:'+rc(r.rpe)+'">'+r.rpe+'</div><span style="color:'+sc(r.sleep)+'">'+r.sleep+'h</span><span style="color:var(--purple);font-weight:600" title="セッションロード(RPE×分)">'+(r.rpe*(r.duration||0))+' AU</span>'+ext+'</div>';
   }).join(''):'');
   bindSorePartsToggle('cf-sore','cf-parts-wrap','cf-parts');
-  if(lf.length>=2)setTimeout(function(){var recs=lf.slice().reverse().slice(-20);var e=document.getElementById('ch-cf');if(!e)return;dC('cf');charts.cf=new Chart(e,{type:'line',data:{labels:recs.map(function(r){return r.date.slice(5);}),datasets:[{label:'RPE',data:recs.map(function(r){return r.rpe;}),borderColor:'#E24B4A',tension:.3},{label:'睡眠',data:recs.map(function(r){return r.sleep;}),borderColor:'#185FA5',tension:.3},{label:'気分',data:recs.map(function(r){return r.mood||null;}),borderColor:'#34D399',tension:.3,spanGaps:true},{label:'体重',data:recs.map(function(r){return r.weight||null;}),borderColor:'#A78BFA',tension:.3,spanGaps:true,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:10},y1:{position:'right',display:'auto',grid:{drawOnChartArea:false}}},plugins:{legend:{position:'bottom'}}}});},80);
+  if(lf.length>=2)setTimeout(function(){var recs=lf.slice().reverse().slice(-20);var e=document.getElementById('ch-cf');if(!e)return;dC('cf');charts.cf=new Chart(e,{type:'line',data:{labels:recs.map(function(r){return r.date.slice(5);}),datasets:[{label:'RPE',data:recs.map(function(r){return r.rpe;}),borderColor:'#c1121f',tension:.3},{label:'睡眠',data:recs.map(function(r){return r.sleep;}),borderColor:'#1D4ED8',tension:.3},{label:'気分',data:recs.map(function(r){return r.mood||null;}),borderColor:'#046C48',tension:.3,spanGaps:true},{label:'体重',data:recs.map(function(r){return r.weight||null;}),borderColor:'#6D52D6',tension:.3,spanGaps:true,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:10},y1:{position:'right',display:'auto',grid:{drawOnChartArea:false}}},plugins:{legend:{position:'bottom'}}}});},80);
 },
 physical:function(){
   var recs=D.ph.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
@@ -2150,7 +2150,8 @@ function rate5HTML(id,emojis,loCap,hiCap,labels){
       '<span id="'+id+'-chk'+v+'" style="display:none;position:absolute;top:2px;right:3px">'+ic('i-check',10,'var(--maroon)')+'</span>'+
       emojis[v-1]+'<div style="font-size:8px;color:var(--text-tertiary);margin-top:1px;white-space:nowrap">'+((labels&&labels[v-1])||v)+'</div></button>';
   }).join('')+'</div>'+
-  '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-tertiary);margin-top:2px"><span>'+loCap+'</span><span>'+hiCap+'</span></div>';
+  // ラベル併記時は下段の両端キャプションが冗長（かつ文言が食い違いうる）ため省略
+  (labels?'':'<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-tertiary);margin-top:2px"><span>'+loCap+'</span><span>'+hiCap+'</span></div>');
 }
 function setRate5(id,v){
   var hid=document.getElementById(id);if(!hid)return;
@@ -2200,7 +2201,7 @@ function bindSorePartsToggle(rateId,wrapId,chipsId){
     else{w.style.display='none';clearPartChips(chipsId);}
   };
 }
-function updSrpe(){var r=parseInt(document.getElementById('cf-rpe').value)||0,d=parseInt(document.getElementById('cf-dur').value)||0;document.getElementById('cf-pv').innerHTML=r&&d?'<div class="mc" style="margin-top:8px"><div class="v" style="color:var(--purple)">'+(r*d)+'</div><div class="l">sRPE</div></div>':'';}
+function updSrpe(){var r=parseInt(document.getElementById('cf-rpe').value)||0,d=parseInt(document.getElementById('cf-dur').value)||0;document.getElementById('cf-pv').innerHTML=r&&d?'<div class="mc" style="margin-top:8px"><div class="v" style="color:var(--purple)">'+(r*d)+'</div><div class="l">セッションロード(AU)</div><div style="font-size:9px;color:var(--text-tertiary);margin-top:1px">RPE×分</div></div>':'';}
 function doCondition(btnEl){
   // RPEは1〜10の必須項目（isFilledで空のみ未入力扱い→範囲チェックで0や範囲外を弾く）
   var rpe=parseFloat(document.getElementById('cf-rpe').value);
@@ -2406,9 +2407,9 @@ function showEditCondition(fid){
   '<div class="fl" style="margin-bottom:10px"><label>睡眠時間（h）</label><input class="ipt" type="number" id="ef-sleep" step="0.5" value="'+(rec.sleep||'')+'"></div>'+
   '<div class="fl" style="margin-bottom:10px"><label>TR時間（分）</label><input class="ipt" type="number" id="ef-dur" value="'+(rec.duration||'')+'" oninput="updESrpe()"></div>'+
   '<div class="fl" style="margin-bottom:10px"><label>体重（kg・任意）</label><input class="ipt" type="number" step="0.1" id="ef-weight" value="'+(rec.weight||'')+'"></div>'+
-  '<div class="fl" style="margin-bottom:10px"><label>気分（任意）</label>'+rate5HTML('ef-mood',MOOD_EMO,'どんより','絶好調')+'</div>'+
-  '<div class="fl" style="margin-bottom:10px"><label>ストレス（任意）</label>'+rate5HTML('ef-stress',STRESS_EMO,'なし','強い')+'</div>'+
-  '<div class="fl" style="margin-bottom:10px"><label>筋肉痛（任意）</label>'+rate5HTML('ef-sore',SORE_EMO,'なし','激痛')+'</div>'+
+  '<div class="fl" style="margin-bottom:10px"><label>気分（任意）</label>'+rate5HTML('ef-mood',MOOD_EMO,'どんより','絶好調',RATE5_LABELS.mood)+'</div>'+
+  '<div class="fl" style="margin-bottom:10px"><label>ストレス（任意）</label>'+rate5HTML('ef-stress',STRESS_EMO,'なし','強い',RATE5_LABELS.stress)+'</div>'+
+  '<div class="fl" style="margin-bottom:10px"><label>筋肉痛（任意）</label>'+rate5HTML('ef-sore',SORE_EMO,'なし','激痛',RATE5_LABELS.sore)+'</div>'+
   '<div class="fl" id="ef-parts-wrap" style="display:none"><label>筋肉痛の部位（複数可）</label>'+partChipsHTML('ef-parts')+'</div>'+
   '<div class="fl"><label>メモ</label><textarea class="ipt" id="ef-note">'+escapeHtml(rec.note||'')+'</textarea></div>'+
   '<div id="esrpe-pv" style="margin-top:8px"></div>'+
@@ -2429,7 +2430,7 @@ function updESrpe(){
   var r=parseInt((document.getElementById('ef-rpe')||{}).value)||0;
   var d=parseInt((document.getElementById('ef-dur')||{}).value)||0;
   var el=document.getElementById('esrpe-pv');
-  if(el&&r&&d)el.innerHTML='<div class="mc" style="display:inline-block;padding:.4rem 1rem"><div class="v" style="font-size:18px;color:var(--purple)">'+(r*d)+'</div><div class="l">sRPE</div></div>';
+  if(el&&r&&d)el.innerHTML='<div class="mc" style="display:inline-block;padding:.4rem 1rem"><div class="v" style="font-size:18px;color:var(--purple)">'+(r*d)+'</div><div class="l">セッションロード(AU)</div><div style="font-size:9px;color:var(--text-tertiary);margin-top:1px">RPE×分</div></div>';
 }
 
 function doEditCondition(fid,btnEl){

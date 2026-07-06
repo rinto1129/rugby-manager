@@ -26,6 +26,25 @@ ok('筋肉痛レートあり',has(f1,'cf-sore'));
 ok('部位チップは初期非表示',has(f1,'id="cf-parts-wrap" style="display:none"'));
 ok('部位チップにPARTS(膝)',has(f1,'>膝<'));
 
+print('--- EMO配列の極性（ic()化後の並び保証） ---');
+ok('MOOD_EMO[0]=i-face-1(どんより)',has(MOOD_EMO[0],'#i-face-1'));
+ok('MOOD_EMO[4]=i-face-5(絶好調)',has(MOOD_EMO[4],'#i-face-5'));
+ok('STRESS_EMO[0]=i-face-5(なし=笑顔・逆順格納)',has(STRESS_EMO[0],'#i-face-5'));
+ok('STRESS_EMO[4]=i-face-1(強い=しかめ顔・逆順格納)',has(STRESS_EMO[4],'#i-face-1'));
+ok('SORE_EMO[0]=i-pain-1(なし)',has(SORE_EMO[0],'#i-pain-1'));
+ok('SORE_EMO[4]=i-pain-5(激痛)',has(SORE_EMO[4],'#i-pain-5'));
+ok('日本語ラベル併記(絶好調/限界)',has(f1,'絶好調')&&has(f1,'限界'));
+
+print('--- updSrpe: セッションロード(AU)表記 ---');
+setVal('cf-rpe',7);setVal('cf-dur',60);
+updSrpe();
+var pv=document.getElementById('cf-pv').innerHTML;
+ok('値=RPE×分(420)',has(pv,'>420<'));
+ok('ラベル=セッションロード(AU)',has(pv,'セッションロード(AU)'));
+ok('注記=RPE×分',has(pv,'RPE×分'));
+ok('sRPE表記なし',!has(pv,'sRPE'));
+setVal('cf-rpe','');setVal('cf-dur','');
+
 print('--- setRate5 の選択/解除 ---');
 setRate5('cf-mood',4);
 eqn('選択で値4',String(document.getElementById('cf-mood').value),'4');
@@ -127,6 +146,13 @@ var mp=document.getElementById('main').innerHTML;
 ok('体重表示',has(mp,'>92.6<'));
 ok('気分表示',has(mp,'気分'));
 ok('筋肉痛部位表示',has(mp,'筋肉痛の部位: 膝・腰'));
+ok('最新コンディションはセッションロード(AU)表記',has(mp,'セッションロード(AU)'));
+
+print('--- 過去の記録行のAU表記 ---');
+T.condition(); // D.f=f2(rpe5×60分)の1件
+var cpast=document.getElementById('main').innerHTML;
+ok('過去の記録は「300 AU」',has(cpast,'300 AU'));
+ok('sRPE表記が残っていない',!has(cpast,'sRPE'));
 
 print(__fail===0?'ALL COND TESTS PASSED':'FAILED: '+__fail+' test(s)');
 if(__fail>0)throw new Error('cond tests failed');
