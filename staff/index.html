@@ -102,7 +102,9 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 .rk-val{font-weight:800;color:#fff;margin-top:4px}
 .rk-row{display:flex;align-items:center;gap:10px;background:var(--bg-secondary);border-radius:10px;padding:9px 12px;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s}
 .rk-row:hover{transform:translateX(3px)}
-.rk-bar{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(59,130,246,.16),rgba(59,130,246,0));z-index:0}
+.rk-bar{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(141,0,0,.14),rgba(141,0,0,0));z-index:0;transform-origin:left}
+.rk-lead-ava{position:relative;border-radius:50%}
+.rk-lead-ava.has-photo::after{content:'';position:absolute;inset:2px;border-radius:50%;background:linear-gradient(135deg,rgba(141,0,0,.38),rgba(193,18,31,.12));mix-blend-mode:multiply;pointer-events:none}
 .rk-row>*{z-index:1}
 .rk-rownum{width:24px;font-weight:700;color:var(--text-secondary);font-size:14px;text-align:center}
 .rk-rowava{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;background-size:cover;background-position:center}
@@ -193,7 +195,9 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 @media(prefers-reduced-motion:no-preference){
   .rv-armed{opacity:0;transform:translateY(14px)}
   .rv-armed.in{opacity:1;transform:none;transition:opacity .5s cubic-bezier(.22,1,.36,1),transform .55s cubic-bezier(.22,1,.36,1)}
+  .rv-armed.in .rk-bar{animation:barfill .7s cubic-bezier(.22,1,.36,1)}
 }
+@keyframes barfill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 </style>
 </head>
 <body>
@@ -324,6 +328,12 @@ function darkenForLight(c){
   var f=0.5/lum;
   var h=function(v){v=Math.max(0,Math.min(255,Math.round(v)));var s2=v.toString(16);return s2.length<2?'0'+s2:s2;};
   return'#'+h(r*f)+h(g*f)+h(b*f);
+}
+// 試合出場ロールの英字小書きバッジ（player P8と同一。マップ外=出場なしは日本語のみ）
+var ROLE_EN={'スタート':'STARTING XV','リザーブ':'FINISHER'};
+function roleBadgeHtml(role){
+  var en=ROLE_EN[role];
+  return'<span class="bd bd-p">'+escapeHtml(role||'')+(en?' <span style="font-family:var(--font-num);font-style:italic;font-weight:800;font-size:8px;letter-spacing:.06em">'+en+'</span>':'')+'</span>';
 }
 // 成功トースト（クラスB=毎回発火・2.2秒退場・右上）。失敗系alertは置換禁止（同期ブロッキング維持）
 function toast(msg){
@@ -1506,7 +1516,7 @@ players:function(){
   // 状態サマリー
   var cntInj=0,cntRehab=0,cntOk=0;
   D.p.forEach(function(p){var st=pSt(p.id);if(st==='inj')cntInj++;else if(st==='rehab')cntRehab++;else cntOk++;});
-  var gridHTML=list.map(function(p){var st=pSt(p.id);return'<div class="card pcard" onclick="goPlayerDetail('+p.id+')"><div style="display:flex;justify-content:center;margin-bottom:8px">'+avH(p,52)+'</div><div style="font-size:14px;font-weight:600">'+escapeHtml(p.name)+'</div><div style="font-size:11px;color:var(--text-secondary);margin:3px 0 8px">'+(p.position||'')+' / '+(p.year||'?')+'年</div><span class="bd '+(st==='inj'?'bd-r':st==='rehab'?'bd-a':'bd-g')+'">'+(st==='inj'?'怪我':st==='rehab'?'リハビリ':'正常')+'</span>'+(p.pin?'':'<div style="margin-top:6px;font-size:9px;color:var(--amber);font-weight:600">⚠ PIN未設定</div>')+'</div>';}).join('');
+  var gridHTML=list.map(function(p){var st=pSt(p.id);return'<div class="card pcard" onclick="goPlayerDetail('+p.id+')"><div style="display:flex;justify-content:center;margin-bottom:8px">'+avH(p,52)+'</div><div style="font-size:14px;font-weight:600">'+escapeHtml(p.name)+'</div><div style="font-size:11px;color:var(--text-secondary);margin:3px 0 8px">'+(p.position||'')+' / '+(p.year||'?')+'年</div><span class="bd '+(st==='inj'?'bd-r':st==='rehab'?'bd-a':'bd-g')+'">'+(st==='inj'?'怪我':st==='rehab'?'リハビリ':'正常')+'</span>'+(p.pin?'':'<div style="margin-top:6px;font-size:9px;color:var(--amber);font-weight:600">'+ic('i-warn',10)+' PIN未設定</div>')+'</div>';}).join('');
   var gridEl=document.getElementById('player-grid');
   var cntEl=document.getElementById('player-count');
   if(gridEl){gridEl.innerHTML=gridHTML;if(cntEl)cntEl.textContent=list.length+'名 表示中';}else{
@@ -1645,28 +1655,28 @@ bodycomp:function(){
 },
 export:function(){
   $m().innerHTML='<div style="font-size:18px;font-weight:600;margin-bottom:1.25rem">CSV出力</div><div class="grid g2">'+
-  '<div class="card card-click" onclick="exportCSV(\'players\')"><div style="font-size:32px;text-align:center;margin-bottom:8px">👥</div><div style="font-weight:600;text-align:center">選手情報</div></div>'+
-  '<div class="card card-click" onclick="exportCSV(\'injuries\')"><div style="font-size:32px;text-align:center;margin-bottom:8px">🏥</div><div style="font-weight:600;text-align:center">怪我履歴</div></div>'+
-  '<div class="card card-click" onclick="exportCSV(\'physical\')"><div style="font-size:32px;text-align:center;margin-bottom:8px">📈</div><div style="font-weight:600;text-align:center">フィジカル記録</div></div>'+
-  '<div class="card card-click" onclick="exportCSV(\'bodycomp\')"><div style="font-size:32px;text-align:center;margin-bottom:8px">⚖️</div><div style="font-weight:600;text-align:center">体組成</div></div>'+
-  '<div class="card card-click" onclick="exportCSV(\'fatigue\')"><div style="font-size:32px;text-align:center;margin-bottom:8px">😴</div><div style="font-weight:600;text-align:center">疲労度・コンディション</div></div>'+
-  '<div class="card card-click" onclick="exportCSV(\'absence\')"><div style="font-size:32px;text-align:center;margin-bottom:8px">📋</div><div style="font-weight:600;text-align:center">欠席データ</div></div>'+
-  '<div class="card card-click" onclick="exportCSV(\'matchday\')"><div style="font-size:32px;text-align:center;margin-bottom:8px">🏟️</div><div style="font-weight:600;text-align:center">試合日レポート</div></div>'+
+  '<div class="card card-click" onclick="exportCSV(\'players\')"><div style="text-align:center;margin-bottom:8px">'+ic('i-users',30,'var(--maroon)')+'</div><div style="font-weight:600;text-align:center">選手情報</div></div>'+
+  '<div class="card card-click" onclick="exportCSV(\'injuries\')"><div style="text-align:center;margin-bottom:8px">'+ic('i-bandage',30,'var(--maroon)')+'</div><div style="font-weight:600;text-align:center">怪我履歴</div></div>'+
+  '<div class="card card-click" onclick="exportCSV(\'physical\')"><div style="text-align:center;margin-bottom:8px">'+ic('i-chart-line',30,'var(--maroon)')+'</div><div style="font-weight:600;text-align:center">フィジカル記録</div></div>'+
+  '<div class="card card-click" onclick="exportCSV(\'bodycomp\')"><div style="text-align:center;margin-bottom:8px">'+ic('i-scale',30,'var(--maroon)')+'</div><div style="font-weight:600;text-align:center">体組成</div></div>'+
+  '<div class="card card-click" onclick="exportCSV(\'fatigue\')"><div style="text-align:center;margin-bottom:8px">'+ic('i-moon',30,'var(--maroon)')+'</div><div style="font-weight:600;text-align:center">疲労度・コンディション</div></div>'+
+  '<div class="card card-click" onclick="exportCSV(\'absence\')"><div style="text-align:center;margin-bottom:8px">'+ic('i-x-c',30,'var(--maroon)')+'</div><div style="font-weight:600;text-align:center">欠席データ</div></div>'+
+  '<div class="card card-click" onclick="exportCSV(\'matchday\')"><div style="text-align:center;margin-bottom:8px">'+ic('i-ball',30,'var(--maroon)')+'</div><div style="font-weight:600;text-align:center">試合日レポート</div></div>'+
   '</div>'+
   '<div style="font-size:18px;font-weight:600;margin:1.5rem 0 1rem">全データバックアップ</div>'+
   '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:1rem">万一の事故に備え、全データを1つのJSONファイルとして手元に保存できます。定期的に取得しておくと安心です。</div>'+
-  '<button class="btn btn-p" onclick="exportAllJSON()">💾 全データJSONバックアップ</button>';
+  '<button class="btn btn-p" onclick="exportAllJSON()">'+ic('i-download',14)+' 全データJSONバックアップ</button>';
 },
 help:function(){
   $m().innerHTML='<div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">スタッフ向けの操作ガイド</div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--blue)">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🏠 朝にやること</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-home',15,'var(--blue)')+' 朝にやること</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '<b>1. ダッシュボードを確認</b><br>'+
-  '・🚨 新着怪我（選手からの報告） → 承認/却下/詳細確認<br>'+
-  '・⚠️ 来週練習できない選手<br>'+
-  '・🟢 来週復帰予定の選手<br>'+
+  '・'+ic('i-bandage',12,'var(--red)')+' 新着怪我（選手からの報告） → 承認/却下/詳細確認<br>'+
+  '・'+ic('i-warn',12,'var(--amber)')+' 来週練習できない選手<br>'+
+  '・'+ic('i-flag',12,'var(--green)')+' 来週復帰予定の選手<br>'+
   '・怪我中・欠席アラート・疲労度アラート<br><br>'+
   '<b>2. 選手の欠席状況を確認</b><br>'+
   '・選手から「欠席・遅刻申告」が届いている場合あり<br>'+
@@ -1674,10 +1684,10 @@ help:function(){
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--red)">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🩹 怪我管理</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-bandage',15,'var(--red)')+' 怪我管理</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '<b>新規追加：</b>怪我管理→「+ 怪我を追加」<br>'+
-  '<b>選手の報告承認：</b>ダッシュボードの🚨から<br>'+
+  '<b>選手の報告承認：</b>ダッシュボードの「新着怪我」から<br>'+
   '<b>編集：</b>怪我詳細→「この怪我を編集」<br>'+
   '<b>削除：</b>怪我詳細→「削除」（関連リハビリ全て消える）<br>'+
   '<b>回復済みに：</b>「回復済みにする」ボタン<br>'+
@@ -1685,7 +1695,7 @@ help:function(){
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--purple)">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🔁 リハビリ管理</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-run',15,'var(--purple)')+' リハビリ管理</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '<b>テンプレ作成：</b>「+ テンプレ作成」→ 部位・段階・種別を設定<br>'+
   '<b>エクササイズ追加：</b>テンプレ詳細から追加<br>'+
@@ -1695,7 +1705,7 @@ help:function(){
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid #0891B2">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">💪 測定会管理</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-ruler',15,'#0891B2')+' 測定会管理</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '<b>1. 測定会を作成</b>（例：2026年第1回MAX測定）<br>'+
   '・名前・開始日・終了日を設定<br>'+
@@ -1707,7 +1717,7 @@ help:function(){
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--green)">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🏟️ 試合日関連</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-ball',15,'var(--green)')+' 試合日関連</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '<b>出場メンバー登録：</b>「試合日レポート」→ メンバー選定<br>'+
   '<b>選手の試合日チェック確認：</b>「試合日レポート」→ 日付選択<br>'+
@@ -1715,7 +1725,7 @@ help:function(){
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--amber)">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">📅 カレンダー</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-calendar',15,'var(--amber)')+' カレンダー</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '・練習日・試合日・オフ日・測定会期間を可視化<br>'+
   '・日付をクリックでイベント追加<br>'+
@@ -1723,15 +1733,15 @@ help:function(){
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">📅 年度更新（4月のみ）</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-calendar',15,'var(--maroon)')+' 年度更新（4月のみ）</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
-  '・ダッシュボードに「📅 学年更新」ボタンあり<br>'+
+  '・ダッシュボードに「学年更新」ボタンあり<br>'+
   '・全選手の学年を+1（1年→2年、4年→卒業フラグ）<br>'+
   '・卒業選手は自動削除ではなくフラグ付与→手動で確認後削除<br>'+
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🔧 困ったときは</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-info',15,'var(--maroon)')+' 困ったときは</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '<b>入力ミス：</b>各記録の「修正」「削除」ボタンから訂正可能<br>'+
   '<b>選手追加：</b>「選手一覧」→「+ 選手を追加」<br>'+
@@ -1756,7 +1766,7 @@ matchview:function(){
     '<div style="display:flex;gap:6px;align-items:center">'+
     (injCount?'<span class="bd bd-r">怪我 '+injCount+'名</span>':'')+
     (crampCount?'<span class="bd bd-a">足攣り '+crampCount+'名</span>':'')+
-    '<span style="color:var(--text-secondary);font-size:18px">›</span></div></div></div>';
+    ic('i-chevron-r',16,'var(--text-tertiary)')+'</div></div></div>';
   }).join(''):'<div class="no">記録なし</div>';
   $m().innerHTML='<div class="tabs"><div class="tab ac" onclick="mvTab(0)">試合日レポート</div><div class="tab" onclick="mvTab(1)">週次怪我チェック</div></div>'+
   '<div class="tc ac" id="mv0">'+mdH+'</div>'+
@@ -1783,70 +1793,75 @@ rank:function(){
   // バーの幅%（broncoは小さいほど良いので反転）
   var barPct=function(v){if(m==='bronco'){var range=maxV-minV;return range?Math.round((maxV-v)/range*70+25):60;}return maxV?Math.round(v/maxV*88):60;};
 
-  var h=filterUI+'<div style="font-size:14px;font-weight:700;margin-bottom:2px;display:flex;align-items:center;gap:6px">🏆 '+labels[m]+' ランキング</div><div style="font-size:12px;color:var(--text-secondary);margin-bottom:18px">'+(yf?yf+'年':'全学年')+'・'+(pf||'全ポジション')+'</div>';
+  var iniOf=function(p){return p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';};
+  // 前回比チップ（player P5のdiffStrOfと同一表現。ブロンコは短縮=改善の極性反転済み・値は直近2回の測定差）
+  var SIMPLE_F={squat:1,bench:1,deadlift:1,chinning:1,clean:1,bronco:1};
+  var latestDiffOf=function(pid){
+    if(!SIMPLE_F[m])return null;
+    var series=D.ph.filter(function(x){return x.pid===pid&&x[m]!=null;}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+    if(series.length<2)return null;
+    return{v:series[series.length-1][m],prev:series[series.length-2][m]};
+  };
+  var diffStrOf=function(t){
+    if(!t||t.prev==null)return'';
+    var diff=m==='bronco'?t.prev-t.v:t.v-t.prev;
+    var au=m==='bronco'?broncoFmt(Math.abs(diff)):Math.abs(diff)+(unit?unit:'');
+    if(diff>0)return'<span style="color:var(--green)">'+ic('i-up',9)+au+'</span>';
+    if(diff<0)return'<span style="color:var(--red)">'+ic('i-down',9)+au+'</span>';
+    return'<span style="color:var(--text-secondary)">→</span>';
+  };
+  var subX=function(pid){var d=diffStrOf(latestDiffOf(pid));return d?' / 前回比 '+d:'';};
+  var rowHtml=function(r,rankNo,extraCls){
+    var p=r.p;
+    var avaInner=p.photo?'background-image:url('+p.photo+')':'background:var(--bg-tertiary);color:var(--maroon)';
+    return'<div class="rk-row'+(extraCls?' '+extraCls:'')+'" onclick="goPlayerDetail('+p.id+')">'+
+      '<div class="rk-bar" style="width:'+barPct(r.v)+'%"></div>'+
+      '<div class="rk-rownum">'+rankNo+'</div>'+
+      '<div class="rk-rowava" style="'+avaInner+'">'+(p.photo?'':iniOf(p))+'</div>'+
+      '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(p.name)+'</div><div style="font-size:10px;color:var(--text-secondary)">'+(p.position||'-')+'・'+(p.year||'-')+'年'+subX(p.id)+'</div></div>'+
+      '<div style="font-weight:800;font-size:15px;color:var(--text-primary)">'+fmtVal(r.v)+'</div>'+
+    '</div>';
+  };
+  var h=filterUI+'<div class="kicker" style="margin-top:4px">TEAM RANKING</div>'+
+  '<div style="font-size:16px;font-weight:900;margin:0 0 2px;display:flex;align-items:center;gap:8px">'+ic('i-trophy',19,'var(--gold-deep)')+labels[m]+' ランキング</div>'+
+  '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">'+(yf?yf+'年':'全学年')+'・'+(pf||'全ポジション')+'</div>';
 
-  // トップ3が揃う場合は表彰台
+  // 表彰台（3人以上）: 1位のみ全幅リーダーカード + 2-3位カード（player P5と同一様式）
   if(rk.length>=3){
-    var podiumOrder=[{r:rk[1],pos:1},{r:rk[0],pos:0},{r:rk[2],pos:2}]; // 銀・金・銅の順で配置
-    var standColors=[['#F59E0B','#D97706'],['#475569','#334155'],['#B45309','#92400E']]; // 金・銀・銅
-    var avaColors=[['#FCD34D','#F59E0B'],['#94A3B8','#64748B'],['#D8915A','#B45309']];
-    var avaBorder=['#FCD34D','#94A3B8','#D8915A'];
-    var standH=[110,80,64];var avaSz=[64,52,52];
-    h+='<div class="rk-podium">';
-    podiumOrder.forEach(function(o){
-      var isFirst=o.pos===0;
-      var p=o.r.p;
-      var sc=standColors[o.pos],ac=avaColors[o.pos];
-      // アバター（写真があれば写真、なければグラデ+イニシャル）
-      var ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';
-      var avaStyle='width:'+avaSz[o.pos]+'px;height:'+avaSz[o.pos]+'px;border:3px solid '+avaBorder[o.pos]+';font-size:'+Math.round(avaSz[o.pos]*.34)+'px;'+(isFirst?'box-shadow:0 0 20px rgba(251,191,36,.5);':'');
-      var avaInner=p.photo?'background-image:url('+p.photo+')':'background:linear-gradient(135deg,'+ac[0]+','+ac[1]+')';
-      h+='<div class="rk-col'+(isFirst?' first':'')+'">'+
-        (isFirst?'<div style="font-size:20px;margin-bottom:2px">👑</div>':'')+
-        '<div class="rk-ava" style="'+avaStyle+avaInner+'" onclick="goPlayerDetail('+p.id+')">'+(p.photo?'':ini)+'</div>'+
-        '<div class="rk-name" onclick="goPlayerDetail('+p.id+')" style="cursor:pointer">'+escapeHtml(p.name)+'</div>'+
-        '<div class="rk-sub">'+(p.position||'-')+'・'+(p.year||'-')+'年</div>'+
-        '<div class="rk-stand" style="height:'+standH[o.pos]+'px;background:linear-gradient(180deg,'+sc[0]+','+sc[1]+')'+(isFirst?';box-shadow:0 -2px 16px rgba(251,191,36,.3)':'')+'">'+
-          '<div class="rk-rank-num" style="font-size:'+(isFirst?28:22)+'px;color:'+(isFirst?'#FFF7E6':o.pos===1?'#CBD5E1':'#FED7AA')+'">'+(o.pos+1)+'</div>'+
-          '<div class="rk-val" style="font-size:'+(isFirst?18:15)+'px">'+fmtVal(o.r.v).replace(/ /g,'')+'</div>'+
-        '</div>'+
+    var lead=rk[0],leadP=lead.p;
+    h+='<div class="card rv rk-lead" onclick="goPlayerDetail('+leadP.id+')" style="position:relative;overflow:hidden;margin-bottom:10px;border:1px solid var(--gold);box-shadow:0 4px 18px rgba(201,162,39,.22);cursor:pointer">'+
+      '<span class="ghost-num ghost-num--light" aria-hidden="true" style="right:6px;top:-20px;font-size:108px">1</span>'+
+      '<div class="kicker" style="color:var(--gold-deep);display:inline-flex;align-items:center;gap:4px">'+ic('i-medal',12)+' CHAMPION</div>'+
+      '<div style="display:flex;align-items:center;gap:14px;margin-top:6px">'+
+      '<div class="rk-lead-ava'+(leadP.photo?' has-photo':'')+'" style="border:3px solid var(--gold);border-radius:50%;padding:2px;flex-shrink:0">'+avH(leadP,60)+'</div>'+
+      '<div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:900;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(leadP.name)+'</div>'+
+      '<div style="font-size:11px;color:var(--text-secondary)">'+(leadP.position||'-')+'・'+(leadP.year||'-')+'年'+subX(leadP.id)+'</div></div>'+
+      '<span class="num" style="font-size:clamp(24px,4vw,34px);flex-shrink:0">'+fmtVal(lead.v).replace(/ /g,'')+'</span>'+
+      '</div></div>';
+    var twoCols=[[rk[1],2,'var(--silver)'],[rk[2],3,'var(--bronze)']];
+    h+='<div style="display:flex;gap:10px;margin-bottom:12px">';
+    twoCols.forEach(function(tc){
+      var t=tc[0],p2=t.p;
+      h+='<div class="card rv" onclick="goPlayerDetail('+p2.id+')" style="flex:1;margin:0;position:relative;overflow:hidden;border-top:3px solid '+tc[2]+';padding:.85rem .9rem;cursor:pointer">'+
+        '<span class="ghost-num ghost-num--light" aria-hidden="true" style="right:2px;top:-12px;font-size:64px">'+tc[1]+'</span>'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'+ic('i-medal',15,tc[2])+'<span style="font-weight:800;font-size:12px;color:var(--text-secondary)">'+tc[1]+'位</span></div>'+
+        avH(p2,40)+
+        '<div style="font-size:12px;font-weight:700;margin-top:6px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(p2.name)+'</div>'+
+        '<div style="font-size:9px;color:var(--text-secondary)">'+(p2.position||'-')+'・'+(p2.year||'-')+'年'+subX(p2.id)+'</div>'+
+        '<div class="num" style="font-size:20px;margin-top:3px">'+fmtVal(t.v).replace(/ /g,'')+'</div>'+
       '</div>';
     });
     h+='</div>';
-    // 4位以降
     if(rk.length>3){
       h+='<div style="display:flex;flex-direction:column;gap:7px">';
-      rk.slice(3).forEach(function(r,i){
-        var rank=i+4;
-        var p=r.p;
-        var ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';
-        var avaInner=p.photo?'background-image:url('+p.photo+')':'background:var(--bg-tertiary);color:var(--accent)';
-        h+='<div class="rk-row" onclick="goPlayerDetail('+p.id+')">'+
-          '<div class="rk-bar" style="width:'+barPct(r.v)+'%"></div>'+
-          '<div class="rk-rownum">'+rank+'</div>'+
-          '<div class="rk-rowava" style="'+avaInner+'">'+(p.photo?'':ini)+'</div>'+
-          '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(p.name)+'</div><div style="font-size:10px;color:var(--text-secondary)">'+(p.position||'-')+'・'+(p.year||'-')+'年</div></div>'+
-          '<div style="font-weight:800;color:var(--text-primary);font-size:15px">'+fmtVal(r.v).replace(/ ?'+unit+'$/,'')+'<span style="font-size:10px;color:var(--text-secondary);font-weight:400">'+(unit?' '+unit:'')+'</span></div>'+
-        '</div>';
-      });
+      rk.slice(3).forEach(function(r,i){h+=rowHtml(r,i+4,i<3?'rv':'');});
       h+='</div>';
     }
   }else{
-    // 3人未満：リストのみ
+    // 3人未満：リストのみ（メダルSVG）
+    var medalCols=['var(--gold)','var(--silver)','var(--bronze)'];
     h+='<div style="display:flex;flex-direction:column;gap:7px">';
-    rk.forEach(function(r,i){
-      var p=r.p;
-      var ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';
-      var avaInner=p.photo?'background-image:url('+p.photo+')':'background:var(--bg-tertiary);color:var(--accent)';
-      var medal=['🥇','🥈','🥉'][i]||'';
-      h+='<div class="rk-row" onclick="goPlayerDetail('+p.id+')">'+
-        '<div class="rk-bar" style="width:'+barPct(r.v)+'%"></div>'+
-        '<div class="rk-rownum">'+(medal||(i+1))+'</div>'+
-        '<div class="rk-rowava" style="'+avaInner+'">'+(p.photo?'':ini)+'</div>'+
-        '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text-primary)">'+escapeHtml(p.name)+'</div><div style="font-size:10px;color:var(--text-secondary)">'+(p.position||'-')+'・'+(p.year||'-')+'年</div></div>'+
-        '<div style="font-weight:800;color:var(--text-primary);font-size:15px">'+fmtVal(r.v)+'</div>'+
-      '</div>';
-    });
+    rk.forEach(function(r,i){h+=rowHtml(r,ic('i-medal',15,medalCols[i])||String(i+1),'rv');});
     h+='</div>';
   }
   $m().innerHTML=h;
@@ -1859,7 +1874,7 @@ calendar:function(){
   var eventsThisMonth=D.cal.filter(function(e){return e.date&&e.date.startsWith(ym);}).sort(function(a,b){return a.date.localeCompare(b.date);});
   // Calendar grid
   var DOW=['日','月','火','水','木','金','土'];
-  var calH='<div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem"><button class="btn" onclick="calNavMonth(-1,\''+ym+'\')">◀</button><input type="month" class="ipt" id="cal-ym" value="'+ym+'" style="width:auto;flex:1" onchange="V.calendar()"><button class="btn" onclick="calNavMonth(1,\''+ym+'\')">▶</button></div>';
+  var calH='<div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem"><button class="btn" aria-label="前の月" onclick="calNavMonth(-1,\''+ym+'\')">'+ic('i-chevron-l',15)+'</button><input type="month" class="ipt" id="cal-ym" value="'+ym+'" style="width:auto;flex:1" onchange="V.calendar()"><button class="btn" aria-label="次の月" onclick="calNavMonth(1,\''+ym+'\')">'+ic('i-chevron-r',15)+'</button></div>';
   calH+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:1rem">';
   DOW.forEach(function(d,i){calH+='<div style="text-align:center;font-size:11px;font-weight:600;padding:4px;color:'+(i===0?'var(--red)':i===6?'var(--blue)':'var(--text-secondary)')+'">'+d+'</div>';});
   // blank cells before first day
@@ -1873,19 +1888,28 @@ calendar:function(){
     calH+='<div onclick="calDayClick(\''+ds+'\')" style="min-height:52px;border:1px solid var(--border-tertiary);border-radius:6px;padding:4px;cursor:pointer;background:'+(isToday?'var(--blue-bg)':'var(--bg-primary)')+';transition:background .1s" onmouseover="this.style.background=\'var(--bg-secondary)\'" onmouseout="this.style.background=\''+(isToday?'var(--blue-bg)':'var(--bg-primary)')+'\'">';
     calH+='<div style="font-size:12px;font-weight:'+(isToday?'700':'500')+';color:'+(isToday?'var(--blue)':dow===0?'var(--red)':dow===6?'var(--blue)':'var(--text-primary)')+'">'+d+'</div>';
     var msessOnDay=(D.msess||[]).filter(function(s){return s.startDate<=ds&&s.endDate>=ds;});
-    msessOnDay.forEach(function(s){calH+='<div style="font-size:8px;background:#0891B2;color:#fff;border-radius:3px;padding:1px 3px;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">📐'+escapeHtml(s.name)+'</div>';});
-    dayEvts.forEach(function(e){var color=e.type==='match'?'var(--purple)':e.type==='practice'?'var(--green)':e.type==='off'?'var(--amber)':e.type==='weight'?'#F97316':e.type==='phys_measure'?'#0891B2':e.type==='bronco_measure'?'#059669':'var(--blue)';calH+='<div style="font-size:9px;background:'+color+';color:#fff;border-radius:3px;padding:1px 4px;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+escapeHtml(e.title)+'</div>';});
+    msessOnDay.forEach(function(s){calH+='<div style="font-size:8px;background:#0891B2;color:#fff;border-radius:3px;padding:1px 3px;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+escapeHtml(s.name)+'</div>';});
+    dayEvts.forEach(function(e){var color=e.type==='match'?'var(--purple)':e.type==='practice'?'var(--green)':e.type==='off'?'var(--amber)':e.type==='weight'?'var(--pull)':e.type==='phys_measure'?'#0891B2':e.type==='bronco_measure'?'#059669':'var(--blue)';calH+='<div style="font-size:9px;background:'+color+';color:#fff;border-radius:3px;padding:1px 4px;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+escapeHtml(e.title)+'</div>';});
     calH+='</div>';
   }
   calH+='</div>';
-  // Event list for month
-  calH+='<div style="font-size:14px;font-weight:600;margin-bottom:.5rem">イベント一覧</div>';
+  // Event list for month（フィクスチャーリスト様式: 日付ブロック+種別フラッグ。試合はmaroon左ストライプで強調）
+  calH+='<div class="kicker" style="margin:4px 0 2px">FIXTURES</div>';
+  calH+='<div style="font-size:14px;font-weight:700;margin-bottom:.6rem">イベント一覧</div>';
   if(eventsThisMonth.length){
+    var DOWJ=['日','月','火','水','木','金','土'];
     calH+=eventsThisMonth.map(function(e){
-      var color=e.type==='match'?'var(--purple)':e.type==='practice'?'var(--green)':e.type==='off'?'var(--amber)':e.type==='weight'?'#F97316':e.type==='phys_measure'?'#0891B2':e.type==='bronco_measure'?'#059669':'var(--blue)';
+      var color=e.type==='match'?'var(--purple)':e.type==='practice'?'var(--green)':e.type==='off'?'var(--amber)':e.type==='weight'?'var(--pull)':e.type==='phys_measure'?'#0891B2':e.type==='bronco_measure'?'#059669':'var(--blue)';
       var typelabel=e.type==='match'?'試合':e.type==='practice'?'練習':e.type==='off'?'オフ':e.type==='weight'?'ウエイト':e.type==='phys_measure'?'フィジカル測定':e.type==='bronco_measure'?'ブロンコ測定':'その他';
-      return'<div class="card" style="margin-bottom:6px;padding:.65rem 1rem;display:flex;align-items:center;gap:10px"><div style="width:8px;height:8px;border-radius:50%;background:'+color+';flex-shrink:0"></div><div style="flex:1"><div style="font-weight:600;font-size:13px">'+fmt(e.date)+' '+escapeHtml(e.title)+'</div>'+(e.detail?'<div style="font-size:11px;color:var(--text-secondary)">'+escapeHtml(e.detail)+'</div>':'')+'</div><span class="bd" style="background:'+color+'20;color:'+color+'">'+typelabel+'</span>'+(e.type==='match'?'<button class="btn btn-sm" onclick="goSelectMatchMembers(\''+e.id+'\',\''+e.date+'\')">出場選手設定</button>':'')+
-      '<button class="btn btn-sm btn-d" onclick="delCalEvent(\''+e.id+'\')">削除</button></div>';
+      var isMatch=e.type==='match';
+      var dt=new Date(e.date);var dd=isNaN(dt)?'':dt.getDate();var dowj=isNaN(dt)?'':DOWJ[dt.getDay()];
+      return'<div class="card" style="margin-bottom:7px;padding:.55rem .85rem;display:flex;align-items:center;gap:12px'+(isMatch?';border-left:3px solid var(--maroon-vivid)':'')+'">'+
+        '<div style="text-align:center;min-width:34px;flex-shrink:0"><div class="num" style="font-size:21px;line-height:.9;color:'+(isMatch?'var(--maroon)':'var(--text-primary)')+'">'+dd+'</div><div style="font-size:9px;color:var(--text-secondary);font-weight:700;margin-top:1px">'+dowj+'</div></div>'+
+        '<div style="width:1px;align-self:stretch;background:var(--border-tertiary);flex-shrink:0"></div>'+
+        '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(e.title)+'</div>'+(e.detail?'<div style="font-size:11px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(e.detail)+'</div>':'')+'</div>'+
+        (isMatch?'<span class="flag" style="background:var(--maroon-vivid);color:#fff;font-size:10px;flex-shrink:0">MATCH</span>':'<span class="bd" style="background:color-mix(in srgb,'+color+' 14%,transparent);color:'+color+';flex-shrink:0">'+typelabel+'</span>')+
+        (isMatch?'<button class="btn btn-sm" style="flex-shrink:0" onclick="goSelectMatchMembers(\''+e.id+'\',\''+e.date+'\')">出場選手設定</button>':'')+
+        '<button class="btn btn-sm btn-d" style="flex-shrink:0" onclick="delCalEvent(\''+e.id+'\')">削除</button></div>';
     }).join('');
   } else {
     calH+='<div class="no">この月のイベントはありません</div>';
@@ -4253,7 +4277,7 @@ function mvTab(i){document.querySelectorAll('#main-ct .tab').forEach(function(t,
 // === MATCH DATE DETAIL ===
 function goMatchDateDetail(date){
   var recs=D.md.filter(function(m){return m.date===date;});
-  var h='<div style="font-size:17px;font-weight:600;margin-bottom:14px">🏟️ '+fmt(date)+' の試合記録</div>';
+  var h='<div style="display:flex;align-items:center;gap:7px;font-size:17px;font-weight:700;margin-bottom:14px">'+ic('i-ball',18,'var(--maroon)')+fmt(date)+' の試合記録</div>';
   h+='<div class="grid g3" style="margin-bottom:1rem">';
   h+='<div class="mc"><div class="v">'+recs.length+'</div><div class="l">提出数</div></div>';
   h+='<div class="mc"><div class="v" style="color:var(--red)">'+recs.filter(function(m){return m.injured;}).length+'</div><div class="l">怪我あり</div></div>';
@@ -4263,7 +4287,7 @@ function goMatchDateDetail(date){
     var p=D.p.find(function(x){return x.id===m.pid;});if(!p)return'';
     return'<div class="card card-click" style="margin-bottom:8px" onclick="goMatchDetail('+m.id+')">'+
     '<div style="display:flex;align-items:center;gap:10px">'+avH(p,32)+
-    '<div style="flex:1"><div style="font-weight:600">'+escapeHtml(p.name)+' <span class="bd bd-p">'+escapeHtml(m.role)+'</span></div>'+
+    '<div style="flex:1"><div style="font-weight:600">'+escapeHtml(p.name)+' '+roleBadgeHtml(m.role)+'</div>'+
     '<div style="font-size:12px;color:var(--text-secondary)">疲労: 前'+m.fatiguePre+'/6 → 後'+m.fatiguePost+'/6</div></div>'+
     (m.injured?'<span class="bd bd-r">怪我あり</span>':'')+
     (m.cramp?'<span class="bd bd-a" style="margin-left:4px">足攣り</span>':'')+
@@ -5762,7 +5786,7 @@ function goMatchDetail(mid){
   '<div class="form-box"><div class="form-title">基本情報</div>'+
   '<div class="detail-row"><span class="detail-label">選手</span><span class="detail-value">'+(p?p.name:'不明')+'</span></div>'+
   '<div class="detail-row"><span class="detail-label">日付</span><span class="detail-value">'+fmt(m.date)+'</span></div>'+
-  '<div class="detail-row"><span class="detail-label">出場</span><span class="detail-value"><span class="bd bd-p">'+escapeHtml(m.role)+'</span></span></div>'+
+  '<div class="detail-row"><span class="detail-label">出場</span><span class="detail-value">'+roleBadgeHtml(m.role)+'</span></div>'+
   '<div class="detail-row"><span class="detail-label">試合前疲労</span><span class="detail-value">'+m.fatiguePre+'/6</span></div>'+
   '<div class="detail-row"><span class="detail-label">試合後疲労</span><span class="detail-value">'+m.fatiguePost+'/6</span></div>'+
   '<div class="detail-row"><span class="detail-label">前日の睡眠</span><span class="detail-value">'+m.sleepTime+' → '+m.wakeTime+'</span></div>'+
@@ -5820,7 +5844,7 @@ function calNavMonth(dir,ym){
 function calDayClick(date){
   // Show events for that day and option to add
   var dayEvts=D.cal.filter(function(e){return e.date===date;});
-  var h='<div style="font-size:17px;font-weight:600;margin-bottom:12px">📅 '+fmt(date)+'</div>';
+  var h='<div style="display:flex;align-items:center;gap:7px;font-size:17px;font-weight:700;margin-bottom:12px">'+ic('i-calendar',18,'var(--maroon)')+fmt(date)+'</div>';
   if(dayEvts.length){
     h+='<div class="form-box"><div class="form-title">この日のイベント</div>';
     dayEvts.forEach(function(e){
@@ -5928,7 +5952,7 @@ function goImportCal(){
   var ph='2026-06-06 | match | vs文理(AB) | \n2026-06-08 | weight | ウエイト① | 7:30\n2026-06-08 | weight | ウエイト② | 16:30\n2026-06-08 | off | OFF | ';
   var known=CAL_IMP_TYPES.map(function(o){return o[0]+'('+o[1]+')';}).join(' / ');
   var h='<div style="max-width:760px">'+
-    '<div class="form-box"><div class="form-title">📋 予定を一括インポート</div>'+
+    '<div class="form-box"><div class="form-title" style="display:flex;align-items:center;gap:6px">'+ic('i-clipboard',16,'var(--maroon)')+'予定を一括インポート</div>'+
     '<div style="font-size:12px;color:var(--text-secondary);line-height:1.7;margin-bottom:10px">TimeTreeのスクショから起こした予定を貼り付けてください。<b>1行＝1予定</b>。<br>形式: <code>日付 | 種別 | タイトル | 時間</code>（種別・時間は省略可。種別を空にするとタイトルから自動判定）<br>種別: '+known+'<br>※同じ日付・同じタイトルの予定は二重登録されません。</div>'+
     '<textarea class="ipt" id="cal-imp-txt" style="min-height:240px;font-family:monospace;font-size:12px;white-space:pre" placeholder="'+ph+'"></textarea>'+
     '<div style="display:flex;gap:8px;margin-top:12px"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" style="flex:1" onclick="parseCalImport()">解析してプレビュー →</button></div>'+
