@@ -191,6 +191,16 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 /* 種目ボリューム前回超えの瞬間演出（種目単位1回・デバウンスはJS側） */
 @media(prefers-reduced-motion:no-preference){.vol-beat{animation:volbeat .5s cubic-bezier(.34,1.56,.64,1) 1}}
 @keyframes volbeat{0%{transform:scale(1)}35%{transform:scale(1.035);box-shadow:0 0 0 3px var(--green-bg),0 0 18px rgba(4,108,72,.25)}100%{transform:scale(1);box-shadow:none}}
+/* RTPピッチ図: 表示のたび1回（sub-inと同じクラスB方式。reduce設定では静的表示）。マーカー=ゴールラインからスライド・ドット=60ms staggerポップ・現在ドットのリングパルスは2回で停止 */
+.rtp-dot-cur{box-shadow:0 0 0 3px rgba(193,18,31,.18)}
+@media(prefers-reduced-motion:no-preference){
+  .rtp-anim .rtp-marker{animation:rtpslide .8s cubic-bezier(.22,1,.36,1)}
+  .rtp-anim .rtp-dot{animation:dotpop .3s cubic-bezier(.34,1.56,.64,1) backwards}
+  .rtp-anim .rtp-dot-cur::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--maroon-vivid);animation:rtpring 1s ease-out .9s 2 backwards;opacity:0}
+}
+@keyframes rtpslide{from{left:3%}}
+@keyframes dotpop{from{transform:translateX(-50%) scale(.3)}}
+@keyframes rtpring{0%{transform:scale(.55);opacity:1}100%{transform:scale(1.5);opacity:0}}
 /* ランキング: リーダーカードのデュオトーン（photo有りアバターのみ::after乗算。イニシャル文字を汚さない） */
 .rk-lead-ava{position:relative;border-radius:50%}
 .rk-lead-ava.has-photo::after{content:'';position:absolute;inset:2px;border-radius:50%;background:linear-gradient(135deg,rgba(141,0,0,.38),rgba(193,18,31,.12));mix-blend-mode:multiply;pointer-events:none}
@@ -1796,12 +1806,12 @@ mypage:function(){
   var unreadInjNotif=D.i.filter(function(x){return idEq(x.pid,myPid)&&x.notifyPlayer&&(x.source==='player'||x.source==='match');}).length;
   var totalUnread=unreadAnns+unreadInjNotif;
   var myTapeRsvs=(D.tape||[]).filter(function(t){return t.pid===myPid;}).filter(function(t){return t.date>=todayStr();}).sort(function(a,b){return a.date.localeCompare(b.date);}).slice(0,3);
-  var h='<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">'+avH(p,50)+'<div style="flex:1"><div style="font-size:17px;font-weight:600">'+p.name+(totalUnread?' <span style="display:inline-block;background:var(--red);color:#fff;font-size:11px;padding:2px 8px;border-radius:99px;vertical-align:middle;margin-left:6px">🔔 '+totalUnread+'</span>':'')+'</div><div style="color:var(--text-secondary);font-size:12px">'+p.position+' / '+p.year+'年'+(p.note?' / '+p.note:'')+'</div></div></div>';
+  var h='<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">'+avH(p,50)+'<div style="flex:1"><div style="font-size:17px;font-weight:600">'+p.name+(totalUnread?' <span style="display:inline-block;background:var(--red);color:#fff;font-size:11px;padding:2px 8px;border-radius:99px;vertical-align:middle;margin-left:6px">'+ic('i-bell',10)+' '+totalUnread+'</span>':'')+'</div><div style="color:var(--text-secondary);font-size:12px">'+p.position+' / '+p.year+'年'+(p.note?' / '+p.note:'')+'</div></div></div>';
   // 「今日やること」と試合日翌日アラートはホーム（ダッシュボード）へ移設済み
-  if(myTapeRsvs.length){h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--purple)"><div style="font-weight:600;margin-bottom:6px;color:var(--purple)">🩻 テーピング予約</div>';myTapeRsvs.forEach(function(rsv){h+='<div class="log-row"><div style="flex:1"><div style="font-weight:600">'+fmt(rsv.date)+' '+rsv.startTime+'〜'+rsv.endTime+'</div><div style="font-size:12px;color:var(--text-secondary)">'+rsv.parts.join('・')+(rsv.staff?' / 担当: '+rsv.staff:'')+'</div></div></div>';});h+='<button class="btn" style="width:100%;margin-top:6px;font-size:12px" onclick="go(\'tape\')">予約を管理する</button></div>';}
+  if(myTapeRsvs.length){h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--purple)"><div style="font-weight:600;margin-bottom:6px;color:var(--purple)">'+ic('i-tape',14)+' テーピング予約</div>';myTapeRsvs.forEach(function(rsv){h+='<div class="log-row"><div style="flex:1"><div style="font-weight:600">'+fmt(rsv.date)+' '+rsv.startTime+'〜'+rsv.endTime+'</div><div style="font-size:12px;color:var(--text-secondary)">'+rsv.parts.join('・')+(rsv.staff?' / 担当: '+rsv.staff:'')+'</div></div></div>';});h+='<button class="btn" style="width:100%;margin-top:6px;font-size:12px" onclick="go(\'tape\')">予約を管理する</button></div>';}
   // Individual announcements
   if(myAnns.length){
-    h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--blue)"><div style="font-weight:600;margin-bottom:6px;color:var(--blue)">📩 あなたへのお知らせ</div>';
+    h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--blue)"><div style="font-weight:600;margin-bottom:6px;color:var(--blue)">'+ic('i-megaphone',14)+' あなたへのお知らせ</div>';
     myAnns.forEach(function(a){
       h+='<div style="margin-bottom:6px"><div style="font-size:11px;color:var(--text-secondary)">'+fmt(a.date)+'</div><div style="font-size:13px;white-space:pre-wrap">'+escapeHtml(a.text)+'</div></div>';
       // 既読登録
@@ -1828,18 +1838,18 @@ mypage:function(){
     return x.approved===true||x.approved===false;
   });
   if(injNotifications.length){
-    h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--purple)"><div style="font-weight:600;margin-bottom:8px;color:var(--purple)">📬 怪我報告の結果</div>';
+    h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--purple)"><div style="font-weight:600;margin-bottom:8px;color:var(--purple)">'+ic('i-bell',14)+' 怪我報告の結果</div>';
     injNotifications.forEach(function(x){
       var notifDate=(x.approvedAt||x.rejectedAt||'').split('T')[0];
       if(x.approved===true){
         h+='<div class="alert-card alert-up" style="margin-bottom:6px;cursor:pointer" onclick="markInjNotifRead(\''+x.id+'\')">'+
-        '<div><div style="font-weight:600">✅ 「'+(x.side||'')+x.part+' '+x.type+'」が承認されました</div>'+
+        '<div><div style="font-weight:600">'+ic('i-check-c',14)+' 「'+(x.side||'')+x.part+' '+x.type+'」が承認されました</div>'+
         '<div style="font-size:11px;margin-top:2px;opacity:.85">'+fmt(notifDate)+' / リハビリ開始</div></div>'+
         '<button class="btn btn-sm" style="margin-left:auto" onclick="event.stopPropagation();markInjNotifRead(\''+x.id+'\')">確認</button>'+
         '</div>';
       } else {
         h+='<div class="alert-card alert-down" style="margin-bottom:6px;cursor:pointer" onclick="markInjNotifRead(\''+x.id+'\')">'+
-        '<div><div style="font-weight:600">❌ 「'+(x.side||'')+x.part+' '+x.type+'」は却下されました</div>'+
+        '<div><div style="font-weight:600">'+ic('i-x-c',14)+' 「'+(x.side||'')+x.part+' '+x.type+'」は却下されました</div>'+
         (x.rejectReason?'<div style="font-size:11px;margin-top:2px;opacity:.85">理由: '+x.rejectReason+'</div>':'')+
         '<div style="font-size:11px;margin-top:2px;opacity:.85">'+fmt(notifDate)+'</div></div>'+
         '<button class="btn btn-sm" style="margin-left:auto" onclick="event.stopPropagation();markInjNotifRead(\''+x.id+'\')">確認</button>'+
@@ -1867,7 +1877,7 @@ mypage:function(){
         h+='<div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-top:6px;margin-bottom:3px">本日のメニュー</div>'+
         '<div style="display:flex;flex-wrap:wrap;gap:3px">'+tomorrowCats.map(function(c){return'<span style="background:'+RCAT_BG[c]+';color:'+RCAT_COLOR[c]+';padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">'+c+'</span>';}).join('')+'</div>';
       }
-      h+='<button class="btn btn-p btn-sm" style="margin-top:8px" onclick="showMyChart('+inj.id+')">📋 カルテを見る・痛みを記録</button>';
+      h+='<button class="btn btn-p btn-sm" style="margin-top:8px" onclick="showMyChart('+inj.id+')">'+ic('i-clipboard',13)+' カルテを見る・痛みを記録</button>';
       h+='</div>';
     });
     h+='</div>';
@@ -1876,10 +1886,10 @@ mypage:function(){
   h+='<div style="font-weight:600;margin:4px 0 10px;display:flex;align-items:center;gap:7px"><svg viewBox="0 0 24 24" width="18" height="18" fill="var(--accent)"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>入力・記録</div><div class="grid2" style="margin-bottom:16px">';
   // Condition
   if(!todayDone)h+='<div class="card card-click" onclick="go(\'condition\')" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('condition')+'</div><div style="font-weight:600;font-size:13px">コンディション入力</div><div style="font-size:11px;color:var(--red);margin-top:4px">未入力</div></div>';
-  else{var myLatestF=D.f.filter(function(r){return r.pid===myPid&&r.date===todayStr();}).sort(function(a,b){return b.inputAt.localeCompare(a.inputAt);})[0];h+='<div class="card" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('condition')+'</div><div style="font-weight:600;font-size:13px">コンディション</div><div style="font-size:11px;color:var(--green);margin-top:4px">✅ 入力済み</div>'+(myLatestF?'<div style="display:flex;gap:4px;justify-content:center;margin-top:6px"><button class="btn btn-sm" onclick="showEditCondition(\''+myLatestF.id+'\')">修正</button><button class="btn btn-sm btn-d" onclick="delCondition(\''+myLatestF.id+'\')">削除</button></div>':'')+'</div>';}
+  else{var myLatestF=D.f.filter(function(r){return r.pid===myPid&&r.date===todayStr();}).sort(function(a,b){return b.inputAt.localeCompare(a.inputAt);})[0];h+='<div class="card" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('condition')+'</div><div style="font-weight:600;font-size:13px">コンディション</div><div style="font-size:11px;color:var(--green);margin-top:4px">'+ic('i-check-c',12)+' 入力済み</div>'+(myLatestF?'<div style="display:flex;gap:4px;justify-content:center;margin-top:6px"><button class="btn btn-sm" onclick="showEditCondition(\''+myLatestF.id+'\')">修正</button><button class="btn btn-sm btn-d" onclick="delCondition(\''+myLatestF.id+'\')">削除</button></div>':'')+'</div>';}
   // Body comp
   if(isPickup&&!bcDone)h+='<div class="card card-click" onclick="showBCForm()" style="text-align:center;padding:16px;border-color:var(--purple)"><div style="margin-bottom:8px">'+navIcon('bodycomp')+'</div><div style="font-weight:600;font-size:13px">体組成測定</div><div style="font-size:11px;color:var(--red);margin-top:4px">本日の対象です</div></div>';
-  else if(isPickup&&bcDone){var myLatestBC2=D.bc.filter(function(r){return r.pid===myPid&&r.date===todayStr();})[0];h+='<div class="card" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('bodycomp')+'</div><div style="font-weight:600;font-size:13px">体組成</div><div style="font-size:11px;color:var(--green);margin-top:4px">✅ 入力済み</div>'+(myLatestBC2?'<div style="display:flex;gap:4px;justify-content:center;margin-top:6px"><button class="btn btn-sm" onclick="showEditBC(\''+myLatestBC2.id+'\')">修正</button><button class="btn btn-sm btn-d" onclick="delBC(\''+myLatestBC2.id+'\')">削除</button></div>':'')+'</div>';}
+  else if(isPickup&&bcDone){var myLatestBC2=D.bc.filter(function(r){return r.pid===myPid&&r.date===todayStr();})[0];h+='<div class="card" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('bodycomp')+'</div><div style="font-weight:600;font-size:13px">体組成</div><div style="font-size:11px;color:var(--green);margin-top:4px">'+ic('i-check-c',12)+' 入力済み</div>'+(myLatestBC2?'<div style="display:flex;gap:4px;justify-content:center;margin-top:6px"><button class="btn btn-sm" onclick="showEditBC(\''+myLatestBC2.id+'\')">修正</button><button class="btn btn-sm btn-d" onclick="delBC(\''+myLatestBC2.id+'\')">削除</button></div>':'')+'</div>';}
   else h+='<div class="card card-click" onclick="showBCForm()" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('bodycomp')+'</div><div style="font-weight:600;font-size:13px">体組成を記録</div></div>';
   // Physical
   h+='<div class="card card-click" onclick="go(\'physical\')" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('physical')+'</div><div style="font-weight:600;font-size:13px">フィジカル測定</div></div>';
@@ -1894,7 +1904,7 @@ mypage:function(){
   var myAbsToday=D.a.some(function(s){return s.date===todayStr()&&s.absentees.some(function(a){return a.pid===myPid;});});
   h+='<div class="card card-click" onclick="showAbsenceForm()" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('absence')+'</div><div style="font-weight:600;font-size:13px">欠席・遅刻申告</div>'+(myAbsToday?'<div style="font-size:11px;color:var(--amber);margin-top:4px">本日申告済み</div><button class="btn btn-sm btn-d" style="margin-top:6px" onclick="event.stopPropagation();cancelAbsence()">取り消す</button>':'')+'</div>';
   h+='</div>';
-  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px"><span style="font-weight:600">📊 フィジカルベスト</span>'+(lastPhysRec?'<span style="font-size:11px;color:var(--text-secondary)">前回: '+fmt(lastPhysRec.date)+'</span>':'')+'</div>'+
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px"><span style="font-weight:600">'+ic('i-chart',15,'var(--maroon)')+' フィジカルベスト</span>'+(lastPhysRec?'<span style="font-size:11px;color:var(--text-secondary)">前回: '+fmt(lastPhysRec.date)+'</span>':'')+'</div>'+
   '<div class="grid3">'+
   '<div class="mc"><div class="v" style="font-size:15px">'+(bSQ||'-')+'</div><div class="l">SQ</div></div>'+
   '<div class="mc"><div class="v" style="font-size:15px">'+(bBP||'-')+'</div><div class="l">BP</div></div>'+
@@ -1907,7 +1917,7 @@ mypage:function(){
   // 推定1RM（参考値）
   var myE1rm=getLatestE1RM(myPid);var e1k=Object.keys(myE1rm);
   if(e1k.length){
-    h+='<div style="margin-top:10px;padding:10px 12px;background:var(--blue-bg);border-radius:var(--radius)"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">📈 推定1RM（トレーニングからの参考値）</div><div style="display:flex;gap:8px;flex-wrap:wrap">'+
+    h+='<div style="margin-top:10px;padding:10px 12px;background:var(--blue-bg);border-radius:var(--radius)"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">'+ic('i-trend-up',13)+' 推定1RM（トレーニングからの参考値）</div><div style="display:flex;gap:8px;flex-wrap:wrap">'+
     e1k.map(function(k){var label=(EST_BASES.find(function(b){return b.k===k;})||{}).label||k;return'<div style="flex:1;min-width:70px;text-align:center"><div style="font-size:10px;color:var(--text-secondary)">'+label+'</div><div style="font-size:15px;font-weight:700;color:var(--blue)">'+myE1rm[k].e1rm+'<span style="font-size:9px">kg</span></div></div>';}).join('')+
     '</div></div>';
   }
@@ -1915,7 +1925,7 @@ mypage:function(){
   // 現在の体重
   var latestBC=D.bc.filter(function(r){return r.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
   if(latestBC&&latestBC.weight){
-    h+='<div style="font-weight:600;margin:12px 0 6px">⚖️ 体組成 <span style="font-weight:400;color:var(--text-secondary);font-size:12px">'+fmt(latestBC.date)+'</span></div>'+
+    h+='<div style="font-weight:600;margin:12px 0 6px">'+ic('i-scale',15,'var(--maroon)')+' 体組成 <span style="font-weight:400;color:var(--text-secondary);font-size:12px">'+fmt(latestBC.date)+'</span></div>'+
     '<div class="grid3" style="margin-bottom:8px">'+
     '<div class="mc"><div class="v" style="font-size:16px">'+(latestBC.weight||'-')+'</div><div class="l">体重(kg)</div></div>'+
     '<div class="mc"><div class="v" style="font-size:16px">'+(latestBC.fat||'-')+'</div><div class="l">体脂肪(%)</div></div>'+
@@ -1934,7 +1944,7 @@ mypage:function(){
     if(latestF.soreness&&latestF.sorenessParts&&latestF.sorenessParts.length)h+='<div style="font-size:11px;color:var(--amber);margin-top:6px">筋肉痛の部位: '+latestF.sorenessParts.map(escapeHtml).join('・')+'</div>';
   }
   // ヘルプボタン
-  h+='<div style="margin-top:24px;padding-top:16px;border-top:0.5px solid var(--border-tertiary);text-align:center"><button class="btn" style="font-size:13px;color:var(--text-secondary)" onclick="T.help()">📖 使い方ガイド</button></div>';
+  h+='<div style="margin-top:24px;padding-top:16px;border-top:0.5px solid var(--border-tertiary);text-align:center"><button class="btn" style="font-size:13px;color:var(--text-secondary)" onclick="T.help()">'+ic('i-book',14)+' 使い方ガイド</button></div>';
   $m().innerHTML=h;
 },
 help:function(){
@@ -1990,7 +2000,7 @@ help:function(){
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid #0891B2">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🩻 テーピング予約</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-tape',14)+' テーピング予約</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '・専門学生が出してくれた枠から予約<br>'+
   '・部位（肩・膝・足首など）を選択<br>'+
@@ -2146,9 +2156,9 @@ injury:function(){
 },
 match:function(){
   var mds=D.md.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
-  $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">試合日コンディション</div>'+
-  '<button class="btn btn-match" style="margin-bottom:16px" onclick="showMatchForm()">🏟️ 試合日チェックを入力</button>'+
-  (mds.length?'<div style="font-weight:600;margin-bottom:8px">過去の試合記録</div>'+mds.map(function(m){return'<div class="card card-click" onclick="showMatchDetail('+m.id+')"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600">'+fmt(m.date)+'</span><div style="display:flex;align-items:center;gap:4px"><span class="bd bd-p">'+m.role+'</span><button class="btn btn-sm btn-d" onclick="event.stopPropagation();delMatchDay(\''+m.id+'\')">削除</button></div></div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">疲労: 前'+m.fatiguePre+'/6 → 後'+m.fatiguePost+'/6'+(m.injured?' | <span style="color:var(--red)">怪我あり</span>':'')+(m.cramp?' | 足攣り':'')+'</div></div>';}).join(''):'<div class="no">記録なし</div>');
+  $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">'+ic('i-back',14)+' マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">試合日コンディション</div>'+
+  '<button class="btn btn-match" style="margin-bottom:16px" onclick="showMatchForm()">'+ic('i-flag',14)+' 試合日チェックを入力</button>'+
+  (mds.length?'<div style="font-weight:600;margin-bottom:8px">過去の試合記録</div>'+mds.map(function(m){return'<div class="card card-click" onclick="showMatchDetail('+m.id+')"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600">'+fmt(m.date)+'</span><div style="display:flex;align-items:center;gap:4px">'+roleBadgeHtml(m.role)+'<button class="btn btn-sm btn-d" onclick="event.stopPropagation();delMatchDay(\''+m.id+'\')">削除</button></div></div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">疲労: 前'+m.fatiguePre+'/6 → 後'+m.fatiguePost+'/6'+(m.injured?' | <span style="color:var(--red)">怪我あり</span>':'')+(m.cramp?' | 足攣り':'')+'</div></div>';}).join(''):'<div class="no">記録なし</div>');
 }};
 
 // === FORM FUNCTIONS ===
@@ -2270,8 +2280,8 @@ function showPhysForm(){
   var today=td;
   var skipped=(D.phskip||[]).find(function(s){return s.pid===myPid&&s.date===today;});
   var skipBtn=skipped?
-    '<div class="alert-card alert-info" style="margin-bottom:12px">✅ 本日は測定なしとして申告済みです <button class="btn btn-sm" onclick="cancelPhysSkip()" style="margin-left:8px">取消</button></div>':
-    '<button class="btn" style="width:100%;margin-bottom:12px;color:var(--text-secondary)" onclick="markPhysSkip()">📵 本日は測定なしとして申告する</button>';
+    '<div class="alert-card alert-info" style="margin-bottom:12px">'+ic('i-check-c',14)+' 本日は測定なしとして申告済みです <button class="btn btn-sm" onclick="cancelPhysSkip()" style="margin-left:8px">取消</button></div>':
+    '<button class="btn" style="width:100%;margin-bottom:12px;color:var(--text-secondary)" onclick="markPhysSkip()">'+ic('i-x-c',13)+' 本日は測定なしとして申告する</button>';
   showSub(
   '<div style="font-size:18px;font-weight:600;margin:12px 0 4px">📝 記録入力</div>'+
   '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">入力した項目だけ保存されます。空欄はスキップされます。</div>'+
@@ -2300,7 +2310,7 @@ function showPhysForm(){
 // ブロンコ専用フォーム（physical画面から）
 function showBroncoForm(){
   var td=todayStr();
-  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">🏃 ブロンコを記録</div>'+
+  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px;display:flex;align-items:center;gap:7px">'+ic('i-run',17,'var(--maroon)')+'ブロンコを記録</div>'+
   '<div class="form-box"><div class="form-title">測定データ</div>'+
   '<div class="fl"><label>測定日</label><input class="ipt" type="date" id="br-date" value="'+td+'"></div>'+
   '<div class="fl"><label>ブロンコテスト</label>'+
@@ -2332,8 +2342,10 @@ function doBronco(btnEl){
   var newRec={id:newId(),pid:myPid,date:date,squat:null,bench:null,deadlift:null,bronco:br};
   svSafeSeq([{k:'ph',rec:newRec}],function(){
     var pBR=getBest(myPid,'bronco');
-    var msg=pBR&&br<pBR?'🎉 ブロンコ自己ベスト更新！\n'+broncoFmt(pBR)+' → '+broncoFmt(br):'記録しました ✓\n'+broncoFmt(br);
-    alert(msg);go('mypage');
+    var isPB=pBR&&br<pBR;
+    go('mypage');
+    if(isPB)pbFlash('ブロンコ自己ベスト更新！ '+broncoFmt(pBR)+' → '+broncoFmt(br));
+    else toast('記録しました ✓ '+broncoFmt(br));
   },function(){
     // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
@@ -2955,8 +2967,10 @@ function doPhys(btnEl){
   var newRec={id:newId(),pid:myPid,date:dateV,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br,msessId:curSess?curSess.id:null,inputAt:new Date().toISOString()};
   svSafeSeq([{k:'ph',rec:newRec}],function(){
     var m=[];var pSQ=getBest(myPid,'squat'),pBP=getBest(myPid,'bench'),pDL=getBest(myPid,'deadlift');
-    if(sq&&pSQ&&sq>=pSQ)m.push('🎉 SQ自己ベスト更新！');if(bp&&pBP&&bp>=pBP)m.push('🎉 BP自己ベスト更新！');if(dl&&pDL&&dl>=pDL)m.push('🎉 DL自己ベスト更新！');
-    alert(m.length?m.join('\n'):'記録しました ✓');go('mypage');
+    if(sq&&pSQ&&sq>=pSQ)m.push('SQ');if(bp&&pBP&&bp>=pBP)m.push('BP');if(dl&&pDL&&dl>=pDL)m.push('DL');
+    go('mypage');
+    if(m.length)pbFlash(m.join('・')+' 自己ベスト更新！');
+    else toast('記録しました ✓');
   },function(){
     // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
@@ -2965,6 +2979,30 @@ function doPhys(btnEl){
 }
 
 // ===== 選手向け 電子カルテ閲覧画面 =====
+// RTPピッチ図（STG7段階=ラグビーピッチの7本の線と1:1。自陣ゴール→22m→10m→HW→10m→22m→敵陣ゴール=トライ）
+function rtpPitchHtml(stage){
+  var st=Math.max(0,Math.min(6,stage||0));
+  var pos=[3,18.7,34.3,50,65.7,81.3,97];
+  var lineLabels=['G','22','10','HW','10','22','G'];
+  var h='<div class="rtp-anim" style="position:relative;height:78px;background:linear-gradient(180deg,#EDF7F1,#E3F2E9);border:1px solid var(--border-tertiary);border-radius:10px;margin:6px 0 3px;overflow:hidden">';
+  pos.forEach(function(x,i){
+    var goal=(i===0||i===6);
+    h+='<div style="position:absolute;left:'+x+'%;top:9px;bottom:9px;width:'+(goal?'3px':'2px')+';margin-left:-1px;background:'+(goal?'rgba(4,108,72,.5)':(i===3?'rgba(4,108,72,.38)':'rgba(4,108,72,.2)'))+'"></div>';
+    h+='<div style="position:absolute;left:'+x+'%;top:1px;transform:translateX(-50%);font-size:7px;color:var(--green);opacity:.75;font-weight:700">'+lineLabels[i]+'</div>';
+    var done=i<st,cur=i===st;
+    h+='<div class="rtp-dot'+(cur?' rtp-dot-cur':'')+'" style="position:absolute;left:'+x+'%;bottom:9px;transform:translateX(-50%);width:'+(cur?'11px':'8px')+';height:'+(cur?'11px':'8px')+';border-radius:50%;background:'+(done?'var(--maroon)':(cur?'var(--maroon-vivid)':'#CBDFD3'))+';animation-delay:'+(i*60)+'ms"></div>';
+  });
+  h+='<div class="rtp-marker" style="position:absolute;left:'+pos[st]+'%;top:29px;margin-left:-10px">'+ic('i-ball',20,'var(--maroon)')+'</div>';
+  h+='</div>';
+  h+='<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-tertiary)"><span>自陣ゴール</span><span>ハーフウェイ</span><span style="color:var(--maroon);font-weight:700">トライ = 完全復帰</span></div>';
+  return h;
+}
+// 試合出場roleバッジ（英字小書き併記。マップ外=出場なし系は日本語のみ）
+var ROLE_EN={'スタート':'STARTING XV','リザーブ':'FINISHER'};
+function roleBadgeHtml(role){
+  var en=ROLE_EN[role];
+  return'<span class="bd bd-p">'+escapeHtml(role||'')+(en?' <span style="font-family:var(--font-num);font-style:italic;font-weight:800;font-size:8px;letter-spacing:.06em">'+en+'</span>':'')+'</span>';
+}
 function showMyChart(iid){
   var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return;
   var ch=getChart(iid);
@@ -2972,7 +3010,7 @@ function showMyChart(iid){
   var daysSince=Math.floor((new Date(todayStr())-new Date(inj.date))/86400000);
   var evals=ch.evals.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
   var soaps=ch.soaps.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
-  var h='<div style="font-size:18px;font-weight:700;margin:12px 0 14px">📋 '+(inj.side||'')+inj.part+' のカルテ</div>';
+  var h='<div style="font-size:18px;font-weight:700;margin:12px 0 14px;display:flex;align-items:center;gap:7px">'+ic('i-clipboard',17,'var(--maroon)')+(inj.side||'')+inj.part+' のカルテ</div>';
   h+='<div class="card"><div style="display:flex;gap:8px;margin-bottom:12px">'+
     '<div class="mc" style="flex:1"><div class="v" style="font-size:18px;color:var(--accent)">'+daysSince+'</div><div class="l">受傷から</div></div>'+
     (rh?'<div class="mc" style="flex:1"><div class="v" style="font-size:13px;color:var(--green)">'+STG[rh.stage]+'</div><div class="l">現在の段階</div></div>':'')+
@@ -2983,18 +3021,24 @@ function showMyChart(iid){
     (inj.returnDate?'<div class="detail-row"><span class="detail-label">復帰予定</span><span class="detail-value">'+fmt(inj.returnDate)+'</span></div>':'')+
     (ch.medical.diagnosis?'<div class="detail-row"><span class="detail-label">診断名</span><span class="detail-value">'+escapeHtml(ch.medical.diagnosis)+'</span></div>':'')+
     '</div>';
-  h+='<button class="btn btn-p" style="width:100%;margin-bottom:14px" onclick="showPainSelfForm('+iid+')">😣 今日の痛みを記録する</button>';
+  h+='<button class="btn btn-p" style="width:100%;margin-bottom:14px" onclick="showPainSelfForm('+iid+')">'+ic('i-pain-3',14)+' 今日の痛みを記録する</button>';
   // RTP 練習参加レベル（選手に一番大事な情報）
   var curRtp=ch.rtpLevel||'rest';
   var rtpObj=RTP_LEVELS.find(function(x){return x.k===curRtp;})||RTP_LEVELS[0];
   h+='<div class="card" style="text-align:center;border:2px solid '+rtpObj.color+'"><div style="font-size:11px;color:var(--text-secondary);font-weight:600;margin-bottom:6px">今の練習参加レベル</div>'+
     '<div style="font-size:20px;font-weight:800;color:'+rtpObj.color+'">'+rtpObj.label+'</div>'+
     '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">'+rtpObj.desc+'</div></div>';
+  // RTPピッチ図（リハビリ7段階=ピッチの7本線。復帰=トライ）
+  if(rh&&rh.stage!=null){
+    h+='<div class="card" style="margin-bottom:14px"><div class="kicker" style="margin-bottom:1px">ROAD TO RETURN</div>'+
+      '<div style="font-weight:700;font-size:13px">リハビリ進行: <span style="color:var(--maroon)">'+STG[Math.max(0,Math.min(6,rh.stage))]+'</span></div>'+
+      rtpPitchHtml(rh.stage)+'</div>';
+  }
   if(evals.length>=1){
-    h+='<div class="form-box"><div class="form-title">📈 痛みの推移</div><div class="chart-wrap" style="height:180px"><canvas id="my-pain-chart"></canvas></div></div>';
+    h+='<div class="form-box"><div class="form-title">'+ic('i-chart-line',13,'var(--maroon)')+' 痛みの推移</div><div class="chart-wrap" style="height:180px"><canvas id="my-pain-chart"></canvas></div></div>';
   }
   if(soaps.length){
-    h+='<div class="form-title" style="margin:14px 0 8px">🩺 トレーナーの記録</div>';
+    h+='<div class="form-title" style="margin:14px 0 8px">'+ic('i-note',13,'var(--maroon)')+' トレーナーの記録</div>';
     soaps.slice(0,5).forEach(function(s){
       h+='<div class="card" style="margin-bottom:8px"><div style="font-weight:700;font-size:13px;margin-bottom:6px">'+fmt(s.date)+(s.author?' <span style="font-size:11px;color:var(--text-secondary);font-weight:400">'+escapeHtml(s.author)+'</span>':'')+'</div>';
       if(s.p)h+='<div style="font-size:12px;margin-bottom:4px"><span style="color:var(--accent);font-weight:600">今後の方針</span><br>'+escapeHtml(s.p)+'</div>';
@@ -3026,7 +3070,7 @@ function drawMyPainChart(iid){
 }
 function showPainSelfForm(iid){
   var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return;
-  var h='<div style="font-size:18px;font-weight:700;margin:12px 0 14px">😣 今日の痛みを記録</div>';
+  var h='<div style="font-size:18px;font-weight:700;margin:12px 0 14px;display:flex;align-items:center;gap:7px">'+ic('i-pain-3',17,'var(--maroon)')+'今日の痛みを記録</div>';
   h+='<div class="form-box"><div class="form-title">痛みレベル（0:なし 〜 10:最大）</div>';
   PAIN_TYPES.forEach(function(pt){
     h+='<div class="fl" style="margin-bottom:14px"><label>'+pt.label+'</label>'+
@@ -3035,7 +3079,7 @@ function showPainSelfForm(iid){
   });
   h+='</div>';
   h+='<div class="form-box"><div class="form-title">メモ（任意）</div><textarea class="ipt" id="self-note" placeholder="気になること、調子など" style="min-height:60px"></textarea></div>';
-  h+='<button class="btn btn-p" style="width:100%" onclick="savePainSelf('+iid+',this)">💾 記録する</button>';
+  h+='<button class="btn btn-p" style="width:100%" onclick="savePainSelf('+iid+',this)">記録する</button>';
   showSub(h);
 }
 function savePainSelf(iid,btnEl){
@@ -3086,7 +3130,7 @@ function doRehab(rid,btnEl){
 }
 
 // Weekly injury check
-function showWeekCheck(injId){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">📋 週次怪我チェック</div><div class="form-box"><div class="form-title">今週の状態を教えてください</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="wc-date" value="'+td+'"></div><div class="fl"><label>現在の痛み（1-10）</label>'+numStepHTML('wc-pain',1,10,'')+'</div><div class="fl"><label>いつ復帰できそう？</label><select class="ipt" id="wc-ret"><option value="今週中">今週中</option><option value="来週中">来週中（約1週間）</option><option value="2週間以内">2週間以内</option><option value="3週間以内">3週間以内</option><option value="1ヶ月以内">1ヶ月以内</option><option value="1.5ヶ月以内">1.5ヶ月以内</option><option value="2ヶ月以内">2ヶ月以内</option><option value="3ヶ月以内">3ヶ月以内</option><option value="3ヶ月以上">3ヶ月以上かかりそう</option><option value="わからない">わからない</option></select></div><div class="fl"><label>今週練習に参加できる？</label><select class="ipt" id="wc-prac"><option>部分的に参加できる</option><option>全体練習に参加できる</option><option>参加できない</option></select></div><div class="fl"><label>メモ（状態の変化など）</label><textarea class="ipt" id="wc-note" placeholder="先週からの変化..."></textarea></div><button class="btn btn-p" onclick="doWeekCheck('+injId+',this)">送信する</button></div>');}
+function showWeekCheck(injId){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px;display:flex;align-items:center;gap:7px">'+ic('i-clipboard',17,'var(--maroon)')+'週次怪我チェック</div><div class="form-box"><div class="form-title">今週の状態を教えてください</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="wc-date" value="'+td+'"></div><div class="fl"><label>現在の痛み（1-10）</label>'+numStepHTML('wc-pain',1,10,'')+'</div><div class="fl"><label>いつ復帰できそう？</label><select class="ipt" id="wc-ret"><option value="今週中">今週中</option><option value="来週中">来週中（約1週間）</option><option value="2週間以内">2週間以内</option><option value="3週間以内">3週間以内</option><option value="1ヶ月以内">1ヶ月以内</option><option value="1.5ヶ月以内">1.5ヶ月以内</option><option value="2ヶ月以内">2ヶ月以内</option><option value="3ヶ月以内">3ヶ月以内</option><option value="3ヶ月以上">3ヶ月以上かかりそう</option><option value="わからない">わからない</option></select></div><div class="fl"><label>今週練習に参加できる？</label><select class="ipt" id="wc-prac"><option>部分的に参加できる</option><option>全体練習に参加できる</option><option>参加できない</option></select></div><div class="fl"><label>メモ（状態の変化など）</label><textarea class="ipt" id="wc-note" placeholder="先週からの変化..."></textarea></div><button class="btn btn-p" onclick="doWeekCheck('+injId+',this)">送信する</button></div>');}
 function doWeekCheck(injId,btnEl){
   if(!guardSubmit(btnEl,'送信中…'))return;
   var rec={id:newId(),pid:myPid,injId:injId,date:document.getElementById('wc-date').value,inputAt:new Date().toISOString(),pain:parseInt(document.getElementById('wc-pain').value)||5,returnEst:document.getElementById('wc-ret').value,practiceStatus:document.getElementById('wc-prac').value,note:document.getElementById('wc-note').value};
@@ -3099,7 +3143,7 @@ function doWeekCheck(injId,btnEl){
 }
 
 // === MATCH DAY FORM ===
-function showMatchForm(){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">🏟️ 試合日コンディションチェック</div>'+
+function showMatchForm(){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px;display:flex;align-items:center;gap:7px">'+ic('i-flag',17,'var(--maroon)')+'試合日コンディションチェック</div>'+
 '<div class="form-box"><div class="form-title">基本情報</div>'+
 '<div class="fl"><label>日付</label><input class="ipt" type="date" id="md-date" value="'+td+'"></div>'+
 '<div class="fl"><label>スタート / リザーブ / 出場なし</label><select class="ipt" id="md-role"><option>スタート</option><option>リザーブ</option><option>出場なし（ベンチ）</option><option>出場なし（応援）</option><option>出場なし（その他）</option></select></div></div>'+
@@ -3150,7 +3194,7 @@ function showMatchDetail(mid){
   var m=D.md.find(function(x){return x.id===mid;});if(!m)return;
   var h='<div style="font-size:18px;font-weight:600;margin:12px 0 14px">試合記録 '+fmt(m.date)+'</div>';
   h+='<div class="form-box"><div class="form-title">基本情報</div>';
-  h+='<div class="log-row"><span style="font-weight:600;min-width:120px">出場</span><span class="bd bd-p">'+m.role+'</span></div>';
+  h+='<div class="log-row"><span style="font-weight:600;min-width:120px">出場</span>'+roleBadgeHtml(m.role)+'</div>';
   h+='<div class="log-row"><span style="font-weight:600;min-width:120px">試合前疲労</span><span>'+m.fatiguePre+'/6</span></div>';
   h+='<div class="log-row"><span style="font-weight:600;min-width:120px">試合後疲労</span><span>'+m.fatiguePost+'/6</span></div>';
   h+='<div class="log-row"><span style="font-weight:600;min-width:120px">睡眠</span><span>'+m.sleepTime+' → '+m.wakeTime+'</span></div>';
@@ -3176,7 +3220,7 @@ function getTodayPickup(){
   for(var si=pool.length-1;si>0;si--){var j=(seed+si)%si;var tmp=pool[si];pool[si]=pool[j];pool[j]=tmp;}
   return pool.slice(0,5).map(function(x){return x.pid;});
 }
-function showBCForm(){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">⚖️ 体組成を記録</div><div class="form-box"><div class="form-title">測定データ</div><div class="fl"><label>測定日</label><input class="ipt" type="date" id="bc-date" value="'+td+'"></div><div class="fl"><label>体重（kg）</label><input class="ipt" type="number" step="0.1" id="bc-w" placeholder="例: 85.5"></div><div class="fl"><label>体脂肪率（%）</label><input class="ipt" type="number" step="0.1" id="bc-fat" placeholder="例: 15.2"></div><div class="fl"><label>筋量（kg）</label><input class="ipt" type="number" step="0.1" id="bc-muscle" placeholder="例: 42.0"></div><button class="btn btn-p" style="margin-top:8px" onclick="doBCInput(this)">記録する</button></div>');}
+function showBCForm(){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px;display:flex;align-items:center;gap:7px">'+ic('i-scale',17,'var(--maroon)')+'体組成を記録</div><div class="form-box"><div class="form-title">測定データ</div><div class="fl"><label>測定日</label><input class="ipt" type="date" id="bc-date" value="'+td+'"></div><div class="fl"><label>体重（kg）</label><input class="ipt" type="number" step="0.1" id="bc-w" placeholder="例: 85.5"></div><div class="fl"><label>体脂肪率（%）</label><input class="ipt" type="number" step="0.1" id="bc-fat" placeholder="例: 15.2"></div><div class="fl"><label>筋量（kg）</label><input class="ipt" type="number" step="0.1" id="bc-muscle" placeholder="例: 42.0"></div><button class="btn btn-p" style="margin-top:8px" onclick="doBCInput(this)">記録する</button></div>');}
 function doBCInput(btnEl){
   // 体重は必須。体重0は無効なのでisFilled＋>0で弾く（素の!wでも0は弾けるが意図を明示）
   var w=parseFloat(document.getElementById('bc-w').value);
@@ -4164,7 +4208,7 @@ T.tape=function(){
   var myRsvs=D.tape.filter(function(t){return t.pid===myPid;}).sort(function(a,b){return a.date.localeCompare(b.date);});
   // 予約可能な日付
   var availDates=[...new Set(D.tapeslot.filter(function(s){return s.date>=fromS&&s.date<=toS;}).map(function(s){return s.date;}))].sort();
-  var h='<div style="font-size:18px;font-weight:600;margin:12px 0 14px">🩻 テーピング予約</div>';
+  var h='<div style="font-size:18px;font-weight:600;margin:12px 0 14px">'+ic('i-tape',14)+' テーピング予約</div>';
   // 自分の予約
   if(myRsvs.length){
     h+='<div class="form-box"><div class="form-title">あなたの予約</div>';
