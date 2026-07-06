@@ -75,7 +75,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 .alert-warn{background:var(--amber-bg);color:var(--amber);border-left:3px solid var(--amber)}
 .alert-up{background:var(--green-bg);color:var(--green);border-left:3px solid var(--green)}
 .cond-toggle{display:flex;border:1.5px solid var(--border-secondary);border-radius:var(--radius);overflow:hidden;margin-bottom:14px}
-.cond-toggle-btn{flex:1;padding:10px;text-align:center;font-size:13px;cursor:pointer;background:var(--bg-primary);color:var(--text-secondary);border:none;font-family:var(--font-sans);font-weight:500}
+.cond-toggle-btn{flex:1;padding:10px;min-height:44px;text-align:center;font-size:13px;cursor:pointer;background:var(--bg-primary);color:var(--text-secondary);border:none;font-family:var(--font-sans);font-weight:500}
 .cond-toggle-btn.ac{background:var(--blue);color:#fff;font-weight:600}
 .hidden{display:none!important}
 .detail-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid var(--border-tertiary);font-size:13px}.detail-row:last-child{border-bottom:none}
@@ -174,6 +174,23 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
   .rv-armed.in .rk-bar{animation:barfill .7s cubic-bezier(.22,1,.36,1)}
 }
 @keyframes barfill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+/* 休憩タイマー: stickyバー（ヘッダーz:10未満）。残5秒パルス・終了3回フラッシュ=background/opacityのみ */
+.rt-bar{position:sticky;top:var(--hdr-h);z-index:5}
+@media(prefers-reduced-motion:no-preference){
+  .rt-pulse{animation:rtpulse 1s ease-in-out infinite}
+  .rt-flash{animation:rtflash .5s ease-in-out 3}
+}
+@keyframes rtpulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes rtflash{0%,100%{background-color:var(--bg-primary);opacity:1}50%{background-color:var(--pale);opacity:.82}}
+/* PB!フラッシュ（自己ベスト演出）: fixed中央 z-index:11・pointer-events透過 */
+.pb-flash{position:fixed;left:0;right:0;top:34%;display:flex;justify-content:center;z-index:11;pointer-events:none;opacity:1;transition:opacity .35s ease-out}
+.pb-flash.out{opacity:0}
+.pb-flash-inner{background:var(--bg-primary);border:1px solid var(--gold);border-radius:var(--radius-lg);box-shadow:0 10px 30px rgba(141,0,0,.18),0 0 0 4px rgba(242,196,61,.25);padding:14px 24px;text-align:center}
+@media(prefers-reduced-motion:no-preference){.pb-flash-inner{animation:pbpop .5s cubic-bezier(.34,1.56,.64,1) 1}}
+@keyframes pbpop{from{transform:scale(.6)}to{transform:scale(1)}}
+/* 種目ボリューム前回超えの瞬間演出（種目単位1回・デバウンスはJS側） */
+@media(prefers-reduced-motion:no-preference){.vol-beat{animation:volbeat .5s cubic-bezier(.34,1.56,.64,1) 1}}
+@keyframes volbeat{0%{transform:scale(1)}35%{transform:scale(1.035);box-shadow:0 0 0 3px var(--green-bg),0 0 18px rgba(4,108,72,.25)}100%{transform:scale(1);box-shadow:none}}
 /* ランキング: リーダーカードのデュオトーン（photo有りアバターのみ::after乗算。イニシャル文字を汚さない） */
 .rk-lead-ava{position:relative;border-radius:50%}
 .rk-lead-ava.has-photo::after{content:'';position:absolute;inset:2px;border-radius:50%;background:linear-gradient(135deg,rgba(141,0,0,.38),rgba(193,18,31,.12));mix-blend-mode:multiply;pointer-events:none}
@@ -935,6 +952,16 @@ function toast(msg){
     w.appendChild(t);
     requestAnimationFrame(function(){requestAnimationFrame(function(){t.classList.add('show');});});
     setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},350);},2200);
+  }catch(e){}
+}
+// PB!フラッシュ（自己ベスト演出）: 独自fixed要素・z-index:11（ヘッダー10の直上）・自動退場
+function pbFlash(msg){
+  try{
+    var d=document.createElement('div');d.className='pb-flash';
+    d.innerHTML='<div class="pb-flash-inner"><span class="flag" style="background:var(--gold-hot);color:var(--ink);font-size:16px;padding:4px 16px">PB!</span><div style="font-size:13px;font-weight:800;margin-top:7px">'+escapeHtml(msg||'自己ベスト更新！')+'</div></div>';
+    document.body.appendChild(d);
+    setTimeout(function(){d.classList.add('out');},1500);
+    setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d);},1900);
   }catch(e){}
 }
 // ===== reveal（クラスA=遷移演出）。go()経由のタブ初回表示だけ発火 =====
@@ -2127,9 +2154,9 @@ match:function(){
 // === FORM FUNCTIONS ===
 function numStepHTML(id,min,max,oninput){
   return '<div style="display:flex;align-items:center;gap:0;border:1.5px solid var(--border-secondary);border-radius:var(--radius);overflow:hidden">'+
-  '<button type="button" onclick="numStep(\''+id+'\',-1,'+min+','+max+')" style="padding:8px 14px;border:none;background:var(--bg-secondary);font-size:16px;cursor:pointer;font-weight:600">−</button>'+
+  '<button type="button" onclick="numStep(\''+id+'\',-1,'+min+','+max+')" style="padding:10px 14px;border:none;background:var(--bg-secondary);font-size:16px;cursor:pointer;font-weight:600">−</button>'+
   '<input class="ipt" type="number" id="'+id+'" min="'+min+'" max="'+max+'" style="text-align:center;border:none;border-left:1px solid var(--border-tertiary);border-right:1px solid var(--border-tertiary);border-radius:0;flex:1" oninput="'+(oninput||'')+'" placeholder="'+min+'〜'+max+'">'+
-  '<button type="button" onclick="numStep(\''+id+'\',1,'+min+','+max+')" style="padding:8px 14px;border:none;background:var(--bg-secondary);font-size:16px;cursor:pointer;font-weight:600">＋</button></div>'+
+  '<button type="button" onclick="numStep(\''+id+'\',1,'+min+','+max+')" style="padding:10px 14px;border:none;background:var(--bg-secondary);font-size:16px;cursor:pointer;font-weight:600">＋</button></div>'+
   '<div style="font-size:11px;color:var(--text-secondary);margin-top:3px">'+min+'〜'+max+'</div>';
 }
 function numStep(id,dir,min,max){var el=document.getElementById(id);var v=parseInt(el.value)||0;v=Math.min(max,Math.max(min,v+dir));el.value=v;el.dispatchEvent(new Event('input'));}
@@ -2146,7 +2173,7 @@ var _rate5OnChange={};
 function rate5HTML(id,emojis,loCap,hiCap,labels){
   return'<input type="hidden" id="'+id+'">'+
   '<div style="display:flex;gap:6px">'+[1,2,3,4,5].map(function(v){
-    return'<button type="button" class="btn" style="flex:1;padding:8px 0 5px;line-height:1.2;position:relative" id="'+id+'-b'+v+'" aria-pressed="false" onclick="setRate5(\''+id+'\','+v+')">'+
+    return'<button type="button" class="btn" style="flex:1;padding:8px 0 5px;min-height:44px;line-height:1.2;position:relative" id="'+id+'-b'+v+'" aria-pressed="false" onclick="setRate5(\''+id+'\','+v+')">'+
       '<span id="'+id+'-chk'+v+'" style="display:none;position:absolute;top:2px;right:3px">'+ic('i-check',10,'var(--maroon)')+'</span>'+
       emojis[v-1]+'<div style="font-size:8px;color:var(--text-tertiary);margin-top:1px;white-space:nowrap">'+((labels&&labels[v-1])||v)+'</div></button>';
   }).join('')+'</div>'+
@@ -2335,7 +2362,7 @@ function switchPhysGraph(type){
   });
   var e=document.getElementById('ch-ph');if(!e)return;
   dC('ph');
-  if(!filtered.length){new Chart(e,{type:'line',data:{labels:[],datasets:[]},options:{responsive:true,maintainAspectRatio:false}});return;}
+  if(!filtered.length){charts.ph=new Chart(e,{type:'line',data:{labels:[],datasets:[]},options:{responsive:true,maintainAspectRatio:false}});return;}
   charts.ph=new Chart(e,{type:'line',data:{
     labels:filtered.map(function(r){return r.date.slice(5);}),
     datasets:[{
@@ -3483,16 +3510,32 @@ function renderTrainingExec(mn){
     if(cond.bad){h+='<div class="card" style="border-left:3px solid var(--amber);margin-bottom:12px"><div style="font-size:12px;color:var(--amber);font-weight:600">⚠️ 今日は軽めでもいいかも</div><div style="font-size:11px;color:var(--text-secondary);margin-top:3px">'+(cond.reasons&&cond.reasons.length?cond.reasons.join('・')+'。':'')+'無理せず前回と同等〜控えめの重量で。痛みがあれば中止してください。</div></div>';}
     else if(cond.good){h+='<div class="card" style="border-left:3px solid var(--green);margin-bottom:12px"><div style="font-size:12px;color:var(--green);font-weight:600">💪 今日はコンディション良好</div><div style="font-size:11px;color:var(--text-secondary);margin-top:3px">前回超えを狙えるかも。フォームを保てる範囲で。</div></div>';}
   }
+  // MD-1テーパーヒント（明日がD.calの試合日）
+  var tomorrowS=toDateStr(new Date(new Date(todayStr()).getTime()+86400000));
+  if((D.cal||[]).some(function(e){return e&&e.date===tomorrowS&&e.type==='match';})){
+    h+='<div class="card" style="border-left:3px solid var(--blue);margin-bottom:12px"><div style="font-size:12px;color:var(--blue);font-weight:700;display:flex;align-items:center;gap:6px"><span class="flag" style="background:var(--gold-hot);color:var(--ink)">MD-1</span>明日は試合</div><div style="font-size:11px;color:var(--text-secondary);margin-top:3px">高重量・追い込みは避け、低ボリューム×高速度で切り上げよう。</div></div>';
+  }
 
   // 総ボリュームのリアルタイム表示（固定ヘッダー的に上部に）
   h+='<div id="tr-total-box" class="card" style="margin-bottom:12px;background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary));text-align:center;padding:14px"></div>';
-  // 休憩タイマー（3分カウントダウン）
-  h+='<div class="card" style="margin-bottom:12px;padding:12px 14px"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:var(--text-secondary)">⏱ 休憩</span><span id="rest-timer-disp" style="font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--blue)">3:00</span></div><div style="display:flex;gap:5px;align-items:center"><button class="btn btn-sm" onclick="adjustRestTimer(-30)">−30s</button><button class="btn btn-sm" onclick="adjustRestTimer(30)">+30s</button><button class="btn btn-sm btn-p" id="rest-timer-btn" onclick="toggleRestTimer()">▶ スタート</button><button class="btn btn-sm" onclick="resetRestTimer()">↺</button></div></div></div>';
+  // 休憩タイマー（3分カウントダウン・stickyバー=スクロールしても常に見える）
+  h+='<div id="rest-timer-bar" class="card rt-bar" style="margin-bottom:12px;padding:10px 14px"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'+
+    '<div style="display:flex;align-items:center;gap:10px">'+
+      '<div id="rest-timer-ring" style="flex:none;width:36px;height:36px;border-radius:50%;background:conic-gradient(var(--blue) 100%,var(--bg-tertiary) 0);display:flex;align-items:center;justify-content:center"><div style="width:27px;height:27px;border-radius:50%;background:var(--bg-primary);display:flex;align-items:center;justify-content:center">'+ic('i-timer',15,'var(--maroon)')+'</div></div>'+
+      '<div><div id="rest-timer-label" class="kicker" style="font-size:9px;margin-bottom:1px">TIME OFF・休憩</div><span id="rest-timer-disp" style="font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--blue);line-height:1">3:00</span></div>'+
+    '</div>'+
+    '<div style="display:flex;gap:5px;align-items:center">'+
+      '<button class="btn btn-sm" onclick="adjustRestTimer(-30)">−30s</button>'+
+      '<button class="btn btn-sm" onclick="adjustRestTimer(30)">+30s</button>'+
+      '<button class="btn btn-sm btn-p" id="rest-timer-btn" onclick="toggleRestTimer()">'+ic('i-play',11)+' スタート</button>'+
+      '<button class="btn btn-sm" onclick="resetRestTimer()" aria-label="タイマーをリセット">'+ic('i-undo',13)+'</button>'+
+    '</div>'+
+  '</div></div>';
 
   _curTLog.results.forEach(function(r,ri){
     var wk=isWeakEx(r);
-    h+='<div class="card" style="margin-bottom:10px;'+(r.skipped?'opacity:.7;':'')+(wk?'border-left:3px solid var(--amber);box-shadow:0 0 14px rgba(251,191,36,.16);':'')+'" id="tr-ex-card-'+ri+'">';
-    h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="font-weight:700;font-size:15px">'+escapeHtml(r.exName)+(wk?' <span class="bd bd-a" style="font-size:9px;padding:2px 7px">🎯 弱点</span>':'')+'</div>'+
+    h+='<div class="card" style="margin-bottom:10px;'+(r.skipped?'opacity:.7;':'')+(wk?'border-left:3px solid var(--maroon-vivid);box-shadow:0 0 14px rgba(141,0,0,.14);':'')+'" id="tr-ex-card-'+ri+'">';
+    h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="font-weight:700;font-size:15px">'+escapeHtml(r.exName)+(wk?' <span class="flag" style="background:var(--maroon-vivid);color:#fff">FOCUS</span>':'')+'</div>'+
       '<label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary);cursor:pointer"><input type="checkbox" '+(r.skipped?'checked':'')+' onchange="toggleSkip('+ri+',this.checked)">できなかった</label></div>';
     h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+
       '<span style="display:inline-flex;flex-direction:column;align-items:center;background:var(--bg-tertiary);border-radius:8px;padding:5px 12px;min-width:52px"><span style="font-size:9px;color:var(--text-secondary)">セット</span><span style="font-size:17px;font-weight:800;line-height:1.1">'+(r.targetSets||'-')+'</span></span>'+
@@ -3549,8 +3592,8 @@ function renderTrainingExec(mn){
   h+='<button class="btn btn-p" style="width:100%;margin-top:8px" onclick="finishTraining(this)">✓ トレーニングを記録</button>';
   h+='<button class="btn" style="width:100%;margin-top:8px" onclick="go(\'training\')">キャンセル</button>';
   showSub(h);
-  // 初回のリアルタイム表示を反映＋タイマー表示初期化
-  setTimeout(function(){refreshTrainingLive();if(!_restTimer.running){updateRestTimerDisplay();updateRestTimerBtn();}},30);
+  // 初回のリアルタイム表示を反映＋タイマー表示初期化（稼働中の再描画でも現在状態を復元する）
+  setTimeout(function(){refreshTrainingLive();updateRestTimerDisplay();updateRestTimerBtn();},30);
 }
 function setTrCompare(mode){window._trCompareMode=mode;var mn=getMyMenus().find(function(x){return idEq(x.id,_curTLog.menuId);});renderTrainingExec(mn);}
 
@@ -3583,6 +3626,8 @@ function getCompareVolume(pid,exName,beforeDate,mode){
 // リアルタイム再計算＆表示更新
 function refreshTrainingLive(){
   if(!_curTLog)return;
+  // 前回超え演出の状態（トレーニングセッション単位でリセット）
+  if(window._trBeatFor!==_curTLog.id){window._trBeatFor=_curTLog.id;window._trBeatDone={};window._trBeatTimer={};}
   var compareMode=window._trCompareMode||'prev';
   var totalVol=0,totalPrev=0;
   _curTLog.results.forEach(function(r,ri){
@@ -3620,14 +3665,31 @@ function refreshTrainingLive(){
         if(exVol===0){
           html='<div style="font-size:12px;color:var(--text-secondary);padding:8px;background:var(--bg-primary);border-radius:6px">'+(compareMode==='week'?'先週':'前回')+': '+prevVol.toLocaleString()+'kg</div>';
         }else if(diff>=0){
-          html='<div style="font-size:12px;padding:8px;background:rgba(52,211,153,.12);border-radius:6px;color:var(--green);font-weight:600">今 '+exVol.toLocaleString()+'kg ／ '+(compareMode==='week'?'先週':'前回')+' '+prevVol.toLocaleString()+'kg ・ ▲'+diff.toLocaleString()+'kg 超え！</div>';
+          html='<div style="font-size:12px;padding:8px;background:var(--green-bg);border-radius:6px;color:var(--green);font-weight:600">今 '+exVol.toLocaleString()+'kg ／ '+(compareMode==='week'?'先週':'前回')+' '+prevVol.toLocaleString()+'kg ・ '+ic('i-up',10)+diff.toLocaleString()+'kg 超え！</div>';
         }else{
-          html='<div style="font-size:12px;padding:8px;background:rgba(248,113,113,.10);border-radius:6px;color:var(--text-primary)">今 '+exVol.toLocaleString()+'kg ／ '+(compareMode==='week'?'先週':'前回')+' '+prevVol.toLocaleString()+'kg ・ <span style="color:var(--red);font-weight:600">あと'+Math.abs(diff).toLocaleString()+'kgで超え</span></div>';
+          html='<div style="font-size:12px;padding:8px;background:var(--red-bg);border-radius:6px;color:var(--text-primary)">今 '+exVol.toLocaleString()+'kg ／ '+(compareMode==='week'?'先週':'前回')+' '+prevVol.toLocaleString()+'kg ・ <span style="color:var(--red);font-weight:600">あと'+Math.abs(diff).toLocaleString()+'kgで超え</span></div>';
         }
       }else if(exVol>0){
         html='<div style="font-size:12px;color:var(--text-secondary);padding:8px;background:var(--bg-primary);border-radius:6px">今 '+exVol.toLocaleString()+'kg（'+(compareMode==='week'?'先週':'前回')+'の記録なし）</div>';
       }
       exEl.innerHTML=html;
+      // 前回超えの瞬間を種目単位1回だけ祝う（300msデバウンス=桁打ちかけ中の誤発火防止）
+      var beat=prevVol>0&&exVol>prevVol;
+      if(beat&&!window._trBeatDone[ri]){
+        clearTimeout(window._trBeatTimer[ri]);
+        window._trBeatTimer[ri]=setTimeout(function(){
+          if(!_curTLog||window._trBeatDone[ri])return;
+          var r2=_curTLog.results[ri];if(!r2||r2.skipped)return;
+          // 300ms後も超えたままかを再計算して確定
+          var v2=(r2.sets||[]).reduce(function(s,st){return s+((parseFloat(st.weight)||0)*(parseInt(st.reps)||0));},0);
+          var c2=getCompareVolume(myPid,r2.exName,_curTLog.date,window._trCompareMode||'prev');
+          var p2=c2?c2.vol:0;
+          if(!(p2>0&&v2>p2))return;
+          window._trBeatDone[ri]=true;
+          var el2=document.getElementById('tr-ex-vol-'+ri);
+          if(el2&&el2.classList){el2.classList.remove('vol-beat');void el2.offsetWidth;el2.classList.add('vol-beat');setTimeout(function(){if(el2.classList)el2.classList.remove('vol-beat');},700);}
+        },300);
+      }
     }
   });
   // 総ボリューム表示
@@ -3637,7 +3699,7 @@ function refreshTrainingLive(){
     var sub='';
     if(totalPrev>0){
       if(totalVol===0)sub='<div style="font-size:12px;color:var(--text-secondary);margin-top:3px">'+(compareMode==='week'?'先週':'前回')+'計 '+totalPrev.toLocaleString()+'kg</div>';
-      else if(tdiff>=0)sub='<div style="font-size:12px;color:var(--green);font-weight:600;margin-top:3px">'+(compareMode==='week'?'先週':'前回')+'計 '+totalPrev.toLocaleString()+'kg ・ ▲'+tdiff.toLocaleString()+'kg 超え！</div>';
+      else if(tdiff>=0)sub='<div style="font-size:12px;color:var(--green);font-weight:600;margin-top:3px">'+(compareMode==='week'?'先週':'前回')+'計 '+totalPrev.toLocaleString()+'kg ・ '+ic('i-up',10)+tdiff.toLocaleString()+'kg 超え！</div>';
       else sub='<div style="font-size:12px;color:var(--text-primary);margin-top:3px">'+(compareMode==='week'?'先週':'前回')+'計 '+totalPrev.toLocaleString()+'kg ・ <span style="color:var(--red);font-weight:600">あと'+Math.abs(tdiff).toLocaleString()+'kg</span></div>';
     }
     box.innerHTML='<div style="font-size:11px;color:var(--text-secondary)">総ボリューム</div><div style="font-size:30px;font-weight:800;color:var(--blue);line-height:1.1">'+totalVol.toLocaleString()+'<span style="font-size:13px;color:var(--text-secondary)"> kg</span></div>'+sub;
@@ -3662,16 +3724,33 @@ function trStepBlock(label,fn,inputId,ri,si,field,val,placeholder){
   return '<div style="flex:1;background:var(--bg-secondary);border-radius:10px;padding:6px 6px 7px;min-width:0">'+
     '<div style="font-size:10px;color:var(--text-secondary);text-align:center;margin-bottom:4px">'+label+'</div>'+
     '<div style="display:flex;align-items:center;gap:5px">'+
-      '<button class="btn" style="width:40px;height:40px;padding:0;font-size:20px;font-weight:700;flex:none" onclick="'+fn+'('+ri+','+si+',-1)">−</button>'+
-      '<input id="'+inputId+'" class="ipt" type="number" inputmode="numeric" style="flex:1;text-align:center;padding:8px 2px;font-size:17px;font-weight:700;min-width:0" value="'+val+'" placeholder="'+placeholder+'" oninput="updTSet('+ri+','+si+',\''+field+'\',this.value)">'+
-      '<button class="btn" style="width:40px;height:40px;padding:0;font-size:20px;font-weight:700;flex:none" onclick="'+fn+'('+ri+','+si+',1)">＋</button>'+
+      '<button class="btn" style="width:40px;height:44px;padding:0;font-size:20px;font-weight:700;flex:none" onclick="'+fn+'('+ri+','+si+',-1)">−</button>'+
+      '<input id="'+inputId+'" class="ipt" type="number" inputmode="numeric" style="flex:1;text-align:center;padding:8px 2px;font-size:17px;font-weight:700;min-width:34px" value="'+val+'" placeholder="'+placeholder+'" oninput="updTSet('+ri+','+si+',\''+field+'\',this.value)">'+
+      '<button class="btn" style="width:40px;height:44px;padding:0;font-size:20px;font-weight:700;flex:none" onclick="'+fn+'('+ri+','+si+',1)">＋</button>'+
     '</div>'+
   '</div>';
 }
 
-// ===== 休憩タイマー（3分カウントダウン）=====
-var _restTimer={interval:null,seconds:180,running:false,done:false};
+// ===== 休憩タイマー（3分カウントダウン・stickyバー）=====
+var _restTimer={interval:null,seconds:180,running:false,done:false,total:180,audio:null};
 var REST_DEFAULT=180; // 3分
+// 終了ビープ。AudioContextは開始タップ時に生成したものを使う（自動再生ブロック回避）
+function _rtBeep(){
+  var ctx=_restTimer.audio;if(!ctx)return;
+  try{
+    if(ctx.state==='suspended')ctx.resume();
+    [0,0.22].forEach(function(t0){
+      var o=ctx.createOscillator(),g=ctx.createGain();
+      o.type='sine';o.frequency.value=880;
+      var t=ctx.currentTime+t0;
+      g.gain.setValueAtTime(0.0001,t);
+      g.gain.exponentialRampToValueAtTime(0.22,t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+0.16);
+      o.connect(g);g.connect(ctx.destination);
+      o.start(t);o.stop(t+0.18);
+    });
+  }catch(e){}
+}
 function toggleRestTimer(){
   if(_restTimer.running){
     clearInterval(_restTimer.interval);
@@ -3679,6 +3758,8 @@ function toggleRestTimer(){
   }else{
     // 開始（残り時間が0以下ならリセット）
     if(_restTimer.seconds<=0){_restTimer.seconds=REST_DEFAULT;_restTimer.done=false;}
+    _restTimer.total=Math.max(_restTimer.seconds,1); // リング進捗の分母
+    if(!_restTimer.audio){try{_restTimer.audio=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
     _restTimer.running=true;
     updateRestTimerDisplay();
     _restTimer.interval=setInterval(function(){
@@ -3687,10 +3768,11 @@ function toggleRestTimer(){
         _restTimer.seconds=0;_restTimer.running=false;_restTimer.done=true;
         clearInterval(_restTimer.interval);
         updateRestTimerDisplay();updateRestTimerBtn();
-        // 通知（バイブ＋アラート）
+        // 通知: バイブ＋短ビープ＋バー3回フラッシュ（background/opacityのみ）
         if(navigator&&navigator.vibrate)try{navigator.vibrate([200,100,200]);}catch(e){}
-        var disp=document.getElementById('rest-timer-disp');
-        if(disp){disp.textContent='完了!';disp.style.color='var(--green)';}
+        _rtBeep();
+        var bar=document.getElementById('rest-timer-bar');
+        if(bar&&bar.classList){bar.classList.remove('rt-flash');void bar.offsetWidth;bar.classList.add('rt-flash');setTimeout(function(){if(bar.classList)bar.classList.remove('rt-flash');},1600);}
         return;
       }
       updateRestTimerDisplay();
@@ -3700,27 +3782,42 @@ function toggleRestTimer(){
 }
 function resetRestTimer(){
   clearInterval(_restTimer.interval);
-  _restTimer.seconds=REST_DEFAULT;_restTimer.running=false;_restTimer.done=false;
+  _restTimer.seconds=REST_DEFAULT;_restTimer.total=REST_DEFAULT;_restTimer.running=false;_restTimer.done=false;
   updateRestTimerDisplay();updateRestTimerBtn();
 }
 function adjustRestTimer(delta){
   _restTimer.seconds=Math.max(0,_restTimer.seconds+delta);
   _restTimer.done=false;
+  if(_restTimer.seconds>_restTimer.total)_restTimer.total=_restTimer.seconds;
   updateRestTimerDisplay();
 }
 function updateRestTimerDisplay(){
   var el=document.getElementById('rest-timer-disp');
+  var lab=document.getElementById('rest-timer-label');
+  var ring=document.getElementById('rest-timer-ring');
   if(el){
-    if(_restTimer.done){el.textContent='完了!';el.style.color='var(--green)';return;}
-    var m=Math.floor(_restTimer.seconds/60),s=_restTimer.seconds%60;
-    el.textContent=m+':'+String(s).padStart(2,'0');
-    // 残り30秒で赤、それ以外は青
-    el.style.color=_restTimer.seconds<=30?'var(--red)':'var(--blue)';
+    if(_restTimer.done){
+      el.textContent='TIME ON';el.style.color='var(--green)';
+      if(el.classList)el.classList.remove('rt-pulse');
+    }else{
+      var m=Math.floor(_restTimer.seconds/60),s=_restTimer.seconds%60;
+      el.textContent=m+':'+String(s).padStart(2,'0');
+      // 残り30秒で赤、それ以外は青
+      el.style.color=_restTimer.seconds<=30?'var(--red)':'var(--blue)';
+      // 残り5秒はパルス（動作中のみ）
+      if(el.classList){if(_restTimer.running&&_restTimer.seconds<=5)el.classList.add('rt-pulse');else el.classList.remove('rt-pulse');}
+    }
+  }
+  if(lab)lab.textContent=_restTimer.done?'TIME ON — 次のセットへ':'TIME OFF・休憩';
+  if(ring){
+    var col=_restTimer.done?'var(--green)':(_restTimer.seconds<=30?'var(--red)':'var(--blue)');
+    var pct=_restTimer.done?100:Math.max(0,Math.min(100,Math.round(_restTimer.seconds/(_restTimer.total||REST_DEFAULT)*100)));
+    ring.style.background='conic-gradient('+col+' '+pct+'%,var(--bg-tertiary) 0)';
   }
 }
 function updateRestTimerBtn(){
   var btn=document.getElementById('rest-timer-btn');
-  if(btn)btn.textContent=_restTimer.running?'⏸ 一時停止':(_restTimer.seconds<=0||_restTimer.done?'▶ もう一度':(_restTimer.seconds<REST_DEFAULT?'▶ 再開':'▶ スタート'));
+  if(btn)btn.innerHTML=_restTimer.running?ic('i-pause',11)+' 一時停止':(_restTimer.seconds<=0||_restTimer.done?ic('i-play',11)+' もう一度':(_restTimer.seconds<REST_DEFAULT?ic('i-play',11)+' 再開':ic('i-play',11)+' スタート'));
 }
 
 // その種目の先週ボリューム（7日前〜実施直前の最新の同種目記録）
@@ -3863,41 +3960,46 @@ function finishTraining(btnEl){
   });
 }
 function showTrainingResult(log,alerts,injurySkips,e1rmRecorded){
-  var h='<div style="font-size:20px;font-weight:800;margin:8px 0 4px;text-align:center">✓ 記録完了</div>';
-  h+='<div style="text-align:center;margin-bottom:18px"><div style="font-size:32px;font-weight:800;color:var(--blue)">'+log.totalVolume.toLocaleString()+'<span style="font-size:14px;color:var(--text-secondary)"> kg</span></div><div style="font-size:12px;color:var(--text-secondary)">総ボリューム</div></div>';
+  // FULL TIMEスタットシート（maroonヒーロー帯+ghost数字。保存フローは呼び出し元で完了済み＝ここは表示のみ）
+  var h='<div class="hero"><div class="ghost-num">'+log.totalVolume.toLocaleString()+'</div>'+
+    '<div class="kicker" style="color:var(--rose-l)">FULL TIME</div>'+
+    '<div style="font-size:30px;font-weight:900;font-family:var(--font-num);font-style:italic;line-height:1.15">'+log.totalVolume.toLocaleString()+'<span style="font-size:13px;font-weight:700"> kg</span></div>'+
+    '<div style="font-size:11px;opacity:.85">'+ic('i-check',12)+' 総ボリューム・記録完了</div>'+
+  '</div>';
 
-  // 種目ごとの前回比
+  // 種目ごとの前回比（罫線テーブル=マッチスタッツ様式）
   var cmpLabel=(window._trCompareMode==='week')?'先週比':'前回比';
-  h+='<div style="font-size:13px;font-weight:700;margin-bottom:8px">種目別ボリューム（'+cmpLabel+'）</div>';
+  h+='<div class="card" style="margin-bottom:12px;padding:6px 14px 10px"><div class="kicker" style="margin:8px 0 1px">MATCH STATS</div><div style="font-size:12px;font-weight:700;margin-bottom:4px">種目別ボリューム（'+cmpLabel+'）</div>';
   log.results.forEach(function(r){
     if(r.skipped){
-      h+='<div class="card" style="margin-bottom:6px;padding:10px 12px;opacity:.7"><div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:600">'+escapeHtml(r.exName)+'</span><span class="bd '+(r.skipReason==='痛み・怪我'?'bd-r':'bd-n')+'" style="font-size:10px">'+escapeHtml(r.skipReason||'スキップ')+'</span></div></div>';
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--border-tertiary);opacity:.65"><span style="font-size:13px;font-weight:600">'+escapeHtml(r.exName)+'</span><span class="bd '+(r.skipReason==='痛み・怪我'?'bd-r':'bd-n')+'" style="font-size:10px">'+escapeHtml(r.skipReason||'スキップ')+'</span></div>';
       return;
     }
     var diff=r.lastVolume>0?r.volume-r.lastVolume:null;
     var diffStr='';
     if(diff!==null){
-      if(diff>0)diffStr='<span style="color:var(--green);font-weight:700">▲'+diff.toLocaleString()+'kg</span>';
-      else if(diff<0)diffStr='<span style="color:var(--red);font-weight:700">▼'+Math.abs(diff).toLocaleString()+'kg</span>';
+      if(diff>0)diffStr='<span style="color:var(--green);font-weight:700">'+ic('i-up',10)+diff.toLocaleString()+'kg</span>';
+      else if(diff<0)diffStr='<span style="color:var(--red);font-weight:700">'+ic('i-down',10)+Math.abs(diff).toLocaleString()+'kg</span>';
       else diffStr='<span style="color:var(--text-secondary)">±0</span>';
     }else{diffStr='<span style="color:var(--text-secondary);font-size:11px">初回</span>';}
-    h+='<div class="card" style="margin-bottom:6px;padding:10px 12px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;font-weight:600">'+escapeHtml(r.exName)+'</span><span style="font-size:13px">'+r.volume.toLocaleString()+'kg '+diffStr+'</span></div></div>';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--border-tertiary)"><span style="font-size:13px;font-weight:600">'+escapeHtml(r.exName)+'</span><span style="font-size:13px;font-variant-numeric:tabular-nums">'+r.volume.toLocaleString()+'kg '+diffStr+'</span></div>';
   });
+  h+='</div>';
 
   // アラート
   if(alerts.length){
-    h+='<div class="card" style="border-left:3px solid var(--amber);margin-top:12px"><div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:6px">⚠️ チェック</div>';
+    h+='<div class="card" style="border-left:3px solid var(--amber);margin-top:12px"><div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:6px;display:flex;align-items:center;gap:6px">'+ic('i-warn',14,'var(--amber)')+' チェック</div>';
     alerts.forEach(function(a){h+='<div style="font-size:11px;color:var(--text-secondary);padding:2px 0">'+escapeHtml(a.msg)+'</div>';});
     h+='</div>';
   }
   // 怪我スキップ通知
   if(injurySkips.length){
-    h+='<div class="card" style="border-left:3px solid var(--red);margin-top:12px"><div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:4px">🏥 痛み・怪我でできなかった種目</div><div style="font-size:11px;color:var(--text-secondary)">'+injurySkips.map(escapeHtml).join('、')+'<br>スタッフに共有されました。メニューの見直しを相談しましょう。</div></div>';
+    h+='<div class="card" style="border-left:3px solid var(--red);margin-top:12px"><div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:4px;display:flex;align-items:center;gap:6px">'+ic('i-bandage',14,'var(--red)')+' 痛み・怪我でできなかった種目</div><div style="font-size:11px;color:var(--text-secondary)">'+injurySkips.map(escapeHtml).join('、')+'<br>スタッフに共有されました。メニューの見直しを相談しましょう。</div></div>';
   }
 
   // 推定1RM（自動記録された場合のみ通知）
   if(e1rmRecorded&&Object.keys(e1rmRecorded).length){
-    h+='<div class="card" style="border-left:3px solid var(--blue);margin-top:12px"><div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:6px">📈 推定1RMを更新しました</div>';
+    h+='<div class="card" style="border-left:3px solid var(--blue);margin-top:12px"><div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:6px;display:flex;align-items:center;gap:6px">'+ic('i-trend-up',14,'var(--blue)')+' 推定1RMを更新しました</div>';
     Object.keys(e1rmRecorded).forEach(function(k){
       var label=(EST_BASES.find(function(b){return b.k===k;})||{}).label||k;
       h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">'+label+': 推定 <b style="color:var(--blue)">'+e1rmRecorded[k].e1rm+'kg</b></div>';
@@ -3907,6 +4009,8 @@ function showTrainingResult(log,alerts,injurySkips,e1rmRecorded){
 
   h+='<button class="btn btn-p" style="width:100%;margin-top:16px" onclick="go(\'training\')">完了</button>';
   showSub(h);
+  // 推定1RM更新時はPB!フラッシュ（サブ画面の入場スライド後に出す）
+  if(e1rmRecorded&&Object.keys(e1rmRecorded).length)setTimeout(function(){pbFlash('推定1RM 自己ベスト更新！');},350);
 }
 
 // トレーニング履歴・グラフ
@@ -3956,8 +4060,9 @@ function drawTrainingCharts(logs){
   var e=document.getElementById('tvol-chart');
   if(e){
     var ctx=e.getContext('2d');
-    var g=ctx.createLinearGradient(0,0,0,200);g.addColorStop(0,'rgba(59,130,246,0.3)');g.addColorStop(1,'rgba(59,130,246,0)');
-    new Chart(e,{type:'line',data:{labels:asc.map(function(l){return l.date.slice(5);}),datasets:[{label:'総ボリューム',data:asc.map(function(l){return l.totalVolume||0;}),borderColor:'#3B82F6',backgroundColor:g,borderWidth:3,fill:true,tension:.4,pointBackgroundColor:'#1E3251',pointBorderColor:'#3B82F6',pointBorderWidth:2,pointRadius:4,pointHoverRadius:7}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(15,27,45,0.96)',padding:12,cornerRadius:10,callbacks:{label:function(c){return c.parsed.y.toLocaleString()+' kg';}}}},scales:{y:{grid:{color:'rgba(159,176,200,0.12)'},ticks:{color:'#9FB0C8',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#9FB0C8',font:{size:11}}}}}});
+    var g=ctx.createLinearGradient(0,0,0,200);g.addColorStop(0,'rgba(141,0,0,0.22)');g.addColorStop(1,'rgba(141,0,0,0)');
+    dC('tvol');
+    charts.tvol=new Chart(e,{type:'line',data:{labels:asc.map(function(l){return l.date.slice(5);}),datasets:[{label:'総ボリューム',data:asc.map(function(l){return l.totalVolume||0;}),borderColor:'#8d0000',backgroundColor:g,borderWidth:3,fill:true,tension:.4,pointBackgroundColor:'#fff',pointBorderColor:'#8d0000',pointBorderWidth:2,pointRadius:4,pointHoverRadius:7}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(42,10,12,0.96)',padding:12,cornerRadius:10,callbacks:{label:function(c){return c.parsed.y.toLocaleString()+' kg';}}}},scales:{y:{grid:{color:'rgba(60,10,12,0.08)'},ticks:{color:'#6E5A5C',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#6E5A5C',font:{size:11}}}}}});
   }
   var ee=document.getElementById('tex-chart');
   if(ee&&window._trHistEx){
@@ -3968,8 +4073,9 @@ function drawTrainingCharts(logs){
       if(r&&r.sets){var vol=r.sets.reduce(function(s,x){return s+((parseFloat(x.weight)||0)*(parseInt(x.reps)||0));},0);exData.push({date:l.date.slice(5),vol:vol});}
     });
     var ctx2=ee.getContext('2d');
-    var g2=ctx2.createLinearGradient(0,0,0,180);g2.addColorStop(0,'rgba(52,211,153,0.3)');g2.addColorStop(1,'rgba(52,211,153,0)');
-    new Chart(ee,{type:'line',data:{labels:exData.map(function(d){return d.date;}),datasets:[{label:exName,data:exData.map(function(d){return d.vol;}),borderColor:'#34D399',backgroundColor:g2,borderWidth:3,fill:true,tension:.4,pointBackgroundColor:'#1E3251',pointBorderColor:'#34D399',pointBorderWidth:2,pointRadius:4,pointHoverRadius:7}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(15,27,45,0.96)',padding:12,cornerRadius:10,callbacks:{label:function(c){return c.parsed.y.toLocaleString()+' kg';}}}},scales:{y:{grid:{color:'rgba(159,176,200,0.12)'},ticks:{color:'#9FB0C8',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#9FB0C8',font:{size:11}}}}}});
+    var g2=ctx2.createLinearGradient(0,0,0,180);g2.addColorStop(0,'rgba(4,108,72,0.22)');g2.addColorStop(1,'rgba(4,108,72,0)');
+    dC('tex');
+    charts.tex=new Chart(ee,{type:'line',data:{labels:exData.map(function(d){return d.date;}),datasets:[{label:exName,data:exData.map(function(d){return d.vol;}),borderColor:'#046C48',backgroundColor:g2,borderWidth:3,fill:true,tension:.4,pointBackgroundColor:'#fff',pointBorderColor:'#046C48',pointBorderWidth:2,pointRadius:4,pointHoverRadius:7}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(42,10,12,0.96)',padding:12,cornerRadius:10,callbacks:{label:function(c){return c.parsed.y.toLocaleString()+' kg';}}}},scales:{y:{grid:{color:'rgba(60,10,12,0.08)'},ticks:{color:'#6E5A5C',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#6E5A5C',font:{size:11}}}}}});
   }
 }
 // 推定1RMの伸び（最初と最新を比較）

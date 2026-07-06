@@ -30,10 +30,10 @@ renderTrainingExec({name:'テストメニュー',exercises:[]});
 var h=document.getElementById('main').innerHTML;
 
 ok('メニュー名表示',has(h,'テストメニュー'));
-// 弱点バッジ数（本体+処方箋の2件のみ）
-var badgeCount=(h.match(/🎯 弱点/g)||[]).length;
-ok('弱点バッジは2件（本体+処方箋）',badgeCount===2);
-ok('amberの強調枠あり',has(h,'border-left:3px solid var(--amber);box-shadow:0 0 14px rgba(251,191,36,.16);'));
+// 弱点=FOCUSバッジ数（本体+処方箋の2件のみ）
+var badgeCount=(h.match(/>FOCUS</g)||[]).length;
+ok('FOCUSバッジは2件（本体+処方箋）',badgeCount===2);
+ok('maroonの強調枠あり',has(h,'border-left:3px solid var(--maroon-vivid);box-shadow:0 0 14px rgba(141,0,0,.14);'));
 
 // カードごとの区切りで検証（tr-ex-card-N。style属性はid属性より前に出るので開始タグ<div class="card"から取る）
 function cardHtml(idx){
@@ -43,12 +43,36 @@ function cardHtml(idx){
   var end=nextIdPos>=0?h.lastIndexOf('<div class="card"',nextIdPos):h.length;
   return h.substring(start,end);
 }
-ok('カード0(ベンチプレス)に弱点バッジ',has(cardHtml(0),'🎯 弱点'));
-ok('カード1(ダンベルプレス)に弱点バッジ',has(cardHtml(1),'🎯 弱点'));
-ok('カード2(スクワット)は弱点バッジなし',!has(cardHtml(2),'🎯 弱点'));
-ok('カード3(サイドプランク)は弱点バッジなし',!has(cardHtml(3),'🎯 弱点'));
-ok('カード2(スクワット)はamber枠なし',!has(cardHtml(2),'border-left:3px solid var(--amber)'));
+ok('カード0(ベンチプレス)にFOCUSバッジ',has(cardHtml(0),'>FOCUS<'));
+ok('カード1(ダンベルプレス)にFOCUSバッジ',has(cardHtml(1),'>FOCUS<'));
+ok('カード2(スクワット)はFOCUSバッジなし',!has(cardHtml(2),'>FOCUS<'));
+ok('カード3(サイドプランク)はFOCUSバッジなし',!has(cardHtml(3),'>FOCUS<'));
+ok('カード2(スクワット)はmaroon枠なし',!has(cardHtml(2),'border-left:3px solid var(--maroon-vivid)'));
 ok('スキップ中のカード3はopacity維持',has(cardHtml(3),'opacity:.7'));
+
+print('--- P7: stickyタイマーバー ---');
+ok('stickyバー(rt-bar)あり',has(h,'id="rest-timer-bar"')&&has(h,'class="card rt-bar"'));
+ok('rest-timer-disp維持',has(h,'id="rest-timer-disp"'));
+ok('rest-timer-btn維持',has(h,'id="rest-timer-btn"'));
+ok('リング要素あり',has(h,'id="rest-timer-ring"'));
+ok('TIME OFF語彙',has(h,'TIME OFF・休憩'));
+ok('▶/⏱絵文字が消えic()化',!has(h,'▶ スタート')&&!has(h,'⏱')&&has(h,'#i-play')&&has(h,'#i-timer'));
+
+print('--- P7: 44px縦のみ ---');
+ok('±ボタンはwidth:40px維持+height:44px',has(h,'width:40px;height:44px')&&!has(h,'width:40px;height:40px'));
+ok('ステッパー入力はmin-width:34px',has(h,'min-width:34px'));
+
+print('--- P7: MD-1テーパーヒント ---');
+ok('試合予定なしではMD-1ヒントなし',!has(h,'>MD-1<'));
+var tomorrowS=toDateStr(new Date(new Date(todayStr()).getTime()+86400000));
+D.cal=[{id:1,date:tomorrowS,type:'match',title:'テストマッチ'}];
+renderTrainingExec({name:'テストメニュー',exercises:[]});
+var h2=document.getElementById('main').innerHTML;
+ok('明日試合ならMD-1ヒント表示',has(h2,'>MD-1<')&&has(h2,'低ボリューム×高速度'));
+D.cal=[{id:1,date:tomorrowS,type:'weight',title:'ウエイト'}];
+renderTrainingExec({name:'テストメニュー',exercises:[]});
+ok('明日ウエイトではMD-1ヒントなし',!has(document.getElementById('main').innerHTML,'>MD-1<'));
+D.cal=[];
 
 print(__fail===0?'ALL TRAIN-WEAK TESTS PASSED':'FAILED: '+__fail+' test(s)');
 if(__fail>0)throw new Error('train-weak tests failed');
