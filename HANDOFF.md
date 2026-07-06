@@ -7,13 +7,14 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-06（**FUKUDAI RED実装中**: P0〜P6完了。P7（トレーニング系）に着手するところ。ここまで3コミットでローカル保存済み・**未push**）
+- 日時: 2026-07-06（**FUKUDAI RED実装中**: P0〜P7完了。P8（サブ画面A）に着手するところ。ここまで4コミットでローカル保存済み・**未push**）
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
-- **🚧🚧🚧 全面デザインリニューアル「FUKUDAI RED」実装中。再開ポイント=P7（トレーニング系。計画書P7節に確定仕様）。計画書: `/Users/nakayamarinnin/.claude/plans/1-encapsulated-wand.md`（v3最終版・実装の唯一の契約・必読）。**
-  - **進捗**: P0✅（全9テストPASS+エンジン3ファイルdiff一致記録）→ P1✅基盤 → P2✅クローム → P3✅ホーム → P4✅マイフィジカル詳細 → P5✅ランキング → **P6✅コンディション完了** → P7〜P9未・S1〜S6未・L1未。
-  - **コミット**: `d23ab85`（P1-P3）+`94d6abe`（P4-P5+P6前半）+`f476141`（P6完了）。**未push（pushはユーザー確認後）**。trainer/coachは無変更（毎回git statusで確認済み）。全playerテストPASS状態でコミットしてある。
+- **🚧🚧🚧 全面デザインリニューアル「FUKUDAI RED」実装中。再開ポイント=P8（サブ画面A。計画書P8節）。計画書: `/Users/nakayamarinnin/.claude/plans/1-encapsulated-wand.md`（v3最終版・実装の唯一の契約・必読）。**
+  - **進捗**: P0✅（全9テストPASS+エンジン3ファイルdiff一致記録）→ P1✅基盤 → P2✅クローム → P3✅ホーム → P4✅マイフィジカル詳細 → P5✅ランキング → P6✅コンディション → **P7✅トレーニング系完了** → P8〜P9未・S1〜S6未・L1未。
+  - **コミット**: `d23ab85`（P1-P3）+`94d6abe`（P4-P5+P6前半）+`f476141`（P6完了）+`71eed1d`（P7完了）。**未push（pushはユーザー確認後）**。trainer/coachは無変更（毎回git statusで確認済み）。全playerテストPASS状態でコミットしてある。
+  - **P7で実装済み（重複実装しないこと）**: stickyタイマーバー`#rest-timer-bar.rt-bar`（top:var(--hdr-h)/z-index:5・conic-gradientリング`#rest-timer-ring`・`#rest-timer-label`のTIME OFF/ON語彙・残30秒赤・残5秒`.rt-pulse`・終了=vibrate既存パターン+`_rtBeep()`（開始タップ時生成AudioContext）+バー`.rt-flash`3回・ids rest-timer-disp/btn維持・`updateRestTimerBtn`はinnerHTML+ic()化・再描画時も無条件で表示復元）・44px縦のみ（trStepBlock±40x44/入力min-width:34px/numStepHTML縦padding10/cond-toggle・rate5にmin-height:44px）・FOCUSバッジ（maroon-vividフラッグ+maroonストライプ。amber完全撤去）・`pbFlash(msg)`ヘルパー（fixed z-index:11・gold PB!フラッグ・自動退場。P8のPB系alert置換で使う）・FULL TIMEスタットシート（heroゴースト+MATCH STATS罫線テーブル+▲▼→i-up/down+e1rm更新時pbFlash発火）・MD-1テーパーヒント（明日D.cal試合）・前回超え演出（`window._trBeatDone/_trBeatTimer`・300msデバウンス・`.vol-beat`）・トレChart3本を`charts.ph/tvol/tex`登録+ライト色（maroon/緑・tooltip ink・ticks #6E5A5C）・refreshTrainingLiveの緑/赤地をvar(--green-bg)/var(--red-bg)化。test_train_weakにP7アサート14件追加済み・全PASS・実機確認済み（sticky座標・タイマー完走・beat演出・FULL TIME・PB!目視）。
   - **P6で実装済み（重複実装しないこと）**: `MOOD_EMO/STRESS_EMO/SORE_EMO`のic()化（STRESS=i-face逆順・SORE=i-pain・サイズ22明示）・`RATE5_LABELS`定数・`rate5HTML`のラベル併記+チェックマーク+aria-pressed（**ラベル併記時は下段lo/hiキャプションを省略**＝文言矛盾防止）・`setRate5`のmaroon選択色（inset影で2px級・レイアウトシフト回避）・`togglePartChip`のmaroon塗り+aria-pressed・`.part-chip`CSS（pale地）・rate5HTML6呼び出しに`RATE5_LABELS`配線済み・sRPE→「セッションロード(AU)」+注記「RPE×分」（updSrpe/updESrpe/過去記録行「◯ AU」/mypage最新コンディションの4箇所とも統一済み）・T.conditionヘッダーi-back/i-check-c化・ch-cf線色ライト濃色化（#c1121f/#1D4ED8/#046C48/#6D52D6）・test_cond.jsに極性6+updSrpe4+AU3アサート追加（全PASS・L26属性順アサート不変）。実機ブラウザ目視済み（選択状態・逆順極性・AU表記・チャート4色・修正フォームプリセットまで確認、コンソールエラー0）。※showEditConditionタイトルの絵文字「😴」はP9掃討スコープで残置。
   - **実装で確立した学び（計画書に無い追加知見・S/Lフェーズでも適用）**:
     - **ghost-num上書き事故**: `.hero>*{position:relative;z-index:1}`型の後勝ちルールが`.ghost-num{position:absolute}`を同スペシフィシティで上書きし、ghostが通常フローに落ちて親のoverflow:hiddenでコンテンツ全体を押し出す（実機で発生・修正済み）。**ghostを置く親の`>*`ルールは必ず`>:not(.ghost-num)`にする**（hero/myphys-card/rail-cardは対応済み。staffで新設するカードも同様に）。
