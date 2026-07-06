@@ -7,22 +7,14 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-06（**FUKUDAI RED実装中**: P0〜P5完了・P6前半まで実装。ユーザー指示「一旦ストップ」で中断。ここまで2コミットでローカル保存済み・**未push**）
+- 日時: 2026-07-06（**FUKUDAI RED実装中**: P0〜P6完了。P7（トレーニング系）に着手するところ。ここまで3コミットでローカル保存済み・**未push**）
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
-- **🚧🚧🚧 全面デザインリニューアル「FUKUDAI RED」実装中。再開ポイント=P6の残り（下記に具体的リスト）。計画書: `/Users/nakayamarinnin/.claude/plans/1-encapsulated-wand.md`（v3最終版・実装の唯一の契約・必読）。**
-  - **進捗**: P0✅（全9テストPASS+エンジン3ファイルdiff一致=8,210バイト記録）→ P1✅基盤 → P2✅クローム → P3✅ホーム → P4✅マイフィジカル詳細 → P5✅ランキング → **P6🚧前半のみ** → P7〜P9未・S1〜S6未・L1未。
-  - **コミット**: `d23ab85`（P1-P3）+`94d6abe`（P4-P5+P6前半）。**未push（pushはユーザー確認後）**。trainer/coachは無変更（毎回git statusで確認済み）。全playerテストPASS状態でコミットしてある。
-  - **P6の残作業（ここから再開）**:
-    1. `rate5HTML`呼び出し6箇所に第5引数を渡す: `cf-mood/cf-stress/cf-sore`（T.condition内 L≈1993-1995）と`ef-mood/ef-stress/ef-sore`（showEditCondition内 L≈2393-2395）に`RATE5_LABELS.mood/.stress/.sore`（定義済み）。
-    2. `updSrpe()`: sRPE表記→「セッションロード(AU)」+注記「RPE×分」（計画§4コンディション行）。
-    3. T.condition: ヘッダー「← マイページ」→`ic('i-back',14)+' マイページ'`・「✅ 本日入力済み」→`ic('i-check-c',14)`化。
-    4. 過去の記録行（L≈2007）の「sRPE:」表記→AU表記に統一。
-    5. ch-cfチャート線色（L≈2010: #E24B4A/#185FA5/#34D399/#A78BFA）→ライト濃色（#c1121f/#1D4ED8/#046C48/#6D52D6）。#34D399/#A78BFAは監査第2パターン対象。
-    6. `dev/test_cond.js`に極性アサート追加（例: MOOD_EMO[4]がi-face-5・STRESS_EMO[0]がi-face-5（逆順格納）・SORE_EMO[0]がi-pain-1）。**L26の属性順アサートは現状維持で通っている＝タグの属性順を崩さないこと**。
-    7. 検証レシピ（extract→jsc→全6テスト→エンジンdiff→previewroot同期→ブラウザ目視）。
-  - **P6で実装済み（重複実装しないこと）**: `MOOD_EMO/STRESS_EMO/SORE_EMO`のic()化（STRESS=i-face逆順・SORE=i-pain・サイズ22明示）・`RATE5_LABELS`定数・`rate5HTML`のラベル併記+チェックマーク+aria-pressed・`setRate5`のmaroon選択色（inset影で2px級・レイアウトシフト回避）・`togglePartChip`のmaroon塗り+aria-pressed・`.part-chip`CSS（pale地）。
+- **🚧🚧🚧 全面デザインリニューアル「FUKUDAI RED」実装中。再開ポイント=P7（トレーニング系。計画書P7節に確定仕様）。計画書: `/Users/nakayamarinnin/.claude/plans/1-encapsulated-wand.md`（v3最終版・実装の唯一の契約・必読）。**
+  - **進捗**: P0✅（全9テストPASS+エンジン3ファイルdiff一致記録）→ P1✅基盤 → P2✅クローム → P3✅ホーム → P4✅マイフィジカル詳細 → P5✅ランキング → **P6✅コンディション完了** → P7〜P9未・S1〜S6未・L1未。
+  - **コミット**: `d23ab85`（P1-P3）+`94d6abe`（P4-P5+P6前半）+`f476141`（P6完了）。**未push（pushはユーザー確認後）**。trainer/coachは無変更（毎回git statusで確認済み）。全playerテストPASS状態でコミットしてある。
+  - **P6で実装済み（重複実装しないこと）**: `MOOD_EMO/STRESS_EMO/SORE_EMO`のic()化（STRESS=i-face逆順・SORE=i-pain・サイズ22明示）・`RATE5_LABELS`定数・`rate5HTML`のラベル併記+チェックマーク+aria-pressed（**ラベル併記時は下段lo/hiキャプションを省略**＝文言矛盾防止）・`setRate5`のmaroon選択色（inset影で2px級・レイアウトシフト回避）・`togglePartChip`のmaroon塗り+aria-pressed・`.part-chip`CSS（pale地）・rate5HTML6呼び出しに`RATE5_LABELS`配線済み・sRPE→「セッションロード(AU)」+注記「RPE×分」（updSrpe/updESrpe/過去記録行「◯ AU」/mypage最新コンディションの4箇所とも統一済み）・T.conditionヘッダーi-back/i-check-c化・ch-cf線色ライト濃色化（#c1121f/#1D4ED8/#046C48/#6D52D6）・test_cond.jsに極性6+updSrpe4+AU3アサート追加（全PASS・L26属性順アサート不変）。実機ブラウザ目視済み（選択状態・逆順極性・AU表記・チャート4色・修正フォームプリセットまで確認、コンソールエラー0）。※showEditConditionタイトルの絵文字「😴」はP9掃討スコープで残置。
   - **実装で確立した学び（計画書に無い追加知見・S/Lフェーズでも適用）**:
     - **ghost-num上書き事故**: `.hero>*{position:relative;z-index:1}`型の後勝ちルールが`.ghost-num{position:absolute}`を同スペシフィシティで上書きし、ghostが通常フローに落ちて親のoverflow:hiddenでコンテンツ全体を押し出す（実機で発生・修正済み）。**ghostを置く親の`>*`ルールは必ず`>:not(.ghost-num)`にする**（hero/myphys-card/rail-cardは対応済み。staffで新設するカードも同様に）。
     - モーションutil実装済み（player）: `_armReveal`（MutationObserver・#main直下childList・素マーカー`.rv`のみarm・先頭8要素・offsetParentスキップ・IO+1.5s保険・`_RV_FORM_TABS={condition,physical,match}`ブラックリスト・訪問済みタブSet）。onSnapshotは`_lastRaw`生JSON比較でスキップ、`ld()`でプライミング済み。**S1でstaffへ複製時はsubView→`viewStack.length>0`に読み替え**。
@@ -30,10 +22,10 @@
     - 実装済みヘルパー（全てエンジンブロック外）: `ic(n,s,c)`（function宣言）・`darkenForLight(c)`・`liftDiffChip(pid,phField)`・`BIG3_CLUBS=[400,450,500]`・`POS_NUM`・`RATE5_LABELS`。スプライトは`<body>`直後67種（player/staffでid完全一致複製が鉄則）。
     - `glowCol()`はmaroon固定影に変更済みで**現在呼び出し箇所ゼロのはず**→P9掃討で関数ごと削除候補（grep確認してから）。
     - 本番`D.p`に「テスト選手」（CTB/1年・PIN 1129・削除可）が存在し、previewブラウザのlocalStorageで自動ログイン確認が出る。実機確認はこれ or メモリ注入（下記既存メモ参照）で。
-    - 今セッションのpreviewroot: `/private/tmp/claude-501/-Users-nakayamarinnin-Documents-rugby-manager/f41abcbb-fa92-4d3c-a45f-ffcc766ca84d/scratchpad/previewroot/`（**次セッションではセッションIDが変わるので`.claude/launch.json`の書き換え+再作成が必要**。手順は下方の「開発環境メモ」参照。編集のたびに`cp`同期を忘れない）。
+    - 今セッションのpreviewroot: `/private/tmp/claude-501/-Users-nakayamarinnin-Documents-rugby-manager/a2558ee6-f014-4593-886d-7088b7753a81/scratchpad/previewroot/`（**次セッションではセッションIDが変わるので`.claude/launch.json`の書き換え+再作成が必要**。手順は下方の「開発環境メモ」参照。編集のたびに`cp`同期を忘れない）。
   - **残フェーズの要点（詳細は計画書）**: P7トレーニング系（44px縦のみ・stickyタイマー`--hdr-h`・PB!フラッシュ・FULL TIME・Chart個別色L1670/3587/3599・test_train_weak L36/46-50）→P8サブ画面A（RTP7本ピッチ図・STARTING XV/FINISHER・PB系alert統一）→P9掃討（成功系alert22件→トースト・#best-banner削除・最終スキャン§2定義で残数0）→S1〜S6 staff→L1ランディング。
   - **⚠️実装時の絶対ルール（不変）**: 基準エンジンブロック編集禁止（新ヘルパーは必ずブロック外）・id/クラス名リネーム禁止（`loading-screen`含む）・staff基準設定の保存ボタンは押さない・pushはユーザー確認後・1ステップ=1検証（jsc+devテスト）・データは短いキー・保存はsvSafe/svSafeUpdate。
-  - **テスト更新状況**: test_dash✅（P3でi-target/i-warn化+トレ項目アサート5件追加済み）・test_mystatus✅（L59/64/71更新済み）・test_ranking✅（L33-34セマンティック化済み）・test_cond=極性アサート追加が残り・test_train_weak=P7で・test_staff_pdetail_std=S6で・test_coach_report_std=**触らない**。
+  - **テスト更新状況**: test_dash✅（P3でi-target/i-warn化+トレ項目アサート5件追加済み）・test_mystatus✅（L59/64/71更新済み）・test_ranking✅（L33-34セマンティック化済み）・test_cond✅（P6で極性・AUアサート追加済み）・test_train_weak=P7で・test_staff_pdetail_std=S6で・test_coach_report_std=**触らない**。
 - **✅✅✅✅ player大幅リニューアル＝9ステップ全完了・commit&push完了（2026-07-06、コミット`aa36550`）。** player/staff/coach/index.htmlとも実装・jscモック検証（esprimaで構文再確認）・実機ブラウザ確認・多角レビューまで完了。`dev/`配下のjscモック検証スクリプト一式もテスト資産としてリポジトリに追加。`.claude/launch.json`と`.DS_Store`は`.gitignore`へ追加して追跡対象外に。**このタスクは完全に完了。**
   - **今回やったこと（ステップ⑧の残り＋⑨）**:
     1. `dev/test_coach_report_std.js`新設。`renderStdBadgesCoach`（BIG3ランクバッジ・体重帯）と`renderPlayerReport`のコンディション拡張（mood/stress/soreness平均）をjscモックで検証＝**27アサート全パス**。
