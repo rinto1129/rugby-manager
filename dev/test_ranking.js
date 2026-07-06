@@ -30,8 +30,9 @@ T.ranking();
 var r1=document.getElementById('main').innerHTML;
 ok('並び順トグルあり',has(r1,'並び順'));
 ok('補正スコアボタンあり',has(r1,'補正スコア'));
-// 表彰台はHTML上 [2位,1位,3位] の順に並ぶため、1位判定は👑直後のカラムに名前があるかで見る
-ok('実測1位=体重不明200kg（👑カラム）',r1.substring(r1.indexOf('👑'),r1.indexOf('👑')+900).indexOf('体重不明')>=0);
+// 1位は全幅リーダーカード（.rk-lead）に載る（semanticマーカーで判定）
+var __li=r1.indexOf('rk-lead');
+ok('実測1位=体重不明200kg（リーダーカード）',__li>=0&&r1.substring(__li,__li+1400).indexOf('体重不明')>=0);
 ok('実測順: 重量180が軽量165より上',r1.indexOf('重量選手')<r1.indexOf('軽量選手'));
 
 print('--- 補正スコアモード ---');
