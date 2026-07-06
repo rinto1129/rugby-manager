@@ -11,7 +11,7 @@
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
-- **✅✅✅ player大幅リニューアル＝9ステップ全完了（2026-07-06・このセッションで完走）。player/staff/coach/index.htmlとも実装・jscモック検証・実機ブラウザ確認・多角レビューまで完了。まだ未commit・未push（ユーザー方針どおり最後にまとめてpush）。**
+- **✅✅✅✅ player大幅リニューアル＝9ステップ全完了・commit&push完了（2026-07-06、コミット`aa36550`）。** player/staff/coach/index.htmlとも実装・jscモック検証（esprimaで構文再確認）・実機ブラウザ確認・多角レビューまで完了。`dev/`配下のjscモック検証スクリプト一式もテスト資産としてリポジトリに追加。`.claude/launch.json`と`.DS_Store`は`.gitignore`へ追加して追跡対象外に。**このタスクは完全に完了。**
   - **今回やったこと（ステップ⑧の残り＋⑨）**:
     1. `dev/test_coach_report_std.js`新設。`renderStdBadgesCoach`（BIG3ランクバッジ・体重帯）と`renderPlayerReport`のコンディション拡張（mood/stress/soreness平均）をjscモックで検証＝**27アサート全パス**。
     2. その過程で発見した小さな不整合を修正: `renderStdBadgesCoach`はポジション未登録時に**何も出さず消える**実装だったが、同じ関数内の他の欠損ケース（身長未登録・1RM未測定）やstaffの同機能（`renderStdSummaryHTML`）は「ポジション未登録のため基準未表示」という案内カードを出す仕様。coachだけ無言で消えるのは一貫性を欠くため、staffと同じフォールバック文言を出すよう2行修正（coach/index.html:1701-1704）。
@@ -26,7 +26,7 @@
     - **簡潔化/再利用**: `todayTodoHtml()`が`home()`で既に計算済みの値の一部を再計算／`isWeakEx`(トレ実施画面)と`getWeakWeeklyVolume`の3択判定式が同じロジックの重複／`myPhysCardHtml`と`mystatus`で体重帯ステータスの3分岐チップが重複／`doCondition`と`doEditCondition`で体重バリデーションが重複／`partChipsHTML`(コンディション用)がテーピング枠の`toggleTapePart`と概念的に似た「トグルチップ」を別実装／coach`renderStdBadgesCoach`がミニ統計カードの見た目を`miniStat()`ヘルパーを使わず手書き。**いずれも3〜10行程度の局所的な重複で、無理に共通化すると却って追いにくくなる規模**（CLAUDE.mdの「3行の重複は許容、早すぎる抽象化を避ける」方針にも合致）。将来同じ場所を触る時に気づいたら直す程度でよい。
     - **深さ（アーキテクチャ）**: `getStdCfg()`のマージが`pos`はフィールド単位で安全にマージするが、`ranks`/`allo`/`rx`は丸ごと上書きのため、将来staffが一度でも`std`を保存した後にコード側の`STD_DEFAULT.allo`等へ新フィールドを足すと、保存済み設定を持つチームだけ新フィールドが反映されない非対称な挙動になりうる。**現状`D.std`は空（本番でまだ保存されていない）なので実害なし**。staffが一度保存した後に`allo`/`rx`の项目追加をする予定があれば、その時に`pos`と同様のフィールド単位マージへ拡張するとよい。
   - **⚠️重要: staff設定画面(`V.standards`)の「保存」ボタンは絶対に自分から押さない。** 保存すると本番Firestoreの`std`キーに即書き込まれ、全サイトに反映される（ローカルでコードをpushしていなくても、Firebase自体は本番と直結しているため）。ユーザーがポジション別倍率テーブルをレビューする前に書き込むのは不可逆な実データ変更にあたる。動作確認は「見た目のレンダリング確認」までに留め、実際の保存操作はユーザー確認後にする。**今回のセッションでも保存ボタンは一度も押していない。**
-  - **次にやること**: ユーザーに完了報告→pushしてよいか確認→承認されたら`player/staff/coach/index.html`＋`HANDOFF.md`をcommit&push（`dev/`はテスト資産として追跡するか要相談、`.claude/launch.json`と`.DS_Store`は追跡不要）。
+  - **次にやること**: なし。実機フィードバック待ち。
   - **開発環境メモ（重要・毎回確認）**: このMacのsandboxはリポジトリ直下（`/Users/nakayamarinnin/Documents/rugby-manager`）を直接pythonサーバーのdirectoryに指定しても**404になり配信できない**（`curl`で直接検証済み。プロセス自体は正常起動するがファイルが見えない＝既知の制約）。**動くのはセッション固有のscratchpad配下**（例: `/private/tmp/claude-501/.../<セッションID>/scratchpad/previewroot/`）に対象HTMLを`cp`でコピーしてから配信する方式のみ。`.claude/launch.json`の`directory=`は**セッションごとに書き換えが必要**（前回セッションのIDのままだと存在しないパスになり404になる）。手順: ①`.claude/launch.json`のdirectoryを現在のscratchpadパスの`previewroot/`に書き換え②`mkdir -p previewroot/{player,staff,coach,trainer}`③該当ファイルを`cp`④`preview_start`→`preview_eval`で`window.location.href='http://127.0.0.1:8932/xxx/index.html'`。ファイルを編集するたびに③のコピーをやり直すこと（自動同期されない）。
   - **本番Firestoreにテストデータを注入する時の安全な手法（今回確立）**: 実機ブラウザのconsole/`preview_eval`から直接`D.p`や`D.ph`/`D.f`にレコードを`push`・書き換えして`render()`系関数を呼ぶのは、**ブラウザのメモリ上のJS変数を書き換えるだけでFirestoreへは一切書き込まれない**（Firestoreへの書込は`svSafe`/`svSafeUpdate`/`runTransaction`等を明示的に呼んだ時だけ発生する）。確認が終わったら`window.location.reload()`で破棄すれば実データへの影響ゼロ。本番データにまだ存在しない新フィールドの見た目を確認したい時（今回のmood/stress/soreness等）に有効。
 - **✅ 選手写真を公式サイト(https://fukudai-rugby.jp/member/)から取得しFirestoreへ反映完了（2026-07-06・このセッション、コード変更なし）。** このタスクは完全に完了。
