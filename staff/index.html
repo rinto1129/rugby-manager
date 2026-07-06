@@ -165,6 +165,25 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 @media(prefers-reduced-motion:no-preference){.ld-ball{animation:ldswing 1.4s ease-in-out infinite}.ni.ac::before{animation:sbstripe .15s ease-out}}
 @keyframes ldswing{0%,100%{transform:rotate(-12deg)}50%{transform:rotate(9deg) translateY(-5px)}}
 @keyframes sbstripe{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+/* 折りたたみ（クラスB=毎回発火・220ms・中身にstaggerは付けない）。0fr/1frは機能状態なのでガード外、transitionのみガード内 */
+.clp{display:grid;grid-template-rows:0fr}
+.clp.open{grid-template-rows:1fr}
+.clp>div{overflow:hidden;min-height:0}
+.clp-hd{cursor:pointer;user-select:none;-webkit-user-select:none}
+.clp-chev{display:inline-flex}
+/* リングゲージ（クラスA=遷移演出・提出率タイル1枚のみ）: 最終値はインラインdashoffset、arm時だけ.ring-goでdraw */
+@media(prefers-reduced-motion:no-preference){
+  .clp{transition:grid-template-rows .22s ease}
+  .clp-hd .clp-chev{transition:transform .22s ease}
+  .ring-go{animation:ringdraw .9s ease-out}
+}
+.clp-hd.open .clp-chev{transform:rotate(180deg)}
+@keyframes ringdraw{from{stroke-dashoffset:var(--ring-c)}}
+/* お知らせ: 部室掲示板ノーティス様式（マスキングテープ::before+微回転。playerと同一） */
+.notice-item{position:relative;background:#FFFDF6;border:1px solid var(--border-tertiary);border-radius:4px;padding:14px 14px 10px;margin:16px 4px 12px;box-shadow:0 2px 8px rgba(35,20,22,.07)}
+.notice-item:nth-child(odd){transform:rotate(.45deg)}
+.notice-item:nth-child(even){transform:rotate(-.45deg)}
+.notice-item::before{content:'';position:absolute;top:-7px;left:50%;transform:translateX(-50%) rotate(-2.5deg);width:72px;height:15px;background:rgba(222,182,182,.55);box-shadow:0 1px 2px rgba(35,20,22,.06)}
 /* トースト（クラスB=操作フィードバック・毎回発火。staffは右上） */
 #toast-wrap{position:fixed;top:70px;right:20px;z-index:1200;pointer-events:none;display:flex;flex-direction:column;align-items:flex-end;gap:8px;max-width:min(420px,92vw)}
 .toast{display:flex;align-items:center;gap:8px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border-tertiary);border-left:3px solid var(--maroon);border-radius:12px;padding:10px 16px;font-size:13px;font-weight:700;box-shadow:var(--shadow-md);opacity:0;transform:translateY(-10px);transition:opacity .24s ease-out,transform .24s cubic-bezier(.22,1,.36,1);max-width:100%}
@@ -329,6 +348,31 @@ function _rvForceIn(){
   var rem=document.querySelectorAll('.rv-armed:not(.in)');
   for(var i=0;i<rem.length;i++)rem[i].classList.add('in');
 }
+// count-up（クラスA=遷移演出・正の指標限定）: data-cu=生数値。初期HTMLは常に最終実値、arm時だけ0→値を上書き描画
+function _cuRun(root){
+  if(typeof requestAnimationFrame!=='function')return;
+  var els=root.querySelectorAll('[data-cu]:not([data-cu-done])');
+  for(var i=0;i<els.length;i++)(function(el){
+    el.setAttribute('data-cu-done','1'); // 二重発火防止
+    var raw=el.getAttribute('data-cu');
+    var v=parseFloat(raw);
+    if(!isFinite(v))return;
+    var dec=(String(raw).split('.')[1]||'').length; // 小数記録(132.5kg等)は桁数を保って途中表示、最終フレームは生値そのもの
+    var t0=null,dur=700;
+    var step=function(ts){
+      if(t0===null)t0=ts;
+      var k=Math.min(1,(ts-t0)/dur);k=1-Math.pow(1-k,4);
+      el.textContent=k>=1?String(raw):(dec?(v*k).toFixed(dec):String(Math.round(v*k)));
+      if(k<1)requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  })(els[i]);
+}
+// リングゲージdraw（クラスA・提出率1枚のみ）: 最終dashoffsetはインライン値のまま、.ring-goでfromだけアニメ
+function _ringRun(root){
+  var els=root.querySelectorAll('[data-ring]:not(.ring-go)');
+  for(var i=0;i<els.length;i++)els[i].classList.add('ring-go');
+}
 function _armReveal(){
   if(!_navAnim)return;
   _navAnim=false;
@@ -339,6 +383,8 @@ function _armReveal(){
   _visitedTabs[tab]=true;
   if(_reduceMotion())return;
   var root=$m();if(!root)return;
+  _cuRun(root);   // クラスA: 初回訪問のみカウントアップ（reduce時は素の最終値のまま）
+  _ringRun(root); // クラスA: 提出率リングdraw
   var els=root.querySelectorAll('.rv');
   var armed=[],n=0;
   for(var i=0;i<els.length&&n<8;i++){ // 先頭8要素「だけをarm」する（armして打ち切るとopacity:0残留）
@@ -1014,6 +1060,9 @@ function startListeners(){
         try{
           var raw=doc.data().data;
           if(_lastRaw[k]===raw)return; // 同一内容の再通知はスキップ（読み取り側のみの最適化・データ層不変）
+          // 起動直後の永続キャッシュ通知（ld()の最新値より古い）でDを巻き戻さない＆初回クラスA演出のDOM差し替え事故防止。
+          // サーバー版はこの直後にfromCache=falseで届き、本当に変わっていればそこで再描画される（読み取り側のみ）
+          if(doc.metadata&&doc.metadata.fromCache&&_lastRaw[k]!=null)return;
           _lastRaw[k]=raw;
           var parsed=JSON.parse(raw);
           if(k==='p'&&Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
@@ -1098,13 +1147,21 @@ function nav(pg){
 }
 function pushView(title,html,fn){viewStack.push(curPage);dCA();document.getElementById('pg-title').innerHTML='<span class="btn-back" onclick="popView()">'+ic('i-back',14)+' 戻る</span> '+title;document.getElementById('tb-act').innerHTML='';$m().innerHTML=html;if(fn)setTimeout(fn,80);}
 function popView(){dCA();nav(viewStack.pop()||curPage);}
+// ダッシュボード「注意」層の折りたたみ（クラスB=毎回発火）。開閉状態はonSnapshot再描画をまたいで維持
+function dashWarnToggle(){
+  window._dashWarnOpen=window._dashWarnOpen!==true;
+  var c=document.getElementById('warn-clp'),h=document.getElementById('warn-clp-hd');
+  if(c)c.classList.toggle('open',window._dashWarnOpen);
+  if(h)h.classList.toggle('open',window._dashWarnOpen);
+}
 
 var V={
 dash:function(){
   var tot=D.p.length,inj=D.p.filter(function(p){return D.i.some(function(x){return x.pid===p.id&&!x.resolved;});}).length,ok=tot-inj;
-  var mon=monStr(),aa=[],fa=[];
+  // todayS宣言は関数先頭に置く（旧: L1177相当で宣言→下の疲労度ループがvar巻き上げでundefined比較になり疲労度アラートが常に空になるバグがあった）
+  var mon=monStr(),aa=[],fa=[],todayS=todayStr();
   D.p.forEach(function(p){var c=absCnt(p.id,mon);if(c>=3)aa.push({n:p.name,c:c,pid:p.id});});
-  D.p.forEach(function(p){var lf=getLatestFatigue(p.id);if(lf&&lf.date===todayS){if(lf.rpe>=8)fa.push({pid:p.id,txt:p.name+': RPE '+lf.rpe+'/10 ⚠️'});if(lf.sleep<=5)fa.push({pid:p.id,txt:p.name+': 睡眠 '+lf.sleep+'h ⚠️'});} });
+  D.p.forEach(function(p){var lf=getLatestFatigue(p.id);if(lf&&lf.date===todayS){if(lf.rpe>=8)fa.push({pid:p.id,txt:p.name+': RPE '+lf.rpe+'/10'});if(lf.sleep<=5)fa.push({pid:p.id,txt:p.name+': 睡眠 '+lf.sleep+'h'});} });
   // 連続欠席アラート（直近の練習日3回連続以上で欠席している選手）
   var recentSessions=D.a.slice().sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,5);
   var consecutiveAbs=[];
@@ -1123,7 +1180,6 @@ dash:function(){
   var ai=D.i.filter(function(x){return!x.resolved;}).sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,6);
   // 来週復帰予定（来週月曜〜日曜）
   var today=new Date();
-  var todayS=todayStr();
   var dow=today.getDay();
   var daysToNextMon=dow===0?1:8-dow;
   var nextMon=new Date(today);nextMon.setDate(today.getDate()+daysToNextMon);
@@ -1206,14 +1262,14 @@ dash:function(){
 
   // 緊急: 新着怪我
   if(pendingInj.length){
-    urgentItems.push('<div style="font-size:14px;font-weight:600;margin-bottom:.5rem">🚨 新着怪我 ('+pendingInj.length+') — スタッフ確認が必要</div>'+
+    urgentItems.push('<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.5rem">'+ic('i-bandage',15,'var(--red)')+'新着怪我<span class="bd bd-r">'+pendingInj.length+'</span><span style="font-size:11px;font-weight:600;color:var(--text-secondary)">スタッフ確認が必要</span></div>'+
     pendingInj.map(function(x){var p=D.p.find(function(pp){return pp.id===x.pid;});if(!p)return'';
       return'<div class="alert-card alert-down" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><span style="flex:1">'+escapeHtml(p.name)+' — '+(x.side||'')+x.part+' '+x.type+' ('+fmt(x.date)+') '+(x.source==='match'?'【試合】':'【練習/その他】')+'</span><div style="display:flex;gap:6px"><button class="btn btn-sm btn-s" onclick="approveInjury('+x.id+')">怪我人に追加</button><button class="btn btn-sm btn-d" onclick="rejectInjury('+x.id+')">却下</button><button class="btn btn-sm" onclick="goInjuryDetail('+x.id+')">詳細</button></div></div>';
     }).join(''));
   }
   // 緊急: リハビリ遅延中
   if(rehabOverdue.length){
-    urgentItems.push('<div style="font-size:14px;font-weight:600;margin-bottom:.5rem">⏰ リハビリ遅延中 ('+rehabOverdue.length+') — 進捗確認が必要</div>'+
+    urgentItems.push('<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.5rem">'+ic('i-clock',15,'var(--red)')+'リハビリ遅延中<span class="bd bd-r">'+rehabOverdue.length+'</span><span style="font-size:11px;font-weight:600;color:var(--text-secondary)">進捗確認が必要</span></div>'+
     rehabOverdue.map(function(o){
       return'<div class="alert-card alert-down" style="cursor:pointer;justify-content:space-between" onclick="goInjuryDetail('+o.injId+')">'+
       '<span>'+escapeHtml(o.name)+' — 「'+o.stage+'」→「'+o.nextStage+'」</span>'+
@@ -1223,21 +1279,21 @@ dash:function(){
   }
   // 注意: 練習に参加できない
   if(cantPrac.length){
-    warnItems.push('<div style="font-size:14px;font-weight:600;margin-bottom:.5rem">⚠️ 来週の練習に参加できない選手 ('+cantPrac.length+')</div>'+
+    warnItems.push('<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.5rem">'+ic('i-warn',15,'var(--amber)')+'来週の練習に参加できない選手<span class="bd bd-a">'+cantPrac.length+'</span></div>'+
     cantPrac.map(function(x){var p=D.p.find(function(pp){return pp.id===x.pid;});if(!p)return'';
       return'<div class="alert-card alert-warn" style="cursor:pointer" onclick="goInjuryDetail('+x.id+')">'+escapeHtml(p.name)+' — '+(x.side||'')+x.part+' '+x.type+'</div>';
     }).join(''));
   }
   // 注意: 連続欠席アラート
   if(consecutiveAbs.length){
-    warnItems.push('<div style="font-size:14px;font-weight:600;margin-bottom:.5rem">⚠️ 連続欠席している選手 ('+consecutiveAbs.length+')</div>'+
+    warnItems.push('<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.5rem">'+ic('i-x-c',15,'var(--amber)')+'連続欠席している選手<span class="bd bd-a">'+consecutiveAbs.length+'</span></div>'+
     consecutiveAbs.map(function(c){
-      return'<div class="alert-card alert-warn" style="cursor:pointer;justify-content:space-between" onclick="goPlayerDetail('+c.pid+')"><span>'+escapeHtml(c.name)+(c.hasInjury?' 🩹':'')+'</span><span class="bd bd-r">'+c.count+'回連続</span></div>';
+      return'<div class="alert-card alert-warn" style="cursor:pointer;justify-content:space-between" onclick="goPlayerDetail('+c.pid+')"><span>'+escapeHtml(c.name)+(c.hasInjury?' '+ic('i-bandage',12):'')+'</span><span class="bd bd-r">'+c.count+'回連続</span></div>';
     }).join(''));
   }
   // 注意: リハビリ目標日が近い
   if(rehabUpcoming.length){
-    warnItems.push('<div style="font-size:14px;font-weight:600;margin-bottom:.5rem">🎯 リハビリ目標日が近い ('+rehabUpcoming.length+')</div>'+
+    warnItems.push('<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.5rem">'+ic('i-target',15,'var(--amber)')+'リハビリ目標日が近い<span class="bd bd-a">'+rehabUpcoming.length+'</span></div>'+
     rehabUpcoming.map(function(o){
       return'<div class="alert-card alert-warn" style="cursor:pointer;justify-content:space-between" onclick="goInjuryDetail('+o.injId+')">'+
       '<span>'+escapeHtml(o.name)+' — 「'+o.nextStage+'」へ</span>'+
@@ -1247,42 +1303,44 @@ dash:function(){
   }
   // 情報: 来週復帰予定
   if(returning.length){
-    infoItems.push('<div style="font-size:14px;font-weight:600;margin-bottom:.5rem">🟢 来週復帰予定 ('+returning.length+') '+fmt(nextMonS)+'〜'+fmt(nextSunS)+'</div>'+
+    infoItems.push('<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.5rem">'+ic('i-flag',15,'var(--green)')+'来週復帰予定<span class="bd bd-g">'+returning.length+'</span><span style="font-size:11px;font-weight:600;color:var(--text-secondary)">'+fmt(nextMonS)+'〜'+fmt(nextSunS)+'</span></div>'+
     returning.map(function(x){var p=D.p.find(function(pp){return pp.id===x.pid;});if(!p)return'';
       var daysLeft=Math.ceil((new Date(x.returnDate)-new Date())/86400000);
       return'<div class="alert-card alert-info" style="cursor:pointer;justify-content:space-between" onclick="goInjuryDetail('+x.id+')"><span>'+escapeHtml(p.name)+' — '+injLabel(x)+' <span style="font-size:11px">(復帰予定: '+fmt(x.returnDate)+')</span></span><span class="bd bd-g">残り'+daysLeft+'日</span></div>';
     }).join(''));
   }
 
+  // アラート3層: 今すぐ行動=帯 / 経過観察=集約折りたたみ（クラスB=毎回toggle可・状態は_dashWarnOpenで再描画をまたいで維持） / 情報=プレーン
   var prioritySection='';
   if(urgentItems.length){
-    prioritySection+='<div style="margin-bottom:1.25rem;padding:14px;background:linear-gradient(to right, var(--red-bg), transparent);border-left:4px solid var(--red);border-radius:var(--radius)">'+
-    '<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:8px;letter-spacing:.05em">🔴 緊急 — 即対応</div>'+
+    prioritySection+='<div class="rv" style="margin-bottom:1.25rem;padding:14px;background:linear-gradient(to right, var(--red-bg), transparent);border-left:4px solid var(--red);border-radius:var(--radius)">'+
+    '<div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--red);margin-bottom:8px;letter-spacing:.06em">'+ic('i-warn',13)+'緊急 — 即対応</div>'+
     urgentItems.join('')+'</div>';
   }
   if(warnItems.length){
-    prioritySection+='<div style="margin-bottom:1.25rem;padding:14px;background:linear-gradient(to right, var(--amber-bg), transparent);border-left:4px solid var(--amber);border-radius:var(--radius)">'+
-    '<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:8px;letter-spacing:.05em">🟡 注意 — 今週中に対応</div>'+
-    warnItems.join('')+'</div>';
+    var warnCount=cantPrac.length+consecutiveAbs.length+rehabUpcoming.length;
+    var wOpen=window._dashWarnOpen===true;
+    prioritySection+='<div class="rv" style="margin-bottom:1.25rem;padding:14px;background:linear-gradient(to right, var(--amber-bg), transparent);border-left:4px solid var(--amber);border-radius:var(--radius)">'+
+    '<div class="clp-hd'+(wOpen?' open':'')+'" id="warn-clp-hd" onclick="dashWarnToggle()" style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--amber);letter-spacing:.06em">'+ic('i-clock',13)+'注意 — 経過観察<span class="bd bd-a">'+warnCount+'</span><span style="flex:1"></span><span class="clp-chev">'+ic('i-chevron-d',15)+'</span></div>'+
+    '<div class="clp'+(wOpen?' open':'')+'" id="warn-clp"><div><div style="padding-top:10px">'+warnItems.join('')+'</div></div></div>'+
+    '</div>';
   }
   if(infoItems.length){
-    prioritySection+='<div style="margin-bottom:1.25rem;padding:14px;background:linear-gradient(to right, var(--blue-bg), transparent);border-left:4px solid var(--blue);border-radius:var(--radius)">'+
-    '<div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:8px;letter-spacing:.05em">🔵 情報</div>'+
-    infoItems.join('')+'</div>';
+    prioritySection+='<div class="rv" style="margin-bottom:1.25rem">'+infoItems.join('')+'</div>';
   }
 
   // ===== 提出状況パネル =====
-  var submissionPanel='<div class="card" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem">'+
+  var submissionPanel='<div class="card rv" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">'+
-    '<div style="font-size:14px;font-weight:700">📥 本日の提出状況 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">'+fmt(todayS)+'</span></div>'+
+    '<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700">'+ic('i-clipboard',15,'var(--maroon)')+'本日の提出状況 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">'+fmt(todayS)+'</span></div>'+
     '<div style="display:flex;gap:8px;align-items:center"><div style="font-size:12px;color:var(--text-secondary)">コンディション</div><div style="font-size:20px;font-weight:700;color:'+(condRate>=80?'var(--green)':condRate>=50?'var(--amber)':'var(--red)')+'">'+condRate+'%</div><div style="font-size:11px;color:var(--text-secondary)">('+(tot-condNotSubmitted.length)+'/'+tot+')</div></div>'+
     '</div>'+
     // プログレスバー
-    '<div style="height:8px;background:var(--bg-tertiary);border-radius:99px;overflow:hidden;margin-bottom:14px"><div style="height:100%;width:'+condRate+'%;background:linear-gradient(90deg,'+(condRate>=80?'var(--green)':condRate>=50?'var(--amber)':'var(--red)')+','+(condRate>=80?'#34D399':condRate>=50?'#FBBF24':'#F87171')+');border-radius:99px;transition:width .4s"></div></div>'+
+    '<div style="height:8px;background:var(--bg-tertiary);border-radius:99px;overflow:hidden;margin-bottom:14px"><div style="height:100%;width:'+condRate+'%;background:'+(condRate>=80?'var(--green)':condRate>=50?'var(--amber)':'var(--red)')+';border-radius:99px;transition:width .4s"></div></div>'+
     (condNotSubmitted.length?'<div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">コンディション未提出 ('+condNotSubmitted.length+'名)</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:5px">'+condNotSubmitted.map(function(p){return'<span class="chip-late" onclick="goPlayerDetail('+p.id+')" style="cursor:pointer">'+escapeHtml(p.name)+'</span>';}).join('')+'</div>'
-      :'<div style="font-size:12px;color:var(--green);font-weight:600">✅ 全員提出済み</div>')+
-    (curMSess&&bcNotSubmitted.length?'<div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin:12px 0 6px">⚖️ 体組成未測定 ('+escapeHtml(curMSess.name)+' / '+bcNotSubmitted.length+'名)</div>'+
+      :'<div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--green);font-weight:600">'+ic('i-check-c',14)+'全員提出済み</div>')+
+    (curMSess&&bcNotSubmitted.length?'<div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--text-secondary);margin:12px 0 6px">'+ic('i-scale',13)+'体組成未測定 ('+escapeHtml(curMSess.name)+' / '+bcNotSubmitted.length+'名)</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:5px">'+bcNotSubmitted.map(function(p){return'<span class="chip-late" onclick="goPlayerDetail('+p.id+')" style="cursor:pointer">'+escapeHtml(p.name)+'</span>';}).join('')+'</div>':'')+
     '</div>';
 
@@ -1290,15 +1348,15 @@ dash:function(){
   var bigLate=lateSubmitters.filter(function(l){return l.daysSince===null||l.daysSince>=2;});
   var latePanel='';
   if(bigLate.length){
-    latePanel='<div class="card" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem;border-left:4px solid var(--amber)">'+
-    '<div style="font-size:14px;font-weight:700;margin-bottom:10px">⏳ コンディション提出が滞っている選手 ('+bigLate.length+'名)</div>'+
+    latePanel='<div class="card rv" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem;border-left:4px solid var(--amber)">'+
+    '<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:10px">'+ic('i-clock',15,'var(--amber)')+'コンディション提出が滞っている選手<span class="bd bd-a">'+bigLate.length+'名</span></div>'+
     '<div style="display:flex;flex-direction:column;gap:6px">'+bigLate.map(function(l){
       var label=l.daysSince===null?'一度も提出なし':l.daysSince+'日間未提出';
       return'<div class="log-row card-click" onclick="goPlayerDetail('+l.pid+')" style="padding:7px 0"><span style="font-weight:600;flex:1">'+escapeHtml(l.name)+'</span>'+(l.lastDate?'<span style="font-size:11px;color:var(--text-secondary)">最終: '+fmt(l.lastDate)+'</span>':'')+'<span class="bd '+(l.daysSince===null||l.daysSince>=4?'bd-r':'bd-a')+'">'+label+'</span></div>';
     }).join('')+'</div></div>';
   }
 
-  // ===== 📅 今日の予定パネル =====
+  // ===== 今日の予定パネル =====
   var todayPlanItems='';
   // 今日のテーピング予約
   var todayTapeSlots=(D.tapeslot||[]).filter(function(s){return s.date===todayS;});
@@ -1311,7 +1369,7 @@ dash:function(){
   });
   todayTapeBookings.sort(function(a,b){return (a.time||'').localeCompare(b.time||'');});
   if(todayTapeBookings.length){
-    todayPlanItems+='<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:5px">🩹 テーピング予約（'+todayTapeBookings.length+'件）</div>'+
+    todayPlanItems+='<div style="margin-bottom:10px"><div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--accent);margin-bottom:5px">'+ic('i-tape',13)+'テーピング予約（'+todayTapeBookings.length+'件）</div>'+
       todayTapeBookings.map(function(b){return'<div class="log-row" style="cursor:pointer;padding:5px 0" onclick="goPlayerDetail('+b.pid+')"><span style="min-width:48px;font-weight:600;font-size:12px">'+b.time+'</span><span style="flex:1;font-size:13px">'+escapeHtml(b.name)+'</span><span style="font-size:11px;color:var(--text-secondary)">'+escapeHtml(b.parts)+(b.staff?' / '+escapeHtml(b.staff):'')+'</span></div>';}).join('')+'</div>';
   }
   // リハビリ予定（rplan.tomorrowCatsベース。対象日tomorrowDateで本日分/明日分に振り分け。
@@ -1333,47 +1391,53 @@ dash:function(){
   });
   var rehabRowsHTML=function(list){return list.map(function(r){return'<div class="log-row" style="cursor:pointer;padding:5px 0" onclick="goInjuryDetail('+r.injId+')"><span style="font-size:13px;font-weight:600;min-width:90px">'+escapeHtml(r.name)+'</span><div style="flex:1;display:flex;flex-wrap:wrap;gap:3px;justify-content:flex-end">'+r.cats.map(function(c){return'<span style="background:'+(RCAT_BG[c]||'var(--bg-tertiary)')+';color:'+(RCAT_COLOR[c]||'var(--text-secondary)')+';padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">'+c+'</span>';}).join('')+'</div></div>';}).join('');};
   if(todayRehab.length){
-    todayPlanItems+='<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:5px">🏃 本日のリハビリ予定（'+todayRehab.length+'名）</div>'+rehabRowsHTML(todayRehab)+'</div>';
+    todayPlanItems+='<div style="margin-bottom:10px"><div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--accent);margin-bottom:5px">'+ic('i-run',13)+'本日のリハビリ予定（'+todayRehab.length+'名）</div>'+rehabRowsHTML(todayRehab)+'</div>';
   }
   if(tomorrowRehab.length){
-    todayPlanItems+='<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:5px">🏃 明日のリハビリ予定（'+tomorrowRehab.length+'名）</div>'+rehabRowsHTML(tomorrowRehab)+'</div>';
+    todayPlanItems+='<div style="margin-bottom:10px"><div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--accent);margin-bottom:5px">'+ic('i-run',13)+'明日のリハビリ予定（'+tomorrowRehab.length+'名）</div>'+rehabRowsHTML(tomorrowRehab)+'</div>';
   }
   // 今日の測定会
   var todayMSess=(D.msess||[]).filter(function(m){return m.date===todayS;});
   if(todayMSess.length){
-    todayPlanItems+='<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:5px">📐 本日の測定会</div>'+
+    todayPlanItems+='<div style="margin-bottom:10px"><div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--accent);margin-bottom:5px">'+ic('i-ruler',13)+'本日の測定会</div>'+
       todayMSess.map(function(m){return'<div class="log-row" style="cursor:pointer;padding:5px 0" onclick="nav(\'msess\')"><span style="flex:1;font-size:13px;font-weight:600">'+escapeHtml(m.name)+'</span><span style="font-size:11px;color:var(--text-secondary)">'+(m.items?m.items.length+'項目':'')+'</span></div>';}).join('')+'</div>';
   }
   // 今日のカレンダーイベント
   var todayCalEvents=(D.cal||[]).filter(function(e){return e.date===todayS;});
   if(todayCalEvents.length){
-    todayPlanItems+='<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:5px">📆 本日の予定</div>'+
+    todayPlanItems+='<div style="margin-bottom:10px"><div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--accent);margin-bottom:5px">'+ic('i-calendar',13)+'本日の予定</div>'+
       todayCalEvents.map(function(e){return'<div class="log-row" style="padding:5px 0"><span style="min-width:48px;font-size:12px;color:var(--text-secondary)">'+(e.time||'終日')+'</span><span style="flex:1;font-size:13px">'+escapeHtml(e.title||'')+'</span></div>';}).join('')+'</div>';
   }
   var todayPlanPanel='';
   if(todayPlanItems){
-    todayPlanPanel='<div class="card" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem"><div style="font-size:14px;font-weight:700;margin-bottom:12px">📅 今日の予定 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">'+fmt(todayS)+'</span></div>'+todayPlanItems+'</div>';
+    todayPlanPanel='<div class="card rv" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem"><div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:12px">'+ic('i-calendar',15,'var(--maroon)')+'今日の予定 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">'+fmt(todayS)+'</span></div>'+todayPlanItems+'</div>';
   }else{
-    todayPlanPanel='<div class="card" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem"><div style="font-size:14px;font-weight:700;margin-bottom:8px">📅 今日の予定 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">'+fmt(todayS)+'</span></div><div style="font-size:13px;color:var(--text-secondary)">本日のテーピング予約・測定会はありません（リハビリ中の選手もいません）</div></div>';
+    todayPlanPanel='<div class="card rv" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem"><div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:8px">'+ic('i-calendar',15,'var(--maroon)')+'今日の予定 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">'+fmt(todayS)+'</span></div><div style="font-size:13px;color:var(--text-secondary)">本日のテーピング予約・測定会はありません（リハビリ中の選手もいません）</div></div>';
   }
 
-  $m().innerHTML='<div style="font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">📊 チーム状況</div>'+
+  // 提出率リング（クラスA・このタイル1枚のみ。4タイル全リング化は禁止）
+  var ringCol=condRate>=80?'var(--green)':condRate>=50?'var(--amber)':'var(--red)';
+  var ringOff=(125.66*(1-condRate/100)).toFixed(2);
+  $m().innerHTML='<div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">'+ic('i-chart',15)+'チーム状況</div>'+
   '<div class="grid g4" style="margin-bottom:1.25rem">'+
-  '<div class="stat-tile" onclick="nav(\'players\')"><div class="stat-v">'+tot+'</div><div class="stat-l">登録選手</div></div>'+
-  '<div class="stat-tile" style="cursor:default"><div class="stat-v" style="color:var(--green)">'+ok+'</div><div class="stat-l">コンディション正常</div></div>'+
-  '<div class="stat-tile" onclick="nav(\'injury\')"><div class="stat-v" style="color:var(--red)">'+inj+'</div><div class="stat-l">怪我・リハビリ中</div></div>'+
-  '<div class="stat-tile" style="cursor:default"><div class="stat-v" style="color:'+(condRate>=80?'var(--green)':condRate>=50?'var(--amber)':'var(--red)')+'">'+condRate+'<span style="font-size:14px">%</span></div><div class="stat-l">本日提出率</div></div>'+
+  '<div class="stat-tile" onclick="nav(\'players\')"><div class="stat-v num"><span data-cu="'+tot+'">'+tot+'</span></div><div class="stat-l">登録選手</div></div>'+
+  '<div class="stat-tile" style="cursor:default"><div class="stat-v num" style="color:var(--green)"><span data-cu="'+ok+'">'+ok+'</span></div><div class="stat-l">コンディション正常</div></div>'+
+  '<div class="stat-tile" onclick="nav(\'injury\')"><div class="stat-v num" style="color:var(--red)">'+inj+'</div><div class="stat-l">怪我・リハビリ中</div></div>'+
+  '<div class="stat-tile" style="cursor:default"><div style="display:flex;align-items:center;gap:11px">'+
+  '<svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true" style="flex-shrink:0;transform:rotate(-90deg)"><circle cx="23" cy="23" r="20" fill="none" stroke="var(--bg-tertiary)" stroke-width="5"/><circle data-ring="1" cx="23" cy="23" r="20" fill="none" stroke="'+ringCol+'" stroke-width="5" stroke-linecap="round" stroke-dasharray="125.66" stroke-dashoffset="'+ringOff+'" style="--ring-c:125.66"/></svg>'+
+  '<div><div class="stat-v num" style="color:'+ringCol+'"><span data-cu="'+condRate+'">'+condRate+'</span><span class="unit">%</span></div><div class="stat-l">本日提出率</div></div>'+
+  '</div></div>'+
   '</div>'+
   ppCardHtml(true)+
   prioritySection+
   todayPlanPanel+
   submissionPanel+
   latePanel+
-  '<div class="grid g3"><div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:.75rem">🏥 怪我中の選手</div>'+(ai.length?ai.map(function(i){var p=D.p.find(function(x){return x.id===i.pid;});if(!p)return'';return'<div class="log-row card-click" onclick="goInjuryDetail('+i.id+')">'+avH(p,26)+'<span style="font-weight:600;flex:1">'+escapeHtml(p.name)+'</span><span style="color:var(--text-secondary);font-size:11px">'+injLabel(i)+'</span><span class="bd '+(i.hospitalVisited?'bd-g':'bd-a')+'" style="font-size:9px">'+(i.hospitalVisited?'受診済':'未受診')+'</span></div>';}).join(''):'<div class="no">なし</div>')+'</div><div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:.75rem">📋 欠席アラート</div>'+(aa.length?aa.map(function(a){return'<div class="alert-card alert-warn" style="cursor:pointer" onclick="goPlayerDetail('+a.pid+')">'+a.n+': '+a.c+'回</div>';}).join(''):'<div class="no">該当なし</div>')+'</div><div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:.75rem">😴 疲労度アラート</div>'+(fa.length?fa.map(function(f){return'<div class="alert-card alert-down" style="cursor:pointer" onclick="goPlayerDetail('+f.pid+')">'+f.txt+'</div>';}).join(''):'<div class="no">該当なし</div>')+'</div></div>';
+  '<div class="grid g3 rv"><div class="card"><div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.75rem">'+ic('i-bandage',15,'var(--red)')+'怪我中の選手</div>'+(ai.length?ai.map(function(i){var p=D.p.find(function(x){return x.id===i.pid;});if(!p)return'';return'<div class="log-row card-click" onclick="goInjuryDetail('+i.id+')">'+avH(p,26)+'<span style="font-weight:600;flex:1">'+escapeHtml(p.name)+'</span><span style="color:var(--text-secondary);font-size:11px">'+injLabel(i)+'</span><span class="bd '+(i.hospitalVisited?'bd-g':'bd-a')+'" style="font-size:9px">'+(i.hospitalVisited?'受診済':'未受診')+'</span></div>';}).join(''):'<div class="no">なし</div>')+'</div><div class="card"><div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.75rem">'+ic('i-x-c',15,'var(--amber)')+'欠席アラート</div>'+(aa.length?aa.map(function(a){return'<div class="alert-card alert-warn" style="cursor:pointer" onclick="goPlayerDetail('+a.pid+')">'+a.n+': '+a.c+'回</div>';}).join(''):'<div class="no">該当なし</div>')+'</div><div class="card"><div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.75rem">'+ic('i-moon',15,'var(--purple)')+'疲労度アラート</div>'+(fa.length?fa.map(function(f){return'<div class="alert-card alert-down" style="cursor:pointer" onclick="goPlayerDetail('+f.pid+')">'+f.txt+'</div>';}).join(''):'<div class="no">該当なし</div>')+'</div></div>';
   // Add body comp missed alerts
   var isOff=(D.offday||[]).indexOf(todayStr())>=0;
   if(!isOff){var bcMissed=getDashBCAlerts();
-  if(bcMissed.length)$m().innerHTML+='<div style="margin-top:1rem"><div style="font-size:14px;font-weight:600;margin-bottom:.5rem">⚖️ 体組成 未入力</div>'+bcMissed.map(function(n){return'<div class="alert-card alert-warn">'+n+': 未入力</div>';}).join('')+'</div>';}
+  if(bcMissed.length)$m().innerHTML+='<div style="margin-top:1rem"><div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.5rem">'+ic('i-scale',15,'var(--amber)')+'体組成 未入力</div>'+bcMissed.map(function(n){return'<div class="alert-card alert-warn">'+n+': 未入力</div>';}).join('')+'</div>';}
   // 試合日チェック未入力（昨日の試合日）
   var yesterdayD=new Date();yesterdayD.setDate(yesterdayD.getDate()-1);
   var yesterdayDS=toDateStr(yesterdayD);
@@ -1383,7 +1447,7 @@ dash:function(){
     var matchMissedS=D.p.filter(function(p){
       return selectedForMatchS.indexOf(p.id)>=0&&!D.md.some(function(m){return m.pid===p.id&&m.date===yesterdayDS;});
     });
-    if(matchMissedS.length)$m().innerHTML+='<div style="margin-top:1rem"><div style="font-size:14px;font-weight:600;margin-bottom:.5rem">🏟️ 試合日チェック未入力 <span style="font-size:12px;color:var(--text-secondary)">'+fmt(yesterdayDS)+' / '+matchMissedS.length+'名</span></div>'+matchMissedS.map(function(p){return'<div class="alert-card alert-down" style="cursor:pointer" onclick="goPlayerDetail('+p.id+')">'+escapeHtml(p.name)+'</div>';}).join('')+'</div>';
+    if(matchMissedS.length)$m().innerHTML+='<div style="margin-top:1rem"><div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.5rem">'+ic('i-ball',15,'var(--maroon)')+'試合日チェック未入力 <span style="font-size:12px;color:var(--text-secondary)">'+fmt(yesterdayDS)+' / '+matchMissedS.length+'名</span></div>'+matchMissedS.map(function(p){return'<div class="alert-card alert-down" style="cursor:pointer" onclick="goPlayerDetail('+p.id+')">'+escapeHtml(p.name)+'</div>';}).join('')+'</div>';
   }
   // チームフィジカル記録
   var physFields=[
@@ -1394,23 +1458,27 @@ dash:function(){
     {f:'clean',label:'クリーン',higher:true,unit:'kg'},
     {f:'bronco',label:'ブロンコ',higher:false,unit:''}
   ];
-  var teamRecordsH='<div style="margin-top:1.25rem"><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">🏆 チームフィジカル記録</div><div class="grid g3" style="gap:8px">';
+  // クラブレコード・ボード（部室の銘板様式: ink面+gold罫線+CLUB RECORDSキッカー。集計ロジック不変）
+  var teamRecordsH='<div class="rv" style="margin-top:1.25rem;background:linear-gradient(135deg,var(--navy-2),var(--navy) 72%);border-radius:var(--radius-lg);padding:1.2rem 1.35rem;box-shadow:var(--shadow-md)">'+
+    '<div class="kicker kicker--gold" style="margin-bottom:2px">CLUB RECORDS</div>'+
+    '<div style="font-size:13px;font-weight:700;color:var(--pale);margin-bottom:8px">チームフィジカル記録</div>'+
+    '<div class="grid g3" style="gap:0 20px">';
   physFields.forEach(function(fd){
     var best=null,bestP=null;
     D.ph.forEach(function(r){
       if(r[fd.f]==null)return;
       if(best===null||(fd.higher?r[fd.f]>best:r[fd.f]<best)){best=r[fd.f];bestP=D.p.find(function(x){return x.id===r.pid;});}
     });
-    var val=best!==null?(fd.f==='bronco'?broncoFmt(best):best+fd.unit):'-';
-    teamRecordsH+='<div class="mc"><div class="v" style="font-size:16px">'+val+'</div><div class="l">'+fd.label+(bestP?' / '+bestP.name:'')+'</div></div>';
+    var valH=best!==null?(fd.f==='bronco'?'<span class="num" style="font-size:21px;color:var(--gold-hot)">'+broncoFmt(best)+'</span>':'<span class="num" style="font-size:21px;color:var(--gold-hot)"><span data-cu="'+best+'">'+best+'</span><span class="unit">'+fd.unit+'</span></span>'):'<span style="font-size:15px;color:var(--rose-l)">-</span>';
+    teamRecordsH+='<div style="padding:9px 0;border-bottom:1px solid rgba(201,162,39,.32)"><div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--rose-l)">'+fd.label+'</div><div style="display:flex;align-items:baseline;gap:7px;margin-top:2px">'+valH+(bestP?'<span style="font-size:10px;color:var(--pale);opacity:.85">'+escapeHtml(bestP.name)+'</span>':'')+'</div></div>';
   });
   teamRecordsH+='</div></div>';
   $m().innerHTML+=teamRecordsH;
   // Announcements section with calendar link
-  $m().innerHTML+='<div style="margin-top:1.25rem"><div style="font-size:14px;font-weight:600;margin-bottom:.75rem">📢 お知らせ投稿（選手サイトに表示）</div>'+
-  (thisWeekEvents.length?'<div style="margin-bottom:.75rem"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">📅 今週のカレンダー（クリックでお知らせに反映）</div>'+thisWeekEvents.map(function(ev){return'<div class="alert-card alert-info" style="cursor:pointer;justify-content:space-between" onclick="fillAnnounceFromEvent(\''+escAnn(ev.date)+'\',\''+escAnn(ev.title)+'\',\''+escAnn(ev.detail||'')+'\')">'+'<span><strong>'+fmt(ev.date)+'</strong> '+ev.title+(ev.detail?' — '+ev.detail:'')+'</span><span style="font-size:11px;opacity:.7">クリックで反映</span></div>';}).join('')+'</div>':'')+
-  '<div class="form-box" style="margin-bottom:.75rem"><div class="fl" style="margin-bottom:10px"><label>宛先</label><select class="ipt" id="ann-target" style="width:auto"><option value="">全体へ</option>'+D.p.map(function(p){return'<option value="'+p.id+'">個人: '+escapeHtml(p.name)+'</option>';}).join('')+'</select></div><textarea class="ipt" id="ann-text" placeholder="今週の予定やお知らせを入力..." style="min-height:80px"></textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-p" onclick="postAnnounce()">投稿する</button><button class="btn" onclick="postAnnounceFromCalendar()">📅 今週の予定をまとめて投稿</button></div></div>'+
-  (D.ann.length?D.ann.sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,8).map(function(a){var tgt=a.targetPid?D.p.find(function(x){return x.id===a.targetPid;}):null;var readCount=(a.readBy||[]).length;var totalTarget=a.targetPid?1:D.p.length;return'<div class="card" style="margin-bottom:6px;padding:.75rem 1rem"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">'+fmt(a.date)+(tgt?' <span class="bd bd-b">個人: '+escapeHtml(tgt.name)+'</span>':' <span class="bd bd-p">全体</span>')+' <span style="color:var(--green)">既読'+readCount+'/'+totalTarget+'</span></div><div style="font-size:13px;white-space:pre-wrap">'+escapeHtml(a.text)+'</div></div><button class="btn btn-sm btn-d" onclick="delAnnounce('+a.id+')">削除</button></div></div>';}).join(''):'<div class="no" style="padding:1rem">お知らせはまだありません</div>')+'</div>';
+  $m().innerHTML+='<div style="margin-top:1.25rem"><div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.75rem">'+ic('i-megaphone',15,'var(--maroon)')+'お知らせ投稿（選手サイトに表示）</div>'+
+  (thisWeekEvents.length?'<div style="margin-bottom:.75rem"><div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-secondary);margin-bottom:6px">'+ic('i-calendar',13)+'今週のカレンダー（クリックでお知らせに反映）</div>'+thisWeekEvents.map(function(ev){return'<div class="alert-card alert-info" style="cursor:pointer;justify-content:space-between" onclick="fillAnnounceFromEvent(\''+escAnn(ev.date)+'\',\''+escAnn(ev.title)+'\',\''+escAnn(ev.detail||'')+'\')">'+'<span><strong>'+fmt(ev.date)+'</strong> '+ev.title+(ev.detail?' — '+ev.detail:'')+'</span><span style="font-size:11px;opacity:.7">クリックで反映</span></div>';}).join('')+'</div>':'')+
+  '<div class="form-box" style="margin-bottom:.75rem"><div class="fl" style="margin-bottom:10px"><label>宛先</label><select class="ipt" id="ann-target" style="width:auto"><option value="">全体へ</option>'+D.p.map(function(p){return'<option value="'+p.id+'">個人: '+escapeHtml(p.name)+'</option>';}).join('')+'</select></div><textarea class="ipt" id="ann-text" placeholder="今週の予定やお知らせを入力..." style="min-height:80px"></textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-p" onclick="postAnnounce()">投稿する</button><button class="btn" onclick="postAnnounceFromCalendar()">'+ic('i-calendar',13)+' 今週の予定をまとめて投稿</button></div></div>'+
+  (D.ann.length?D.ann.sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,8).map(function(a){var tgt=a.targetPid?D.p.find(function(x){return x.id===a.targetPid;}):null;var readCount=(a.readBy||[]).length;var totalTarget=a.targetPid?1:D.p.length;return'<div class="notice-item"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">'+fmt(a.date)+(tgt?' <span class="bd bd-b">個人: '+escapeHtml(tgt.name)+'</span>':' <span class="bd bd-p">全体</span>')+' <span style="color:var(--green)">既読'+readCount+'/'+totalTarget+'</span></div><div style="font-size:13px;white-space:pre-wrap">'+escapeHtml(a.text)+'</div></div><button class="btn btn-sm btn-d" onclick="delAnnounce('+a.id+')">削除</button></div></div>';}).join(''):'<div class="no" style="padding:1rem">お知らせはまだありません</div>')+'</div>';
 },
 players:function(){
   var q=(document.getElementById('ps')?document.getElementById('ps').value:'').toLowerCase(),pf=document.getElementById('pf')?document.getElementById('pf').value:'',yf=document.getElementById('yf')?document.getElementById('yf').value:'',sf=document.getElementById('sf')?document.getElementById('sf').value:'',so=document.getElementById('pso')?document.getElementById('pso').value:'name';
@@ -3992,35 +4060,34 @@ function ppCardHtml(showCtrl){
   if(next===null){
     if(!showCtrl)return '';
     return '<div class="card" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem">'+
-      '<div style="font-size:13px;font-weight:700;margin-bottom:10px">🏋️ ウエイト PUSH/PULL 初期設定</div>'+
+      '<div style="font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px">'+ic('i-dumbbell',16,'var(--maroon)')+' ウエイト PUSH/PULL 初期設定</div>'+
       '<div style="display:flex;gap:10px">'+
-      '<button class="btn" style="flex:1;background:var(--blue-bg);color:var(--blue);font-weight:700" onclick="ppStart(\'push\')">🟦 PUSHから開始</button>'+
-      '<button class="btn" style="flex:1;background:var(--red-bg);color:var(--red);font-weight:700" onclick="ppStart(\'pull\')">🟥 PULLから開始</button>'+
+      '<button class="btn" style="flex:1;background:var(--blue-bg);color:var(--blue);font-weight:700" onclick="ppStart(\'push\')">'+ic('i-push',14)+' PUSHから開始</button>'+
+      '<button class="btn" style="flex:1;background:rgba(194,65,12,.10);color:var(--pull);font-weight:700" onclick="ppStart(\'pull\')">'+ic('i-pull',14)+' PULLから開始</button>'+
       '</div></div>';
   }
   var isPush=next==='push';
-  var color=isPush?'var(--blue)':'var(--red)';
-  var bg=isPush?'var(--blue-bg)':'var(--red-bg)';
-  var label=isPush?'🟦 PUSH':'🟥 PULL';
+  var color=isPush?'var(--blue)':'var(--pull)'; // ブランドのmaroonとは分離: PUSH=--blue / PULL=--pull（危険の--redとも別）
+  var bg=isPush?'var(--blue-bg)':'rgba(194,65,12,.10)';
   var wd=ppNextWeightDay();
   var wdTxt=wd?'・'+ppDateLabel(wd.date):'';
   var lastRec=D.pp[D.pp.length-1];
   var byLabel=lastRec.by==='trainer'?'トレーナー':'スタッフ';
   var metaTxt='最終操作: '+fmt(lastRec.date)+' ('+byLabel+')';
   var todayStrong=(wd&&wd.isToday)?'<div style="font-size:12px;font-weight:700;color:'+color+';margin-bottom:4px">今日は'+(isPush?'PUSH':'PULL')+'の日！</div>':'';
-  var borderStyle=(wd&&wd.isToday)?'border:2px solid '+color+';box-shadow:0 0 16px '+bg:'';
+  var borderStyle=(wd&&wd.isToday)?'border:2px solid '+color+';':'';
   var ctrlHtml='';
   if(showCtrl){
     ctrlHtml='<div style="display:flex;gap:8px;margin-top:10px">'+
-      '<button class="btn" style="flex:1;font-size:12px" onclick="ppFlip(\''+next+'\')">✅ '+(isPush?'PUSH':'PULL')+'実施済み → '+(isPush?'PULL':'PUSH')+'へ</button>'+
-      '<button class="btn" style="font-size:12px" onclick="ppUndo()">↩ 1つ戻す</button>'+
+      '<button class="btn" style="flex:1;font-size:12px" onclick="ppFlip(\''+next+'\')">'+ic('i-check',13)+' '+(isPush?'PUSH':'PULL')+'実施済み → '+(isPush?'PULL':'PUSH')+'へ</button>'+
+      '<button class="btn" style="font-size:12px" onclick="ppUndo()">'+ic('i-undo',13)+' 1つ戻す</button>'+
       '</div>';
   }
   return '<div class="card" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem;background:linear-gradient(135deg,'+bg+',transparent 70%);'+borderStyle+'">'+
     todayStrong+
-    '<div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:4px">🏋️ 次のウエイト'+wdTxt+'</div>'+
-    '<div style="font-size:24px;font-weight:800;color:'+color+'">'+label+'</div>'+
-    '<div style="font-size:11px;color:var(--text-secondary);margin-top:6px">'+metaTxt+'</div>'+
+    '<div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:6px;display:flex;align-items:center;gap:5px">'+ic('i-dumbbell',13)+' 次のウエイト'+wdTxt+'</div>'+
+    '<div><span class="flag" style="background:'+color+';color:#fff;font-size:22px;padding:5px 16px 5px 12px">'+ic('i-'+(isPush?'push':'pull'),20)+' '+(isPush?'PUSH':'PULL')+'</span></div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-top:8px">'+metaTxt+'</div>'+
     ctrlHtml+
     '</div>';
 }
@@ -5818,10 +5885,9 @@ function postAnnounceFromCalendar(){
   var evts=getThisWeekEvents();
   if(!evts.length)return alert('今週のカレンダーイベントがありません');
   var lines=evts.map(function(e){var typelabel=e.type==='match'?'【試合】':e.type==='practice'?'【練習】':e.type==='off'?'【オフ】':e.type==='weight'?'【ウエイト】':'';return fmt(e.date)+' '+typelabel+e.title+(e.detail?' '+e.detail:'');});
-  var text='📅 今週の予定\n'+lines.join('\n');
+  var text='今週の予定\n'+lines.join('\n');
   svSafe('ann',{id:Date.now(),date:todayStr(),text:text,targetPid:null},function(){});
-  alert('投稿しました ✓');
-  V.dash();
+  V.dash();toast('投稿しました');
 }
 
 // === 予定の一括インポート（TimeTreeスクショ起点・貼り付け式） ===
@@ -6095,7 +6161,7 @@ ld().then(function(){
     setTimeout(ldHide,600); // transitionend不発（reduced-motion等）でも必ずdisplay:none
     lds.classList.add('done');
   }
-  startListeners();V.dash();
+  startListeners();nav('dash'); // nav()経由=クラスA演出+トップバーaction(学年更新)が初回ロードでも揃う（旧: V.dash()直呼びだと両方欠けた）
 }).catch(function(e){
   console.error(e);
   document.getElementById('loading-screen').innerHTML='<div style="text-align:center;color:var(--pale)">'+ic('i-warn',40,'var(--gold-hot)')+'<div style="margin-top:12px;font-weight:700">読み込みエラー</div><button onclick="location.reload()" style="margin-top:14px;padding:10px 22px;cursor:pointer;border:none;border-radius:10px;background:var(--pale);color:var(--maroon-d);font-weight:700;font-family:inherit;font-size:14px">再試行</button></div>';

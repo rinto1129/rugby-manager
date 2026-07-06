@@ -895,6 +895,9 @@ function startListeners(){
         try{
           var raw=doc.data().data;
           if(_lastRaw[k]===raw)return; // 同一内容の再通知はスキップ（読み取り側のみの最適化・データ層不変）
+          // 起動直後の永続キャッシュ通知（ld()の最新値より古い）でDを巻き戻さない＆初回クラスA演出のDOM差し替え事故防止。
+          // サーバー版はこの直後にfromCache=falseで届き、本当に変わっていればそこで再描画される（読み取り側のみ）
+          if(doc.metadata&&doc.metadata.fromCache&&_lastRaw[k]!=null)return;
           _lastRaw[k]=raw;
           var parsed=JSON.parse(raw);
           if(k==='p'&&Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
