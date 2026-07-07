@@ -301,6 +301,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 <div class="nav-bottom" id="nav-bar">
 <div class="nav-btn ac" onclick="go('home')"><span class="nav-btn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>ホーム</div>
 <div class="nav-btn" onclick="go('training')"><span class="nav-btn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z"/></svg></span>トレーニング</div>
+<div class="nav-btn" onclick="go('mydata')"><span class="nav-btn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 21h4v-9H4v9zm6 0h4V3h-4v18zm6 0h4v-13h-4v13z"/></svg></span>マイデータ</div>
 <div class="nav-btn" onclick="go('mypage')"><span class="nav-btn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span class="nav-dot" id="nav-badge-mypage"></span></span>マイページ</div>
 </div>
 <script>
@@ -4652,6 +4653,349 @@ function showSelfFitnessResult(log){
   h+='<button class="btn btn-p" style="width:100%;margin-top:16px" onclick="go(\'training\')">完了</button>';
   showSub(h);
 }
+
+// ===== マイデータ（Phase 5）: 期間別の推移＋自動考察。読み取り専用。 =====
+// n日前の日付文字列（player未定義のため新設。coachのagoStrと同義）。
+function agoStr(n){return toDateStr(new Date(Date.now()-n*86400000));}
+// null除外の平均（player未定義のため新設。coachのavgOfと同義）。
+function avgOf(arr){var v=arr.filter(function(x){return x!=null;});if(!v.length)return null;return v.reduce(function(s,x){return s+x;},0)/v.length;}
+// 出席率: 分母=期間内カレンダーweight日数（<=今日）、分子=そのうち非欠席チーム練習を記録した日数（kind!=='self'）。
+function getMdAttendance(pid,range){
+  var since=range==='all'?'0000-00-00':agoStr(((parseInt(range,10)||90))-1);
+  var today=todayStr();
+  var wdays={};
+  (D.cal||[]).forEach(function(e){if(e&&e.type==='weight'&&e.date&&e.date>=since&&e.date<=today)wdays[e.date]=1;});
+  var wkeys=Object.keys(wdays);
+  if(!wkeys.length)return null;
+  var att={};
+  tlogAll().forEach(function(l){if(idEq(l.pid,pid)&&l.kind!=='self'&&!l.absent&&wdays[l.date])att[l.date]=1;});
+  var a=Object.keys(att).length;
+  return{total:wkeys.length,attended:a,rate:Math.round(a/wkeys.length*100)};
+}
+// 自動考察（coach insPlayer 5ルールを二人称移植＋追加ルール）。読み取り専用・全ガード済み。
+function getMyInsights(range){
+  var out=[],pid=myPid;
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  if(!p)return out;
+  var since=range==='all'?'0000-00-00':agoStr(((parseInt(range,10)||90))-1);
+  function inR(d){return range==='all'||(d&&d>=since);}
+  // 1) BIG3順位（ベスト記録・期間非依存）
+  var b3=getBestBIG3(pid);
+  if(b3){
+    var ranked=D.p.map(function(x){return{id:x.id,v:getBestBIG3(x.id)||0};}).filter(function(x){return x.v>0;}).sort(function(a,b){return b.v-a.v;});
+    var rank=ranked.findIndex(function(x){return idEq(x.id,pid);})+1;
+    var posMates=D.p.filter(function(x){return x.position===p.position;}).map(function(x){return{id:x.id,v:getBestBIG3(x.id)||0};}).filter(function(x){return x.v>0;}).sort(function(a,b){return b.v-a.v;});
+    var posRank=posMates.findIndex(function(x){return idEq(x.id,pid);})+1;
+    out.push({lv:rank<=3?'good':'info',t:'あなたのBIG3合計は '+b3+'kg — チーム'+rank+'位 / '+escapeHtml(p.position||'-')+'内'+posRank+'位',
+      d:'記録のある'+ranked.length+'名中の順位です。'+(rank<=3?'チームトップクラスの筋力です。':'コツコツ積み上げていこう。')});
+  }
+  // 2) 前回測定からの伸び（BIG3が3種目そろった測定回のみ比較。bronco単独/部分測定はbig3が0に潰れて偽の大増減を生むため除外）
+  var recs=D.ph.filter(function(x){return idEq(x.pid,pid)&&x.squat>0&&x.bench>0&&x.deadlift>0;}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+  if(recs.length>=2){
+    var d=big3(recs[recs.length-1])-big3(recs[recs.length-2]);
+    if(d>0)out.push({lv:'good',t:'前回の測定からBIG3が +'+d+'kg 伸びました',d:fmt(recs[recs.length-2].date)+' → '+fmt(recs[recs.length-1].date)+'の比較。トレーニングが結果につながっています。'});
+    else if(d<0)out.push({lv:'warn',t:'前回の測定からBIG3が '+d+'kg 下がっています',d:'怪我・疲労・測定条件の影響が考えられます。下のトレーニング推移も見てみよう。'});
+  }
+  // 追加) 推定1RM 過去30日の伸び
+  var cut=agoStr(29),e1recs=(D.e1rm||[]).filter(function(x){return idEq(x.pid,pid);}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+  var grown=[];
+  EST_BASES.forEach(function(b){
+    var latest=null,base=null;
+    e1recs.forEach(function(rec){if(rec.values&&rec.values[b.k]){var v=rec.values[b.k].e1rm;latest=v;if(rec.date&&rec.date<cut)base=v;}});
+    if(base!=null&&latest!=null&&latest>base){var sl=STD_LIFTS.find(function(l){return l.ph===b.k;});grown.push((sl?sl.short:b.label)+' +'+(latest-base)+'kg');}
+  });
+  if(grown.length)out.push({lv:'good',t:'推定1RMが過去30日で伸びています',d:grown.join(' / ')+'。継続の成果が出ています。'});
+  // 3) 怪我再発リスク（同一部位2回以上）
+  var byPart={};
+  D.i.filter(function(x){return idEq(x.pid,pid);}).forEach(function(x){if(x.part)byPart[x.part]=(byPart[x.part]||0)+1;});
+  Object.keys(byPart).forEach(function(part){
+    if(byPart[part]>=2){
+      var hist=D.i.filter(function(x){return idEq(x.pid,pid)&&x.part===part;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+      out.push({lv:'warn',t:'「'+escapeHtml(part)+'」を過去に'+byPart[part]+'回痛めています',
+        d:'同じ部位のくり返しは、弱点や動作のクセが原因のことがあります。予防エクササイズを続けよう。',
+        detail:hist.map(function(x){return '<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0"><span style="font-size:12px;font-weight:600">'+escapeHtml((x.side||'')+x.part+' '+(x.type||''))+(x.resolved?'':' <span class="bd bd-r" style="font-size:9px">現在</span>')+'</span><span style="font-size:10px;color:var(--text-secondary)">'+fmt(x.date)+'</span></div>';}).join('')});
+    }
+  });
+  // 4) 直近7日のコンディション
+  var cond7=D.f.filter(function(x){return idEq(x.pid,pid)&&x.date>=agoStr(6);});
+  if(cond7.length){
+    var avgR=avgOf(cond7.map(function(x){return x.rpe;}));
+    var avgS=avgOf(cond7.map(function(x){return x.sleep>0?x.sleep:null;}));
+    if(avgR!=null&&avgR>=8)out.push({lv:'bad',t:'直近7日の平均疲労度が '+avgR.toFixed(1)+' と高めです',d:(avgS!=null?'平均睡眠は'+avgS.toFixed(1)+'時間。':'')+'負荷を落とすか、休養を入れることを考えよう。'});
+    else if(avgS!=null&&avgS<6)out.push({lv:'warn',t:'直近7日の平均睡眠が '+avgS.toFixed(1)+' 時間と不足しています',d:'回復が追いつかないと、怪我やパフォーマンス低下につながります。'});
+  }
+  // 5) 週間ボリューム（先週比±30%）
+  var w1=tlogAll().filter(function(l){return idEq(l.pid,pid)&&!l.absent&&l.date>=agoStr(6);}).reduce(function(s,l){return s+(l.totalVolume||0);},0);
+  var w2=tlogAll().filter(function(l){return idEq(l.pid,pid)&&!l.absent&&l.date>=agoStr(13)&&l.date<agoStr(6);}).reduce(function(s,l){return s+(l.totalVolume||0);},0);
+  if(w1&&w2){
+    var vp=Math.round((w1-w2)/w2*100);
+    if(vp>=30)out.push({lv:'warn',t:'週間トレーニング量が先週比 +'+vp+'% と急増しています',d:'今週 '+w1.toLocaleString()+'kg / 先週 '+w2.toLocaleString()+'kg。急な増加は怪我のもと。少しずつ増やそう。'});
+    else if(vp<=-30)out.push({lv:'info',t:'週間トレーニング量が先週比 '+vp+'% に減りました',d:'今週 '+w1.toLocaleString()+'kg / 先週 '+w2.toLocaleString()+'kg。怪我・欠席・ディロードなど、心当たりを確認しよう。'});
+  }
+  // 追加) 体脂肪率トレンド（体組成の直近2件）
+  var bcFat=D.bc.filter(function(x){return idEq(x.pid,pid)&&x.fat!=null&&x.fat!=='';}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+  if(bcFat.length>=2){
+    var f2=parseFloat(bcFat[bcFat.length-1].fat),f1=parseFloat(bcFat[bcFat.length-2].fat);
+    if(isFinite(f1)&&isFinite(f2)){
+      var fd=Math.round((f2-f1)*10)/10;
+      if(fd>=2)out.push({lv:'warn',t:'体脂肪率が +'+fd+'% 上がっています',d:f1+'% → '+f2+'%。増量中なら問題ないことも。除脂肪量（中身）も合わせて確認しよう。'});
+      else if(fd<=-2)out.push({lv:'good',t:'体脂肪率が '+fd+'% 下がっています',d:f1+'% → '+f2+'%。しっかり絞れています。'});
+    }
+  }
+  // 追加) 自主トレ回数（期間内）
+  var selfN=tlogAll().filter(function(l){return idEq(l.pid,pid)&&l.kind==='self'&&inR(l.date);}).length;
+  if(selfN>=3)out.push({lv:'good',t:'この期間に自主トレを '+selfN+'回 記録しています',d:'チーム練習に加えた主体的な取り組みが、確実に差をつけます。'});
+  // 追加) 出席率（期間内・カレンダーweight日数が分母）
+  var att=getMdAttendance(pid,range);
+  if(att&&att.total>=3){
+    if(att.rate<70)out.push({lv:'warn',t:'チームウエイトの出席率が '+att.rate+'% です',d:'この期間の対象'+att.total+'日中'+att.attended+'日に参加。参加を増やして土台を積み上げよう。'});
+    else if(att.rate>=90)out.push({lv:'good',t:'チームウエイトの出席率が '+att.rate+'% です',d:'この期間の対象'+att.total+'日中'+att.attended+'日に参加。安定して取り組めています。'});
+  }
+  return out;
+}
+// 種目別ボリューム推移チャート（種目セレクタ変更時は全再描画せずこの1本だけ描き直す）
+function drawMdExChart(){
+  var ee=document.getElementById('md-tex-chart');if(!ee)return;
+  var exName=window._mdEx;if(!exName)return;
+  var R=window._mdRange||'90';
+  var since=R==='all'?'0000-00-00':agoStr(((parseInt(R,10)||90))-1);
+  var logs=tlogAll().filter(function(l){return idEq(l.pid,myPid)&&!l.fitness&&(R==='all'||(l.date&&l.date>=since));}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+  var exData=[];
+  logs.forEach(function(l){
+    var r=(l.results||[]).find(function(x){return x.exName===exName&&!x.skipped;});
+    if(r&&r.sets){var vol=r.sets.reduce(function(s,x){return s+((parseFloat(x.weight)||0)*(parseInt(x.reps)||0));},0);exData.push({date:l.date.slice(5),vol:vol});}
+  });
+  var ctx2=ee.getContext('2d');
+  var g2=ctx2.createLinearGradient(0,0,0,180);g2.addColorStop(0,'rgba(4,108,72,0.22)');g2.addColorStop(1,'rgba(4,108,72,0)');
+  dC('md_tex');
+  charts.md_tex=new Chart(ee,{type:'line',data:{labels:exData.map(function(d){return d.date;}),datasets:[{label:exName,data:exData.map(function(d){return d.vol;}),borderColor:'#046C48',backgroundColor:g2,borderWidth:3,fill:true,tension:.4,pointBackgroundColor:'#fff',pointBorderColor:'#046C48',pointBorderWidth:2,pointRadius:4,pointHoverRadius:7}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(42,10,12,0.96)',padding:12,cornerRadius:10,callbacks:{label:function(c){return c.parsed.y.toLocaleString()+' kg';}}}},scales:{y:{grid:{color:'rgba(60,10,12,0.08)'},ticks:{color:'#6E5A5C',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#6E5A5C',font:{size:11}}}}}});
+}
+function selectMdEx(v){window._mdEx=v;drawMdExChart();}
+function setMdRange(r){window._mdRange=r;if(curTab==='mydata')T.mydata();}
+T.mydata=function(){
+  subView=null;dCA();
+  var p=D.p.find(function(x){return x.id===myPid;});if(!p)return;
+  if(!_tlogArchLoaded)loadTlogArch(function(){if(curTab==='mydata'&&!subView)T.mydata();});
+  var R=window._mdRange||'90';window._mdRange=R;
+  var days=R==='all'?99999:(parseInt(R,10)||90);
+  var since=R==='all'?'0000-00-00':agoStr(days-1);
+  function inR(d){return R==='all'||(d&&d>=since);}
+  var myTlog=tlogAll().filter(function(l){return idEq(l.pid,myPid);});
+  var fRecs=D.f.filter(function(x){return idEq(x.pid,myPid)&&inR(x.date);}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+  var bcRecs=D.bc.filter(function(x){return idEq(x.pid,myPid)&&inR(x.date);}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+  var phRecs=D.ph.filter(function(x){return idEq(x.pid,myPid)&&inR(x.date);}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+  function secHead(txt,icn){return '<div style="font-size:14px;font-weight:800;margin:22px 0 10px;display:flex;align-items:center;gap:7px">'+ic(icn,17,'var(--maroon)')+txt+'</div>';}
+
+  var h='<div class="kicker" style="margin-top:2px">MY DATA</div>'+
+    '<div style="font-size:20px;font-weight:900;letter-spacing:-.01em;margin:0 0 12px">マイデータ</div>';
+  // 期間セレクタ
+  var ranges=[['30','30日'],['90','90日'],['all','全期間']];
+  h+='<div style="display:flex;gap:6px;margin-bottom:6px">'+ranges.map(function(r){
+    var on=r[0]===R;
+    return '<button onclick="setMdRange(\''+r[0]+'\')" style="flex:1;padding:8px 4px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-sans);border:1px solid '+(on?'var(--maroon)':'var(--border-tertiary)')+';background:'+(on?'var(--maroon)':'var(--bg-primary)')+';color:'+(on?'#fff':'var(--text-secondary)')+'">'+r[1]+'</button>';
+  }).join('')+'</div>';
+
+  // ① 考察
+  function insHtml(ins){
+    var C={good:['var(--green)','var(--green-bg)','✓'],info:['var(--blue)','var(--blue-bg)','i'],warn:['var(--amber)','var(--amber-bg)','!'],bad:['var(--red)','var(--red-bg)','!']};
+    var c=C[ins.lv]||C.info;
+    return '<div class="card rv" style="border-left:3px solid '+c[0]+';margin-bottom:8px;padding:12px 14px;display:flex;gap:11px;align-items:flex-start">'+
+      '<span style="flex:none;width:24px;height:24px;border-radius:50%;background:'+c[1]+';color:'+c[0]+';font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center">'+c[2]+'</span>'+
+      '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;line-height:1.45">'+ins.t+'</div>'+
+      '<div style="font-size:12px;color:var(--text-secondary);margin-top:3px;line-height:1.5">'+ins.d+'</div>'+
+      (ins.detail?'<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border-tertiary)">'+ins.detail+'</div>':'')+
+      '</div></div>';
+  }
+  var ins=getMyInsights(R);
+  h+=secHead('あなたへの考察','i-info');
+  if(ins.length)h+=ins.map(insHtml).join('');
+  else h+='<div class="card"><div style="font-size:12px;color:var(--text-secondary);line-height:1.6">記録が増えると、ここに自動で気づき・アドバイスが表示されます。まずはコンディションやトレーニングを記録してみよう。</div></div>';
+
+  // ② コンディション
+  h+=secHead('コンディション','i-heart');
+  var fMap={};fRecs.forEach(function(r){fMap[r.date]=r;});
+  var wMap={};
+  fRecs.forEach(function(r){if(r.weight)wMap[r.date]=r.weight;});
+  bcRecs.forEach(function(r){if(r.weight)wMap[r.date]=r.weight;});
+  var cSet={};fRecs.forEach(function(r){cSet[r.date]=1;});Object.keys(wMap).forEach(function(dt){cSet[dt]=1;});
+  var cDates=Object.keys(cSet).sort();
+  if(cDates.length>=2){
+    h+='<div class="card" style="margin-bottom:8px"><div style="position:relative;height:190px"><canvas id="md-cond-chart"></canvas></div></div>';
+  }else{
+    h+='<div class="card" style="margin-bottom:8px"><div style="font-size:12px;color:var(--text-secondary);line-height:1.6">この期間のコンディション記録がまだ足りません。毎日つけると疲労・睡眠・体重の推移が見えるようになります。</div></div>';
+  }
+
+  // ③ 体組成
+  h+=secHead('体組成','i-scale');
+  var ffmi=getCurrentFFMIInfo(myPid);
+  if(ffmi){
+    h+='<div class="card" style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-weight:700;font-size:13px">FFMI（除脂肪量指数）</span><span style="font-size:10px;color:var(--text-secondary);margin-left:auto">'+fmt(ffmi.date)+'測定</span></div>'+
+      '<div class="grid3"><div class="mc"><div class="v" style="font-size:18px;color:var(--purple)">'+ffmi.ffmi+'</div><div class="l">FFMI</div></div>'+
+      '<div class="mc"><div class="v" style="font-size:18px">'+ffmi.ffm+'</div><div class="l">除脂肪量(kg)</div></div>'+
+      '<div class="mc"><div class="v" style="font-size:18px">'+ffmi.fat+'</div><div class="l">体脂肪率(%)</div></div></div></div>';
+  }else if(!p.height){
+    h+='<div class="card" style="margin-bottom:8px"><div style="font-size:12px;color:var(--text-secondary);line-height:1.6">身長が未登録のためFFMI（体重の中身＝筋肉量の指標）を計算できません。<span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="go(\'mypage\')">マイページで身長を登録</span>してください。</div></div>';
+  }else{
+    h+='<div class="card" style="margin-bottom:8px"><div style="font-size:12px;color:var(--text-secondary);line-height:1.6">体脂肪率つきの体組成を記録すると、FFMIや体脂肪率・筋量の推移が見られます。</div><button class="btn btn-sm btn-p" style="margin-top:8px" onclick="showBCForm()">'+ic('i-scale',13)+' 体組成を記録する</button></div>';
+  }
+  var bcHasFat=bcRecs.some(function(r){return r.fat!=null&&r.fat!=='';});
+  var bcHasMus=bcRecs.some(function(r){return r.muscle!=null&&r.muscle!=='';});
+  if(bcRecs.length>=2&&(bcHasFat||bcHasMus)){
+    h+='<div class="card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:700;margin-bottom:8px">体脂肪率・筋量の推移</div><div style="position:relative;height:180px"><canvas id="md-bc-chart"></canvas></div></div>';
+  }
+
+  // ④ トレーニング
+  h+=secHead('トレーニング','i-dumbbell');
+  var att=getMdAttendance(myPid,R);
+  var selfN=myTlog.filter(function(l){return l.kind==='self'&&inR(l.date);}).length;
+  var teamN=myTlog.filter(function(l){return l.kind!=='self'&&!l.absent&&inR(l.date);}).length;
+  h+='<div class="grid3" style="margin-bottom:8px">'+
+    '<div class="mc"><div class="v" style="font-size:18px;color:var(--maroon)">'+(att?att.rate+'%':'—')+'</div><div class="l">出席率</div></div>'+
+    '<div class="mc"><div class="v" style="font-size:18px">'+teamN+'</div><div class="l">チーム実施</div></div>'+
+    '<div class="mc"><div class="v" style="font-size:18px;color:var(--blue)">'+selfN+'</div><div class="l">自主トレ</div></div></div>';
+  if(att)h+='<div style="font-size:10px;color:var(--text-tertiary);margin:-2px 0 8px">出席率＝カレンダーのウエイト予定'+att.total+'日のうち'+att.attended+'日に参加</div>';
+  // 週間ボリューム（棒）
+  var weekN=R==='30'?5:(R==='90'?13:16);
+  var weeks=[];
+  for(var wi=weekN-1;wi>=0;wi--){
+    var loD=agoStr(wi*7+6),hiD=agoStr(wi*7);
+    var vol=myTlog.filter(function(l){return !l.absent&&!l.fitness&&l.date>=loD&&l.date<=hiD;}).reduce(function(s,l){return s+(l.totalVolume||0);},0);
+    weeks.push({vol:vol,label:loD.slice(5).replace('-','/')});
+  }
+  var maxV=Math.max.apply(null,weeks.map(function(x){return x.vol;}).concat([1]));
+  h+='<div class="card rv" style="margin-bottom:8px"><div style="font-size:12px;font-weight:700;margin-bottom:8px">週間ボリューム（総挙上量）</div>';
+  if(weeks.every(function(x){return !x.vol;})){
+    h+='<div style="font-size:12px;color:var(--text-secondary)">この期間のトレーニング記録がまだありません。実施記録をつけると週ごとに積み上がります。</div>';
+  }else{
+    h+='<div style="display:flex;align-items:flex-end;gap:5px;height:100px;padding:0 2px">'+weeks.map(function(x){
+      var bh=Math.round(x.vol/maxV*70);
+      return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;height:100%">'+
+        '<span style="font-size:8px;color:var(--text-secondary);white-space:nowrap">'+(x.vol?(x.vol>=1000?(Math.round(x.vol/100)/10)+'t':x.vol):'')+'</span>'+
+        '<div style="width:100%;max-width:26px;height:'+Math.max(bh,x.vol?4:2)+'px;border-radius:4px 4px 2px 2px;background:linear-gradient(180deg,var(--maroon-vivid),var(--maroon));'+(x.vol?'':'opacity:.15')+'"></div>'+
+        '<span style="font-size:8px;color:var(--text-tertiary);white-space:nowrap">'+x.label+'</span></div>';
+    }).join('')+'</div>';
+  }
+  h+='</div>';
+  // 種目別推移（セレクタ）
+  var exLogs=myTlog.filter(function(l){return !l.fitness&&inR(l.date);});
+  var allEx=[];exLogs.forEach(function(l){(l.results||[]).forEach(function(r){if(!r.skipped&&r.exName&&allEx.indexOf(r.exName)<0)allEx.push(r.exName);});});
+  if(allEx.length){
+    var selEx=(window._mdEx&&allEx.indexOf(window._mdEx)>=0)?window._mdEx:allEx[0];
+    window._mdEx=selEx;
+    h+='<div class="card" style="margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px"><div style="font-size:12px;font-weight:700">種目別の推移</div><select class="ipt" style="width:auto;max-width:60%;padding:4px 8px;font-size:12px" onchange="selectMdEx(this.value)">'+allEx.map(function(e){return '<option'+(e===selEx?' selected':'')+'>'+escapeHtml(e)+'</option>';}).join('')+'</select></div><div style="position:relative;height:180px"><canvas id="md-tex-chart"></canvas></div></div>';
+  }
+
+  // ⑤ フィジカル
+  h+=secHead('フィジカル','i-chart');
+  h+='<div class="grid3" style="margin-bottom:8px">'+STD_LIFTS.map(function(l){
+    var inf=getLiftRankInfo(myPid,l.k);
+    var has=inf&&!inf.noWeight&&inf.oneRM;
+    var col=(inf&&inf.rank)?inf.rank.color:'var(--border-secondary)';
+    var rk=has?(inf.rank?inf.rank.label:'ランク外'):(inf&&inf.noWeight?'体重待ち':'—');
+    return '<div class="mc"><div style="font-size:10px;color:var(--text-secondary);font-weight:700">'+l.short+'</div>'+
+      '<div class="num" style="font-size:20px">'+(has?inf.oneRM+'<span class="unit">kg</span>':'—')+'</div>'+
+      '<div class="bd" style="background:'+col+';color:var(--ink);font-size:9px;margin-top:2px">'+escapeHtml(rk)+'</div></div>';
+  }).join('')+'</div>';
+  if(phRecs.length>=2){
+    h+='<div class="card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:700;margin-bottom:8px">1RM・記録の推移</div><div style="position:relative;height:200px"><canvas id="md-ph-chart"></canvas></div></div>';
+  }
+  var brRecs=phRecs.filter(function(r){return r.bronco!=null;});
+  if(brRecs.length>=2){
+    h+='<div class="card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:700;margin-bottom:8px">Bronco の推移 <span style="font-size:10px;color:var(--text-tertiary);font-weight:600">（下ほど速い＝良い）</span></div><div style="position:relative;height:160px"><canvas id="md-br-chart"></canvas></div></div>';
+  }
+  if(phRecs.length<2){
+    h+='<div style="font-size:11px;color:var(--text-tertiary);margin:-2px 0 6px">フィジカル測定を2回以上記録すると推移グラフが表示されます。</div>';
+  }
+
+  // ⑥ GPS（P9まで自動非表示：D.gs が存在する時のみ）
+  if(D.gs&&D.gs.length){
+    h+=secHead('GPS・試合スタッツ','i-run');
+    h+='<div class="card" style="margin-bottom:8px"><div style="font-size:12px;color:var(--text-secondary)">GPSデータは今後の実装で表示されます。</div></div>';
+  }
+
+  // ⑦ 怪我履歴
+  h+=secHead('怪我の履歴','i-bandage');
+  var myInj=D.i.filter(function(x){return idEq(x.pid,myPid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var actInj=myInj.filter(function(x){return !x.resolved;}),pastInj=myInj.filter(function(x){return x.resolved;});
+  if(!myInj.length){
+    h+='<div class="card"><div style="font-size:13px;color:var(--green);font-weight:700">'+ic('i-check',13,'var(--green)')+' 怪我の記録はありません</div></div>';
+  }else{
+    if(actInj.length){
+      h+='<div class="card" style="border-left:3px solid var(--red);margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:var(--red);margin-bottom:8px">現在の怪我・リハビリ</div>';
+      actInj.forEach(function(inj){
+        var rh=D.r.find(function(x){return idEq(x.injId,inj.id);});
+        var stage=rh?(rh.stage||0):0;var progPct=Math.round(stage/((STG.length-1)||1)*100);
+        h+='<div style="margin-bottom:10px"><div style="font-weight:700;font-size:14px">'+escapeHtml((inj.side||'')+inj.part+' '+inj.type)+'</div>'+
+          '<div style="font-size:11px;color:var(--text-secondary);margin:3px 0 5px">受傷: '+fmt(inj.date)+(inj.returnDate?' ／ 復帰予定: '+fmt(inj.returnDate):'')+'</div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary)"><span>リハビリ進捗</span><span style="color:var(--maroon);font-weight:700">'+escapeHtml(STG[stage]||'')+'</span></div>'+
+          '<div style="height:6px;background:var(--bg-tertiary);border-radius:99px;overflow:hidden;margin-top:4px"><div style="height:100%;width:'+progPct+'%;background:var(--maroon)"></div></div></div>';
+      });
+      h+='</div>';
+    }
+    if(pastInj.length){
+      h+='<div class="card"><div style="font-size:12px;font-weight:800;margin-bottom:8px">これまでの怪我（'+pastInj.length+'件）</div>'+pastInj.slice(0,8).map(function(inj){
+        return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--border-tertiary)"><div><div style="font-size:12px;font-weight:600">'+escapeHtml((inj.side||'')+inj.part+' '+inj.type)+'</div><div style="font-size:10px;color:var(--text-secondary)">'+fmt(inj.date)+(inj.resolvedDate?' 〜 '+fmt(inj.resolvedDate):'')+'</div></div><span class="bd bd-g" style="font-size:9px">回復済</span></div>';
+      }).join('')+'</div>';
+    }
+  }
+
+  h+='<div style="height:20px"></div>';
+  $m().innerHTML=h;
+
+  // ---- チャート描画（md_接頭辞・dC先行・固定高。onSnapshot再描画に冪等）
+  setTimeout(function(){
+    // ② コンディション
+    if(cDates.length>=2){
+      var e=document.getElementById('md-cond-chart');
+      if(e){
+        dC('md_cond');
+        charts.md_cond=new Chart(e,{type:'line',data:{labels:cDates.map(function(dt){return dt.slice(5);}),datasets:[
+          {label:'疲労(RPE)',data:cDates.map(function(dt){return fMap[dt]&&fMap[dt].rpe!=null?fMap[dt].rpe:null;}),borderColor:'#c1121f',backgroundColor:'#c1121f',tension:.3,spanGaps:true,yAxisID:'y',pointRadius:3},
+          {label:'睡眠(h)',data:cDates.map(function(dt){return fMap[dt]&&fMap[dt].sleep>0?fMap[dt].sleep:null;}),borderColor:'#1D4ED8',backgroundColor:'#1D4ED8',tension:.3,spanGaps:true,yAxisID:'y',pointRadius:3},
+          {label:'体重(kg)',data:cDates.map(function(dt){return wMap[dt]!=null?wMap[dt]:null;}),borderColor:'#6D52D6',backgroundColor:'#6D52D6',tension:.3,spanGaps:true,yAxisID:'y1',pointRadius:3}
+        ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{y:{min:0,max:10,grid:{color:'rgba(60,10,12,0.08)'},ticks:{color:'#6E5A5C',font:{size:10}}},y1:{position:'right',display:'auto',grid:{drawOnChartArea:false},ticks:{color:'#6D52D6',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#6E5A5C',font:{size:10}}}},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:7,padding:10,font:{size:11}}}}}});
+      }
+    }
+    // ③ 体組成
+    if(bcRecs.length>=2&&(bcHasFat||bcHasMus)){
+      var e2=document.getElementById('md-bc-chart');
+      if(e2){
+        dC('md_bc');
+        charts.md_bc=new Chart(e2,{type:'line',data:{labels:bcRecs.map(function(r){return r.date.slice(5);}),datasets:[
+          {label:'体脂肪率(%)',data:bcRecs.map(function(r){return r.fat!=null&&r.fat!==''?parseFloat(r.fat):null;}),borderColor:'#c1121f',backgroundColor:'#c1121f',tension:.3,spanGaps:true,yAxisID:'y',pointRadius:3},
+          {label:'筋量(kg)',data:bcRecs.map(function(r){return r.muscle!=null&&r.muscle!==''?parseFloat(r.muscle):null;}),borderColor:'#046C48',backgroundColor:'#046C48',tension:.3,spanGaps:true,yAxisID:'y1',pointRadius:3}
+        ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{y:{position:'left',grid:{color:'rgba(60,10,12,0.08)'},ticks:{color:'#c1121f',font:{size:10}}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{color:'#046C48',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#6E5A5C',font:{size:10}}}},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:7,padding:10,font:{size:11}}}}}});
+      }
+    }
+    // ④ 種目別
+    drawMdExChart();
+    // ⑤ フィジカル（5種目）
+    if(phRecs.length>=2){
+      var e3=document.getElementById('md-ph-chart');
+      if(e3){
+        var ctx=e3.getContext('2d');
+        function grad(c1,c2){var g=ctx.createLinearGradient(0,0,0,200);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;}
+        function mk(label,key,color,ft){return{label:label,data:phRecs.map(function(r){return r[key]!=null?r[key]:null;}),borderColor:color,backgroundColor:grad(ft,'rgba(0,0,0,0)'),borderWidth:2.5,fill:false,tension:.4,spanGaps:true,pointBackgroundColor:'#fff',pointBorderColor:color,pointBorderWidth:2,pointRadius:3,pointHoverRadius:6};}
+        dC('md_ph');
+        charts.md_ph=new Chart(e3,{type:'line',data:{labels:phRecs.map(function(r){return r.date.slice(5);}),datasets:[
+          mk('SQ','squat','#1D4ED8','rgba(29,78,216,0.18)'),
+          mk('BP','bench','#046C48','rgba(4,108,72,0.18)'),
+          mk('DL','deadlift','#B45309','rgba(180,83,9,0.18)'),
+          mk('懸垂','chinning','#6D52D6','rgba(109,82,214,0.18)'),
+          mk('クリーン','clean','#C2410C','rgba(194,65,12,0.18)')
+        ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:10,color:'#6E5A5C',font:{size:11}}},tooltip:{backgroundColor:'rgba(42,10,12,0.96)',padding:10,cornerRadius:10,callbacks:{label:function(c){return ' '+c.dataset.label+': '+(c.parsed.y!=null?c.parsed.y+' kg':'-');}}}},scales:{y:{grid:{color:'rgba(60,10,12,0.08)'},ticks:{color:'#6E5A5C',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#6E5A5C',font:{size:10}}}}}});
+      }
+    }
+    // ⑤ Bronco（秒・下ほど良い＝軸反転）
+    if(brRecs.length>=2){
+      var e4=document.getElementById('md-br-chart');
+      if(e4){
+        dC('md_br');
+        charts.md_br=new Chart(e4,{type:'line',data:{labels:brRecs.map(function(r){return r.date.slice(5);}),datasets:[{label:'Bronco',data:brRecs.map(function(r){return r.bronco;}),borderColor:'#8d0000',backgroundColor:'#8d0000',borderWidth:3,tension:.3,pointBackgroundColor:'#fff',pointBorderColor:'#8d0000',pointBorderWidth:2,pointRadius:4,pointHoverRadius:7}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(42,10,12,0.96)',padding:10,cornerRadius:10,callbacks:{label:function(c){return broncoFmt(c.parsed.y);}}}},scales:{y:{reverse:true,grid:{color:'rgba(60,10,12,0.08)'},ticks:{color:'#6E5A5C',font:{size:10},callback:function(v){return broncoFmt(v);}}},x:{grid:{display:false},ticks:{color:'#6E5A5C',font:{size:10}}}}}});
+      }
+    }
+  },80);
+};
 
 T.tape=function(){
   if(!myPid)return;
