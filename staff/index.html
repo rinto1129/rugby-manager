@@ -5902,6 +5902,25 @@ function autoCreateMSessFromCal(evtType,date,title){
     toast('測定会「'+sessName+'」を自動作成しました');
   });
 }
+// 一括インポート用: 複数の測定イベントから測定会をまとめて自動作成（1回のsvSafeUpdateで競合回避）
+function autoCreateMSessFromCalBatch(measureRows,onDone){
+  var rows=(measureRows||[]).filter(function(r){return r.type==='phys_measure'||r.type==='bronco_measure';});
+  if(!rows.length){if(onDone)onDone(0);return;}
+  var msBase=Date.now(),msAdded=0;
+  svSafeUpdate('msess',function(latest){
+    latest=latest||[];
+    rows.forEach(function(r){
+      // 同日をカバーする測定会が既にあれば作成しない（バッチ内で追加した分もカバー判定に含む）
+      if(latest.some(function(s){return s.startDate<=r.date&&s.endDate>=r.date;}))return;
+      var sessName=r.title||((r.type==='bronco_measure'?'ブロンコ測定':'フィジカル測定')+' '+fmt(r.date));
+      latest.push({id:msBase+msAdded*1000+Math.floor(Math.random()*1000),name:sessName,startDate:r.date,endDate:r.date,createdAt:new Date().toISOString(),autoCreated:true,fromCalType:r.type});
+      msAdded++;
+    });
+    return latest;
+  },function(){
+    if(onDone)onDone(msAdded);
+  });
+}
 function doAddCalEventForDate(date){
   var title=document.getElementById('cef-title').value.trim();
   if(!title)return alert('タイトルを入力してください');
@@ -6024,6 +6043,8 @@ function doCalImport(){
   var rows=(_calImport||[]).filter(function(r){return!r.err&&r.include;});
   if(!rows.length)return alert('登録する予定が選択されていません');
   var added=0,skipped=0,base=Date.now();
+  // 測定イベント（フィジカル/ブロンコ）は測定会もまとめて自動作成する
+  var measureRows=rows.filter(function(r){return r.type==='phys_measure'||r.type==='bronco_measure';});
   svSafeUpdate('cal',function(latest){
     latest=latest||[];
     rows.forEach(function(r){
@@ -6034,9 +6055,11 @@ function doCalImport(){
     });
     return latest;
   },function(){
-    popView();
-    nav('calendar');
-    toast(added+'件を登録しました'+(skipped?'（重複 '+skipped+'件はスキップ）':''));
+    autoCreateMSessFromCalBatch(measureRows,function(msAdded){
+      popView();
+      nav('calendar');
+      toast(added+'件を登録しました'+(skipped?'（重複 '+skipped+'件はスキップ）':'')+(msAdded?'／測定会 '+msAdded+'件を自動作成':''));
+    });
   });
 }
 
