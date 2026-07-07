@@ -942,8 +942,8 @@ function insTraining(){
         d:'直近7日 <b>'+v1.toLocaleString()+'kg</b>。大きな負荷変動がなく、コントロールされた状態です。',detail:volDetail});
     }
   }
-  // 欠席率
-  var recent=logs.filter(function(l){return l.date>=agoStr(13);});
+  // 欠席率（自主トレは欠席し得ない=分母に入れると率が薄まるためkind!=='self'で除外）
+  var recent=logs.filter(function(l){return l.date>=agoStr(13)&&l.kind!=='self';});
   var absList=recent.filter(function(l){return l.absent;});
   var abs=absList.length;
   if(recent.length>=5){
@@ -1257,10 +1257,20 @@ function buildHistCoach(pid){
       h+='<div class="row"><span style="min-width:60px;color:var(--txt-2);font-size:12px">'+fmt(lg.date)+'</span><span class="chip" style="'+(lg.absentReason==='痛み・怪我'?'background:var(--red-bg);color:var(--red)':'')+'">欠席</span><span style="flex:1;color:var(--txt-2);font-size:11px">'+escapeHtml(lg.absentReason||'-')+'</span></div>';
       return;
     }
+    var selfBadge=lg.kind==='self'?' <span class="chip" style="background:var(--blue-bg);color:var(--blue)">自主</span>':'';
+    if(lg.fitness){
+      // フィットネス記録: 種目数/0kgの代わりに種類+時間（+距離/RPE）を出す
+      var ff=lg.fitness;
+      var fMeta=(ff.minutes!=null?ff.minutes+'分':'')+(ff.km!=null?' ・ '+ff.km+'km':'')+(ff.rpe!=null?' ・ RPE'+ff.rpe:'');
+      h+='<div class="row row-click" onclick="toggleTrSess('+lg.id+')"><span style="min-width:14px;color:var(--txt-3)" id="trsess-arw-'+lg.id+'">▸</span><span style="min-width:58px;color:var(--txt-2);font-size:12px">'+fmt(lg.date)+'</span><span style="flex:1;font-size:12px;font-weight:600">'+escapeHtml(ff.ftype||'フィットネス')+selfBadge+'</span><span style="font-weight:700;color:var(--green);font-size:12px">'+escapeHtml(fMeta)+'</span></div>';
+      h+='<div id="trsess-'+lg.id+'" style="display:none">'+trSessDetailC(lg,pid)+'</div>';
+      return;
+    }
     var mn=D.tmenu.find(function(x){return idEq(x.id,lg.menuId);});
+    var nm=lg.kind==='self'?'自主トレ（ウエイト）':(mn?escapeHtml(mn.name):'メニュー');
     var exCount=(lg.results||[]).length;
     var hasInjury=(lg.results||[]).some(function(r){return r.skipped&&r.skipReason==='痛み・怪我';});
-    h+='<div class="row row-click" onclick="toggleTrSess('+lg.id+')"><span style="min-width:14px;color:var(--txt-3)" id="trsess-arw-'+lg.id+'">▸</span><span style="min-width:58px;color:var(--txt-2);font-size:12px">'+fmt(lg.date)+'</span><span style="flex:1;font-size:12px;font-weight:600">'+(mn?escapeHtml(mn.name):'メニュー')+(hasInjury?' <span class="chip" style="background:var(--red-bg);color:var(--red)">怪我</span>':'')+'</span><span style="font-size:11px;color:var(--txt-2);margin-right:8px">'+exCount+'種目</span><span style="font-weight:700;color:var(--accent);font-size:13px">'+(lg.totalVolume||0).toLocaleString()+'kg</span></div>';
+    h+='<div class="row row-click" onclick="toggleTrSess('+lg.id+')"><span style="min-width:14px;color:var(--txt-3)" id="trsess-arw-'+lg.id+'">▸</span><span style="min-width:58px;color:var(--txt-2);font-size:12px">'+fmt(lg.date)+'</span><span style="flex:1;font-size:12px;font-weight:600">'+nm+selfBadge+(hasInjury?' <span class="chip" style="background:var(--red-bg);color:var(--red)">怪我</span>':'')+'</span><span style="font-size:11px;color:var(--txt-2);margin-right:8px">'+exCount+'種目</span><span style="font-weight:700;color:var(--accent);font-size:13px">'+(lg.totalVolume||0).toLocaleString()+'kg</span></div>';
     h+='<div id="trsess-'+lg.id+'" style="display:none">'+trSessDetailC(lg,pid)+'</div>';
   });
   if(logs.length>20)h+='<div style="font-size:11px;color:var(--txt-2);margin-top:6px">ほか '+(logs.length-20)+'件</div>';
@@ -1272,6 +1282,14 @@ function trSessDetailC(lg,pid){
   var cond=(D.f||[]).filter(function(r){return idEq(r.pid,pid)&&r.date===lg.date;})[0];
   var h='<div style="background:var(--bg-panel-2);border-radius:10px;padding:8px 12px;margin:2px 0 8px">';
   if(cond)h+='<div style="font-size:11px;color:var(--txt-2);margin-bottom:8px">当日コンディション: RPE <b style="color:var(--txt)">'+cond.rpe+'</b> / 睡眠 <b style="color:var(--txt)">'+cond.sleep+'h</b></div>';
+  if(lg.fitness){
+    // フィットネス記録の展開内容（results:[]のため下のセット表示は通らない）
+    var fd=lg.fitness;
+    h+='<div style="padding:6px 0"><div style="font-weight:600;font-size:12px;margin-bottom:4px;color:var(--txt)">'+escapeHtml(fd.ftype||'フィットネス')+' <span class="chip" style="background:var(--blue-bg);color:var(--blue)">自主</span></div>'+
+      '<div style="font-size:12px;color:var(--txt-2)">'+(fd.minutes!=null?'時間 '+fd.minutes+'分':'')+(fd.km!=null?' ／ 距離 '+fd.km+'km':'')+(fd.rpe!=null?' ／ RPE '+fd.rpe:'')+'</div>'+
+      (fd.note?'<div style="font-size:11px;color:var(--txt-2);margin-top:4px;white-space:pre-wrap">'+escapeHtml(fd.note)+'</div>':'')+'</div>';
+    return h+'</div>';
+  }
   (lg.results||[]).forEach(function(r){
     if(r.skipped){
       var inj=r.skipReason==='痛み・怪我';
@@ -1423,7 +1441,7 @@ function renderHomeView(){
     return d>=0&&d<=7;
   });
   var inputToday=D.f.filter(function(x){return x.date===today;}).length;
-  var trained14=tlogAll().filter(function(l){return !l.absent&&l.date>=agoStr(13);}).length;
+  var trained14=tlogAll().filter(function(l){return !l.absent&&l.kind!=='self'&&l.date>=agoStr(13);}).length; // チーム練習参加の指標=自主トレは含めない
   h+='<div class="sec"><div class="grid g4">'+
     rv(kpiTile(active.length,'現在の怪我','var(--red)','件'),0)+
     rv(kpiTile(soon.length,'7日以内に復帰予定','var(--amber)','名'),1)+
@@ -1629,7 +1647,7 @@ function renderTrainingView(){
   var logs=tlogAll().slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
   var cutoff=agoStr(13);
   var recent=logs.filter(function(l){return l.date>=cutoff;});
-  var doneCount=recent.filter(function(l){return !l.absent;}).length;
+  var doneCount=recent.filter(function(l){return !l.absent&&l.kind!=='self';}).length; // チーム練習参加の指標=自主トレは含めない
   var absentCount=recent.filter(function(l){return l.absent;}).length;
   var injuryAbsent=recent.filter(function(l){return l.absent&&l.absentReason==='痛み・怪我';}).length;
   var vol7=teamVolume(agoStr(6),today);
