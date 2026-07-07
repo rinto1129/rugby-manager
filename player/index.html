@@ -341,7 +341,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 if(window.Chart){Chart.defaults.color='#6E5A5C';Chart.defaults.borderColor='rgba(60,10,12,.08)';Chart.defaults.scale.grid.color='rgba(60,10,12,.08)';if(typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches)Chart.defaults.animation=false;}
 firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
 var db=firebase.firestore();
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',phskip:'rm_phskip',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm',pp:'rm_pushpull',std:'rm_standards'};
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',phskip:'rm_phskip',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm',pp:'rm_pushpull',std:'rm_standards',tgroup:'rm_tgroup'};
 var RCATS=['ケア','ROM改善','患部外トレーニング','トレーニング','アジリティ','フィットネス','サポート','オフ'];
 var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'#0891B2',サポート:'#059669',オフ:'var(--text-secondary)'};
 var RCAT_BG={ケア:'var(--blue-bg)',ROM改善:'var(--green-bg)',患部外トレーニング:'var(--amber-bg)',トレーニング:'var(--red-bg)',アジリティ:'var(--purple-bg)',フィットネス:'#E0F2FE',サポート:'#D1FAE5',オフ:'var(--bg-tertiary)'};
@@ -818,7 +818,7 @@ function getChart(injId){
 var PARTS=['頭部','頸部','肩','鎖骨','肘','手首','指','腰','股関節','大腿','膝','すね','足首','踵','アキレス腱','ふくらはぎ','足の甲','足趾','その他'];
 var INJ_TYPES=['捻挫','肉離れ','骨折','脱臼','打撲','靭帯損傷','半月板損傷','脳震盪','裂傷','腱炎','疲労骨折','その他'];
 var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
-var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],phskip:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],pp:[],std:[]};
+var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],phskip:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],pp:[],std:[],tgroup:[]};
 var myPid=null,curTab='home',charts={},subView=null;
 
 function ld(){
@@ -1674,6 +1674,8 @@ home:function(){
   // ppカードはタップでトレーニング画面へ直行（従来はタップしても何も起きなかった）
   var ppCardH=ppCardHtml(false);
   if(ppCardH)h+='<div onclick="go(\'training\')" style="cursor:pointer">'+ppCardH+'</div>';
+  // 自分のグループ（午前/午後・強度班。Phase 7・未設定時は非表示）
+  h+=myGroupCardHtml();
   // 今週のスケジュール（今日＋次の予定を表示・残りは折りたたみ。試合日からの日数差=MD-xチップ）
   if(weekEvts.length){
     var weekMatches=weekEvts.filter(function(e){return e.type==='match';}).map(function(e){return e.date;}).sort();
@@ -1883,11 +1885,26 @@ mypage:function(){
   var myTapeRsvs=(D.tape||[]).filter(function(t){return t.pid===myPid;}).filter(function(t){return t.date>=todayStr();}).sort(function(a,b){return a.date.localeCompare(b.date);}).slice(0,3);
   var h='<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">'+avH(p,50)+'<div style="flex:1"><div style="font-size:17px;font-weight:600">'+p.name+(totalUnread?' <span style="display:inline-block;background:var(--red);color:#fff;font-size:11px;padding:2px 8px;border-radius:99px;vertical-align:middle;margin-left:6px">'+ic('i-bell',10)+' '+totalUnread+'</span>':'')+'</div><div style="color:var(--text-secondary);font-size:12px">'+p.position+' / '+p.year+'年'+(p.note?' / '+p.note:'')+'</div></div></div>';
   // プロフィール（身長は選手が自己編集可能。体重は体組成測定で自動記録）
+  var wg=(p.wg&&typeof p.wg==='object')?p.wg:{};
   h+='<div class="card" style="margin-bottom:12px"><div class="kicker" style="margin-bottom:2px">PROFILE</div><div style="font-weight:800;font-size:14px;margin-bottom:8px">プロフィール</div>'+
     '<div style="display:flex;gap:8px;align-items:flex-end"><div style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">身長（cm）</label>'+
     '<input id="mh-input" class="ipt" type="number" step="0.1" min="100" max="230" inputmode="decimal" placeholder="例：175" value="'+(p.height!=null&&p.height!==''?escapeHtml(String(p.height)):'')+'"></div>'+
     '<button class="btn btn-p" style="flex:none;width:auto;padding-left:22px;padding-right:22px" onclick="saveMyHeight()">保存</button></div>'+
     '<div style="font-size:11px;color:var(--text-secondary);margin-top:8px">身長を登録すると、マイフィジカルで推奨体重帯やFFMI（除脂肪量指数）が表示されます。体重は体組成測定で自動記録されます。</div>'+
+    // ウエイト時間帯アンケート（グループ分けの参考。Phase 7）
+    '<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-tertiary)">'+
+      '<div class="kicker" style="margin-bottom:2px">WEIGHT SESSION</div>'+
+      '<div style="font-weight:800;font-size:14px;margin-bottom:2px">ウエイト時間帯アンケート</div>'+
+      '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">午前組／午後組の振り分けに使います。学期が替わったら更新してください。</div>'+
+      '<div style="font-size:12px;font-weight:700;margin-bottom:5px">月・水・金で5限がある曜日</div>'+
+      '<div style="display:flex;gap:16px;margin-bottom:12px">'+
+        WG_DAYS.map(function(d){return '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="wg-'+d.k+'"'+(((wg.f5||[]).indexOf(d.k)>=0)?' checked':'')+'> '+d.label+'</label>';}).join('')+
+      '</div>'+
+      '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin-bottom:12px"><input type="checkbox" id="wg-far"'+(wg.far?' checked':'')+'> 大学から遠い（通学に時間がかかる）</label>'+
+      '<div style="font-size:12px;font-weight:700;margin-bottom:5px">時間帯の希望</div>'+
+      '<select id="wg-pref" class="ipt" style="margin-bottom:10px"><option value=""'+(!wg.pref?' selected':'')+'>どちらでも</option><option value="am"'+(wg.pref==='am'?' selected':'')+'>午前がいい</option><option value="pm"'+(wg.pref==='pm'?' selected':'')+'>午後がいい</option></select>'+
+      '<button class="btn btn-p" style="width:100%" onclick="saveMyWg()">時間帯を保存</button>'+
+    '</div>'+
     '</div>';
   // 「今日やること」と試合日翌日アラートはホーム（ダッシュボード）へ移設済み
   if(myTapeRsvs.length){h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--purple)"><div style="font-weight:600;margin-bottom:6px;color:var(--purple)">'+ic('i-tape',14)+' テーピング予約</div>';myTapeRsvs.forEach(function(rsv){h+='<div class="log-row"><div style="flex:1"><div style="font-weight:600">'+fmt(rsv.date)+' '+rsv.startTime+'〜'+rsv.endTime+'</div><div style="font-size:12px;color:var(--text-secondary)">'+rsv.parts.join('・')+(rsv.staff?' / 担当: '+rsv.staff:'')+'</div></div></div>';});h+='<button class="btn" style="width:100%;margin-top:6px;font-size:12px" onclick="go(\'tape\')">予約を管理する</button></div>';}
@@ -3443,6 +3460,9 @@ T.training=function(){
     }
   }
 
+  // 自分のグループ（午前/午後・強度班。Phase 7・未設定時は非表示）
+  h+=myGroupCardHtml();
+
   // 連続スキップアラート（自分の記録から）
   var skipAlerts=getConsecutiveSkips(myPid);
   if(skipAlerts.length){
@@ -4521,6 +4541,50 @@ function saveMyHeight(){
   var n=parseFloat(v);
   if(!isFinite(n)||n<100||n>230){alert('身長は100〜230cmの範囲で入力してください');return;}
   svSafeUpdate('p',function(latest){var me=latest.find(function(x){return idEq(x.id,myPid);});if(me)me.height=String(n);return latest;},function(){go('mypage');toast('身長を保存しました');});
+}
+
+// ===== Phase 7: ウエイト時間帯アンケート（wg）=====
+// p.wg={f5:['mon'/'wed'/'fri'のsubset], far:bool, pref:'am'|'pm'|null, upd:ISO}
+// 月水金の5限有無・遠方・時間帯希望を選手が自己申告。スタッフも代理編集可（V.tgroup）。学期替わりは選手が随時更新。
+var WG_DAYS=[{k:'mon',label:'月'},{k:'wed',label:'水'},{k:'fri',label:'金'}];
+function saveMyWg(){
+  var f5=[];
+  WG_DAYS.forEach(function(d){var el=document.getElementById('wg-'+d.k);if(el&&el.checked)f5.push(d.k);});
+  var farEl=document.getElementById('wg-far');var far=!!(farEl&&farEl.checked);
+  var prefEl=document.getElementById('wg-pref');var pref=prefEl?(prefEl.value||''):'';
+  if(pref!=='am'&&pref!=='pm')pref=null;
+  var wg={f5:f5,far:far,pref:pref,upd:new Date().toISOString()};
+  svSafeUpdate('p',function(latest){var me=latest.find(function(x){return idEq(x.id,myPid);});if(me)me.wg=wg;return latest;},function(){go('mypage');toast('ウエイト時間帯を保存しました');});
+}
+// 自分の所属グループ情報を返す（tgroup最新レコードから。未設定/除外/未割当ならnull）
+function myGroupInfo(){
+  var recs=D.tgroup||[];
+  if(!recs.length)return null;
+  var rec=recs[recs.length-1];
+  if(!rec||!rec.shifts||!rec.shifts.length)return null;
+  for(var si=0;si<rec.shifts.length;si++){
+    var sh=rec.shifts[si];var groups=sh.groups||[];
+    for(var gi=0;gi<groups.length;gi++){
+      var g=groups[gi]||[];
+      if(g.some(function(pid){return idEq(pid,myPid);})){
+        var mates=g.filter(function(pid){return !idEq(pid,myPid);}).map(function(pid){var pp=D.p.find(function(x){return idEq(x.id,pid);});return pp?pp.name:null;}).filter(Boolean);
+        return {mode:rec.mode,shiftKey:sh.key,shiftLabel:sh.label||'',groupLetter:String.fromCharCode(65+gi),mates:mates};
+      }
+    }
+  }
+  return null;
+}
+// グループ表示カード（トレーニング/ホームで共用。未所属は''）
+function myGroupCardHtml(){
+  var gi=myGroupInfo();
+  if(!gi)return '';
+  var isAmpm=gi.mode==='ampm';
+  var shiftTxt=(isAmpm&&gi.shiftLabel)?escapeHtml(gi.shiftLabel)+'組・':'';
+  var matesTxt=gi.mates.length?'<div style="font-size:11px;color:var(--text-secondary);margin-top:3px">同じ班：'+escapeHtml(gi.mates.join('・'))+'</div>':'';
+  return '<div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--maroon-bg,rgba(139,26,45,.08)),transparent 70%);border-left:3px solid var(--maroon)">'+
+    '<div style="flex:none">'+ic('i-users',24,'var(--maroon)')+'</div>'+
+    '<div style="flex:1;min-width:0"><div style="font-size:11px;color:var(--text-secondary);font-weight:700;letter-spacing:.04em">MY GROUP</div>'+
+    '<div style="font-size:16px;font-weight:800">'+shiftTxt+gi.groupLetter+'班</div>'+matesTxt+'</div></div>';
 }
 
 // ===== 自主トレ記録（Phase 3）: kind='self' =====
