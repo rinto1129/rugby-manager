@@ -7,7 +7,7 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-07（**🆕🆕🆕🆕🆕🆕Phase 3完了（コミット`fe4c7a9`+`89954cb`+`12cd3da`・未push）。次はPhase 4（種目追加+ホーム整理+身長）から着手する。pushは引き続き「一番最後にまとめて」（撤回されるまで有効）。**）
+- 日時: 2026-07-07（**🆕🆕🆕🆕🆕🆕Phase 3完了+敵対的レビュー修正（コミット`fe4c7a9`+`89954cb`+`12cd3da`+`e8f64ee`+`4c7870c`・未push）。次はPhase 4（種目追加+ホーム整理+身長）から着手する。pushは引き続き「一番最後にまとめて」（撤回されるまで有効）。**）
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
@@ -24,6 +24,10 @@
   - **3-B（`89954cb`・staff）**: renderTrainingStatus実施カード/renderTrainTabセッション履歴行/trSessDetail展開に「自主」バッジ+fitness表示（種類+分/km/RPE・0種目0kg表示を回避）。自主ウエイト名称=「自主トレ（ウエイト）」。種目推移（exAgg/getExSeries）は自主ウエイトを自動包含=完全統合。dev/test_self_staff.js（26アサート）
   - **3-C（`12cd3da`・coach）**: buildHistCoach/trSessDetailCにバッジ+fitness表示。insTraining欠席率の**分母**を`kind!=='self'`でフィルタ（自主トレは欠席し得ない）。**Low-6**=trained14（renderHomeViewのKPI）とdoneCount（renderTrainingViewのKPI）に`kind!=='self'`（チーム練習参加の指標）。週間ボリューム（teamVolume）は自主トレ包含のまま=仕様。dev/test_self_coach.js（21アサート）
   - **検証**: jsc構文OK・括弧HEAD比均衡（player/staff/coach）・全21テストALL PASS・エンジンブロックHEAD一致（player/staff md5一致・coachはdiff hunkが対象5関数のみ）・trainer無変更・previewブラウザ実機確認（player: 自主トレボタン→3択→ウエイト実施画面で種目追加→フィットネスフォーム→履歴の自主バッジ+30分・5.2km・RPE7表示+グラフfitness除外／staff: 実施状況カード+選手詳細トレーニングタブ／coach: 個人レポート履歴+KPI=自主除外の値を目視。コンソールエラーはFirestore遮断由来のみ）
+  - **✅Phase 3後の敵対的レビュー（2026-07-07・コミット`4c7870c`）**: ultracodeで9エージェント（5レンズ並列探索[データ安全/下書き上書き/不変条件/統合/エンジン回帰]→各所見2観点スケプティックで裏取り・542Kトークン）実施。**確定所見2件を修正済み**:
+    - **所見1（medium・両検証者CONFIRMED）**: coach `renderTrainingView`のチーム横断「トレーニング記録」一覧（coach:1679付近）にfitness分岐が無く、自主フィットネスが「0種目/0kg」表示だった（buildHistCoach/trSessDetailCとstaff renderTrainingStatusには分岐ありで**同一データの表示が食い違う統合漏れ**）。fitness行（種類+時間/距離/RPE・緑）+自主バッジ（absent/fitness/elseの3分岐）を追加。
+    - **所見2（low・1CONFIRMED/1REFUTED）**: `beginTrainingExec`でローカル自主下書き破棄後、`startTrainingFresh`のclearTDraftがクラウドの当日同メニュー（別端末のチーム下書き）を無警告消去していた（単一スロット設計に内在する狭いレースだが根本対策）。破棄同意後に`fetchCloudTDraft`で同メニュー下書きを確認→あれば`promptResumeTDraft`で復元提案する経路を追加（自主破棄は同意済みのため二重confirmは発生しない構造）。test_self_training.jsに4アサート追加。
+    - REFUTED/偽陽性ゼロ（候補2件が両方確定）。データ破壊系の指摘は無し（不変条件results:[]+totalVolume:0・slimTlogRecのfitnessパススルー・idEqのnull安全・エンジン非接触は全レンズで安全と確認）。
   - **テスト側の学び**: main innerHTMLを検証するテストでdrain()を使う場合、**テスト冒頭で一度drain()して起動時のld()→go('home')チェーンを流しきる**こと（後のdrainで画面が上書きされ偽NGになる）。tlogAll()は参照比較キャッシュのためテストでのD.tlog変更は**in-place pushでなく配列ごと差し替え**る。
 - **次: Phase 4着手（種目追加+ホーム整理+身長）**（プランのPhase 4節参照: `/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`。**注意: 種目追加UI（addTrainingEx）とtexlistマージはPhase 3-Aで共通実装済み→Phase 4は「チームメニュー実施中もUIを出す」＝renderTrainingExecの`_curTLog.kind==='self'`ゲートを外す/緩めるだけ+Low-3（pickup変数はtodoが使うので描画だけ消す）+getTop3削除等のホーム整理+身長自己編集**）
   - メモ: jsc実行パスは`/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc`（PATHにnode/jscなし）。テスト実行: `jsc dev/prelude.js <抽出JS> dev/test_xxx.js`
