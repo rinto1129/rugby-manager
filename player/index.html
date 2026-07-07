@@ -1269,7 +1269,7 @@ function todayTodoHtml(){
   // 無条件のtlog有無判定だと休養日に永遠の未完了が出て完了カウントが壊れる（確定バグ#18）
   var todayWeightEvt=(D.cal||[]).some(function(e){return e.date===todayStr()&&e.type==='weight';});
   if(todayWeightEvt&&!isOff&&getMyMenus().length){
-    var tlogToday=tlogAll().some(function(l){return idEq(l.pid,myPid)&&l.date===todayStr();}); // 実施も欠席申告(absent)もtlogレコードになる=done
+    var tlogToday=tlogAll().some(function(l){return idEq(l.pid,myPid)&&l.kind!=='self'&&l.date===todayStr();}); // 実施も欠席申告(absent)もtlogレコードになる=done（自主トレは対象外）
     todoItems.push({key:'train',done:tlogToday,label:'ウエイトトレーニング',icon:'physical',onclick:"go('training')"});
   }
   if(pInj.length){
@@ -3413,8 +3413,10 @@ T.training=function(){
         '<span style="color:var(--blue);font-size:18px">›</span></div></div>';
     });
   }
+  // 自主トレ記録（チームメニュー以外のウエイト/フィットネス）
+  h+='<button class="btn" style="width:100%;margin-top:12px;border:1.5px dashed var(--blue);color:var(--blue);font-weight:700" onclick="showSelfTrainingMenu()">'+ic('i-plus',13)+' 自主トレを記録</button>';
   // 過去の記録へのリンク
-  h+='<button class="btn" style="width:100%;margin-top:12px" onclick="showTrainingHistory()">'+ic('i-chart',13)+' トレーニング履歴・グラフ</button>';
+  h+='<button class="btn" style="width:100%;margin-top:8px" onclick="showTrainingHistory()">'+ic('i-chart',13)+' トレーニング履歴・グラフ</button>';
   $m().innerHTML=h;
 };
 
@@ -3522,12 +3524,22 @@ function beginTrainingExec(menuId){
     promptResumeTDraft(mn,menuId,loadTDraftTime(),false);
     return;
   }
+  // 自主トレの下書き（menuId=null）はidEqのnull挙動で上の復元ゲートに乗らないため、消える前に必ず確認する
+  if(draft&&draft.kind==='self'&&draft.date===todayStr()){
+    if(!confirm('自主トレ（ウエイト）の入力途中データがあります。\nチームメニューを開始すると自主トレの入力内容は消えます。\n\nOK＝開始する ／ キャンセル＝戻る'))return;
+    startTrainingFresh(menuId);
+    return;
+  }
   // ローカルに無ければクラウド下書きを確認（端末跨ぎ：別端末で入力途中→こちらで続き）
   fetchCloudTDraft(function(cd){
     if(cd&&cd.draft&&idEq(cd.draft.menuId,menuId)&&cd.draft.date===todayStr()){
       // ローカルへ取り込んでから既存の復元フローに乗せる
       try{localStorage.setItem(tDraftKey(),JSON.stringify(cd.draft));if(cd.updatedAt)localStorage.setItem(tDraftKey()+'_t',cd.updatedAt);}catch(e){}
       promptResumeTDraft(mn,menuId,cd.updatedAt,true);
+    }else if(cd&&cd.draft&&cd.draft.kind==='self'&&cd.draft.date===todayStr()){
+      // 別端末の自主トレ下書きも開始時に消える（clearTDraftがクラウド側も消す）ため確認
+      if(!confirm('別の端末に自主トレ（ウエイト）の入力途中データがあります。\nチームメニューを開始するとその内容は消えます。\n\nOK＝開始する ／ キャンセル＝戻る'))return;
+      startTrainingFresh(menuId);
     }else{
       startTrainingFresh(menuId);
     }
@@ -3600,6 +3612,7 @@ function startTrainingFresh(menuId){
   renderTrainingExec(mn);
 }
 function renderTrainingExec(mn){
+  if(!mn)mn=(_curTLog&&_curTLog.kind==='self')?selfWeightMn():{name:'メニュー',exercises:[]}; // 自主トレ（menuId=null）はtmenuに実体が無い
   subView=true; // 実施中は他端末の保存によるリアルタイム再描画から保護（bottom navのgo()で解除）
   var compareMode=window._trCompareMode||'prev'; // prev | week
   // 弱点種目の強調（getWeakWeeklyVolumeと同じ判定=estBase一致 or 種目名がメイン種目/処方箋名に一致）
@@ -3650,7 +3663,7 @@ function renderTrainingExec(mn){
       '<span style="display:inline-flex;flex-direction:column;align-items:center;background:var(--bg-tertiary);border-radius:8px;padding:5px 12px;min-width:52px"><span style="font-size:9px;color:var(--text-secondary)">セット</span><span style="font-size:17px;font-weight:800;line-height:1.1">'+(r.targetSets||'-')+'</span></span>'+
       '<span style="display:inline-flex;flex-direction:column;align-items:center;background:var(--bg-tertiary);border-radius:8px;padding:5px 12px;min-width:52px"><span style="font-size:9px;color:var(--text-secondary)">レップ</span><span style="font-size:17px;font-weight:800;line-height:1.1">'+(r.targetReps||'-')+'</span></span>'+
       '<span style="display:inline-flex;flex-direction:column;align-items:center;background:var(--bg-tertiary);border-radius:8px;padding:5px 12px;min-width:52px"><span style="font-size:9px;color:var(--text-secondary)">RIR</span><span style="font-size:17px;font-weight:800;line-height:1.1">'+(r.targetRir!=null?r.targetRir:'-')+'</span></span>'+
-      (r.estWeight?'<span style="display:inline-flex;flex-direction:column;align-items:center;background:var(--blue-bg);border-radius:8px;padding:5px 12px;min-width:62px"><span style="font-size:9px;color:var(--blue)">推定重量</span><span style="font-size:17px;font-weight:800;line-height:1.1;color:var(--blue)">'+r.estWeight+'<span style="font-size:9px">kg</span></span></span>':r.estBase?'<span style="display:inline-flex;align-items:center;font-size:11px;color:var(--text-tertiary);padding:5px 8px">1RM未登録</span>':'<span style="display:inline-flex;align-items:center;font-size:11px;color:var(--text-tertiary);padding:5px 8px">手入力</span>')+
+      (r.estWeight?'<span style="display:inline-flex;flex-direction:column;align-items:center;background:var(--blue-bg);border-radius:8px;padding:5px 12px;min-width:62px"><span style="font-size:9px;color:var(--blue)">推定重量</span><span style="font-size:17px;font-weight:800;line-height:1.1;color:var(--blue)">'+r.estWeight+'<span style="font-size:9px">kg</span></span></span>':(r.estBase&&!r.oneRM)?'<span style="display:inline-flex;align-items:center;font-size:11px;color:var(--text-tertiary);padding:5px 8px">1RM未登録</span>':'<span style="display:inline-flex;align-items:center;font-size:11px;color:var(--text-tertiary);padding:5px 8px">手入力</span>')+
       '</div>';
     if(r.note)h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;padding:6px 8px;background:var(--bg-primary);border-radius:6px;white-space:pre-wrap">'+ic('i-info',12)+' '+escapeHtml(r.note)+'</div>';
     if(r.videoUrl)h+='<a href="'+escapeHtml(r.videoUrl)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-bottom:8px;font-size:12px;color:var(--blue);text-decoration:none;font-weight:600">▶ 参考動画</a>';
@@ -3698,6 +3711,15 @@ function renderTrainingExec(mn){
     }
     h+='</div>';
   });
+  // 種目追加（自主ウエイトのみ。Phase 4でチームメニュー中の追加にも開放予定＝addTrainingExは共通実装）
+  if(_curTLog&&_curTLog.kind==='self'){
+    h+='<div class="card" style="margin-bottom:10px;border:1.5px dashed var(--border-secondary)">'+
+      '<div style="font-size:12px;font-weight:700;margin-bottom:8px">'+ic('i-plus',12,'var(--blue)')+' 種目を追加</div>'+
+      '<div style="display:flex;gap:8px"><input id="tr-add-ex" class="ipt" style="flex:1;min-width:0" placeholder="種目名（例：ベンチプレス）" list="tr-ex-hist"><button class="btn btn-p" style="flex:none" onclick="addTrainingEx()">追加</button></div>'+
+      '<datalist id="tr-ex-hist">'+(D.texlist||[]).map(function(n){return'<option value="'+escapeHtml(n)+'">';}).join('')+'</datalist>'+
+      (_curTLog.results.length?'':'<div style="font-size:11px;color:var(--text-secondary);margin-top:8px">やった種目を追加して重量・回数を記録しよう。ベンチプレスなどBIG3系は推定1RMにも反映されます。</div>')+
+      '</div>';
+  }
   h+='<button class="btn btn-p" style="width:100%;margin-top:8px" onclick="finishTraining(this)">'+ic('i-check',13)+' トレーニングを記録</button>';
   h+='<button class="btn" style="width:100%;margin-top:8px" onclick="go(\'training\')">キャンセル</button>';
   showSub(h);
@@ -4106,6 +4128,7 @@ function archiveTlog(){
 }
 function finishTraining(btnEl){
   if(!_curTLog)return;
+  if(_curTLog.kind==='self'&&!_curTLog.results.length){alert('種目を追加してください');return;}
   // 1) 二重送信ガード（連打でtlog重複作成を防ぐ）。既に処理中なら何もしない。
   if(!guardSubmit(btnEl,'記録中…'))return;
   function abort(){releaseSubmit(btnEl);}
@@ -4187,12 +4210,14 @@ function finishTraining(btnEl){
   svSafeSeq(items,function(done){
     clearTDraft();
     ppAutoFlip(log); // チームウエイト完了→当日のPUSH/PULL自動確定（対象外はppAutoFlip内ガードで判定）
+    mergeTexlistFromLog(log); // 選手が追加した種目名を履歴（texlist）へ静かにマージ
     showTrainingResult(log,alerts,injurySkips,hasE1rm?e1rmValues:null);
   },function(err,done,item){
     if(done.indexOf('tlog')>=0){
       // tlogは保存済み。e1rmだけ失敗 → 記録は成立扱い（自己ベスト更新の注記のみ落とす）
       clearTDraft();
       ppAutoFlip(log); // tlog成立＝この経路でも自動確定する（漏らすと自己ベスト更新日だけflipされない）
+      mergeTexlistFromLog(log);
       showTrainingResult(log,alerts,injurySkips,null);
     }else{
       // tlog自体が失敗 → _curTLog・下書きは温存し、ボタンを戻して再試行可能にする
@@ -4261,6 +4286,7 @@ function showTrainingHistory(){
   var logs=tlogAll().filter(function(l){return idEq(l.pid,myPid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
   var h='<div style="font-size:18px;font-weight:700;margin:4px 0 14px">'+ic('i-chart',16,'var(--maroon)')+' トレーニング履歴</div>';
   if(!logs.length){h+='<div class="no">まだ記録がありません</div>';showSub(h);return;}
+  var chartLogs=logs.filter(function(l){return !l.fitness;}); // フィットネス記録（totalVolume:0固定）はボリュームグラフを歪めるため除外
 
   // 総ボリューム推移グラフ
   h+='<div class="card" style="margin-bottom:14px"><div style="font-size:13px;font-weight:700;margin-bottom:10px">総ボリューム推移</div><div style="position:relative;height:200px"><canvas id="tvol-chart"></canvas></div></div>';
@@ -4291,11 +4317,20 @@ function showTrainingHistory(){
   // 記録一覧
   h+='<div style="font-size:13px;font-weight:700;margin-bottom:8px">記録一覧</div>';
   logs.slice(0,20).forEach(function(lg){
+    var selfBadge=lg.kind==='self'?' <span class="bd bd-b" style="font-size:9px">自主</span>':'';
+    if(lg.fitness){
+      // フィットネス記録: 種類+時間（+距離/RPE）を表示（0kg表示にしない）
+      var f=lg.fitness;
+      var fMeta=(f.minutes!=null?f.minutes+'分':'')+(f.km!=null?' ・ '+f.km+'km':'')+(f.rpe!=null?' ・ RPE'+f.rpe:'');
+      h+='<div class="card" style="margin-bottom:6px;padding:10px 12px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:600">'+ic('i-run',12,'var(--green)')+' '+escapeHtml(f.ftype||'フィットネス')+selfBadge+'</div><div style="font-size:11px;color:var(--text-secondary)">'+fmt(lg.date)+'</div></div><div style="font-weight:700;color:var(--green);font-size:13px">'+escapeHtml(fMeta)+'</div></div></div>';
+      return;
+    }
     var mn=(D.tmenu||[]).find(function(x){return idEq(x.id,lg.menuId);});
-    h+='<div class="card" style="margin-bottom:6px;padding:10px 12px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:600">'+(mn?escapeHtml(mn.name):'メニュー')+'</div><div style="font-size:11px;color:var(--text-secondary)">'+fmt(lg.date)+'</div></div><div style="font-weight:700;color:var(--blue)">'+(lg.totalVolume||0).toLocaleString()+'kg</div></div></div>';
+    var nm=lg.kind==='self'?'自主トレ（ウエイト）':(mn?escapeHtml(mn.name):'メニュー');
+    h+='<div class="card" style="margin-bottom:6px;padding:10px 12px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:600">'+nm+selfBadge+'</div><div style="font-size:11px;color:var(--text-secondary)">'+fmt(lg.date)+'</div></div><div style="font-weight:700;color:var(--blue)">'+(lg.totalVolume||0).toLocaleString()+'kg</div></div></div>';
   });
   showSub(h);
-  setTimeout(function(){drawTrainingCharts(logs);},80);
+  setTimeout(function(){drawTrainingCharts(chartLogs);},80);
 }
 function selectTrHistEx(ex){window._trHistEx=ex;showTrainingHistory();}
 function drawTrainingCharts(logs){
@@ -4390,6 +4425,196 @@ function updDisabledEx(i,f,v){if(window._disabledExEdit[i])window._disabledExEdi
 function saveDisabledEx(){
   var list=(window._disabledExEdit||[]).filter(function(d){return d.name&&d.name.trim();}).map(function(d){return{name:d.name.trim(),reason:(d.reason||'').trim(),by:'player',date:todayStr()};});
   svSafeUpdate('p',function(latest){var me=latest.find(function(x){return idEq(x.id,myPid);});if(me)me.disabledEx=list;return latest;},function(){go('training');toast('保存しました');});
+}
+
+// ===== 自主トレ記録（Phase 3）: kind='self' =====
+// 自主ウエイト＝チームと同じ実施画面（_curTLogにkind:'self'/menuId:null・種目は自由追加）。
+// フィットネス＝専用フォーム（fitness:{ftype,minutes,km,rpe,note}）。
+// どちらもtlogに保存され、推定1RM・ボリューム・スタッフ/コーチの集計に完全統合される。
+// 不変条件: フィットネス記録も必ず results:[] + totalVolume:0 を持つ（既存の全消費コードを無傷にする）。
+function selfWeightMn(){return{name:'自主トレ（ウエイト）',exercises:[]};}
+function showSelfTrainingMenu(){
+  var h='<div style="font-size:17px;font-weight:700;margin:4px 0 6px">自主トレを記録</div>';
+  h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">チームメニュー以外のトレーニングも記録して、成長に反映しよう。</div>';
+  h+='<div class="card card-click" style="margin-bottom:10px" onclick="startSelfWeight()"><div style="display:flex;align-items:center;gap:12px">'+
+    '<div style="flex:none">'+ic('i-dumbbell',26,'var(--maroon)')+'</div>'+
+    '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15px">自主トレ（ウエイト）</div><div style="font-size:12px;color:var(--text-secondary);margin-top:2px">種目を自由に組んで重量・回数を記録。推定1RMにも反映</div></div>'+
+    '<span style="color:var(--blue);font-size:18px">›</span></div></div>';
+  h+='<div class="card card-click" style="margin-bottom:10px" onclick="showSelfFitnessForm()"><div style="display:flex;align-items:center;gap:12px">'+
+    '<div style="flex:none">'+ic('i-run',26,'var(--green)')+'</div>'+
+    '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15px">フィットネス</div><div style="font-size:12px;color:var(--text-secondary);margin-top:2px">ラン・バイクなど。種類と時間、距離・RPEは任意</div></div>'+
+    '<span style="color:var(--blue);font-size:18px">›</span></div></div>';
+  h+='<div class="card" style="margin-bottom:10px;background:var(--bg-primary)"><div style="font-size:12px;color:var(--text-secondary);line-height:1.6">'+ic('i-info',12)+' チームから配布されたメニューは、トレーニング画面の「配布されたメニュー」から開始してください。</div></div>';
+  h+='<button class="btn" style="width:100%;margin-top:8px" onclick="go(\'training\')">戻る</button>';
+  showSub(h);
+}
+// 自主ウエイト開始。下書きスロットは選手ごと1個なので、当日の下書きの種類に応じて復元/上書き警告を分岐
+// （自主下書きはmenuId=nullでidEqの復元ゲートに乗らないため、ここに専用チェックを置く＝レビューHigh-2）
+function startSelfWeight(){
+  var draft=loadTDraft();
+  if(draft&&draft.date===todayStr()){
+    if(draft.kind==='self'){promptResumeSelfDraft(loadTDraftTime(),false);return;}
+    // 当日のチームメニュー下書きがある→開始すると消えるため確認
+    var mn=getMyMenus().find(function(x){return idEq(x.id,draft.menuId);});
+    if(!confirm('チームメニュー'+(mn?'「'+mn.name+'」':'')+'の入力途中データがあります。\n自主トレを開始するとその内容は消えます。\n\nOK＝開始する ／ キャンセル＝戻る'))return;
+    startSelfWeightFresh();
+    return;
+  }
+  // ローカルに無ければクラウド下書きを確認（端末跨ぎ）
+  fetchCloudTDraft(function(cd){
+    if(cd&&cd.draft&&cd.draft.kind==='self'&&cd.draft.date===todayStr()){
+      try{localStorage.setItem(tDraftKey(),JSON.stringify(cd.draft));if(cd.updatedAt)localStorage.setItem(tDraftKey()+'_t',cd.updatedAt);}catch(e){}
+      promptResumeSelfDraft(cd.updatedAt,true);
+    }else if(cd&&cd.draft&&cd.draft.kind!=='self'&&cd.draft.date===todayStr()){
+      if(!confirm('別の端末にチームメニューの入力途中データがあります。\n自主トレを開始するとその内容は消えます。\n\nOK＝開始する ／ キャンセル＝戻る'))return;
+      startSelfWeightFresh();
+    }else{
+      startSelfWeightFresh();
+    }
+  });
+}
+function promptResumeSelfDraft(savedT,fromCloud){
+  var h='<div style="text-align:center;padding:24px 10px">'+
+    '<div style="margin-bottom:10px">'+ic('i-note',40,'var(--rose)')+'</div>'+
+    '<div style="font-size:16px;font-weight:700;margin-bottom:6px">入力途中のデータがあります</div>'+
+    '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">自主トレ（ウエイト）</div>'+
+    (fromCloud?'<div style="font-size:11px;color:var(--blue);margin-bottom:2px">'+ic('i-info',11)+' 別の端末から引き継ぎ</div>':'')+
+    (savedT?'<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:18px">最終保存: '+fmtDateTime(savedT)+'</div>':'<div style="margin-bottom:18px"></div>')+
+    '<button class="btn btn-p" style="width:220px;padding:14px;font-size:15px;margin-bottom:10px" onclick="resumeSelfDraft()">▶ 続きから入力する</button><br>'+
+    '<button class="btn" style="width:220px;padding:10px;font-size:13px" onclick="startSelfWeightFresh()">最初からやり直す</button>'+
+    '</div>';
+  showSub(h);
+}
+function resumeSelfDraft(){
+  var draft=loadTDraft();
+  if(!draft||draft.kind!=='self'){startSelfWeightFresh();return;}
+  _curTLog=draft;
+  resetRestTimer();
+  renderTrainingExec(selfWeightMn());
+}
+function startSelfWeightFresh(){
+  clearTDraft();
+  _curTLog={id:newId(),pid:myPid,menuId:null,kind:'self',date:todayStr(),ts:new Date().toISOString(),results:[],totalVolume:0};
+  resetRestTimer();
+  renderTrainingExec(selfWeightMn());
+}
+// 実施中の記録に種目を追加（自主ウエイト用・Phase 4でチームメニュー中の追加にも使う共通実装）。
+// estBase自動判定: EST_BASESラベル一致 → 過去ログの同名種目 → null。前回実績もチーム開始時と同ロジックで引き継ぐ。
+function addTrainingEx(){
+  if(!_curTLog)return;
+  var el=document.getElementById('tr-add-ex');
+  var name=el?(el.value||'').trim():'';
+  if(!name){alert('種目名を入力してください');return;}
+  if(_curTLog.results.some(function(r){return r.exName===name;})){alert('同じ種目がすでにあります');return;}
+  var eb=null;
+  EST_BASES.forEach(function(b){if(!eb&&b.label===name)eb=b.k;});
+  var today=todayStr();
+  var sortedPrevLogs=tlogAll().filter(function(l){
+    return idEq(l.pid,myPid)&&!l.absent&&l.results&&l.date<today;
+  }).sort(function(a,b){
+    var at=a.ts||a.date,bt=b.ts||b.date;return bt.localeCompare(at);
+  });
+  if(!eb){
+    for(var i=0;i<sortedPrevLogs.length&&!eb;i++){
+      var f=(sortedPrevLogs[i].results||[]).find(function(x){return x.exName===name&&x.estBase;});
+      if(f)eb=f.estBase;
+    }
+  }
+  var oneRM=eb?getPlayer1RM(myPid,eb):null;
+  var prevEx=null,prevExDate='';
+  for(var k=0;k<sortedPrevLogs.length;k++){
+    var found=(sortedPrevLogs[k].results||[]).find(function(x){return x.exName===name&&!x.skipped&&x.sets&&x.sets.length>0;});
+    if(found){prevEx=found;prevExDate=sortedPrevLogs[k].date;break;}
+  }
+  var sets=[];
+  for(var s=0;s<3;s++){
+    var prev=prevEx?(prevEx.sets[s]||prevEx.sets[prevEx.sets.length-1]):null;
+    sets.push({
+      weight:prev&&(prev.weight!==''&&prev.weight!=null)?prev.weight:'',
+      reps:prev&&(prev.reps!==''&&prev.reps!=null)?prev.reps:'',
+      rir:'',done:false
+    });
+  }
+  _curTLog.results.push({
+    exName:name,estBase:eb,targetSets:null,targetReps:null,targetRir:null,
+    note:null,videoUrl:null,estWeight:null,oneRM:oneRM,
+    prevEx:prevEx?{sets:prevEx.sets,date:prevExDate}:null,
+    sets:sets,skipped:false,skipReason:'',addedByPlayer:true
+  });
+  saveTDraft();
+  var mn=getMyMenus().find(function(x){return idEq(x.id,_curTLog.menuId);});
+  renderTrainingExec(mn); // mn未取得（自主トレ）はrenderTrainingExec先頭のフォールバックが吸収
+}
+// 選手が追加した種目名をtexlist（種目名履歴・文字列配列）へマージ。失敗しても記録自体は成立済みなので静かに無視
+function mergeTexlistFromLog(log){
+  var names=[];
+  (log&&log.results||[]).forEach(function(r){
+    if(r.addedByPlayer&&r.exName){var nm=String(r.exName).trim();if(nm&&names.indexOf(nm)<0)names.push(nm);}
+  });
+  if(!names.length)return;
+  svSafeUpdate('texlist',function(latest){
+    if(!Array.isArray(latest))latest=[];
+    names.forEach(function(nm){if(latest.indexOf(nm)<0)latest.push(nm);});
+    return latest;
+  },function(){},function(){});
+}
+// フィットネス記録フォーム（種類は必須・時間は必須・距離/RPE/メモは任意）
+var SELF_FTYPES=['ランニング','バイク','水泳','HIIT','シャトルラン','坂道ダッシュ','縄跳び'];
+function showSelfFitnessForm(){
+  var h='<div style="font-size:17px;font-weight:700;margin:4px 0 6px;display:flex;align-items:center;gap:8px">'+ic('i-run',18,'var(--green)')+' フィットネスを記録</div>';
+  h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">'+fmt(todayStr())+' の自主トレ</div>';
+  h+='<div class="card" style="margin-bottom:12px">';
+  h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">種類 <span style="color:var(--red)">*</span></label><input id="sf-type" class="ipt" placeholder="例：ランニング" list="sf-type-hist"><datalist id="sf-type-hist">'+SELF_FTYPES.map(function(n){return'<option value="'+n+'">';}).join('')+'</datalist></div>';
+  h+='<div style="display:flex;gap:10px"><div class="fl" style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">時間（分） <span style="color:var(--red)">*</span></label><input id="sf-min" class="ipt" type="number" min="1" inputmode="numeric" placeholder="30"></div>'+
+    '<div class="fl" style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">距離（km・任意）</label><input id="sf-km" class="ipt" type="number" step="any" inputmode="decimal" placeholder="5"></div></div>';
+  h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">きつさ（RPE 1〜10・任意）</label><select id="sf-rpe" class="ipt"><option value="">選択しない</option>'+[1,2,3,4,5,6,7,8,9,10].map(function(n){return'<option value="'+n+'">'+n+(n<=3?'（楽）':n>=9?'（限界近い）':n>=7?'（きつい）':'')+'</option>';}).join('')+'</select></div>';
+  h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">メモ（任意）</label><textarea id="sf-note" class="ipt" rows="2" placeholder="コース・内容など"></textarea></div>';
+  h+='</div>';
+  h+='<button class="btn btn-p" style="width:100%;padding:12px" onclick="saveSelfFitness(this)">'+ic('i-check',13)+' 記録する</button>';
+  h+='<button class="btn" style="width:100%;margin-top:8px" onclick="showSelfTrainingMenu()">戻る</button>';
+  showSub(h);
+}
+function saveSelfFitness(btnEl){
+  var ftype=(document.getElementById('sf-type').value||'').trim();
+  var minV=document.getElementById('sf-min').value;
+  var kmV=document.getElementById('sf-km').value;
+  var rpeV=document.getElementById('sf-rpe').value;
+  var note=(document.getElementById('sf-note').value||'').trim();
+  if(!ftype){alert('種類を入力してください');return;}
+  var minutes=parseFloat(minV);
+  if(!isFilled(minV)||!(minutes>0)){alert('時間（分）を入力してください');return;}
+  var km=null;
+  if(isFilled(kmV)){km=parseFloat(kmV);if(!(km>0)){alert('距離（km）の値が正しくありません');return;}}
+  if(!guardSubmit(btnEl,'記録中…'))return;
+  var fit={ftype:ftype,minutes:minutes};
+  if(km!=null)fit.km=km;
+  if(rpeV)fit.rpe=parseInt(rpeV);
+  if(note)fit.note=note;
+  // 不変条件: results:[] + totalVolume:0 を必ず持たせる（既存の全集計コードが(l.results||[])で無傷に通る）
+  var log={id:newId(),pid:myPid,menuId:null,kind:'self',date:todayStr(),ts:new Date().toISOString(),fitness:fit,results:[],totalVolume:0};
+  svSafeSeq([{k:'tlog',rec:log}],function(){
+    showSelfFitnessResult(log);
+  },function(){
+    releaseSubmit(btnEl);
+    alert('記録の保存に失敗しました。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+  });
+}
+function showSelfFitnessResult(log){
+  var f=log.fitness||{};
+  var h='<div class="hero"><div class="ghost-num">'+(f.minutes||0)+'</div>'+
+    '<div class="kicker" style="color:var(--rose-l)">FULL TIME</div>'+
+    '<div style="font-size:30px;font-weight:900;font-family:var(--font-num);font-style:italic;line-height:1.15">'+(f.minutes||0)+'<span style="font-size:13px;font-weight:700"> 分</span></div>'+
+    '<div style="font-size:11px;opacity:.85">'+ic('i-check',12)+' '+escapeHtml(f.ftype||'フィットネス')+'・記録完了</div>'+
+  '</div>';
+  h+='<div class="card" style="margin-bottom:12px;padding:6px 14px 10px"><div class="kicker" style="margin:8px 0 1px">SELF TRAINING</div><div style="font-size:12px;font-weight:700;margin-bottom:4px">記録内容</div>';
+  var rows=[['種類',escapeHtml(f.ftype||'-')],['時間',(f.minutes||0)+'分']];
+  if(f.km!=null)rows.push(['距離',f.km+'km']);
+  if(f.rpe!=null)rows.push(['RPE',String(f.rpe)]);
+  if(f.note)rows.push(['メモ',escapeHtml(f.note)]);
+  rows.forEach(function(rw){h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--border-tertiary)"><span style="font-size:13px;font-weight:600">'+rw[0]+'</span><span style="font-size:13px;text-align:right;word-break:break-word">'+rw[1]+'</span></div>';});
+  h+='</div>';
+  h+='<button class="btn btn-p" style="width:100%;margin-top:16px" onclick="go(\'training\')">完了</button>';
+  showSub(h);
 }
 
 T.tape=function(){
