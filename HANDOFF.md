@@ -7,15 +7,19 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-07（**🆕🆕Phase 0（tlog容量対策）実装完了・全4コミット済み・未push**。ユーザーがPhase 0全部実施を承認→実測分析で設計を確定（月次アーカイブでは不足と判明→15日カットオフ+選手別半期docに変更）→0-A/0-B実装→jscテスト81アサート+既存10テスト回帰+実機ブラウザ検証まで完了。レビュー所見（High3/Medium4/Low9）は**プランファイルに反映済み**。**次: pushのユーザー確認→push後に本番アーカイブ初回実行の確認→Phase 1**。詳細は直下の「🚀Phase 0実装完了」節。）
+- 日時: 2026-07-07（**🆕🆕🆕Phase 1（種目推移セレクタのoption valueバグ修正）完了・コミット`801b4d4`・未push**。staff:3902（旧3775）とcoach:1220（旧1175・レビューHigh-1）の両方に`value="種目名"`を追加。dev/test_trainbug.js新設（staff/coach両対応・各12アサート）＋既存13テスト回帰PASS＋エンジンmd5一致＋previewブラウザ実機で「(手入力)種目を選択→巻き戻らない」を両サイト確認済み。**次: pushのユーザー確認→Phase 2（push/pull自動切替+スロット化+導線）**。）
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
 
+- **✅Phase 1完了（2026-07-07・コミット`801b4d4`・未push）**: 種目推移セレクタの`<option>`にvalue属性を追加（staff/index.html:3902 renderTrainTab＋coach/index.html:1220 buildTrendCoach）。estBase無し種目の「種目名 (手入力)」テキストがvalueになり選択が巻き戻るバグを根治。dev/test_trainbug.js新設（1ファイルでstaff/coach自動判別・value属性/巻き戻らない/e1rm→topフォールバック/全null系列例外なし・各12アサートPASS）。検証: jsc構文OK・括弧HEAD比均衡(+1/+1=追加escapeHtml呼び出し分)・既存13テスト回帰PASS・エンジンmd5 3ファイル一致(`07efed94…`)・previewブラウザ両サイトでchange操作→選択維持を実機確認（コンソールエラーはFirestore遮断由来のみ）。**次: ①pushのユーザー確認②Phase 2着手（プランのPhase 2節参照: tmenu.ptype+ppAutoFlip+ホーム導線。レビューHigh-3①②/Medium-1/Medium-4の対処を含む）**
+  - メモ: jsc実行パスは`/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc`（PATHにnode/jscなし）。テスト実行: `jsc dev/prelude.js <抽出JS> dev/test_xxx.js`
+  - previewサーバーは旧セッションのpreviewroot（`.claude/launch.json`参照）が稼働中でも使える＝編集後に`cp`同期すればよい（今回もそれで検証）
+
 - **🚀Phase 0（tlog容量対策）実装完了・✅push済み・GitHub Pages反映確認済み（2026-07-07・このセッション）。残りの手順**:
   1. ✅push完了（`ff58aea` 0-Aスリム化 / `f657b13` player 0-B / `9f8f072` staff 0-B / `b9741ce` coach 0-B / `963c2ea` HANDOFF）。Pagesに新コードが載ったことをcurlで確認済み（player/staff/coachともarchiveTlog/loadTlogArch検出）
   2. ✅**本番アーカイブ初回実行を確認済み（2026-07-07 19:37 JST・ユーザーのリロードで自動実行）**: メインdoc 711,577B/308件→**402,991B/317件（43%減）**。6/21の4件が`tla_1781905323051_2026h1`へ移送・スリム化済み。id全件照合で消失ゼロ・残留ゼロ・メインdoc残存317件も全件in-placeスリム化済み（肥大フィールド残りゼロ）。以降は日々自動移送＝手動操作不要。（旧記載:: ユーザー（or選手）が新コードでstaff/playerを開くとarchiveTlogが自動実行される（staff=ロード1.5秒後・player=5〜15秒後）。実行後、Firestore読み取り専用RESTで `appdata/tlog` が約400KB以下に縮み `tla_<pid>_2026h1` 等が生成されたことを確認する。**注意: このセッションで本番への直接REST移送スクリプト実行は権限クラシファイアに止められた（承認範囲=push+クライアント側自動移送のため妥当）。読み取り専用curlも直後は巻き添えでブロックされたが、本来読み取りは過去セッションで実績あり**。移送前スナップショットのバックアップ: scratchpad の `tlog_backup_before_migration.json`（711KB/308件・セッション消滅で消えるため恒久保存は不要=移送はデータを消さず移すだけ）　）
-  3. その後Phase 1（staff:3775 + coach:1175のoption valueバグ）から着手
+  3. ✅Phase 1（option valueバグ）完了（上の✅Phase 1節参照・コミット`801b4d4`）
   - **実装内容（プランのPhase 0節が正・実測に基づきHANDOFF原案から設計変更あり）**:
     - 実測: tlog=711,577B/308件・ピーク112KB/日・週4-5回。積極スリム化でも45.5%減が上限→1ヶ月分≈1.16MB>1MiBで**月次アーカイブでは不足**→**15日カットオフ（coach 13日窓+2日マージン）+選手別×半期doc `tla_<pid>_<year>h<1|2>`**に設計変更
     - 0-A: `slimTlogRec`（prevEx/note/videoUrl/estWeight/oneRM/targetSets削除+null/false/空省略・冪等・将来フィールドパススルー）をfinishTraining保存直前に適用。_curTLog/下書きは温存
