@@ -7,7 +7,7 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-07（**🆕🆕🆕🆕🆕🆕Phase 3完了+敵対的レビュー修正（コミット`fe4c7a9`+`89954cb`+`12cd3da`+`e8f64ee`+`4c7870c`・未push）。次はPhase 4（種目追加+ホーム整理+身長）から着手する。pushは引き続き「一番最後にまとめて」（撤回されるまで有効）。**）
+- 日時: 2026-07-08（**🆕🆕🆕🆕🆕🆕🆕Phase 4完了（コミット`4a6166b`・未push）。敵対的レビュー5レンズ=所見0件（クリーン）。次はPhase 5（マイデータタブ＝最重要）から着手する。pushは引き続き「一番最後にまとめて」（撤回されるまで有効）。**）
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
@@ -29,10 +29,17 @@
     - **所見2（low・1CONFIRMED/1REFUTED）**: `beginTrainingExec`でローカル自主下書き破棄後、`startTrainingFresh`のclearTDraftがクラウドの当日同メニュー（別端末のチーム下書き）を無警告消去していた（単一スロット設計に内在する狭いレースだが根本対策）。破棄同意後に`fetchCloudTDraft`で同メニュー下書きを確認→あれば`promptResumeTDraft`で復元提案する経路を追加（自主破棄は同意済みのため二重confirmは発生しない構造）。test_self_training.jsに4アサート追加。
     - REFUTED/偽陽性ゼロ（候補2件が両方確定）。データ破壊系の指摘は無し（不変条件results:[]+totalVolume:0・slimTlogRecのfitnessパススルー・idEqのnull安全・エンジン非接触は全レンズで安全と確認）。
   - **テスト側の学び**: main innerHTMLを検証するテストでdrain()を使う場合、**テスト冒頭で一度drain()して起動時のld()→go('home')チェーンを流しきる**こと（後のdrainで画面が上書きされ偽NGになる）。tlogAll()は参照比較キャッシュのためテストでのD.tlog変更は**in-place pushでなく配列ごと差し替え**る。
-- **次: Phase 4着手（種目追加+ホーム整理+身長）**（プランのPhase 4節参照: `/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`。**注意: 種目追加UI（addTrainingEx）とtexlistマージはPhase 3-Aで共通実装済み→Phase 4は「チームメニュー実施中もUIを出す」＝renderTrainingExecの`_curTLog.kind==='self'`ゲートを外す/緩めるだけ+Low-3（pickup変数はtodoが使うので描画だけ消す）+getTop3削除等のホーム整理+身長自己編集**）
+- **✅Phase 4完了（2026-07-08・コミット`4a6166b`・未push）**: 種目追加ゲート緩和+ホーム整理+身長自己編集（全てplayer/index.htmlのみ・staff/coach/trainer無変更）。1コミット構成（3機能が同一ファイルの非重複領域に散在するため分割せず1コミット）:
+  - **種目追加ゲート緩和**: renderTrainingExecの種目追加カード表示条件を`_curTLog.kind==='self'`→`_curTLog`に緩和（チームメニュー実施中も「＋種目を追加」を表示）。addTrainingEx/mergeTexlistFromLog本体はPhase 3-Aの共通実装を流用（addedByPlayer:true・estBase自動判定・finishTraining成功2経路からtexlistへ静かにマージ）＝**重複実装なし**。ヒント文をkindで出し分け（自主空=「BIG3系は推定1RMにも反映」/チーム=「メニューにない種目をやった時や、追加で行った種目をここに記録できます」）。**副次修正**: 追加ボタン＋身長保存ボタンが`.btn{width:100%}`でflex行を独占し入力欄が36pxに潰れる既存崩れを`width:auto;padding-left/right:22px`で修正（種目追加カードはPhase 3由来の既存崩れも同時解消）。
+  - **ホーム整理（T.home）**: ①今週=全件羅列→「今日＋次の予定」2行表示＋残りは`.clp`折りたたみ（`wkRow`ヘルパーで既存行描画を関数化・週窓外の日曜quirk/今日のみ/未来なしも安全）②体組成チームリスト（本日の測定者リスト＋オフ文言）撤去＋**home内の未使用化した`var pickup`削除**（Low-3の懸念は「todoがpickupを使う」だが現行コードのtodo=`todayTodoHtml`は独自pickup(1260)を持つ＝home側1543は完全未使用と全grep確認→削除が正・プランのLow-3は旧レイアウト前提で現行非該当）③ランキングTOP3カード＋`getTop3`/`rankItems`/`medalCols`を撤去し専用ページへのリンク行（`card-click`→`go('ranking')`）に集約④お知らせ=全件→2件表示＋残りは`.clp`折りたたみ。折りたたみ機構=staff流用の`.clp`グリッド（CSS3行追加=`.card-click`直後）＋windowフラグ（`_homeWeekOpen`/`_homeAnnOpen`）＋`homeWeekToggle`/`homeAnnToggle`で**再描画せずクラスその場切替**（reveal非再発火・`.open`で`.clp-lbl-c`↔`.clp-lbl-o`のラベル「すべて見る」↔「閉じる」をCSSのみで切替）。
+  - **身長自己編集（T.mypage）**: ヘッダー直後にプロフィールカード（PROFILEキッカー＋`mh-input`＋保存）+`saveMyHeight`新設（`saveDisabledEx`と同じ`svSafeUpdate('p')`パターン踏襲・100〜230検証→`me.height=String(n)`のみ更新＝他フィールド不変・成功後`go('mypage')`再描画＝svSafeUpdateが`D.p=latest`更新後にonDone呼ぶため新値反映・staff編集との後勝ち競合は許容）。「身長未登録→スタッフに依頼」案内2箇所（myPhysCardHtml/体重帯）を`go('mypage')`自己登録導線に更新。
+  - **検証**: jsc構文OK・**エンジンブロックmd5不変**（376-559行・CSS3行追加で行番号+3・md5=`248f619cb6aeaa309556aaf162c60c27`）・括弧HEAD比均衡（()±24対/{}±1対/[]∓3対＝getTop3等の配列削除分）・**既存player10テスト回帰PASS+新規`dev/test_add_ex.js`（種目追加gate/addedByPlayer/estBase自動判定/mergeTexlist trim・重複排除/ホーム3整理の撤去確認/折りたたみtoggle/お知らせ境界0-1-2件/身長検証4種・正常保存で他フィールド不変・別選手不変・D.pメモリ更新の全緑）**・test_dashのランキング期待値をリンク行仕様に更新・previewブラウザ実機確認（home=今日+次+折りたたみ展開250.5px+ラベル切替/ランキングリンク行/体組成撤去/チームメニュー実施画面に種目追加カード（team hint）/マイページ身長カード保存幅436px・コンソールエラー0）。
+  - **敵対的レビュー（ultracode・5レンズ=データ安全/ゲート回帰/ホーム回帰/不変条件CSS/エンジン非接触→各所見2観点裏取りpipeline・389Kトークン）**: **所見0件（全レンズが実コード精読の上でクリーンと結論・偽陽性0）**。確認事項: saveMyHeightは短キー'p'・svSafeUpdate正シグネチャ・idEq find・me.heightのみ変異・latest全返し／addedByPlayerレコードはslimTlogRec容量パス通過で新規影響なし／home削除シンボルの残参照なし（getTodayPickupは1260/1841で健在）／トグルID一致・括弧均衡／エンジン非接触。
+  - **運用メモ（ユーザーへ伝えるべきこと）**: 選手はマイページのプロフィールカードで身長を自己登録できるようになった（スタッフ代理入力も従来どおり可・後勝ち）。チームウエイト中も「できない/早く終わった/メニュー外」の種目を実施画面下部から追加できる（BIG3系は推定1RMにも自動反映）。
+- **次: Phase 5着手（マイデータタブ＝ユーザー最重要機能）**（プランのPhase 5節参照: `/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`。ボトムナビ4つ目に新設・期間セレクタ＋自動考察（coach insPlayerの5ルール二人称移植＋自主トレ/体組成ルール追加・**Low-4=出席率は`kind!=='self'`フィルタ必須+分母=期間内カレンダーweight日数**）＋コンディション/体組成FFMI/トレーニング/フィジカル推移＋GPS枠（P9まで自動非表示）＋怪我履歴。チャートkeyは`md_`接頭辞+dC先行+固定高でonSnapshot冪等。coachの`renderPlayerReport`/`insPlayer`を選手向け二人称へ翻訳）
   - メモ: jsc実行パスは`/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc`（PATHにnode/jscなし）。テスト実行: `jsc dev/prelude.js <抽出JS> dev/test_xxx.js`
   - previewサーバーは旧セッションのpreviewroot（`.claude/launch.json`参照）が稼働中でも使える＝編集後に`cp`同期すればよい（今回もそれで検証）
-  - 既存テスト回帰の実行対象は現在**21本**（player10: engine/dash/cond/ranking/mystatus/train_weak/tlog_arch/pp_auto/today_prog/self_training・staff7: dash_staff/staff_pdetail_std/std_staff/tlog_arch_staff/trainbug/tmenu_slot/self_staff・coach4: trainbug/coach_report_std/tlog_arch_coach/self_coach）
+  - 既存テスト回帰の実行対象は現在**22本**（player11: engine/dash/cond/ranking/mystatus/train_weak/tlog_arch/pp_auto/today_prog/self_training/**add_ex**・staff7: dash_staff/staff_pdetail_std/std_staff/tlog_arch_staff/trainbug/tmenu_slot/self_staff・coach4: trainbug/coach_report_std/tlog_arch_coach/self_coach）
 - **✅Phase 1完了（2026-07-07・コミット`801b4d4`・未push）**: 種目推移セレクタの`<option>`にvalue属性を追加（staff/index.html:3902 renderTrainTab＋coach/index.html:1220 buildTrendCoach）。estBase無し種目の「種目名 (手入力)」テキストがvalueになり選択が巻き戻るバグを根治。dev/test_trainbug.js新設（1ファイルでstaff/coach自動判別・value属性/巻き戻らない/e1rm→topフォールバック/全null系列例外なし・各12アサートPASS）。検証: jsc構文OK・括弧HEAD比均衡(+1/+1=追加escapeHtml呼び出し分)・既存13テスト回帰PASS・エンジンmd5 3ファイル一致(`07efed94…`)・previewブラウザ両サイトでchange操作→選択維持を実機確認（コンソールエラーはFirestore遮断由来のみ）。
 
 - **🚀Phase 0（tlog容量対策）実装完了・✅push済み・GitHub Pages反映確認済み（2026-07-07・このセッション）。残りの手順**:
