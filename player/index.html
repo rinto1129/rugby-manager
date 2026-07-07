@@ -176,8 +176,10 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 @media(prefers-reduced-motion:no-preference){
   .rv-armed.in .bar-fill{animation:barfill .8s cubic-bezier(.22,1,.36,1)}
   .rv-armed.in .rk-bar{animation:barfill .7s cubic-bezier(.22,1,.36,1)}
+  .rv-armed.in .rkp-stand{animation:standgrow .55s cubic-bezier(.22,1,.36,1)}
 }
 @keyframes barfill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes standgrow{from{transform:scaleY(.05)}to{transform:scaleY(1)}}
 /* 休憩タイマー: stickyバー（ヘッダーz:10未満）。残5秒パルス・終了3回フラッシュ=background/opacityのみ */
 .rt-bar{position:sticky;top:var(--hdr-h);z-index:5}
 @media(prefers-reduced-motion:no-preference){
@@ -208,6 +210,36 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 /* ランキング: リーダーカードのデュオトーン（photo有りアバターのみ::after乗算。イニシャル文字を汚さない） */
 .rk-lead-ava{position:relative;border-radius:50%}
 .rk-lead-ava.has-photo::after{content:'';position:absolute;inset:2px;border-radius:50%;background:linear-gradient(135deg,rgba(141,0,0,.38),rgba(193,18,31,.12));mix-blend-mode:multiply;pointer-events:none}
+/* ===== ランキング専用ページ：中央高の3人ポディウム（rkp-）===== */
+.rkp-podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:10px 0 6px}
+.rkp-col{position:relative;flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center}
+.rkp-col.first{flex:1.32 1 0;order:2;z-index:2}
+.rkp-col.second{order:1}
+.rkp-col.third{order:3}
+.rkp-ava-wrap{position:relative;margin-bottom:7px}
+.rkp-ava{position:relative;border-radius:50%;padding:3px;background:var(--bg-primary)}
+.rkp-ava .av{border-radius:50%}
+.rkp-col.first .rkp-ava{padding:4px;box-shadow:0 0 0 3px var(--gold),0 6px 20px rgba(201,162,39,.42),0 0 24px rgba(242,196,61,.32)}
+.rkp-col.second .rkp-ava{box-shadow:0 0 0 3px var(--silver),0 5px 14px rgba(140,151,166,.34)}
+.rkp-col.third .rkp-ava{box-shadow:0 0 0 3px var(--bronze),0 5px 14px rgba(169,113,60,.30)}
+.rkp-crown{position:absolute;top:-15px;left:50%;transform:translateX(-50%) rotate(-8deg);z-index:2;filter:drop-shadow(0 2px 3px rgba(143,111,20,.45))}
+.rkp-badge{position:absolute;right:-3px;bottom:-3px;min-width:21px;height:21px;padding:0 3px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:var(--font-num);font-style:italic;font-weight:900;font-size:12px;color:#fff;border:2px solid var(--bg-primary);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.rkp-name{font-size:12px;font-weight:800;color:var(--text-primary);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rkp-col.first .rkp-name{font-size:13.5px}
+.rkp-meta{font-size:9.5px;color:var(--text-secondary);margin-top:1px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rkp-val{font-family:var(--font-num);font-style:italic;font-weight:900;letter-spacing:-.02em;line-height:1;margin-top:5px;color:var(--text-primary)}
+.rkp-col.first .rkp-val{font-size:23px;color:var(--maroon)}
+.rkp-col.second .rkp-val,.rkp-col.third .rkp-val{font-size:16px}
+.rkp-diff{font-size:9px;margin-top:2px;font-weight:700;line-height:1.2}
+.rkp-stand{width:100%;border-radius:8px 8px 0 0;margin-top:8px;position:relative;overflow:hidden;transform-origin:bottom;display:flex;align-items:flex-start;justify-content:center}
+.rkp-col.first .rkp-stand{height:60px;background:linear-gradient(180deg,var(--gold-hot),var(--gold) 52%,var(--gold-deep))}
+.rkp-col.second .rkp-stand{height:42px;background:linear-gradient(180deg,#B9C2CE,var(--silver))}
+.rkp-col.third .rkp-stand{height:30px;background:linear-gradient(180deg,#C79067,var(--bronze))}
+.rkp-stand::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.30),rgba(255,255,255,0) 60%)}
+.rkp-stand-num{position:relative;z-index:1;font-family:var(--font-num);font-style:italic;font-weight:900;font-size:24px;line-height:1;padding-top:5px;color:rgba(255,255,255,.95);text-shadow:0 1px 2px rgba(0,0,0,.22)}
+.rkp-col.first .rkp-stand-num{font-size:30px}
+.rkp-youchip{display:flex;align-items:center;gap:10px;background:linear-gradient(100deg,var(--maroon),var(--maroon-vivid));color:var(--pale);border-radius:12px;padding:10px 15px;margin:12px 0;box-shadow:0 4px 16px rgba(141,0,0,.24)}
+.rkp-you-rank{font-family:var(--font-num);font-style:italic;font-weight:900;font-size:25px;line-height:1}
 /* コンディション: 部位チップ（pale地→選択はJSでmaroon塗り） */
 .part-chip{background:var(--pale);border-color:transparent;color:var(--maroon-d)}
 </style>
@@ -2795,24 +2827,32 @@ T.ranking=function(){
   var FW=['PR','HO','LO','FL','No.8'];
   var BK=['SH','SO','CTB','WTB','FB'];
   var POS_LIST=['PR','HO','LO','FL','No.8','SH','SO','CTB','WTB','FB'];
-  var fields=[
-    {field:'squat',label:'SQ',unit:'kg'},
-    {field:'bench',label:'BP',unit:'kg'},
-    {field:'deadlift',label:'DL',unit:'kg'},
-    {field:'chinning',label:'チンニング',unit:'kg'},
-    {field:'clean',label:'クリーン',unit:'kg'},
-    {field:'big3',label:'BIG3',unit:'kg'},
-    {field:'bronco',label:'ブロンコ',unit:''}
+  // 種目レジストリ（better=順位の良い方向 max/min・fmt=表示整形・将来のGPS/スタッツ指標はここへ追加）
+  var RANK_EVENTS=[
+    {field:'squat',label:'SQ',full:'スクワット',unit:'kg',better:'max'},
+    {field:'bench',label:'BP',full:'ベンチプレス',unit:'kg',better:'max'},
+    {field:'deadlift',label:'DL',full:'デッドリフト',unit:'kg',better:'max'},
+    {field:'chinning',label:'チンニング',full:'チンニング',unit:'kg',better:'max'},
+    {field:'clean',label:'クリーン',full:'クリーン',unit:'kg',better:'max'},
+    {field:'big3',label:'BIG3',full:'BIG3合計',unit:'kg',better:'max'},
+    {field:'bronco',label:'ブロンコ',full:'ブロンコ',unit:'',better:'min',fmt:broncoFmt}
+    // 将来（Phase 9でGPS/試合スタッツ取込後にレジストリへ追加）:
+    // {field:'gpsDist',label:'走行距離',full:'総走行距離',unit:'m',better:'max',src:'gs'},
+    // {field:'gpsMaxSpd',label:'最高速度',full:'最高速度',unit:'km/h',better:'max',src:'gs'},
+    // {field:'tackles',label:'タックル',full:'タックル成功数',unit:'',better:'max',src:'stats'}
   ];
-  var curField='squat';
-  var curGroup='';
-  var curPos='';
-  var curYear='';
-  var curMode='raw'; // raw=実測1RM / allo=アロメトリック補正スコア（BIG3のみ）
   var ALLO_FIELD={};STD_LIFTS.forEach(function(l){ALLO_FIELD[l.ph]=l.k;});
   // 測定会フィルター：最新の測定会をデフォルトに
   var sortedSess=(D.msess||[]).slice().sort(function(a,b){return b.startDate.localeCompare(a.startDate);});
-  var curSessId=sortedSess.length?sortedSess[0].id:'all';
+  // フィルター状態は window._rkS に保持（onSnapshot再描画で選択が消えないように）
+  var S=window._rkS||{};
+  var curField=RANK_EVENTS.some(function(e){return e.field===S.ev;})?S.ev:'squat';
+  var curGroup=(S.group==='fw'||S.group==='bk')?S.group:'';
+  var curPos=S.pos||'';
+  var curYear=S.year||'';
+  var curMode=S.mode==='allo'?'allo':'raw'; // raw=実測1RM / allo=アロメトリック補正スコア（BIG3のみ）
+  var curSessId=(S.sess&&(S.sess==='all'||sortedSess.some(function(s){return s.id===S.sess;})))?S.sess:(sortedSess.length?sortedSess[0].id:'all');
+  function persistRk(){window._rkS={ev:curField,group:curGroup,pos:curPos,year:curYear,mode:curMode,sess:curSessId};}
 
   function filterPlayers(){
     return D.p.filter(function(p){
@@ -2825,7 +2865,9 @@ T.ranking=function(){
   }
 
   function renderRank(){
-    var fi=fields.find(function(f){return f.field===curField;})||fields[0];
+    var curEv=RANK_EVENTS.find(function(e){return e.field===curField;})||RANK_EVENTS[0];
+    var fi=curEv;
+    var isMin=curEv.better==='min'; // ブロンコ等: 小さいほど上位
     var players=filterPlayers();
     // 測定会フィルター対応のベスト計算
     function getSessVal(pid,field){
@@ -2865,77 +2907,89 @@ T.ranking=function(){
         return{p:t.p,v:Math.round(t.v/Math.pow(wI.w,bExp)*10)/10,raw:t.v,prev:null};
       }).filter(function(x){return!!x;});
     }
-    curField==='bronco'?rk.sort(function(a,b){return a.v-b.v;}):rk.sort(function(a,b){return b.v-a.v;});
+    isMin?rk.sort(function(a,b){return a.v-b.v;}):rk.sort(function(a,b){return b.v-a.v;});
 
-    var h='<button class="btn-back" onclick="go(\'home\')">'+ic('i-back',14)+' ホーム</button><div class="kicker" style="margin-top:8px">TEAM RANKING</div><div style="font-size:18px;font-weight:900;margin:0 0 12px;display:flex;align-items:center;gap:8px">'+ic('i-trophy',20,'var(--gold-deep)')+'ランキング</div>';
-    // 測定会セレクター
-    h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">測定会</div>'+
+    var curSessObj=sortedSess.find(function(s){return s.id===curSessId;});
+    var curSessLabel=curSessId==='all'?'全期間':(curSessObj?curSessObj.name:'全期間');
+    var h='<button class="btn-back" onclick="go(\'home\')">'+ic('i-back',14)+' ホーム</button><div class="kicker" style="margin-top:8px">TEAM RANKING</div><div style="font-size:18px;font-weight:900;margin:0 0 4px;display:flex;align-items:center;gap:8px">'+ic('i-trophy',20,'var(--gold-deep)')+'ランキング</div><div style="font-size:11px;color:var(--text-secondary);margin:0 0 12px">'+escapeHtml(curEv.full)+'・'+escapeHtml(curSessLabel)+'</div>';
+    // 種目選択（主要操作＝最上部・常時表示）
+    h+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">種目</div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
-    '<button class="btn btn-sm'+(curSessId==='all'?' btn-p':'')+'" onclick="rankSSess(0)">全期間</button>'+
-    sortedSess.map(function(s,si){return'<button class="btn btn-sm'+(curSessId===s.id?' btn-p':'')+'" onclick="rankSSessIdx('+si+')">'+escapeHtml(s.name)+'</button>';}).join('')+
+    RANK_EVENTS.map(function(f){return'<button class="btn btn-sm'+(curField===f.field?' btn-p':'')+'" onclick="rankSF(\''+f.field+'\')">'+f.label+'</button>';}).join('')+
     '</div></div>';
 
-    // 種目選択
-    h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">種目</div>'+
-    '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
-    fields.map(function(f){return'<button class="btn btn-sm'+(curField===f.field?' btn-p':'')+'" onclick="rankSF(\''+f.field+'\')">'+f.label+'</button>';}).join('')+
-    '</div></div>';
-
-    // 並び順（BIG3のみ: 実測1RM / アロメトリック補正スコア）
-    if(alloK){
-      h+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">並び順</div>'+
+    // 絞り込みトグル（測定会・並び順・グループ・ポジション・学年を折りたたみ＝表彰台を上部に見せる）
+    var fo=!!window._rkFO;
+    var actv=[];
+    if(curGroup==='fw')actv.push('FW');else if(curGroup==='bk')actv.push('BK');
+    if(curPos)actv.push(curPos);
+    if(curYear)actv.push(curYear+'年');
+    if(useAllo)actv.push('補正スコア');
+    h+='<div class="card-click" onclick="rankToggleFilters()" style="display:flex;align-items:center;gap:8px;border:1px solid var(--border-tertiary);border-radius:12px;padding:9px 13px;margin-bottom:12px;background:var(--bg-primary)">'+
+      ic('i-target',15,'var(--maroon)')+
+      '<div style="flex:1;min-width:0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-weight:700">絞り込み</span> <span style="color:var(--text-secondary)">'+escapeHtml(actv.length?actv.join('・'):'全選手')+'</span></div>'+
+      ic(fo?'i-chevron-u':'i-chevron-d',16,'var(--text-tertiary)')+
+    '</div>';
+    if(fo){
+      // 測定会セレクター
+      h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">測定会</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+      '<button class="btn btn-sm'+(curSessId==='all'?' btn-p':'')+'" onclick="rankSSess(0)">全期間</button>'+
+      sortedSess.map(function(s,si){return'<button class="btn btn-sm'+(curSessId===s.id?' btn-p':'')+'" onclick="rankSSessIdx('+si+')">'+escapeHtml(s.name)+'</button>';}).join('')+
+      '</div></div>';
+      // 並び順（BIG3系のみ: 実測1RM / アロメトリック補正スコア）
+      if(alloK){
+        h+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">並び順</div>'+
+        '<div style="display:flex;gap:6px">'+
+        '<button class="btn btn-sm'+(!useAllo?' btn-p':'')+'" onclick="rankSM(\'raw\')">実測 1RM</button>'+
+        '<button class="btn btn-sm'+(useAllo?' btn-p':'')+'" onclick="rankSM(\'allo\')">'+ic('i-bolt',12)+' 補正スコア</button>'+
+        '</div>'+
+        (useAllo?'<div style="font-size:10px;color:var(--text-secondary);margin-top:4px;line-height:1.5">補正スコア = 1RM ÷ 体重^'+getStdCfg().allo[alloK]+'。体格差の影響を除いた「公平比較」の順位（体重データのある選手のみ）</div>':'')+
+        '</div>';
+      }
+      // グループ選択（全体・FW・BK）
+      h+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">グループ</div>'+
       '<div style="display:flex;gap:6px">'+
-      '<button class="btn btn-sm'+(!useAllo?' btn-p':'')+'" onclick="rankSM(\'raw\')">実測 1RM</button>'+
-      '<button class="btn btn-sm'+(useAllo?' btn-p':'')+'" onclick="rankSM(\'allo\')">'+ic('i-bolt',12)+' 補正スコア</button>'+
-      '</div>'+
-      (useAllo?'<div style="font-size:10px;color:var(--text-secondary);margin-top:4px;line-height:1.5">補正スコア = 1RM ÷ 体重^'+getStdCfg().allo[alloK]+'。体格差の影響を除いた「公平比較」の順位（体重データのある選手のみ）</div>':'')+
-      '</div>';
+      '<button class="btn btn-sm'+(curGroup===''&&!curPos&&!curYear?' btn-p':'')+'" onclick="rankSG(\'\')">全体</button>'+
+      '<button class="btn btn-sm'+(curGroup==='fw'?' btn-p':'')+'" onclick="rankSG(\'fw\')">FW</button>'+
+      '<button class="btn btn-sm'+(curGroup==='bk'?' btn-p':'')+'" onclick="rankSG(\'bk\')">BK</button>'+
+      '</div></div>';
+      // ポジション絞り込み
+      var posList=curGroup==='fw'?FW:curGroup==='bk'?BK:POS_LIST;
+      h+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">ポジション</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:5px">'+
+      '<button class="btn btn-sm'+(curPos===''?' btn-p':'')+'" onclick="rankSP(\'\')">全て</button>'+
+      posList.map(function(pos){return'<button class="btn btn-sm'+(curPos===pos?' btn-p':'')+'" onclick="rankSP(\''+pos+'\')">'+pos+'</button>';}).join('')+
+      '</div></div>';
+      // 学年絞り込み
+      h+='<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">学年</div>'+
+      '<div style="display:flex;gap:5px">'+
+      '<button class="btn btn-sm'+(curYear===''?' btn-p':'')+'" onclick="rankSY(\'\')">全学年</button>'+
+      [1,2,3,4].map(function(y){return'<button class="btn btn-sm'+(curYear===String(y)?' btn-p':'')+'" onclick="rankSY(\''+y+'\')">'+y+'年</button>';}).join('')+
+      '</div></div>';
     }
 
-    // グループ選択（全体・FW・BK）
-    h+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">グループ</div>'+
-    '<div style="display:flex;gap:6px">'+
-    '<button class="btn btn-sm'+(curGroup===''&&!curPos&&!curYear?' btn-p':'')+'" onclick="rankSG(\'\')">全体</button>'+
-    '<button class="btn btn-sm'+(curGroup==='fw'?' btn-p':'')+'" onclick="rankSG(\'fw\')">FW</button>'+
-    '<button class="btn btn-sm'+(curGroup==='bk'?' btn-p':'')+'" onclick="rankSG(\'bk\')">BK</button>'+
-    '</div></div>';
-
-    // ポジション絞り込み
-    var posList=curGroup==='fw'?FW:curGroup==='bk'?BK:POS_LIST;
-    h+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">ポジション</div>'+
-    '<div style="display:flex;flex-wrap:wrap;gap:5px">'+
-    '<button class="btn btn-sm'+(curPos===''?' btn-p':'')+'" onclick="rankSP(\'\')">全て</button>'+
-    posList.map(function(pos){return'<button class="btn btn-sm'+(curPos===pos?' btn-p':'')+'" onclick="rankSP(\''+pos+'\')">'+pos+'</button>';}).join('')+
-    '</div></div>';
-
-    // 学年絞り込み
-    h+='<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">学年</div>'+
-    '<div style="display:flex;gap:5px">'+
-    '<button class="btn btn-sm'+(curYear===''?' btn-p':'')+'" onclick="rankSY(\'\')">全学年</button>'+
-    [1,2,3,4].map(function(y){return'<button class="btn btn-sm'+(curYear===String(y)?' btn-p':'')+'" onclick="rankSY(\''+y+'\')">'+y+'年</button>';}).join('')+
-    '</div></div>';
-
     // ランキング表示（表彰台＋バー付きリスト）
-    var fmtV=function(v){if(useAllo)return String(v);return curField==='bronco'?broncoFmt(v):v+(fi.unit?' '+fi.unit:'');};
-    // 補正スコア時は前回差の代わりに実測1RMを添える
-    var subX=function(t){return useAllo?' / 1RM '+t.raw+'kg':(diffStrOf(t)?' / '+diffStrOf(t):'');};
+    var fmtV=function(v){if(useAllo)return String(v);if(curEv.fmt)return curEv.fmt(v);return v+(fi.unit?' '+fi.unit:'');};
     var diffStrOf=function(t){
       if(t.prev==null)return'';
-      var diff=curField==='bronco'?t.prev-t.v:t.v-t.prev; // ブロンコは短縮=改善（極性反転済み）
-      if(diff>0)return'<span style="color:var(--green)">'+ic('i-up',9)+(curField==='bronco'?broncoFmt(Math.abs(diff)):Math.abs(diff)+(fi.unit?fi.unit:''))+'</span>';
-      if(diff<0)return'<span style="color:var(--red)">'+ic('i-down',9)+(curField==='bronco'?broncoFmt(Math.abs(diff)):Math.abs(diff)+(fi.unit?fi.unit:''))+'</span>';
+      var diff=isMin?t.prev-t.v:t.v-t.prev; // better=min（ブロンコ等）は短縮=改善（極性反転）
+      var fmtD=function(x){return curEv.fmt?curEv.fmt(Math.abs(x)):Math.abs(x)+(fi.unit?fi.unit:'');};
+      if(diff>0)return'<span style="color:var(--green)">'+ic('i-up',9)+fmtD(diff)+'</span>';
+      if(diff<0)return'<span style="color:var(--red)">'+ic('i-down',9)+fmtD(diff)+'</span>';
       return'<span style="color:var(--text-secondary)">→</span>';
     };
+    // 補正スコア時は前回差の代わりに実測1RMを添える
+    var subX=function(t){return useAllo?' / 1RM '+t.raw+'kg':(diffStrOf(t)?' / '+diffStrOf(t):'');};
     if(!rk.length){h+='<div class="no">データがありません</div>';$m().innerHTML=h;return;}
-    var maxV=curField==='bronco'?Math.max.apply(null,rk.map(function(r){return r.v;})):rk[0].v;
-    var minV=curField==='bronco'?Math.min.apply(null,rk.map(function(r){return r.v;})):0;
-    var barPct=function(v){if(curField==='bronco'){var rg=maxV-minV;return rg?Math.round((maxV-v)/rg*70+25):60;}return maxV?Math.round(v/maxV*88):60;};
+    var maxV=isMin?Math.max.apply(null,rk.map(function(r){return r.v;})):rk[0].v;
+    var minV=isMin?Math.min.apply(null,rk.map(function(r){return r.v;})):0;
+    var barPct=function(v){if(isMin){var rg=maxV-minV;return rg?Math.round((maxV-v)/rg*70+25):60;}return maxV?Math.round(v/maxV*88):60;};
     var iniOf=function(p){return p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';};
 
-    // 自分の順位（4位以下ならYOUピン行を表彰台とリストの間に出す）
-    var myIdx=-1;rk.forEach(function(t,i){if(myPid&&t.p.id===myPid)myIdx=i;});
+    var myIdx=-1;rk.forEach(function(t,i){if(myPid&&idEq(t.p.id,myPid))myIdx=i;});
     var rowHtml=function(t,rankNo,extraCls){
-      var p=t.p;var isMe=myPid&&p.id===myPid;
+      var p=t.p;var isMe=myPid&&idEq(p.id,myPid);
       var avaInner=p.photo?'background-image:url('+p.photo+')':'background:var(--bg-tertiary);color:var(--maroon)';
       return'<div class="rk-row'+(isMe?' me':'')+(extraCls?' '+extraCls:'')+'">'+
         '<div class="rk-bar" style="width:'+barPct(t.v)+'%"></div>'+
@@ -2945,35 +2999,38 @@ T.ranking=function(){
         '<div style="font-weight:800;font-size:15px;color:var(--text-primary)">'+fmtV(t.v)+'</div>'+
       '</div>';
     };
-    // 表彰台（3人以上）: 1位のみ全幅リーダーカード + 2-3位カード
+    // 自分の順位チップ（あなたはN位）
+    var youChip=function(){
+      if(myIdx<0)return'';
+      return'<div class="rkp-youchip rv">'+ic('i-user',18,'var(--pale)')+
+        '<div style="flex:1;min-width:0"><div style="font-size:10px;font-weight:800;letter-spacing:.08em;opacity:.85">YOUR RANK</div>'+
+        '<div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(curEv.full)+'・'+escapeHtml(curSessLabel)+'</div></div>'+
+        '<div style="text-align:right;line-height:1;flex-shrink:0"><span class="rkp-you-rank">'+(myIdx+1)+'</span><span style="font-size:12px;font-weight:800"> 位</span><div style="font-size:10px;opacity:.85;margin-top:2px">'+rk.length+'人中</div></div>'+
+      '</div>';
+    };
+    // 表彰台（3人以上）: 中央高の3人ポディウム（金銀銅リング＋ghost順位）
     if(rk.length>=3){
-      var lead=rk[0],leadP=lead.p,leadMe=myPid&&leadP.id===myPid;
-      h+='<div class="card rv rk-lead" style="position:relative;overflow:hidden;margin-bottom:10px;border:1px solid var(--gold);box-shadow:0 4px 18px rgba(201,162,39,.22)">'+
-        '<span class="ghost-num ghost-num--light" aria-hidden="true" style="right:6px;top:-20px;font-size:108px">1</span>'+
-        '<div class="kicker" style="color:var(--gold-deep);display:inline-flex;align-items:center;gap:4px">'+ic('i-medal',12)+' CHAMPION</div>'+
-        '<div style="display:flex;align-items:center;gap:14px;margin-top:6px">'+
-        '<div class="rk-lead-ava'+(leadP.photo?' has-photo':'')+'" style="border:3px solid var(--gold);border-radius:50%;padding:2px;flex-shrink:0">'+avH(leadP,60)+'</div>'+
-        '<div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:900;color:'+(leadMe?'var(--maroon)':'var(--text-primary)')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(leadP.name)+(leadMe?' (自分)':'')+'</div>'+
-        '<div style="font-size:11px;color:var(--text-secondary)">'+(leadP.position||'-')+'・'+(leadP.year||'-')+'年'+subX(lead)+'</div></div>'+
-        '<span class="num" style="font-size:clamp(26px,7.5vw,36px);flex-shrink:0">'+fmtV(lead.v).replace(/ /g,'')+'</span>'+
-        '</div></div>';
-      var twoCols=[[rk[1],2,'var(--silver)'],[rk[2],3,'var(--bronze)']];
-      h+='<div style="display:flex;gap:10px;margin-bottom:12px">';
-      twoCols.forEach(function(tc){
-        var t=tc[0],p2=t.p,isMe2=myPid&&p2.id===myPid;
-        h+='<div class="card rv" style="flex:1;margin:0;position:relative;overflow:hidden;border-top:3px solid '+tc[2]+';padding:.85rem .9rem">'+
-          '<span class="ghost-num ghost-num--light" aria-hidden="true" style="right:2px;top:-12px;font-size:64px">'+tc[1]+'</span>'+
-          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'+ic('i-medal',15,tc[2])+'<span style="font-weight:800;font-size:12px;color:var(--text-secondary)">'+tc[1]+'位</span></div>'+
-          avH(p2,40)+
-          '<div style="font-size:12px;font-weight:700;margin-top:6px;color:'+(isMe2?'var(--maroon)':'var(--text-primary)')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(p2.name)+(isMe2?' (自分)':'')+'</div>'+
-          '<div style="font-size:9px;color:var(--text-secondary)">'+(p2.position||'-')+'・'+(p2.year||'-')+'年'+subX(t)+'</div>'+
-          '<div class="num" style="font-size:20px;margin-top:3px">'+fmtV(t.v).replace(/ /g,'')+'</div>'+
+      var podCol=function(t,rankNo){
+        var p=t.p,isMe=myPid&&idEq(p.id,myPid);
+        var cls=rankNo===1?'first':rankNo===2?'second':'third';
+        var medalCol=rankNo===1?'var(--gold)':rankNo===2?'var(--silver)':'var(--bronze)';
+        var avaSz=rankNo===1?66:50;
+        var crown=rankNo===1?'<span class="rkp-crown">'+ic('i-trophy',22,'var(--gold-deep)')+'</span>':'';
+        var sub=useAllo?'<div class="rkp-diff" style="color:var(--text-secondary)">1RM '+t.raw+'kg</div>':(diffStrOf(t)?'<div class="rkp-diff">'+diffStrOf(t)+'</div>':'');
+        return'<div class="rkp-col '+cls+'">'+
+          '<div class="rkp-ava-wrap">'+crown+
+            '<div class="rkp-ava">'+avH(p,avaSz)+'<span class="rkp-badge" style="background:'+medalCol+'">'+rankNo+'</span></div>'+
+          '</div>'+
+          '<div class="rkp-name" style="'+(isMe?'color:var(--maroon)':'')+'">'+escapeHtml(p.name)+(isMe?' (自分)':'')+'</div>'+
+          '<div class="rkp-meta">'+(p.position||'-')+'・'+(p.year||'-')+'年</div>'+
+          '<div class="rkp-val">'+fmtV(t.v).replace(/ /g,'')+'</div>'+
+          sub+
+          '<div class="rkp-stand"><span class="rkp-stand-num">'+rankNo+'</span></div>'+
         '</div>';
-      });
-      h+='</div>';
-      if(myIdx>=3){
-        h+='<div style="margin-bottom:8px;position:relative"><span class="flag" style="background:var(--maroon);color:var(--pale);position:absolute;top:-7px;left:10px;z-index:2">YOU</span>'+rowHtml(rk[myIdx],myIdx+1,'rv')+'</div>';
-      }
+      };
+      // DOM順は順位順[1,2,3]（読み上げ順）・CSS orderで視覚上は[2,1,3]の中央高配置
+      h+='<div class="rkp-podium rv">'+podCol(rk[0],1)+podCol(rk[1],2)+podCol(rk[2],3)+'</div>';
+      h+=youChip();
       if(rk.length>3){
         h+='<div style="display:flex;flex-direction:column;gap:7px">';
         rk.slice(3).forEach(function(t,i){h+=rowHtml(t,i+4,i<3?'rv':'');});
@@ -2981,6 +3038,7 @@ T.ranking=function(){
       }
     }else{
       // 3人未満：リストのみ（メダルSVG）
+      h+=youChip();
       var medalCols2=['var(--gold)','var(--silver)','var(--bronze)'];
       h+='<div style="display:flex;flex-direction:column;gap:7px">';
       rk.forEach(function(t,i){h+=rowHtml(t,ic('i-medal',15,medalCols2[i])||String(i+1),'rv');});
@@ -2990,13 +3048,14 @@ T.ranking=function(){
     $m().innerHTML=h;
   }
 
-  window.rankSF=function(f){curField=f;renderRank();};
-  window.rankSM=function(m){curMode=m;renderRank();};
-  window.rankSSess=function(v){curSessId=v===0?'all':v;renderRank();};
-  window.rankSSessIdx=function(idx){curSessId=sortedSess[idx]?sortedSess[idx].id:'all';renderRank();};
-  window.rankSG=function(g){curGroup=g;curPos='';renderRank();};
-  window.rankSP=function(p){curPos=p;renderRank();};
-  window.rankSY=function(y){curYear=y;renderRank();};
+  window.rankToggleFilters=function(){window._rkFO=!window._rkFO;renderRank();};
+  window.rankSF=function(f){curField=f;persistRk();renderRank();};
+  window.rankSM=function(m){curMode=m;persistRk();renderRank();};
+  window.rankSSess=function(v){curSessId=v===0?'all':v;persistRk();renderRank();};
+  window.rankSSessIdx=function(idx){curSessId=sortedSess[idx]?sortedSess[idx].id:'all';persistRk();renderRank();};
+  window.rankSG=function(g){curGroup=g;curPos='';persistRk();renderRank();};
+  window.rankSP=function(p){curPos=p;persistRk();renderRank();};
+  window.rankSY=function(y){curYear=y;persistRk();renderRank();};
   renderRank();
 };
 

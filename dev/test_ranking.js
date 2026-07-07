@@ -25,15 +25,28 @@ D.ph=[
 D.bc=[];D.f=[];D.std=[];D.msess=[];D.offday=[];D.ann=[];D.cal=[];D.md=[];D.matchsel=[];D.phskip=[];D.i=[];D.wc=[];D.tape=[];D.pp=[];D.a=[];D.e1rm=[];D.tlog=[];
 
 myPid=1;
-print('--- 実測モード（デフォルト） ---');
+window._rkFO=false; // フィルタ折りたたみ既定
+print('--- 実測モード（デフォルト・フィルタ折りたたみ） ---');
 T.ranking();
 var r1=document.getElementById('main').innerHTML;
-ok('並び順トグルあり',has(r1,'並び順'));
-ok('補正スコアボタンあり',has(r1,'補正スコア'));
-// 1位は全幅リーダーカード（.rk-lead）に載る（semanticマーカーで判定）
-var __li=r1.indexOf('rk-lead');
-ok('実測1位=体重不明200kg（リーダーカード）',__li>=0&&r1.substring(__li,__li+1400).indexOf('体重不明')>=0);
+ok('種目セクションあり',has(r1,'種目'));
+ok('絞り込みトグルあり',has(r1,'絞り込み'));
+ok('既定は並び順トグル非表示(折りたたみ内)',!has(r1,'並び順'));
+// 1位は中央高ポディウムの.rkp-col firstに載る（semanticマーカーで判定・DOM順は順位順）
+var __li=r1.indexOf('rkp-col first');
+ok('実測1位=体重不明200kg（表彰台1位）',__li>=0&&r1.substring(__li,__li+700).indexOf('体重不明')>=0);
 ok('実測順: 重量180が軽量165より上',r1.indexOf('重量選手')<r1.indexOf('軽量選手'));
+ok('表彰台(rkp-podium)描画',has(r1,'rkp-podium'));
+ok('自分の順位チップ(YOUR RANK)',has(r1,'YOUR RANK'));
+ok('レジストリ: 7種目ピル(BIG3/ブロンコ/チンニング/クリーン)',has(r1,'BIG3')&&has(r1,'ブロンコ')&&has(r1,'チンニング')&&has(r1,'クリーン'));
+
+print('--- 絞り込みを開く ---');
+rankToggleFilters();
+var r1b=document.getElementById('main').innerHTML;
+ok('展開で並び順トグル出現',has(r1b,'並び順'));
+ok('展開で補正スコアボタン出現',has(r1b,'補正スコア'));
+ok('展開で測定会/グループ/学年',has(r1b,'測定会')&&has(r1b,'グループ')&&has(r1b,'学年'));
+ok('展開しても表彰台は維持',has(r1b,'rkp-podium'));
 
 print('--- 補正スコアモード ---');
 rankSM('allo');
@@ -59,6 +72,21 @@ rankSF('squat');
 print('--- ブロンコからSQに戻ってもモード保持で壊れない ---');
 var r5=document.getElementById('main').innerHTML;
 ok('SQ表示復帰',has(r5,'並び順'));
+
+print('--- 種目切替(BIG3)で例外なく描画継続 ---');
+rankSF('big3');
+var rb=document.getElementById('main').innerHTML;
+ok('BIG3で表彰台描画',has(rb,'rkp-podium')&&has(rb,'ランキング'));
+rankSF('squat');
+
+print('--- 0件時（学年フィルタで対象なし） ---');
+rankSY('4'); // 4年生はテストデータに不在
+var r0=document.getElementById('main').innerHTML;
+ok('0件でデータなし表示',has(r0,'データがありません'));
+ok('0件でも表彰台は出さない',!has(r0,'rkp-podium'));
+rankSY('');
+var r6=document.getElementById('main').innerHTML;
+ok('学年リセットで表彰台復帰',has(r6,'rkp-podium'));
 
 print(__fail===0?'ALL RANKING TESTS PASSED':'FAILED: '+__fail+' test(s)');
 if(__fail>0)throw new Error('ranking tests failed');
