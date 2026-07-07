@@ -7,10 +7,40 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-07（**FUKUDAI RED 全実装完了・本番push済み 🎉**: P0〜P9=player全完了＋S1〜S6＋L1（ランディング）完了。**全フェーズ完了・最終チェックALL PASS・`git push origin main`済み**（`40e4779..80fb192`・23コミット反映）。本番 https://rinto1129.github.io/rugby-manager/ に数分で反映。ブラウザで **Cmd+Shift+R** 強制リロードして確認。）
+- 日時: 2026-07-07（**🆕サブエージェント2体による実装前プランレビュー完了**。プラン自体は高品質（行番号主張約30箇所すべて実コード一致・後方互換設計も全消費箇所照合で裏付け）だが、**プラン外のCriticalを発見: 本番tlogドキュメントが約5日でFirestore 1MiB上限に到達→全選手の保存が恒久停止する（時間切迫）**。Phase 0（tlog容量対策）新設を提案中・ユーザー未判断。High所見3件＋Medium/Low多数もプラン反映待ち。**コード・プランファイルとも未変更**。全所見は直下の「🔍プランレビュー結果」節に記録。）
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
+
+- **🆕🆕🆕 選手/スタッフサイト大規模機能追加 — grilling(質問攻め)で要件確定・実装プラン承認済み・実装は完全に未着手（コード変更ゼロ）。プランファイル: `/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`（次セッションで必読）。**
+  - **経緯**: ユーザーが実機運用フィードバックから選手/スタッフサイトの改善要望を多数提示→grillingスキルで質問攻め（AskUserQuestion多数往復）により全要件を確定。Explore 3体並列調査＋Plan agent 1体で設計→ユーザーがAM/PM組分けの追加要件（後述）を出し計画を更新→**plan modeでユーザー承認済み**→**サブエージェント2体（設計レビュー=Plan agent／データ安全敵対的レビュー=general-purpose）で実装前レビュー実施済み（2026-07-07）**。このセッションでは調査・質問・計画・レビューのみ行い、**player/staff/coach/trainerのコードは一切変更していない**。
+
+  - **🔍プランレビュー結果（2体のサブエージェントが実コード照合済み・所見はまだプランファイルに未反映）**:
+    - **総評**: プラン本体は高品質。行番号・関数名の主張約30箇所すべて実コード一致。tlog後方互換戦略（`results:[]`+`totalVolume:0`不変条件・kind未定義=team・idEqのnull挙動）は全消費箇所（player12/staff8/coach15箇所）を照合して**無修正で安全と確認済み**。ppAutoFlipの同時書き込み競合もsvSafeUpdate=`db.runTransaction`（player:831-841）で安全と検証済み。エンジンブロック3ファイルmd5一致（`d5833f63…`）・ppCardHtml 2ファイル完全一致（2,634B）・dev/テスト10本実在＋HEAD健全（ALL PASS）を実測確認。
+    - **🚨Critical（プラン外・時間切迫・最優先で対処）**: `appdata/tlog`が実測**706,425B/306件**（本番Firestore読み取り専用で実測、6/21〜7/7）。7月は約**65KB/日**で増加中＝**約5日で1MiB上限到達→全選手のトレーニング保存（finishTraining・欠席記録とも）が恒久的に失敗し始める**。肥大主因は保存レコードに毎回複製されるprevEx（それだけで111,829B）/note/videoUrl/estWeight/oneRM（player:3529-3532、finishTraining:3948が全フィールド温存）。**提案=「Phase 0: tlog容量対策」をPhase 1より前に新設**: ①保存レコードのスリム化（prevEx等の再計算可能フィールドを落とす、新規保存分で約40%減）②`tlog_2026-06`等の別docへ月次アーカイブ移送（読み側はオンデマンド結合・tdraft方式の前例あり）③完了までPhase 3（自主トレ=レコード増）を保留。副次効果としてegress問題（tlog書き込み毎に全端末へ706KB再送・現状で月5〜6GB/Spark上限10GiB）も同時解決。**ユーザーはまだ採否を判断していない→次セッション冒頭で必ず確認**。
+    - **High-1（Phase 1に追加）**: staff:3775と同一のoption value欠落バグが**coach/index.html:1175にも存在**（`setTrExC`の`.trim()`では「 (手入力)」接尾辞が消えず巻き戻る。実効定義はcoach:1871-1872側の重複定義=既存の別問題にも注意）。Phase 1の修正対象にcoach:1175を追加すること。player:4079の履歴セレクタは接尾辞を付けないため安全（検証済み）。
+    - **High-2（Phase 3の仕様修正）**: 自主トレ（menuId:null）の下書きが**復元不能**。`idEq(a,b)`は`a==null||b==null`で必ずfalse（player:920）のため、既存復元フロー`beginTrainingExec`の`idEq(draft.menuId,menuId)`ゲート（player:3455-3473）に絶対に乗らない=入力途中データ喪失。さらに下書きスロットは選手ごと1個（player:3400）なのでチーム下書きと自主トレが相互上書き・消去。→自主ウエイト開始時にidEqを使わない専用下書きチェック（`draft.kind==='self'&&draft.date===today`）＋チーム下書き存在時の警告を追加し、test_self_training.jsに復元/上書き警告の2ケース追加。
+    - **High-3（Phase 2のガード修正）**: ppAutoFlipのガードに2つの穴。①「calに本日type='weight'があるか」を見ていない→オフ日に1人が団体メニューを消化しただけでチーム共有PUSH/PULLが反転。→`(D.cal||[]).some(本日weight)`ガード追加。②`last.date===today`ガードは「当日確定済み」と「スタッフが朝に手動修正」（staff ppFlip:4141/ppStart:4157はdate=todayStr()）を区別できず、手動修正日の夕方は自動確定が抑止され翌日ずれる。→当日スキップを`last.date===today && last.by==='auto'`に絞る（か「手動優先=手動修正日は自動確定なし」を仕様として明記）。test_pp_auto.jsに「手動flip当日+完了」「ppStart当日+完了」「非weight日の完了」の3ケース追加。
+    - **Medium-1（Phase 2）**: ppAutoFlip呼び出しは「成功CB内」だけでは不足。finishTrainingには**tlog成功+e1rm失敗でも記録成立とする経路**（player:3995-4008のonError内`done.indexOf('tlog')>=0`分岐）がある→onAllDoneとその分岐の**両方**で呼ぶと明記（漏らすと自己ベスト更新日だけflipされない発見困難バグ）。
+    - **Medium-2（Phase 7）**: 3人組の端数規則「n%3==2→4人組2つ」はn≥8前提で、午前/午後分割+怪我人除外後に現実に起きるn=2/n=5が未定義→規則を明記しテストにn=1,2,4,5を追加。
+    - **Medium-3（Phase 6）**: 現行T.rankingは**7種目（chinning・clean含む）**＋FW/BK・ポジション・学年フィルタ＋測定会セレクタ＋アロメトリック補正モード（player:2750-2765）を持つが、プランのRANK_EVENTS列挙はsquat/bench/deadlift/big3/broncoのみ→chinning/cleanを明記し、フィルタ群・alloモードの保持/廃止を確定要件として書く（暗黙に落とすリスク）。
+    - **Medium-4（Phase 2）**: tmenuの同ptypeスロットが異常時に2件になった場合の読み取り側タイブレーク（最新1件採用等）が未定義→決めておく。
+    - **Low（各Phaseに反映）**: ①Phase 7のgroupScore前提ヘルパー=e1rm最新値取得はplayer:3288にのみ存在→**getLatestE1RMのstaff移植を作業項目に明記** ②V.tgroup/V.gpsは**サイドバー項目+nav()タイトル辞書登録**が必要（S4で辞書漏れ=生キー表示バグの実績） ③Phase 4体組成リスト削除時、**1232の`pickup`変数は1242のtodo（体組成測定対象）が使う**→1636-1637の描画だけ消し変数定義は残す ④Phase 5考察「出席率<70%」はcoach欠席率と同じ分母問題→`kind!=='self'`フィルタを仕様に明記+分母定義（カレンダーweight日数か）を確定 ⑤エンジンブロック「8210B」は文字数としては正確だがUTF-8では9,152B→**バイト数でなく3ファイルmd5相互一致で検証**と読み替え ⑥coach件数KPI（trained14:1381・doneCount:1584-1590）に自主トレが混入し意味が変わる→包含を仕様と明記するかkindフィルタ2箇所追加（insTraining:871欠席率分母の修正自体は正しいと検証済み） ⑦player履歴でfitnessレコードが「メニュー/0kg」表示（player:4104）→「自主」バッジに加えftype表示を検討 ⑧Phase 8のfitness tmenuは**旧タブのplayer**でgetMyMenus(3285)をすり抜け0種目メニューとして開始可能（クラッシュ無し）→リリース時に選手へ再読み込み周知 ⑨p(514KB)も写真base64が主因で将来の圧縮候補。
+    - **検証済み・安全と確認された事項（再調査不要）**: kind:'self'/fitness/menuId:nullに対する新旧コードの例外・NaN無し（全消費箇所ガード確認済み）／trainerはtlog/tmenu非購読=無変更で正しい（trainer:139-144）／getTop3はT.homeローカル・使用1箇所=削除安全／getTodayPickupは3箇所使用=関数保持が正／p.height・p.wgはstaff doSavePlayer(3964)がフィールド単位代入のため構造的に共存（height同士のみ後勝ち=プラン注記どおり許容）／texlistマージはstaff:4573と同型で安全／読み取り5万/日・書き込み2万/日は現規模で問題なし／gr_のオンデマンドget+キャッシュ設計は安全／Phase順序の依存関係・新キー設計・マイデータのチャート冪等性対策（md_接頭辞+dC先行+固定高）は妥当。
+  - **確定した実装順序（Phase 1〜9、1機能ずつ→構文チェック→模擬実行→commit、pushは都度ユーザー確認）**:
+    1. **バグ修正**: staff/index.html:3775の`<option>`にvalue属性が無く「(手入力)」付きテキストがvalueになってしまい、種目推定グラフの種目選択が選択直後に元へ巻き戻る（原因特定済み）。
+    2. **push/pull自動切替＋メニューのスロット化**: チームウエイトのtlog保存（当日最初の1件）で既存`pp`機構を自動確定（`ppAutoFlip`新設）＋スタッフがワンタップ修正できる導線は維持。tmenuに`ptype:'push'|'pull'|'fitness'`を追加し「6月push」的な手動命名運用をPUSH/PULL固定スロット（各1つ・中身だけ差し替え）に統一。選手側は今日のタイプのプログラムが自動表示され1タップで開始、ホームの「TODAY: PUSH DAY」ヒーロー/ppカードもタップでトレーニング画面へ直行するようにする（現状はタップしても何も起きない＝ユーザー不満点）。
+    3. **自主トレ記録**: チームウエイト以外に「自主トレ・ウエイト（自由種目構成）」「自主トレ・フィットネス（種類/時間/距離任意/RPE/メモ）」を選手が記録可能に。tlogに`kind:'self'`を追加し推定1RM・ボリューム・スタッフ/コーチの種目推移グラフに**完全統合**（「自主」バッジで区別）。fitnessレコードは`results:[]`+`totalVolume:0`を必ず持たせ既存集計コードを無傷にする設計。
+    4. **チームウエイト中の種目追加**（できない/早く終わった時に自由種目を追加・texlistオートコンプリート）＋**ホーム情報量削減**（今週スケジュール圧縮・体組成チーム全員リスト撤去・ランキングTOP3をホームから撤去・お知らせ折りたたみ）＋**選手が身長のみ自己編集**可能に。
+    5. **マイデータタブ新設（ユーザーが一番やってほしいと明言した最重要機能）**: ボトムナビ4つ目に新設。期間セレクタ＋自動考察（coachの`insPlayer`5ルールを選手向けに移植＋自主トレ/体組成ルール追加）＋コンディション/体組成(FFMI)/トレーニング/フィジカルの推移グラフ＋GPS枠（Phase 9まで自動非表示）＋怪我履歴。coachの`renderPlayerReport`/`insPlayer`(coach:1018-1067,1728)を参考に選手向けへ翻訳する設計。
+    6. **ランキング専用ページ**: 既存`T.ranking`(player:2746)の集計ロジックは保持し表彰台演出込みで全面リビルド（GPS/スタッツ指標を後から追加できるレジストリ構造）。
+    7. **グループ分け（スタッフ）— 2段階**: ①シーズン中は**午前組/午後組**の自動振り分け（優先順位: 月水金いずれかに5限あり→午前固定 ＞ 本人希望 ＞ 遠方→午後 ＞ 残りは人数バランス。オフシーズンは分割なしトグル）②各組内でBIG3総合強度（直近推定1RM優先→実測ph）による3人組固定（端数は4人組に吸収）・push/pull共通・怪我人デフォルト除外・手動入替可。**5限有無（月/水/金別）・遠方・時間帯希望は選手がマイページで自己申告（`p.wg`新設）＋スタッフも代理編集可**。新キー`tgroup`（午前/午後シフト×グループ配列、常に1レコード全置換）。
+    8. **Fitプログラム提示（スタッフ）**: `ptype:'fitness'`のtmenuを構造化ライトで作成→選手が「これをやる」で自主トレ記録にプレフィル→実施記録が残りスタッフが実施者を確認できる。オフシーズンのフィットネス提示に対応。
+    9. **GPS/試合スタッツExcel取込**: SheetJS(CDN)で列マッピング画面を作り「この試合で一番走った」等をランキング/マイデータに統合。**ユーザーの実Excelファイル到着待ち＝現時点では着手不可**（到着次第このPhaseだけ繰り上げてよい）。
+  - **横断で絶対に守る制約（プランに詳細あり）**: 新キーは短いキーのまま／保存はsvSafe・svSafeUpdateのみ／**基準エンジンブロック（player/staff/coach 3ファイルbyte一致）は非接触**／**ppCardHtmlのplayer/staffバイト一致を維持**（変更は2ファイル同時+diff確認）／id・クラス名リネーム禁止／playerは現在FUKUDAI REDライトテーマ（下記FUKUDAI RED節は完了済みだが配色・スプライト・`ic()`等の資産はそのまま使う）。
+  - **次にやること（順番厳守）**: ①**ユーザーにPhase 0（tlog容量対策）の採否を確認**（🚨Critical・約5日で上限到達のため実装より先に判断が必要）②上記レビュー所見をプランファイルに反映（High-1のcoach:1175追加、High-2/3・Medium・Lowの仕様修正）③その後Phase 0（採用時）→Phase 1（staff:3775 **+ coach:1175**）から実装着手。着手前に必ず`/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`を全文読むこと（本要約はダイジェストであり詳細はプラン本文が正。**レビュー所見は現時点でプラン本文に未反映＝本HANDOFFの🔍節が唯一の記録**）。
+  - 下記「✅✅ 全面デザインリニューアル『FUKUDAI RED』」以降は**完了済みの過去プロジェクトの記録**（参考情報として残置）。
+
 - **✅✅ 全面デザインリニューアル「FUKUDAI RED」は全フェーズ完了・push済み。リニューアル作業としては完結。** 以降は実利用フィードバックでの細かい改善フェーズ。新規作業は通常どおり「1機能ずつ→構文チェック→動作確認→commit→（pushはユーザー確認後）」で進める。
   - **L1（ランディング＝`index.html`）完了内容**: §4どおり全面リビルド。maroonフルブリードヒーロー（ノイズ`::before`+ghost「15」+**離散ピッチライン**=ハーフウェイ実線50%/22m実線22%・78%/10m破線37%・63%を幅2px no-repeatタイルで実装）→波カット（data URI・clip-path不使用）→白ゲートカード4枚（kicker組織語彙 PLAYERS/PERFORMANCE STAFF/MEDICAL/COACHES）。**JSゼロ（script 0個）**・CSSのみstagger（`.gate{opacity:0;animation}`は`@media (prefers-reduced-motion:no-preference)`内に排他スコープ＝reduce時はベースopacity:1で4枚可視）。**meta viewportから`maximum-scale=1.0, user-scalable=no`除去済み**（WCAG 1.4.4）。スプライトはL1で使う6種のみ内蔵（i-ball/i-run/i-clipboard/i-bandage/i-chart-line/i-chevron-r）。
   - **L1で敵対的レビュー(4レンズ)→CONFIRMED 3件を全修正済み**: ①フッター文字`--text-tertiary`(3.92:1)→`--text-secondary`(#6E5A5C・5.85:1)でWCAG AA通過 ②pitch-linesが`background-size:100%`で全幅ピケットフェンス化+`::after`死にコード→固定幅2px no-repeatタイルで離散線に再実装 ③ヒーロー→ウェーブ接合の暗い帯→ラジアルグラデ終点を`var(--maroon-d) 72%`に前倒しして下端全体をmaroon-dに解決。REFUTED 2件（.sub rose-l=5.79:1でAA通過/ghost-num text-stroke=対象ブラウザ描画OK）は修正不要。
@@ -583,7 +613,8 @@
 - 直近push: `93c5d9c`(怪我×リハビリ Phase0 データ基盤) → `9ce97a3`(同 Phase1 追跡指標セクション＋種別テンプレ確定)。
 
 ## 次の一手
-- **🔴最優先＝TimeTree連携フェーズ1「チーム共通プッシュ/プル表示」の実装**（詳細は最上部「次セッションが最初にやること」節・仕様は下の「TimeTree連携」節）。プラン＝`/Users/nakayamarinnin/.claude/plans/sleepy-spinning-stardust.md`。**ユーザー承認済み・未着手**。ステップ1(staff)→ステップ2(trainer)→ステップ3(player)→ステップ4(整合チェック)の順で1機能ずつ進める。
+- **🔴🆕最優先＝選手/スタッフサイト大規模機能追加のPhase 1から着手**（詳細は最上部「次セッションが最初にやること」節）。プラン＝`/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`。**ユーザー承認済み・実装未着手**。Phase1(staffバグ修正)→Phase2(push/pull自動化+スロット化)→…の順で1機能ずつ進める。
+- （優先度が下がった＝上記の後回し）TimeTree連携フェーズ1「チーム共通プッシュ/プル表示」の実装（仕様は下の「TimeTree連携」節）。プラン＝`/Users/nakayamarinnin/.claude/plans/sleepy-spinning-stardust.md`。**ユーザー承認済みだが着手時期未定**。なお新プランのPhase2でも`pp`機構の自動化を扱うため、着手時は両プランの重複（`pp`キーの取り扱い）を突き合わせること。
 - **✅完了済み（実機確認未実施）＝trainerサイト「ガイド付き評価フロー」9ステップ**（プラン＝`4-player-staff-trainer-coach-1-ux-merry-harbor.md`末尾）。実装・検証済み・push済み。凛人がORTHO_SOLO_OKにテスト名を追記して単独可を仕分ける臨床TODOのみ残（詳細は上のログ参照）。
 - **✅完了済み（実機確認未実施）＝怪我管理×リハビリ連携 Phase 2（不足ゲージ）**（プラン＝`/Users/nakayamarinnin/.claude/plans/wise-drifting-moonbeam.md`）。staff/trainer両方のカルテ評価タブに実装・検証済み・push済み（コミット9c5d4fa）。
 - 一括インポートの運用: 毎月スクショを私に渡す→出た予定テキストをstaff「📋一括インポート」に貼る。形式は `日付 | 種別 | タイトル | 時間`。
