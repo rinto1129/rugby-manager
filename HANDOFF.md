@@ -7,12 +7,14 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-07（**🆕🆕🆕Phase 1（種目推移セレクタのoption valueバグ修正）完了・コミット`801b4d4`・未push**。staff:3902（旧3775）とcoach:1220（旧1175・レビューHigh-1）の両方に`value="種目名"`を追加。dev/test_trainbug.js新設（staff/coach両対応・各12アサート）＋既存13テスト回帰PASS＋エンジンmd5一致＋previewブラウザ実機で「(手入力)種目を選択→巻き戻らない」を両サイト確認済み。**次: pushのユーザー確認→Phase 2（push/pull自動切替+スロット化+導線）**。）
+- 日時: 2026-07-07（**🆕🆕🆕🆕Phase 1完了（コミット`801b4d4`）に続き、次セッションはPhase 2から着手する。⚠️今回ユーザー指示変更: 「pushは一番最後で」＝各Phaseごとのpush確認は不要、全Phase完了までコミットのみ積み上げてよい（撤回されるまで有効）。**次: Phase 2（push/pull自動切替+スロット化+導線）**。）
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
 
-- **✅Phase 1完了（2026-07-07・コミット`801b4d4`・未push）**: 種目推移セレクタの`<option>`にvalue属性を追加（staff/index.html:3902 renderTrainTab＋coach/index.html:1220 buildTrendCoach）。estBase無し種目の「種目名 (手入力)」テキストがvalueになり選択が巻き戻るバグを根治。dev/test_trainbug.js新設（1ファイルでstaff/coach自動判別・value属性/巻き戻らない/e1rm→topフォールバック/全null系列例外なし・各12アサートPASS）。検証: jsc構文OK・括弧HEAD比均衡(+1/+1=追加escapeHtml呼び出し分)・既存13テスト回帰PASS・エンジンmd5 3ファイル一致(`07efed94…`)・previewブラウザ両サイトでchange操作→選択維持を実機確認（コンソールエラーはFirestore遮断由来のみ）。**次: ①pushのユーザー確認②Phase 2着手（プランのPhase 2節参照: tmenu.ptype+ppAutoFlip+ホーム導線。レビューHigh-3①②/Medium-1/Medium-4の対処を含む）**
+- **⚠️pushのタイミング変更（2026-07-07・ユーザー指示）**: 「pushは一番最後で！」＝これまでの「1機能ずつ→確認→commit→pushはユーザー確認後」から、**push確認のステップを都度挟まず、Phase 2以降もコミットのみ積み上げて進めてよい**。次にユーザーから明示のpush指示（Phase群が一段落した時など）が出るまでpushしない。この方針が変わったら本行を更新すること。
+- **✅Phase 1完了（2026-07-07・コミット`801b4d4`・未push）**: 種目推移セレクタの`<option>`にvalue属性を追加（staff/index.html:3902 renderTrainTab＋coach/index.html:1220 buildTrendCoach）。estBase無し種目の「種目名 (手入力)」テキストがvalueになり選択が巻き戻るバグを根治。dev/test_trainbug.js新設（1ファイルでstaff/coach自動判別・value属性/巻き戻らない/e1rm→topフォールバック/全null系列例外なし・各12アサートPASS）。検証: jsc構文OK・括弧HEAD比均衡(+1/+1=追加escapeHtml呼び出し分)・既存13テスト回帰PASS・エンジンmd5 3ファイル一致(`07efed94…`)・previewブラウザ両サイトでchange操作→選択維持を実機確認（コンソールエラーはFirestore遮断由来のみ）。
+- **次: Phase 2着手**（プランのPhase 2節参照: `/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`。tmenu.ptype拡張+ppAutoFlip新設+ホーム導線。レビューHigh-3①②/Medium-1/Medium-4の対処を含む＝プラン本文に反映済み）
   - メモ: jsc実行パスは`/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc`（PATHにnode/jscなし）。テスト実行: `jsc dev/prelude.js <抽出JS> dev/test_xxx.js`
   - previewサーバーは旧セッションのpreviewroot（`.claude/launch.json`参照）が稼働中でも使える＝編集後に`cp`同期すればよい（今回もそれで検証）
 
@@ -43,7 +45,7 @@
     - **Medium-4（Phase 2）**: tmenuの同ptypeスロットが異常時に2件になった場合の読み取り側タイブレーク（最新1件採用等）が未定義→決めておく。
     - **Low（各Phaseに反映）**: ①Phase 7のgroupScore前提ヘルパー=e1rm最新値取得はplayer:3288にのみ存在→**getLatestE1RMのstaff移植を作業項目に明記** ②V.tgroup/V.gpsは**サイドバー項目+nav()タイトル辞書登録**が必要（S4で辞書漏れ=生キー表示バグの実績） ③Phase 4体組成リスト削除時、**1232の`pickup`変数は1242のtodo（体組成測定対象）が使う**→1636-1637の描画だけ消し変数定義は残す ④Phase 5考察「出席率<70%」はcoach欠席率と同じ分母問題→`kind!=='self'`フィルタを仕様に明記+分母定義（カレンダーweight日数か）を確定 ⑤エンジンブロック「8210B」は文字数としては正確だがUTF-8では9,152B→**バイト数でなく3ファイルmd5相互一致で検証**と読み替え ⑥coach件数KPI（trained14:1381・doneCount:1584-1590）に自主トレが混入し意味が変わる→包含を仕様と明記するかkindフィルタ2箇所追加（insTraining:871欠席率分母の修正自体は正しいと検証済み） ⑦player履歴でfitnessレコードが「メニュー/0kg」表示（player:4104）→「自主」バッジに加えftype表示を検討 ⑧Phase 8のfitness tmenuは**旧タブのplayer**でgetMyMenus(3285)をすり抜け0種目メニューとして開始可能（クラッシュ無し）→リリース時に選手へ再読み込み周知 ⑨p(514KB)も写真base64が主因で将来の圧縮候補。
     - **検証済み・安全と確認された事項（再調査不要）**: kind:'self'/fitness/menuId:nullに対する新旧コードの例外・NaN無し（全消費箇所ガード確認済み）／trainerはtlog/tmenu非購読=無変更で正しい（trainer:139-144）／getTop3はT.homeローカル・使用1箇所=削除安全／getTodayPickupは3箇所使用=関数保持が正／p.height・p.wgはstaff doSavePlayer(3964)がフィールド単位代入のため構造的に共存（height同士のみ後勝ち=プラン注記どおり許容）／texlistマージはstaff:4573と同型で安全／読み取り5万/日・書き込み2万/日は現規模で問題なし／gr_のオンデマンドget+キャッシュ設計は安全／Phase順序の依存関係・新キー設計・マイデータのチャート冪等性対策（md_接頭辞+dC先行+固定高）は妥当。
-  - **確定した実装順序（Phase 1〜9、1機能ずつ→構文チェック→模擬実行→commit、pushは都度ユーザー確認）**:
+  - **確定した実装順序（Phase 1〜9、1機能ずつ→構文チェック→模擬実行→commit。pushのタイミングは冒頭の「⚠️pushのタイミング変更」参照＝現在は最後にまとめて）**:
     1. **バグ修正**: staff/index.html:3775の`<option>`にvalue属性が無く「(手入力)」付きテキストがvalueになってしまい、種目推定グラフの種目選択が選択直後に元へ巻き戻る（原因特定済み）。
     2. **push/pull自動切替＋メニューのスロット化**: チームウエイトのtlog保存（当日最初の1件）で既存`pp`機構を自動確定（`ppAutoFlip`新設）＋スタッフがワンタップ修正できる導線は維持。tmenuに`ptype:'push'|'pull'|'fitness'`を追加し「6月push」的な手動命名運用をPUSH/PULL固定スロット（各1つ・中身だけ差し替え）に統一。選手側は今日のタイプのプログラムが自動表示され1タップで開始、ホームの「TODAY: PUSH DAY」ヒーロー/ppカードもタップでトレーニング画面へ直行するようにする（現状はタップしても何も起きない＝ユーザー不満点）。
     3. **自主トレ記録**: チームウエイト以外に「自主トレ・ウエイト（自由種目構成）」「自主トレ・フィットネス（種類/時間/距離任意/RPE/メモ）」を選手が記録可能に。tlogに`kind:'self'`を追加し推定1RM・ボリューム・スタッフ/コーチの種目推移グラフに**完全統合**（「自主」バッジで区別）。fitnessレコードは`results:[]`+`totalVolume:0`を必ず持たせ既存集計コードを無傷にする設計。
