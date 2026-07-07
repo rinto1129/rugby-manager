@@ -7,16 +7,23 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-07（**🆕🆕🆕🆕Phase 1完了（コミット`801b4d4`）に続き、次セッションはPhase 2から着手する。⚠️今回ユーザー指示変更: 「pushは一番最後で」＝各Phaseごとのpush確認は不要、全Phase完了までコミットのみ積み上げてよい（撤回されるまで有効）。**次: Phase 2（push/pull自動切替+スロット化+導線）**。）
+- 日時: 2026-07-07（**🆕🆕🆕🆕🆕Phase 2完了（コミット`2c81e9c`+`362c70d`+`d765f48`・未push）。次はPhase 3（自主トレ記録）から着手する。pushは引き続き「一番最後にまとめて」（撤回されるまで有効）。**）
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
 
 - **⚠️pushのタイミング変更（2026-07-07・ユーザー指示）**: 「pushは一番最後で！」＝これまでの「1機能ずつ→確認→commit→pushはユーザー確認後」から、**push確認のステップを都度挟まず、Phase 2以降もコミットのみ積み上げて進めてよい**。次にユーザーから明示のpush指示（Phase群が一段落した時など）が出るまでpushしない。この方針が変わったら本行を更新すること。
-- **✅Phase 1完了（2026-07-07・コミット`801b4d4`・未push）**: 種目推移セレクタの`<option>`にvalue属性を追加（staff/index.html:3902 renderTrainTab＋coach/index.html:1220 buildTrendCoach）。estBase無し種目の「種目名 (手入力)」テキストがvalueになり選択が巻き戻るバグを根治。dev/test_trainbug.js新設（1ファイルでstaff/coach自動判別・value属性/巻き戻らない/e1rm→topフォールバック/全null系列例外なし・各12アサートPASS）。検証: jsc構文OK・括弧HEAD比均衡(+1/+1=追加escapeHtml呼び出し分)・既存13テスト回帰PASS・エンジンmd5 3ファイル一致(`07efed94…`)・previewブラウザ両サイトでchange操作→選択維持を実機確認（コンソールエラーはFirestore遮断由来のみ）。
-- **次: Phase 2着手**（プランのPhase 2節参照: `/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`。tmenu.ptype拡張+ppAutoFlip新設+ホーム導線。レビューHigh-3①②/Medium-1/Medium-4の対処を含む＝プラン本文に反映済み）
+- **✅Phase 2完了（2026-07-07・コミット`2c81e9c`/`362c70d`/`d765f48`・未push）**: push/pull自動切替+スロット化+導線。3コミット構成:
+  - **2-A（`2c81e9c`）**: player `ppAutoFlip(log)`新設（ppCardHtml直後）。ガード=欠席/kind='self'/過去日付/個別scope/pp未初期化/**cal本日weightなし（High-3①）**。当日重複抑止は`last.date===today && last.by==='auto'`のみ（**High-3②**=手動flip/ppStart当日でも完了で確定は走る）。`todayType=mn.ptype||last.type`の逆を`{id,type,date,by:'auto'}`でpush・100件cap。finishTrainingの**成功CBとtlog成功+e1rm失敗経路の両方**から呼ぶ（**Medium-1**）。失敗時はonError空関数でalert抑止。ppCardHtml=byLabel'auto'→「自動確定」+metaTxt「前回: PUSH 7/4(金)（自動確定）」/1件のみ時「開始: …」（**player/staffバイト一致維持=2706B**）。trainerはbyLabel 1行のみ。dev/test_pp_auto.js（27アサート・finishTraining統合2経路含む）
+  - **2-B（`362c70d`）**: staff renderTMenuFormにメニュータイプセレクト（通常/PUSH/PULLスロット）。saveTMenuを新規もsvSafeUpdateに統一し「同ptypeの他メニューからptype/ptypeTs除去」を同一トランザクションで実行（アクティブ各1件の不変条件）。ptype+個別scopeはalert拒否。**getSlotMenu(pt)**=異常時複数はptypeTs最新→id大タイブレーク（**Medium-4**・読み取り側統一）。V.trainingをスロットカード2枚+通常メニュー一覧に再構成（異常時に負けたスロットメニューは通常一覧に可視=編集・削除可能）。goAddTMenuSlot新設・詳細にスロットバッジ。dev/test_tmenu_slot.js（32アサート）
+  - **2-C（`d765f48`）**: player getSlotMenu複製+T.training最上部「今日のプログラム」カード（cal本日weight∧ppNext()≠null→スロットメニュー+「開始する」→startTraining・本日実施済バッジ）。T.home=「TODAY: PUSH DAY」ヒーローとppカードをタップでgo('training')直行（ベルバッジはevent.stopPropagationでマイページ維持・pp空時は空ラップdivを出さない）。dev/test_today_prog.js（18アサート）
+  - **検証**: jsc構文OK・括弧HEAD比均衡（player/staff/trainer）・既存全テスト+新3テスト=18本ALL PASS・エンジンブロックHEAD一致（player/staff。coach無変更）・previewブラウザ実機確認（staffスロットUI/編集フォームptypeセレクト/dashの「前回: PUSH 7/4(土)（自動確定）」表示・playerの今日のプログラムカード→開始する→出欠確認画面・ホームのヒーロー/ppカードクリック→training遷移。コンソールエラーはFirestore遮断由来のみ）
+  - **運用メモ（ユーザーへ伝えるべきこと）**: 既存の「6月push」等のメニューは、スタッフが編集画面でメニュータイプをPUSH/PULLスロットに設定するだけで移行完了（移行スクリプト不要）。自動確定はカレンダーに本日type=weightの予定がある日のみ動く（カレンダー登録が前提）
+- **次: Phase 3着手（自主トレ記録・完全統合）**（プランのPhase 3節参照: `/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`。tlogに`kind:'self'`拡張・fitnessは`results:[]`+`totalVolume:0`不変条件・**High-2（自主トレ下書きの専用復元+チーム下書き上書き警告）**・Low-6/Low-7対処を含む＝プラン本文に反映済み。**Phase 0完了済みなのでPhase 3の保留は解除済み**）
   - メモ: jsc実行パスは`/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc`（PATHにnode/jscなし）。テスト実行: `jsc dev/prelude.js <抽出JS> dev/test_xxx.js`
   - previewサーバーは旧セッションのpreviewroot（`.claude/launch.json`参照）が稼働中でも使える＝編集後に`cp`同期すればよい（今回もそれで検証）
+  - 既存テスト回帰の実行対象は現在**18本**（player9: engine/dash/cond/ranking/mystatus/train_weak/tlog_arch/pp_auto/today_prog・staff6: dash_staff/staff_pdetail_std/std_staff/tlog_arch_staff/trainbug/tmenu_slot・coach3: trainbug/coach_report_std/tlog_arch_coach）
+- **✅Phase 1完了（2026-07-07・コミット`801b4d4`・未push）**: 種目推移セレクタの`<option>`にvalue属性を追加（staff/index.html:3902 renderTrainTab＋coach/index.html:1220 buildTrendCoach）。estBase無し種目の「種目名 (手入力)」テキストがvalueになり選択が巻き戻るバグを根治。dev/test_trainbug.js新設（1ファイルでstaff/coach自動判別・value属性/巻き戻らない/e1rm→topフォールバック/全null系列例外なし・各12アサートPASS）。検証: jsc構文OK・括弧HEAD比均衡(+1/+1=追加escapeHtml呼び出し分)・既存13テスト回帰PASS・エンジンmd5 3ファイル一致(`07efed94…`)・previewブラウザ両サイトでchange操作→選択維持を実機確認（コンソールエラーはFirestore遮断由来のみ）。
 
 - **🚀Phase 0（tlog容量対策）実装完了・✅push済み・GitHub Pages反映確認済み（2026-07-07・このセッション）。残りの手順**:
   1. ✅push完了（`ff58aea` 0-Aスリム化 / `f657b13` player 0-B / `9f8f072` staff 0-B / `b9741ce` coach 0-B / `963c2ea` HANDOFF）。Pagesに新コードが載ったことをcurlで確認済み（player/staff/coachともarchiveTlog/loadTlogArch検出）
