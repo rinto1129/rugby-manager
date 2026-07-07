@@ -933,7 +933,7 @@ function ppCardHtml(showCtrl){
   var wd=ppNextWeightDay();
   var wdTxt=wd?'・'+ppDateLabel(wd.date):'';
   var lastRec=D.pp[D.pp.length-1];
-  var byLabel=lastRec.by==='trainer'?'トレーナー':'スタッフ';
+  var byLabel=lastRec.by==='trainer'?'トレーナー':lastRec.by==='auto'?'自動確定':'スタッフ';
   var metaTxt='最終操作: '+fmt(lastRec.date)+' ('+byLabel+')';
   var todayStrong=(wd&&wd.isToday)?'<div style="font-size:12px;font-weight:700;color:'+color+';margin-bottom:4px">今日は'+(isPush?'PUSH':'PULL')+'の日！</div>':'';
   var borderStyle=(wd&&wd.isToday)?'border:2px solid '+color+';box-shadow:0 0 16px '+bg:'';

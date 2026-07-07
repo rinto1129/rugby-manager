@@ -1100,8 +1100,9 @@ function ppCardHtml(showCtrl){
   var wd=ppNextWeightDay();
   var wdTxt=wd?'・'+ppDateLabel(wd.date):'';
   var lastRec=D.pp[D.pp.length-1];
-  var byLabel=lastRec.by==='trainer'?'トレーナー':'スタッフ';
-  var metaTxt='最終操作: '+fmt(lastRec.date)+' ('+byLabel+')';
+  var byLabel=lastRec.by==='trainer'?'トレーナー':lastRec.by==='auto'?'自動確定':'スタッフ';
+  // 先頭1件=ppStartの開始記録。2件目以降の末尾は必ずflip記録＝「直前に実施済みになった側」はlastRec.typeの逆
+  var metaTxt=D.pp.length>1?'前回: '+(lastRec.type==='push'?'PULL':'PUSH')+' '+ppDateLabel(lastRec.date)+'（'+byLabel+'）':'開始: '+ppDateLabel(lastRec.date)+'（'+byLabel+'）';
   var todayStrong=(wd&&wd.isToday)?'<div style="font-size:12px;font-weight:700;color:'+color+';margin-bottom:4px">今日は'+(isPush?'PUSH':'PULL')+'の日！</div>':'';
   var borderStyle=(wd&&wd.isToday)?'border:2px solid '+color+';':'';
   var ctrlHtml='';
@@ -1118,6 +1119,28 @@ function ppCardHtml(showCtrl){
     '<div style="font-size:11px;color:var(--text-secondary);margin-top:8px">'+metaTxt+'</div>'+
     ctrlHtml+
     '</div>';
+}
+// チームウエイトのtlog保存成功で当日のPUSH/PULLを自動確定する（1日1回・チーム全員共通のppに追記）
+// ガード: 欠席/自主トレ/過去日付の記録/個別メニュー/pp未初期化/カレンダーに本日weightなし → 何もしない
+// 当日の重複抑止はby==='auto'のみ（スタッフが朝に手動修正した日でも、実施完了による確定は走る＝翌日ずれ防止）
+function ppAutoFlip(log){
+  if(!log||log.absent||log.kind==='self')return;
+  var today=todayStr();
+  if(log.date!==today)return;
+  var mn=(D.tmenu||[]).find(function(x){return idEq(x.id,log.menuId);});
+  if(!mn||mn.scope!=='all')return;
+  if(!Array.isArray(D.pp)||!D.pp.length)return;
+  if(!(D.cal||[]).some(function(e){return e&&e.type==='weight'&&e.date===today;}))return; // オフ日に1人が団体メニューを消化しただけで反転させない
+  svSafeUpdate('pp',function(latest){
+    if(!Array.isArray(latest)||!latest.length)return latest;
+    var last=latest[latest.length-1];
+    if(!last||(last.type!=='push'&&last.type!=='pull'))return latest;
+    if(last.date===today&&last.by==='auto')return latest;
+    var todayType=(mn.ptype==='push'||mn.ptype==='pull')?mn.ptype:last.type;
+    latest.push({id:Date.now(),type:todayType==='push'?'pull':'push',date:today,by:'auto'});
+    if(latest.length>100)latest=latest.slice(-100);
+    return latest;
+  },function(){},function(){}); // 確定に失敗してもトレーニング記録自体は成立済み（alertを出さない）
 }
 
 // 機能カード用SVGアイコン（面スタイル、accentカラー）
@@ -4130,11 +4153,13 @@ function finishTraining(btnEl){
   if(hasE1rm)items.push({k:'e1rm',rec:{id:newId(),pid:myPid,date:todayStr(),inputAt:new Date().toISOString(),values:e1rmValues}});
   svSafeSeq(items,function(done){
     clearTDraft();
+    ppAutoFlip(log); // チームウエイト完了→当日のPUSH/PULL自動確定（対象外はppAutoFlip内ガードで判定）
     showTrainingResult(log,alerts,injurySkips,hasE1rm?e1rmValues:null);
   },function(err,done,item){
     if(done.indexOf('tlog')>=0){
       // tlogは保存済み。e1rmだけ失敗 → 記録は成立扱い（自己ベスト更新の注記のみ落とす）
       clearTDraft();
+      ppAutoFlip(log); // tlog成立＝この経路でも自動確定する（漏らすと自己ベスト更新日だけflipされない）
       showTrainingResult(log,alerts,injurySkips,null);
     }else{
       // tlog自体が失敗 → _curTLog・下書きは温存し、ボタンを戻して再試行可能にする

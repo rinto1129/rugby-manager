@@ -4240,8 +4240,9 @@ function ppCardHtml(showCtrl){
   var wd=ppNextWeightDay();
   var wdTxt=wd?'・'+ppDateLabel(wd.date):'';
   var lastRec=D.pp[D.pp.length-1];
-  var byLabel=lastRec.by==='trainer'?'トレーナー':'スタッフ';
-  var metaTxt='最終操作: '+fmt(lastRec.date)+' ('+byLabel+')';
+  var byLabel=lastRec.by==='trainer'?'トレーナー':lastRec.by==='auto'?'自動確定':'スタッフ';
+  // 先頭1件=ppStartの開始記録。2件目以降の末尾は必ずflip記録＝「直前に実施済みになった側」はlastRec.typeの逆
+  var metaTxt=D.pp.length>1?'前回: '+(lastRec.type==='push'?'PULL':'PUSH')+' '+ppDateLabel(lastRec.date)+'（'+byLabel+'）':'開始: '+ppDateLabel(lastRec.date)+'（'+byLabel+'）';
   var todayStrong=(wd&&wd.isToday)?'<div style="font-size:12px;font-weight:700;color:'+color+';margin-bottom:4px">今日は'+(isPush?'PUSH':'PULL')+'の日！</div>':'';
   var borderStyle=(wd&&wd.isToday)?'border:2px solid '+color+';':'';
   var ctrlHtml='';
