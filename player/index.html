@@ -3527,7 +3527,16 @@ function beginTrainingExec(menuId){
   // 自主トレの下書き（menuId=null）はidEqのnull挙動で上の復元ゲートに乗らないため、消える前に必ず確認する
   if(draft&&draft.kind==='self'&&draft.date===todayStr()){
     if(!confirm('自主トレ（ウエイト）の入力途中データがあります。\nチームメニューを開始すると自主トレの入力内容は消えます。\n\nOK＝開始する ／ キャンセル＝戻る'))return;
-    startTrainingFresh(menuId);
+    // 自主下書きの破棄に同意。ただし別端末で入力途中の当日・同メニュー（チーム）下書きがクラウドにある場合は、
+    // startTrainingFreshのclearTDraftで無警告消去せず復元を提案する（自主下書きは同意済みなので再確認しない）。
+    fetchCloudTDraft(function(cd){
+      if(cd&&cd.draft&&idEq(cd.draft.menuId,menuId)&&cd.draft.date===todayStr()){
+        try{localStorage.setItem(tDraftKey(),JSON.stringify(cd.draft));if(cd.updatedAt)localStorage.setItem(tDraftKey()+'_t',cd.updatedAt);}catch(e){}
+        promptResumeTDraft(mn,menuId,cd.updatedAt,true);
+      }else{
+        startTrainingFresh(menuId);
+      }
+    });
     return;
   }
   // ローカルに無ければクラウド下書きを確認（端末跨ぎ：別端末で入力途中→こちらで続き）

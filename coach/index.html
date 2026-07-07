@@ -1678,11 +1678,17 @@ function renderTrainingView(){
     var rows='';
     logs.slice(0,25).forEach(function(lg){
       var p=D.p.find(function(x){return idEq(x.id,lg.pid);});if(!p)return;
+      var selfBadge=lg.kind==='self'?' <span class="bd bd-b">自主</span>':'';
       if(lg.absent){
         var rc=lg.absentReason==='痛み・怪我'?'bd-r':'bd-n';
         rows+='<div class="row row-click" onclick="openPlayer('+lg.pid+')">'+ava(p,30)+'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+escapeHtml(p.name)+' <span class="bd '+rc+'">欠席</span></div><div style="font-size:10px;color:var(--txt-2)">'+fmt(lg.date)+' ・ '+escapeHtml(lg.absentReason||'')+'</div></div></div>';
+      }else if(lg.fitness){
+        // フィットネス記録: results:[]/totalVolume:0 のため種目数/kg欄は無意味→種類+時間（+距離/RPE）を出す
+        var ff=lg.fitness;
+        var fMeta=(ff.minutes!=null?ff.minutes+'分':'')+(ff.km!=null?' ・ '+ff.km+'km':'')+(ff.rpe!=null?' ・ RPE'+ff.rpe:'');
+        rows+='<div class="row row-click" onclick="openPlayer('+lg.pid+')">'+ava(p,30)+'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+escapeHtml(ff.ftype||'フィットネス')+selfBadge+'</div><div style="font-size:10px;color:var(--txt-2)">'+escapeHtml(p.name)+' ・ '+fmt(lg.date)+'</div></div><div style="font-weight:800;color:var(--green);font-size:12px">'+escapeHtml(fMeta)+'</div></div>';
       }else{
-        rows+='<div class="row row-click" onclick="openPlayer('+lg.pid+')">'+ava(p,30)+'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+escapeHtml(p.name)+'</div><div style="font-size:10px;color:var(--txt-2)">'+fmt(lg.date)+' ・ '+(lg.results?lg.results.length:0)+'種目</div></div><div style="font-weight:800;color:var(--accent);font-size:14px">'+(lg.totalVolume||0).toLocaleString()+'<span style="font-size:10px;color:var(--txt-2)"> kg</span></div></div>';
+        rows+='<div class="row row-click" onclick="openPlayer('+lg.pid+')">'+ava(p,30)+'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+escapeHtml(p.name)+selfBadge+'</div><div style="font-size:10px;color:var(--txt-2)">'+fmt(lg.date)+' ・ '+(lg.results?lg.results.length:0)+'種目</div></div><div style="font-weight:800;color:var(--accent);font-size:14px">'+(lg.totalVolume||0).toLocaleString()+'<span style="font-size:10px;color:var(--txt-2)"> kg</span></div></div>';
       }
     });
     h+=rv('<div class="card">'+rows+'</div>',1);

@@ -157,10 +157,30 @@ ok('自主下書きあり→confirm警告が出る',__confirms.length===1&&has(_
 ok('キャンセル→自主下書き温存',JSON.parse(localStorage.getItem('rm_tdraft_1')).id==='SD1');
 ok('キャンセル→開始しない',_curTLog===null);
 __confirms.length=0;__confirmRet=true;
+__store['tdraft']=JSON.stringify([]); // クラウドに下書きなし→破棄同意後は新規開始
 beginTrainingExec(102);drain();
 ok('OK→チームメニュー開始',__confirms.length===1&&_curTLog&&idEq(_curTLog.menuId,102));
 ok("OK→チーム開始のレコードにkindなし(=team扱い)",_curTLog.kind===undefined);
 localStorage.removeItem('rm_tdraft_1');
+
+print('--- レビュー所見2: 自主下書き破棄後、クラウドの当日同メニュー下書きは無警告消去せず復元提案 ---');
+// ローカル=当日自主下書き / クラウド=別端末で入力途中の当日チーム下書き(menuId=102)
+localStorage.setItem('rm_tdraft_1',JSON.stringify(selfDraft));
+localStorage.setItem('rm_tdraft_1_t','2026-07-07T09:00:00.000Z');
+var cloudTeam={id:'CT1',pid:1,menuId:102,date:TODAY,ts:'2026-07-07T08:00:00.000Z',
+  results:[{exName:'スクワット',estBase:'squat',sets:[{weight:130,reps:5,rir:''}],skipped:false}],totalVolume:0};
+__store['tdraft']=JSON.stringify([{pid:1,draft:cloudTeam,updatedAt:'2026-07-07T08:05:00.000Z'}]);
+_curTLog=null;
+__confirms.length=0;__confirmRet=true; // 自主破棄に同意
+beginTrainingExec(102);drain();
+var hr2=__els['main'].innerHTML;
+ok('自主破棄の確認は1回だけ（二重confirmなし）',__confirms.length===1&&has(__confirms[0],'自主トレ'));
+ok('クラウド・チーム下書きが無警告消去されず復元提案される',has(hr2,'入力途中のデータがあります')&&has(hr2,'別の端末から引き継ぎ'));
+ok('復元提案のメニュー名=チームメニュー',has(hr2,'チームメニュー'));
+// 「続きから」でクラウド・チーム下書きが復元される
+resumeTDraft(102);
+ok('復元: クラウド・チーム下書きの入力値が入る',_curTLog&&idEq(_curTLog.menuId,102)&&_curTLog.results[0].sets[0].weight===130);
+localStorage.removeItem('rm_tdraft_1');__store['tdraft']=JSON.stringify([]);
 
 print('--- 過去日付の自主下書きは復元対象外（新規開始） ---');
 var oldDraft=JSON.parse(JSON.stringify(selfDraft));oldDraft.date=YESTERDAY;
