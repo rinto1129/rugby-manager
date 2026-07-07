@@ -1597,13 +1597,15 @@ home:function(){
     else if(todayEvtsH.some(function(e){return e.type==='weight';})){var nxH=ppNext();kick=nxH?'TODAY: '+nxH.toUpperCase()+' DAY':'TODAY: WEIGHT';}
     else kick='FUKUOKA UNIV. RFC';
     var pnum=POS_NUM[me.position]||'';
-    h+='<div class="hero tex-noise rv">'+
+    // 「TODAY: PUSH DAY」等のウエイト日ヒーローはタップでトレーニング画面へ直行（ベルバッジはstopPropagationでマイページ維持）
+    var heroTap=kick.indexOf('TODAY:')===0?' onclick="go(\'training\')" style="cursor:pointer"':'';
+    h+='<div class="hero tex-noise rv"'+heroTap+'>'+
       (pnum?'<span class="ghost-num" aria-hidden="true">'+pnum.split('·')[0]+'</span>':'')+
       '<div style="display:flex;align-items:center;gap:12px">'+avH(me,44)+
       '<div style="flex:1;min-width:0"><div class="kicker kicker--gold">'+kick+'</div>'+
       '<div style="font-size:17px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(me.name)+'</div>'+
       '<div style="font-size:11px;color:var(--rose-l)">'+(pnum?'<span class="num" style="font-size:12px">'+pnum+'</span> ':'')+me.position+' / '+me.year+'年</div></div>'+
-      (totalUnreadH?'<span class="bd" style="background:var(--gold-hot);color:var(--ink);cursor:pointer;font-weight:800;display:inline-flex;align-items:center;gap:3px" onclick="go(\'mypage\')">'+ic('i-bell',12)+' '+totalUnreadH+'</span>':'')+
+      (totalUnreadH?'<span class="bd" style="background:var(--gold-hot);color:var(--ink);cursor:pointer;font-weight:800;display:inline-flex;align-items:center;gap:3px" onclick="event.stopPropagation();go(\'mypage\')">'+ic('i-bell',12)+' '+totalUnreadH+'</span>':'')+
       '</div></div>';
     h+=todayTodoHtml();
     // RTP進捗カード（怪我離脱中のみ出し分け）
@@ -1633,7 +1635,9 @@ home:function(){
     h+='</div>';
   }
   if(me)h+=myPhysCardHtml();
-  h+=ppCardHtml(false);
+  // ppカードはタップでトレーニング画面へ直行（従来はタップしても何も起きなかった）
+  var ppCardH=ppCardHtml(false);
+  if(ppCardH)h+='<div onclick="go(\'training\')" style="cursor:pointer">'+ppCardH+'</div>';
   // 今週のスケジュール（試合日からの日数差=MD-xチップ）
   if(weekEvts.length){
     var weekMatches=weekEvts.filter(function(e){return e.type==='match';}).map(function(e){return e.date;}).sort();
@@ -3312,6 +3316,14 @@ var _curTLog=null; // 実施中のトレーニング記録
 function getMyMenus(){
   return (D.tmenu||[]).filter(function(m){return m.scope==='all'||idEq(m.scope,myPid);});
 }
+// PUSH/PULLスロットの現メニューを取得。不変条件=同ptypeはアクティブ1件だが、
+// 異常時に複数になった場合はptype付与時刻(ptypeTs)最新→id大のタイブレークで1件に確定する（staffと同実装）
+function getSlotMenu(pt){
+  var c=(D.tmenu||[]).filter(function(m){return m&&m.ptype===pt;});
+  if(!c.length)return null;
+  c.sort(function(a,b){return String(b.ptypeTs||'').localeCompare(String(a.ptypeTs||''))||((b.id||0)-(a.id||0));});
+  return c[0];
+}
 // 推定1RMの最新値を種目ごとに取得（e1rm記録から）
 function getLatestE1RM(pid){
   var recs=(D.e1rm||[]).filter(function(x){return idEq(x.pid,pid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
@@ -3334,6 +3346,27 @@ T.training=function(){
   subView=null;dCA();
   var menus=getMyMenus();
   var h='<div style="font-size:18px;font-weight:700;margin:4px 0 14px;display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="22" height="22" fill="var(--blue)"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z"/></svg>トレーニング</div>';
+
+  // 今日のプログラム（本日weight日 ∧ pp初期化済み → 今日のタイプのスロットメニューを1タップ開始）
+  var tpType=ppNext();
+  var tpWeightToday=(D.cal||[]).some(function(e){return e&&e.type==='weight'&&e.date===todayStr();});
+  if(tpWeightToday&&tpType){
+    var slotMn=getSlotMenu(tpType);
+    if(slotMn&&!(slotMn.scope==='all'||idEq(slotMn.scope,myPid)))slotMn=null; // 念のため配布対象外は出さない
+    if(slotMn){
+      var tpColor=tpType==='push'?'var(--blue)':'var(--pull)';
+      var tpBg=tpType==='push'?'var(--blue-bg)':'rgba(194,65,12,.10)';
+      var tpDone=tlogAll().some(function(l){return idEq(l.pid,myPid)&&idEq(l.menuId,slotMn.id)&&l.date===todayStr();});
+      h+='<div class="card" style="margin-bottom:14px;border:2px solid '+tpColor+';background:linear-gradient(135deg,'+tpBg+',transparent 70%)">'+
+        '<div class="kicker" style="margin-bottom:2px">TODAY: '+tpType.toUpperCase()+' DAY</div>'+
+        '<div style="display:flex;align-items:center;gap:10px">'+
+        '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:16px">'+escapeHtml(slotMn.name)+(tpDone?' <span class="bd bd-g" style="font-size:9px">本日実施済</span>':'')+'</div>'+
+        '<div style="font-size:12px;color:var(--text-secondary);margin-top:2px">今日のプログラム ・ '+(slotMn.exercises?slotMn.exercises.length:0)+'種目</div></div>'+
+        '<span class="flag" style="background:'+tpColor+';color:#fff">'+ic('i-'+tpType,14)+' '+tpType.toUpperCase()+'</span></div>'+
+        '<button class="btn btn-p" style="width:100%;margin-top:10px;padding:12px;font-size:14px" onclick="startTraining(\''+slotMn.id+'\')">'+ic('i-dumbbell',14)+' 開始する</button>'+
+        '</div>';
+    }
+  }
 
   // 連続スキップアラート（自分の記録から）
   var skipAlerts=getConsecutiveSkips(myPid);
