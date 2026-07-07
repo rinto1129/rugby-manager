@@ -289,6 +289,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 <div class="ni" onclick="nav('injury')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-bandage" xlink:href="#i-bandage"></use></svg></span><span>怪我管理</span></div>
 <div class="ni" onclick="nav('rehab')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-run" xlink:href="#i-run"></use></svg></span><span>リハビリ管理</span></div>
 <div class="ni" onclick="nav('training')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-dumbbell" xlink:href="#i-dumbbell"></use></svg></span><span>トレーニング</span></div>
+<div class="ni" onclick="nav('tgroup')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-users" xlink:href="#i-users"></use></svg></span><span>グループ分け</span></div>
 <div class="ni" onclick="nav('injstats')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-chart-line" xlink:href="#i-chart-line"></use></svg></span><span>ケガ分析</span></div>
 <div class="ni" onclick="nav('rtest')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-flag" xlink:href="#i-flag"></use></svg></span><span>復帰テスト</span></div>
 <div class="ni" onclick="nav('tape')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-tape" xlink:href="#i-tape"></use></svg></span><span>テーピング予約</span></div>
@@ -440,7 +441,7 @@ if(typeof MutationObserver==='function'){ // jscモックにはObserver類が無
 }
 firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
 var db=firebase.firestore();
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',phskip:'rm_phskip',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm',pp:'rm_pushpull',std:'rm_standards'};
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',phskip:'rm_phskip',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm',pp:'rm_pushpull',std:'rm_standards',tgroup:'rm_tgroup'};
 var STG=['ウォーキング','ランニング','スプリント','ジャンプ','コンタクト以外の練習','フルコンタクト','完全復帰'];
 var RCATS=['ケア','ROM改善','患部外トレーニング','トレーニング','アジリティ','フィットネス','サポート','オフ'];
 var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'#0891B2',サポート:'#059669',オフ:'var(--text-secondary)'};
@@ -968,7 +969,7 @@ var EVAL_MASTER={
 };
 
 var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
-var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],phskip:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],pp:[],std:[]};
+var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],phskip:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],pp:[],std:[],tgroup:[]};
 var curPage='dash',charts={},viewStack=[];
 
 function ld(){
@@ -1290,7 +1291,7 @@ function nav(pg){
     var m=onclickAttr.match(/nav\(['"]([^'"]+)['"]\)/);
     e.classList.toggle('ac',m&&m[1]===pg);
   });
-  var t={dash:'ダッシュボード',players:'選手一覧',injury:'怪我管理',rehab:'リハビリ管理',training:'トレーニング',injstats:'ケガ分析',fatigue:'疲労度管理',absence:'欠席管理',bodycomp:'体組成',physical:'フィジカル記録',matchview:'試合日レポート',tape:'テーピング予約',calendar:'カレンダー',trainer:'トレーナー管理',rank:'ランキング',export:'CSV出力',msess:'測定会管理',rtest:'復帰テスト',standards:'基準設定（BIG3・体重帯）',help:'使い方ガイド'};
+  var t={dash:'ダッシュボード',players:'選手一覧',injury:'怪我管理',rehab:'リハビリ管理',training:'トレーニング',injstats:'ケガ分析',fatigue:'疲労度管理',absence:'欠席管理',bodycomp:'体組成',physical:'フィジカル記録',matchview:'試合日レポート',tape:'テーピング予約',calendar:'カレンダー',trainer:'トレーナー管理',rank:'ランキング',tgroup:'グループ分け',export:'CSV出力',msess:'測定会管理',rtest:'復帰テスト',standards:'基準設定（BIG3・体重帯）',help:'使い方ガイド'};
   document.getElementById('pg-title').textContent=t[pg]||pg;
   var acts={players:'<button class="btn btn-p" onclick="goAddPlayer()">+ 選手追加</button>',injury:'<button class="btn btn-p" onclick="goAddInjury()">+ 怪我登録</button>',absence:'<button class="btn btn-p" onclick="goRecordAbsence()">+ 欠席記録</button>',bodycomp:'<button class="btn btn-p" onclick="goAddBC()">+ 体組成記録</button>',physical:'<button class="btn btn-p" onclick="goAddPhys()">+ 記録追加</button> <button class="btn" onclick="goBulkPhys()" style="margin-left:6px">一括入力</button>',fatigue:'<button class="btn btn-p" onclick="goAddFatigue()">+ コンディション入力</button>',rehab:'<button class="btn btn-p" onclick="goAddRTpl()">+ テンプレ作成</button>',calendar:'<button class="btn btn-p" onclick="goAddCalEvent()">+ イベント追加</button> <button class="btn" onclick="goImportCal()" style="margin-left:6px">'+ic('i-clipboard',13)+' 一括インポート</button>',tape:'<button class="btn btn-p" onclick="goAddTapeSlot()">+ 枠を設定</button>',msess:'<button class="btn btn-p" onclick="goAddMSess()">+ 測定会を作成</button>',rtest:'<button class="btn btn-p" onclick="goAddRTestTpl()">+ テンプレ作成</button>',trainer:'<button class="btn btn-p" onclick="goAddTrainer()">+ トレーナー追加</button>'};
   document.getElementById('tb-act').innerHTML=(acts[pg]||'')+(pg==='dash'?'<button class="btn" style="margin-left:6px" onclick="checkYearUpdate()">'+ic('i-calendar',13)+' 学年更新</button>':'');
@@ -4621,6 +4622,283 @@ function delTapeRec(recId,pid){
   svSafeUpdate('taperec',function(latest){
     return latest.filter(function(x){return!idEq(x.id,recId);});
   },function(){popView();showPlayerTapeRecs(pid);});
+}
+
+// ============================================================
+// ===== Phase 7: グループ分け（午前/午後シフト → 強度3人組）=====
+// ============================================================
+// tgroup（新キー・常に1レコード全置換）:
+//   [{id,ts,date,by,mode:'ampm'|'single',excluded:[pid],
+//     shifts:[{key,label,groups:[[pid,...],...]}]}]
+// 申告 p.wg={f5:['mon'/'wed'/'fri'のsubset],far:bool,pref:'am'|'pm'|null,upd:ISO}
+var WG_DAYS=[{k:'mon',label:'月'},{k:'wed',label:'水'},{k:'fri',label:'金'}];
+
+// 選手サイトと同じ推定1RM最新値取得（レビューLow-1: staffへ移植）
+function getLatestE1RM(pid){
+  var recs=(D.e1rm||[]).filter(function(x){return idEq(x.pid,pid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var result={};
+  EST_BASES.forEach(function(b){
+    for(var i=0;i<recs.length;i++){
+      if(recs[i].values&&recs[i].values[b.k]){result[b.k]={e1rm:recs[i].values[b.k].e1rm,date:recs[i].date};break;}
+    }
+  });
+  return result;
+}
+// BIG3総合強度: 各種目「最新e1rm→実測ph(getBest)」の合計。1種目でも欠測ならnull（対象外）
+function groupScore(pid){
+  var e1=getLatestE1RM(pid);var total=0;
+  for(var i=0;i<STD_LIFTS.length;i++){
+    var l=STD_LIFTS[i];
+    var v=(e1[l.ph]&&e1[l.ph].e1rm)?e1[l.ph].e1rm:getBest(pid,l.ph);
+    if(v==null)return null;
+    total+=v;
+  }
+  return total;
+}
+// 端数規則（プランMedium-2）: n<=4→1グループ / n=5→3+2 / n%3==0→全3 /
+//   n%3==1→末尾4人組1つ / n%3==2→末尾4人組2つ(n>=8)。組めないnは最後の組が2人以下でも許容。
+function chunkGroups(arr){
+  var n=arr.length,i;
+  if(n===0)return [];
+  if(n<=4)return [arr.slice()];
+  if(n===5)return [arr.slice(0,3),arr.slice(3)];
+  var r=n%3,sizes=[];
+  if(r===0){for(i=0;i<n/3;i++)sizes.push(3);}
+  else if(r===1){for(i=0;i<(n-4)/3;i++)sizes.push(3);sizes.push(4);}
+  else{for(i=0;i<(n-8)/3;i++)sizes.push(3);sizes.push(4);sizes.push(4);}
+  var groups=[],idx=0;
+  sizes.forEach(function(s){groups.push(arr.slice(idx,idx+s));idx+=s;});
+  return groups;
+}
+// シフト自動振分（優先順位: 5限→午前固定 > 本人希望 > 遠方→午後 > 人数バランス）
+function tgAutoAssignShifts(pids){
+  var am=[],pm=[],reason={},autos=[];
+  pids.forEach(function(pid){
+    var p=D.p.find(function(x){return idEq(x.id,pid);});
+    var wg=(p&&p.wg&&typeof p.wg==='object')?p.wg:{};
+    if(wg.f5&&wg.f5.length>0){am.push(pid);reason[pid]='5限';}
+    else if(wg.pref==='am'){am.push(pid);reason[pid]='希望';}
+    else if(wg.pref==='pm'){pm.push(pid);reason[pid]='希望';}
+    else if(wg.far){pm.push(pid);reason[pid]='遠方';}
+    else autos.push(pid);
+  });
+  // バランス配置（強度降順→id昇順で安定化。少ない方へ）
+  autos.sort(function(a,b){var sa=groupScore(a),sb=groupScore(b);var na=(sa==null?-1:sa),nb=(sb==null?-1:sb);if(nb!==na)return nb-na;return (a>b?1:(a<b?-1:0));});
+  autos.forEach(function(pid){if(am.length<=pm.length)am.push(pid);else pm.push(pid);reason[pid]='自動';});
+  return {am:am,pm:pm,reason:reason};
+}
+// シフト内で強度順に3人組。対象外(スコア欠測)は別リスト。
+function tgMakeGroups(pids){
+  var scored=[],unscored=[];
+  pids.forEach(function(pid){var s=groupScore(pid);if(s==null)unscored.push(pid);else scored.push({pid:pid,s:s});});
+  scored.sort(function(a,b){if(b.s!==a.s)return b.s-a.s;return (a.pid>b.pid?1:(a.pid<b.pid?-1:0));});
+  return {groups:chunkGroups(scored.map(function(x){return x.pid;})),unscored:unscored};
+}
+
+// ---- 画面状態（onSnapshot再描画をまたいで維持。undefined時のみ初期化）----
+function tgInit(force){
+  if(window._tgState&&!force)return;
+  var last=(D.tgroup&&D.tgroup.length)?D.tgroup[D.tgroup.length-1]:null;
+  if(last){
+    window._tgState={
+      mode:last.mode||'ampm',
+      excluded:(last.excluded||[]).slice(),
+      shifts:(last.shifts||[]).map(function(sh){return {key:sh.key,label:sh.label,groups:(sh.groups||[]).map(function(g){return g.slice();}),pool:[]};}),
+      generated:!!(last.shifts&&last.shifts.length),
+      _reason:{},sel:null
+    };
+  }else{
+    var injured=[];D.p.forEach(function(p){if(D.i.some(function(x){return idEq(x.pid,p.id)&&!x.resolved;}))injured.push(p.id);});
+    window._tgState={mode:'ampm',excluded:injured,shifts:[],generated:false,_reason:{},sel:null};
+  }
+}
+function tgResetState(){if(!confirm('編集中の内容を破棄して初期状態に戻しますか？'))return;tgInit(true);V.tgroup();}
+function tgSetMode(m){var st=window._tgState;if(st.mode===m)return;st.mode=m;st.shifts=[];st.generated=false;st.sel=null;V.tgroup();}
+function tgToggleExclude(pid){
+  var st=window._tgState;var i=st.excluded.findIndex(function(e){return idEq(e,pid);});
+  if(i>=0)st.excluded.splice(i,1);else st.excluded.push(pid);
+  st.generated=false;st.shifts=[];st.sel=null;V.tgroup(); // 除外変更→グループは作り直しが必要
+}
+function tgGenerate(){
+  var st=window._tgState;
+  var elig=D.p.filter(function(p){return !st.excluded.some(function(e){return idEq(e,p.id);});}).map(function(p){return p.id;});
+  if(st.mode==='single'){
+    var mg=tgMakeGroups(elig);
+    st.shifts=[{key:'all',label:'',groups:mg.groups,pool:mg.unscored}];st._reason={};
+  }else{
+    var as=tgAutoAssignShifts(elig);
+    var amg=tgMakeGroups(as.am),pmg=tgMakeGroups(as.pm);
+    st.shifts=[{key:'am',label:'午前',groups:amg.groups,pool:amg.unscored},{key:'pm',label:'午後',groups:pmg.groups,pool:pmg.unscored}];
+    st._reason=as.reason;
+  }
+  st.generated=true;st.sel=null;V.tgroup();
+}
+// チップ2タップで入替（シフト跨ぎも可）
+function tgChipTap(si,gi,sli){
+  var st=window._tgState;var loc={si:si,gi:gi,sli:sli};
+  if(!st.sel){st.sel=loc;V.tgroup();return;}
+  if(st.sel.si===si&&st.sel.gi===gi&&st.sel.sli===sli){st.sel=null;V.tgroup();return;}
+  var a=st.sel,b=loc;
+  var pa=st.shifts[a.si].groups[a.gi][a.sli],pb=st.shifts[b.si].groups[b.gi][b.sli];
+  st.shifts[a.si].groups[a.gi][a.sli]=pb;st.shifts[b.si].groups[b.gi][b.sli]=pa;
+  if(a.si!==b.si){st._reason=st._reason||{};st._reason[pa]='手動';st._reason[pb]='手動';}
+  st.sel=null;V.tgroup();
+}
+// 対象外(スコア欠測)を手動でそのシフトの最小グループへ追加
+function tgAddUnscored(si,pi){
+  var st=window._tgState;var sh=st.shifts[si];var pid=sh.pool[pi];if(pid==null)return;
+  sh.pool.splice(pi,1);
+  if(!sh.groups.length)sh.groups.push([pid]);
+  else{var mi=0;for(var i=1;i<sh.groups.length;i++){if(sh.groups[i].length<sh.groups[mi].length)mi=i;}sh.groups[mi].push(pid);}
+  st.sel=null;V.tgroup();
+}
+function tgSave(){
+  var st=window._tgState;
+  if(!st.generated||!st.shifts.length){alert('先に「自動で組む」でグループを作成してください');return;}
+  var rec={id:Date.now(),ts:Date.now(),date:todayStr(),by:'staff',mode:st.mode,excluded:st.excluded.slice(),
+    shifts:st.shifts.map(function(sh){return {key:sh.key,label:sh.label,groups:sh.groups.filter(function(g){return g.length>0;}).map(function(g){return g.slice();})};})};
+  svSafeUpdate('tgroup',function(){return [rec];},function(){toast('グループを保存しました');});
+}
+// 申告バッジ（1選手分）
+function tgWgBadges(p){
+  var wg=(p.wg&&typeof p.wg==='object')?p.wg:null;
+  if(!wg)return '<span style="font-size:10px;font-weight:700;color:var(--red)">未回答</span>';
+  var dayLbl={mon:'月',wed:'水',fri:'金'};
+  var out=[];
+  var chip=function(txt,col){return '<span style="font-size:10px;font-weight:600;color:'+col+';border:1px solid '+col+';border-radius:99px;padding:1px 7px">'+txt+'</span>';};
+  if(wg.f5&&wg.f5.length)out.push(chip('5限:'+wg.f5.map(function(k){return dayLbl[k]||k;}).join(''),'var(--blue)'));
+  if(wg.far)out.push(chip('遠方','var(--amber)'));
+  out.push(chip(wg.pref==='am'?'午前希望':wg.pref==='pm'?'午後希望':'どちらでも',wg.pref?'var(--green)':'var(--text-tertiary)'));
+  return out.join(' ');
+}
+// シフト振分の根拠バッジ
+function tgReasonBadge(pid){
+  var st=window._tgState;var r=st&&st._reason&&st._reason[pid];
+  if(!r)return '';
+  var col={'5限':'var(--blue)','希望':'var(--green)','遠方':'var(--amber)','自動':'var(--text-tertiary)','手動':'var(--purple)'}[r]||'var(--text-tertiary)';
+  return '<span style="font-size:8px;font-weight:700;color:'+col+';border:1px solid '+col+';border-radius:99px;padding:0 5px;margin-left:5px">'+r+'</span>';
+}
+function tgToggleSurvey(){window._tgSurveyOpen=window._tgSurveyOpen!==true;V.tgroup();}
+
+V.tgroup=function(){
+  tgInit(false);
+  var st=window._tgState;
+  var h='<div style="max-width:920px">';
+  h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;line-height:1.6">選手の申告（5限・遠方・希望）をもとに午前/午後へ自動振分し、各シフト内をBIG3総合強度で3人組にします。チップを2つタップで入替（シフト跨ぎ可）、保存で選手サイトに反映されます。</div>';
+
+  // 1. モード
+  var amOn=st.mode==='ampm';
+  h+='<div class="card" style="margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'+
+    '<div><div style="font-weight:800;font-size:14px">振り分けモード</div><div style="font-size:11px;color:var(--text-secondary);margin-top:2px">シーズン中は午前/午後に分割。オフシーズンは分割なし。</div></div>'+
+    '<div style="display:flex;gap:6px">'+
+      '<button class="btn'+(amOn?' btn-p':'')+'" style="font-size:12px" onclick="tgSetMode(\'ampm\')">午前/午後に分ける</button>'+
+      '<button class="btn'+(!amOn?' btn-p':'')+'" style="font-size:12px" onclick="tgSetMode(\'single\')">分割なし</button>'+
+    '</div></div></div>';
+
+  // 2. 申告一覧（折りたたみ）
+  var answered=D.p.filter(function(p){return p.wg&&typeof p.wg==='object';}).length;
+  var unanswered=D.p.length-answered;
+  var svOpen=window._tgSurveyOpen===true;
+  h+='<div class="card" style="margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="tgToggleSurvey()">'+
+    '<div><div style="font-weight:800;font-size:14px">選手の申告一覧</div><div style="font-size:11px;color:var(--text-secondary);margin-top:2px">回答済 '+answered+'名 / 未回答 <span style="color:'+(unanswered?'var(--red)':'var(--text-secondary)')+';font-weight:700">'+unanswered+'名</span></div></div>'+
+    '<span style="font-size:12px;color:var(--blue);font-weight:700">'+(svOpen?'閉じる':'一覧を開く/代理入力')+' '+ic(svOpen?'i-chevron-u':'i-chevron-d',13)+'</span></div>';
+  if(svOpen){
+    h+='<div style="margin-top:12px;border-top:1px solid var(--border-tertiary);padding-top:10px">';
+    D.p.slice().sort(function(a,b){return (a.wg?1:0)-(b.wg?1:0)||(a.name>b.name?1:-1);}).forEach(function(p){
+      h+='<div class="log-row" style="align-items:center;gap:8px"><div style="flex:none">'+avH(p,30)+'</div>'+
+        '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">'+escapeHtml(p.name)+'</div>'+
+        '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:2px">'+tgWgBadges(p)+'</div></div>'+
+        '<button class="btn btn-sm" onclick="goEditWg('+p.id+')">'+ic('i-edit',12)+' 編集</button></div>';
+    });
+    h+='</div>';
+  }
+  h+='</div>';
+
+  // 3. 除外（未解決怪我はデフォルト除外・チェックで復帰）
+  var injuredList=D.p.filter(function(p){return D.i.some(function(x){return idEq(x.pid,p.id)&&!x.resolved;});});
+  var exList=D.p.filter(function(p){return st.excluded.some(function(e){return idEq(e,p.id);});});
+  h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:800;font-size:14px;margin-bottom:2px">グループから除外</div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px">未解決の怪我がある選手は既定で除外されます（'+injuredList.length+'名）。チェックを外すと組み込みます。</div>';
+  if(exList.length){
+    h+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    exList.forEach(function(p){
+      h+='<label style="display:flex;align-items:center;gap:5px;font-size:12px;background:var(--bg-primary);border-radius:99px;padding:3px 10px;cursor:pointer"><input type="checkbox" checked onchange="tgToggleExclude('+p.id+')">'+escapeHtml(p.name)+'</label>';
+    });
+    h+='</div>';
+  }else{h+='<div style="font-size:12px;color:var(--text-secondary)">除外中の選手はいません。</div>';}
+  // 除外に追加（怪我以外も手動除外できるよう、非除外選手のセレクト）
+  var nonEx=D.p.filter(function(p){return !st.excluded.some(function(e){return idEq(e,p.id);});});
+  h+='<div style="margin-top:10px;display:flex;gap:6px;align-items:center"><select class="ipt" id="tg-exsel" style="max-width:220px;font-size:12px"><option value="">＋ 選手を除外に追加…</option>'+
+    nonEx.map(function(p){return '<option value="'+p.id+'">'+escapeHtml(p.name)+'</option>';}).join('')+'</select>'+
+    '<button class="btn btn-sm" onclick="(function(){var v=document.getElementById(\'tg-exsel\').value;if(v)tgToggleExclude(isNaN(+v)?v:+v);})()">除外</button></div>';
+  h+='</div>';
+
+  // 4. 生成ボタン
+  var eligCnt=D.p.length-st.excluded.length;
+  h+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">'+
+    '<button class="btn btn-p" onclick="tgGenerate()">'+ic('i-users',14)+' 自動で組む（対象'+eligCnt+'名）</button>'+
+    (st.generated?'<button class="btn" onclick="tgResetState()">'+ic('i-undo',13)+' リセット</button>':'')+'</div>';
+
+  // 5. 結果
+  if(st.generated&&st.shifts.length){
+    if(st.sel){h+='<div style="font-size:12px;color:var(--purple);font-weight:700;margin-bottom:8px">'+ic('i-info',12)+' 入替する相手のチップをタップしてください（もう一度同じチップで解除）</div>';}
+    st.shifts.forEach(function(sh,si){
+      var accent=sh.key==='am'?'var(--blue)':sh.key==='pm'?'var(--purple)':'var(--maroon)';
+      var totalInShift=sh.groups.reduce(function(a,g){return a+g.length;},0);
+      if(st.mode!=='single'){
+        h+='<div style="display:flex;align-items:center;gap:8px;margin:16px 0 8px"><span style="font-size:15px;font-weight:800;color:'+accent+'">'+escapeHtml(sh.label)+'組</span><span style="font-size:11px;color:var(--text-secondary)">'+totalInShift+'名 / '+sh.groups.length+'班</span></div>';
+      }else{
+        h+='<div style="margin:16px 0 8px;font-size:11px;color:var(--text-secondary)">'+totalInShift+'名 / '+sh.groups.length+'班</div>';
+      }
+      h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">';
+      sh.groups.forEach(function(g,gi){
+        var letter=String.fromCharCode(65+gi);
+        h+='<div class="card" style="padding:10px;border-top:3px solid '+accent+'"><div style="font-weight:800;font-size:13px;margin-bottom:6px;color:'+accent+'">'+letter+'班 <span style="font-size:10px;color:var(--text-secondary);font-weight:600">('+g.length+'名)</span></div>';
+        g.forEach(function(pid,sli){
+          var p=D.p.find(function(x){return idEq(x.id,pid);});if(!p)return;
+          var sel=st.sel&&st.sel.si===si&&st.sel.gi===gi&&st.sel.sli===sli;
+          var sc=groupScore(pid);
+          h+='<div onclick="tgChipTap('+si+','+gi+','+sli+')" style="display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:8px;cursor:pointer;margin-bottom:4px;'+(sel?'background:var(--purple);color:#fff':'background:var(--bg-primary)')+'">'+
+            '<div style="flex:none">'+avH(p,26)+'</div>'+
+            '<div style="flex:1;min-width:0;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escapeHtml(p.name)+tgReasonBadge(pid)+'</div>'+
+            '<div style="flex:none;font-size:11px;color:'+(sel?'#fff':'var(--text-secondary)')+'">'+(sc!=null?sc+'kg':'-')+'</div></div>';
+        });
+        h+='</div>';
+      });
+      h+='</div>';
+      // 対象外プール
+      if(sh.pool&&sh.pool.length){
+        h+='<div class="card" style="margin-top:8px;padding:10px;background:var(--bg-primary)"><div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:6px">'+ic('i-warn',12)+' 対象外（BIG3測定データ不足・'+sh.pool.length+'名）— 手動で班に追加できます</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
+        sh.pool.forEach(function(pid,pi){
+          var p=D.p.find(function(x){return idEq(x.id,pid);});if(!p)return;
+          h+='<span style="display:flex;align-items:center;gap:5px;font-size:12px;background:var(--bg-secondary);border:1px solid var(--border-tertiary);border-radius:99px;padding:3px 6px 3px 10px">'+escapeHtml(p.name)+'<button class="btn btn-sm" style="padding:1px 7px;font-size:11px" onclick="tgAddUnscored('+si+','+pi+')">＋班へ</button></span>';
+        });
+        h+='</div></div>';
+      }
+    });
+    h+='<div style="display:flex;justify-content:flex-end;margin-top:18px"><button class="btn btn-p" style="padding:11px 26px" onclick="tgSave()">'+ic('i-check',14)+' この編成を保存</button></div>';
+  }
+  h+='</div>';
+  $m().innerHTML=h;
+};
+// 選手のウエイト時間帯を代理編集（両方から入力可）
+function goEditWg(pid){
+  var p=D.p.find(function(x){return idEq(x.id,pid);});if(!p)return;
+  var wg=(p.wg&&typeof p.wg==='object')?p.wg:{};
+  var h='<div style="max-width:480px"><div class="form-box"><div class="form-title">'+escapeHtml(p.name)+' のウエイト時間帯</div>'+
+    '<div class="fl"><label>月・水・金で5限がある曜日</label><div style="display:flex;gap:18px;margin-top:4px">'+
+      WG_DAYS.map(function(d){return '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:14px"><input type="checkbox" id="ewg-'+d.k+'"'+(((wg.f5||[]).indexOf(d.k)>=0)?' checked':'')+'> '+d.label+'</label>';}).join('')+'</div></div>'+
+    '<div class="fl"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="ewg-far"'+(wg.far?' checked':'')+'> 大学から遠い（通学に時間がかかる）</label></div>'+
+    '<div class="fl"><label>時間帯の希望</label><select class="ipt" id="ewg-pref"><option value=""'+(!wg.pref?' selected':'')+'>どちらでも</option><option value="am"'+(wg.pref==='am'?' selected':'')+'>午前がいい</option><option value="pm"'+(wg.pref==='pm'?' selected':'')+'>午後がいい</option></select></div>'+
+    '</div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="doSaveWg('+p.id+')">保存</button></div></div>';
+  pushView('時間帯を編集',h);
+}
+function doSaveWg(pid){
+  var f5=[];WG_DAYS.forEach(function(d){var el=document.getElementById('ewg-'+d.k);if(el&&el.checked)f5.push(d.k);});
+  var far=!!(document.getElementById('ewg-far')&&document.getElementById('ewg-far').checked);
+  var prefEl=document.getElementById('ewg-pref');var pref=prefEl?(prefEl.value||''):'';if(pref!=='am'&&pref!=='pm')pref=null;
+  var wg={f5:f5,far:far,pref:pref,upd:new Date().toISOString()};
+  svSafeUpdate('p',function(latest){var t=latest.find(function(x){return idEq(x.id,pid);});if(t)t.wg=wg;return latest;},function(){popView();toast('保存しました');});
 }
 
 // ============================================================
