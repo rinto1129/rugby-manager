@@ -7,11 +7,11 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-07（**FUKUDAI RED 全実装完了 🎉**: P0〜P9=player全完了＋S1〜S6＋**L1（ランディング）完了**。**全フェーズ完了・最終チェックALL PASS**。ローカル保存済み・**未push（pushはユーザー確認待ち）**。）
+- 日時: 2026-07-07（**FUKUDAI RED 全実装完了・本番push済み 🎉**: P0〜P9=player全完了＋S1〜S6＋L1（ランディング）完了。**全フェーズ完了・最終チェックALL PASS・`git push origin main`済み**（`40e4779..80fb192`・23コミット反映）。本番 https://rinto1129.github.io/rugby-manager/ に数分で反映。ブラウザで **Cmd+Shift+R** 強制リロードして確認。）
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
-- **✅✅ 全面デザインリニューアル「FUKUDAI RED」は全フェーズ完了。次にやることは「ユーザー確認後の一括push」のみ。** ユーザーが「push」と言ったら `git push` する（承認なしに勝手にpushしない）。
+- **✅✅ 全面デザインリニューアル「FUKUDAI RED」は全フェーズ完了・push済み。リニューアル作業としては完結。** 以降は実利用フィードバックでの細かい改善フェーズ。新規作業は通常どおり「1機能ずつ→構文チェック→動作確認→commit→（pushはユーザー確認後）」で進める。
   - **L1（ランディング＝`index.html`）完了内容**: §4どおり全面リビルド。maroonフルブリードヒーロー（ノイズ`::before`+ghost「15」+**離散ピッチライン**=ハーフウェイ実線50%/22m実線22%・78%/10m破線37%・63%を幅2px no-repeatタイルで実装）→波カット（data URI・clip-path不使用）→白ゲートカード4枚（kicker組織語彙 PLAYERS/PERFORMANCE STAFF/MEDICAL/COACHES）。**JSゼロ（script 0個）**・CSSのみstagger（`.gate{opacity:0;animation}`は`@media (prefers-reduced-motion:no-preference)`内に排他スコープ＝reduce時はベースopacity:1で4枚可視）。**meta viewportから`maximum-scale=1.0, user-scalable=no`除去済み**（WCAG 1.4.4）。スプライトはL1で使う6種のみ内蔵（i-ball/i-run/i-clipboard/i-bandage/i-chart-line/i-chevron-r）。
   - **L1で敵対的レビュー(4レンズ)→CONFIRMED 3件を全修正済み**: ①フッター文字`--text-tertiary`(3.92:1)→`--text-secondary`(#6E5A5C・5.85:1)でWCAG AA通過 ②pitch-linesが`background-size:100%`で全幅ピケットフェンス化+`::after`死にコード→固定幅2px no-repeatタイルで離散線に再実装 ③ヒーロー→ウェーブ接合の暗い帯→ラジアルグラデ終点を`var(--maroon-d) 72%`に前倒しして下端全体をmaroon-dに解決。REFUTED 2件（.sub rose-l=5.79:1でAA通過/ghost-num text-stroke=対象ブラウザ描画OK）は修正不要。
   - **最終チェック（計画書「最終チェック」節）ALL PASS**: 全devテスト10/10 PASS（player6=engine/dash/cond/ranking/mystatus/train_weak・staff3=dash_staff/staff_pdetail_std/std_staff・coach1=coach_report_std）/ 基準エンジン3ファイルbyte一致（同一MD5 `d5833f63…`・181行）/ trainer・coach git無変更（`git status`はindex.htmlのみ）/ §2最終スキャン9ファイル（player・staff・index＋dev5テスト＋staff_pdetail）で絵文字残数0（5範囲=1F000-1FAFF/2600-27BF/2B00-2BFF/FE0F・200D/2300-23FF）。
