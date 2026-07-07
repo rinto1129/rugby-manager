@@ -3944,11 +3944,21 @@ function renderTrainTab(){
       h+='<div class="log-row"><span style="min-width:70px;color:var(--text-secondary)">'+fmt(lg.date)+'</span><span class="bd '+rc+'" style="font-size:9px">欠席</span><span style="flex:1;color:var(--text-secondary);font-size:12px;margin-left:6px">理由: '+escapeHtml(lg.absentReason||'-')+'</span></div>';
       return;
     }
+    var selfBadge=lg.kind==='self'?' <span class="bd bd-b" style="font-size:9px">自主</span>':'';
+    if(lg.fitness){
+      // フィットネス記録: 種目数/0kgの代わりに種類+時間（+距離/RPE）を出す
+      var ff=lg.fitness;
+      var fMeta=(ff.minutes!=null?ff.minutes+'分':'')+(ff.km!=null?' ・ '+ff.km+'km':'')+(ff.rpe!=null?' ・ RPE'+ff.rpe:'');
+      h+='<div class="log-row" style="cursor:pointer" onclick="toggleTrSess('+lg.id+')"><span style="min-width:14px;color:var(--text-tertiary)" id="trsess-arw-'+lg.id+'">'+ic('i-chevron-r',12)+'</span><span style="min-width:64px;color:var(--text-secondary)">'+fmt(lg.date)+'</span><span style="flex:1;font-weight:600;font-size:13px">'+escapeHtml(ff.ftype||'フィットネス')+selfBadge+'</span><span style="font-weight:700;color:var(--green);font-size:12px;text-align:right">'+escapeHtml(fMeta)+'</span></div>';
+      h+='<div id="trsess-'+lg.id+'" style="display:none">'+trSessDetail(lg)+'</div>';
+      return;
+    }
     var mn=(D.tmenu||[]).find(function(x){return idEq(x.id,lg.menuId);});
+    var nm=lg.kind==='self'?'自主トレ（ウエイト）':(mn?escapeHtml(mn.name):'メニュー');
     var exCount=(lg.results||[]).length;
     var hasInjury=(lg.results||[]).some(function(r){return r.skipped&&r.skipReason==='痛み・怪我';});
     var vol=lg.totalVolume||0;
-    h+='<div class="log-row" style="cursor:pointer" onclick="toggleTrSess('+lg.id+')"><span style="min-width:14px;color:var(--text-tertiary)" id="trsess-arw-'+lg.id+'">'+ic('i-chevron-r',12)+'</span><span style="min-width:64px;color:var(--text-secondary)">'+fmt(lg.date)+'</span><span style="flex:1;font-weight:600;font-size:13px">'+(mn?escapeHtml(mn.name):'メニュー')+(hasInjury?' <span class="bd bd-r" style="font-size:9px">怪我</span>':'')+'</span><span style="font-size:12px;color:var(--text-secondary);margin-right:8px">'+exCount+'種目</span><span style="font-weight:700;color:var(--blue);min-width:64px;text-align:right">'+vol.toLocaleString()+'kg</span></div>';
+    h+='<div class="log-row" style="cursor:pointer" onclick="toggleTrSess('+lg.id+')"><span style="min-width:14px;color:var(--text-tertiary)" id="trsess-arw-'+lg.id+'">'+ic('i-chevron-r',12)+'</span><span style="min-width:64px;color:var(--text-secondary)">'+fmt(lg.date)+'</span><span style="flex:1;font-weight:600;font-size:13px">'+nm+selfBadge+(hasInjury?' <span class="bd bd-r" style="font-size:9px">怪我</span>':'')+'</span><span style="font-size:12px;color:var(--text-secondary);margin-right:8px">'+exCount+'種目</span><span style="font-weight:700;color:var(--blue);min-width:64px;text-align:right">'+vol.toLocaleString()+'kg</span></div>';
     h+='<div id="trsess-'+lg.id+'" style="display:none">'+trSessDetail(lg)+'</div>';
   });
   if(logs.length>20)h+='<div style="font-size:11px;color:var(--text-secondary);margin-top:6px">ほか '+(logs.length-20)+' 件</div>';
@@ -4061,6 +4071,14 @@ function trSessDetail(lg){
   var cond=(D.f||[]).filter(function(r){return idEq(r.pid,pid)&&r.date===lg.date;})[0];
   var h='<div style="background:var(--bg-tertiary);border-radius:var(--radius);padding:8px 12px;margin:2px 0 8px">';
   if(cond)h+='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px">当日コンディション: RPE <b style="color:'+rpeColor(cond.rpe)+'">'+cond.rpe+'</b> / 睡眠 <b>'+cond.sleep+'h</b></div>';
+  if(lg.fitness){
+    // フィットネス記録の展開内容（results:[]のため下のセット表示は通らない）
+    var fd=lg.fitness;
+    h+='<div style="padding:6px 0"><div style="font-weight:600;font-size:13px;margin-bottom:4px">'+ic('i-run',12,'var(--green)')+' '+escapeHtml(fd.ftype||'フィットネス')+' <span class="bd bd-b" style="font-size:9px">自主</span></div>'+
+      '<div style="font-size:12px;color:var(--text-secondary)">'+(fd.minutes!=null?'時間 '+fd.minutes+'分':'')+(fd.km!=null?' ／ 距離 '+fd.km+'km':'')+(fd.rpe!=null?' ／ RPE '+fd.rpe:'')+'</div>'+
+      (fd.note?'<div style="font-size:11px;color:var(--text-secondary);margin-top:4px;white-space:pre-wrap">'+escapeHtml(fd.note)+'</div>':'')+'</div>';
+    return h+'</div>';
+  }
   (lg.results||[]).forEach(function(r){
     if(r.skipped){
       var inj=r.skipReason==='痛み・怪我';
@@ -4845,10 +4863,19 @@ function renderTrainingStatus(){
         '<div style="flex:1"><div style="font-weight:600;font-size:14px">'+escapeHtml(p.name)+' <span class="bd '+rc+'" style="font-size:9px">欠席</span></div><div style="font-size:11px;color:var(--text-secondary)">'+fmt(lg.date)+' ・ 理由: '+escapeHtml(lg.absentReason||'-')+'</div></div></div></div>';
       return;
     }
+    var selfBadge=lg.kind==='self'?' <span class="bd bd-b" style="font-size:9px">自主</span>':'';
+    if(lg.fitness){
+      // フィットネス記録: 種目数/0kgの代わりに種類+時間（+距離/RPE）を出す
+      var ff=lg.fitness;
+      var fMeta=escapeHtml(ff.ftype||'フィットネス')+(ff.minutes!=null?' ・ '+ff.minutes+'分':'')+(ff.km!=null?' ・ '+ff.km+'km':'')+(ff.rpe!=null?' ・ RPE'+ff.rpe:'');
+      h+='<div class="card card-click" style="margin-bottom:8px" onclick="goPlayerDetail('+lg.pid+',5)"><div style="display:flex;align-items:center;gap:10px">'+avH(p,30)+
+        '<div style="flex:1"><div style="font-weight:600;font-size:14px">'+escapeHtml(p.name)+selfBadge+'</div><div style="font-size:11px;color:var(--text-secondary)">'+fmt(lg.date)+' ・ '+fMeta+'</div></div></div></div>';
+      return;
+    }
     var vol=lg.totalVolume||0;
     var hasInjury=(lg.results||[]).some(function(r){return r.skipped&&r.skipReason==='痛み・怪我';});
     h+='<div class="card card-click" style="margin-bottom:8px" onclick="goPlayerDetail('+lg.pid+',5)"><div style="display:flex;align-items:center;gap:10px">'+avH(p,30)+
-      '<div style="flex:1"><div style="font-weight:600;font-size:14px">'+escapeHtml(p.name)+(hasInjury?' <span class="bd bd-r" style="font-size:9px">怪我あり</span>':'')+'</div><div style="font-size:11px;color:var(--text-secondary)">'+fmt(lg.date)+' ・ '+(lg.results?lg.results.length:0)+'種目 ・ ボリューム '+vol.toLocaleString()+'kg</div></div></div></div>';
+      '<div style="flex:1"><div style="font-weight:600;font-size:14px">'+escapeHtml(p.name)+selfBadge+(hasInjury?' <span class="bd bd-r" style="font-size:9px">怪我あり</span>':'')+'</div><div style="font-size:11px;color:var(--text-secondary)">'+fmt(lg.date)+' ・ '+(lg.results?lg.results.length:0)+'種目 ・ ボリューム '+vol.toLocaleString()+'kg</div></div></div></div>';
   });
   return h;
 }
