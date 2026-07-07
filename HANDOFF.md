@@ -7,12 +7,24 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-07（**🆕サブエージェント2体による実装前プランレビュー完了**。プラン自体は高品質（行番号主張約30箇所すべて実コード一致・後方互換設計も全消費箇所照合で裏付け）だが、**プラン外のCriticalを発見: 本番tlogドキュメントが約5日でFirestore 1MiB上限に到達→全選手の保存が恒久停止する（時間切迫）**。Phase 0（tlog容量対策）新設を提案中・ユーザー未判断。High所見3件＋Medium/Low多数もプラン反映待ち。**コード・プランファイルとも未変更**。全所見は直下の「🔍プランレビュー結果」節に記録。）
+- 日時: 2026-07-07（**🆕🆕Phase 0（tlog容量対策）実装完了・全4コミット済み・未push**。ユーザーがPhase 0全部実施を承認→実測分析で設計を確定（月次アーカイブでは不足と判明→15日カットオフ+選手別半期docに変更）→0-A/0-B実装→jscテスト81アサート+既存10テスト回帰+実機ブラウザ検証まで完了。レビュー所見（High3/Medium4/Low9）は**プランファイルに反映済み**。**次: pushのユーザー確認→push後に本番アーカイブ初回実行の確認→Phase 1**。詳細は直下の「🚀Phase 0実装完了」節。）
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
 
-- **🆕🆕🆕 選手/スタッフサイト大規模機能追加 — grilling(質問攻め)で要件確定・実装プラン承認済み・実装は完全に未着手（コード変更ゼロ）。プランファイル: `/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`（次セッションで必読）。**
+- **🚀Phase 0（tlog容量対策）実装完了（2026-07-07・このセッション）— 未push。次の手順（順番厳守）**:
+  1. **pushのユーザー確認**（コミット4つ: `ff58aea` 0-Aスリム化 / `f657b13` player 0-B / `9f8f072` staff 0-B / `b9741ce` coach 0-B。時間切迫=約5日で1MiB上限のため早めのpush推奨）
+  2. **push後に本番でアーカイブ初回実行を確認**: staff or playerを実機で開く→archiveTlogが自動実行→Firestore RESTで `appdata/tlog` が約400KB以下に縮み、`tla_<pid>_2026h1` 等が生成されたことを確認（読み取り専用curlで確認可）。**push前に本番でarchiverを走らせないこと**（旧コードのクライアントは15日超のデータが見えなくなるため。previewコピーはarchiveTlog無効化パッチ済み）
+  3. その後Phase 1（staff:3775 + coach:1175のoption valueバグ）から着手
+  - **実装内容（プランのPhase 0節が正・実測に基づきHANDOFF原案から設計変更あり）**:
+    - 実測: tlog=711,577B/308件・ピーク112KB/日・週4-5回。積極スリム化でも45.5%減が上限→1ヶ月分≈1.16MB>1MiBで**月次アーカイブでは不足**→**15日カットオフ（coach 13日窓+2日マージン）+選手別×半期doc `tla_<pid>_<year>h<1|2>`**に設計変更
+    - 0-A: `slimTlogRec`（prevEx/note/videoUrl/estWeight/oneRM/targetSets削除+null/false/空省略・冪等・将来フィールドパススルー）をfinishTraining保存直前に適用。_curTLog/下書きは温存
+    - 0-B: `archiveTlog`（player+staff・svSafeUpdate2段トランザクション・id重複排除で冪等・**メインdoc残存レコードもin-placeスリム化**=旧クライアント保存分も吸収）／読み出しは`tlogAll()`（D.tlog+_tlogArchのidマージ・メイン優先・参照キャッシュ）。player=自分の半期docのみログイン時preload（選手切替リセット・全9消費箇所が自分のみと検証済み）、staff/coach=全選手分をboot時preload（完了時に入力中ガード付き再描画）。coachはarchiver/slim非搭載（閲覧専用維持・テストで未定義をアサート）
+    - **エンジンブロック対応**: getWeakWeeklyVolume(player:1733・weeks=5=35日)は呼び出し側でD.tlogを同期swap（try/finally復元）。エンジン内のD.tlog直読み（player:543/staff:719/coach:490）は7日窓のため非接触・md5 3ファイル一致維持（`07efed94…`）
+    - 検証: dev/test_tlog_arch.js(63)+test_tlog_arch_staff.js(10)+test_tlog_arch_coach.js(8)全PASS・既存10テスト回帰PASS・括弧バランスHEAD比ゼロ（正規表現リテラル行除外で計測）・実機ブラウザ（メモリ注入）でstaff実施状況/player履歴/mystatusエンジンswap/coach全面renderにアーカイブ分が表示されることを確認。**previewブラウザはFirestore遮断環境**（オフライン時はloadTlogArchが空フォールバック=設計どおり劣化動作も確認済み）
+    - 残課題メモ: 選手端末のtlog購読egress（メインdoc約400KBに減るが根本対策は別途）／p(514KB写真)圧縮は将来課題（プラン末尾に記録）
+
+- **🆕🆕🆕 選手/スタッフサイト大規模機能追加 — grilling(質問攻め)で要件確定・実装プラン承認済み・**Phase 0のみ完了、Phase 1以降は未着手**。プランファイル: `/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`（次セッションで必読。**レビュー所見High/Medium/Low全件+Phase 0節を反映済み＝プラン本文が正**）。**
   - **経緯**: ユーザーが実機運用フィードバックから選手/スタッフサイトの改善要望を多数提示→grillingスキルで質問攻め（AskUserQuestion多数往復）により全要件を確定。Explore 3体並列調査＋Plan agent 1体で設計→ユーザーがAM/PM組分けの追加要件（後述）を出し計画を更新→**plan modeでユーザー承認済み**→**サブエージェント2体（設計レビュー=Plan agent／データ安全敵対的レビュー=general-purpose）で実装前レビュー実施済み（2026-07-07）**。このセッションでは調査・質問・計画・レビューのみ行い、**player/staff/coach/trainerのコードは一切変更していない**。
 
   - **🔍プランレビュー結果（2体のサブエージェントが実コード照合済み・所見はまだプランファイルに未反映）**:
@@ -38,7 +50,7 @@
     8. **Fitプログラム提示（スタッフ）**: `ptype:'fitness'`のtmenuを構造化ライトで作成→選手が「これをやる」で自主トレ記録にプレフィル→実施記録が残りスタッフが実施者を確認できる。オフシーズンのフィットネス提示に対応。
     9. **GPS/試合スタッツExcel取込**: SheetJS(CDN)で列マッピング画面を作り「この試合で一番走った」等をランキング/マイデータに統合。**ユーザーの実Excelファイル到着待ち＝現時点では着手不可**（到着次第このPhaseだけ繰り上げてよい）。
   - **横断で絶対に守る制約（プランに詳細あり）**: 新キーは短いキーのまま／保存はsvSafe・svSafeUpdateのみ／**基準エンジンブロック（player/staff/coach 3ファイルbyte一致）は非接触**／**ppCardHtmlのplayer/staffバイト一致を維持**（変更は2ファイル同時+diff確認）／id・クラス名リネーム禁止／playerは現在FUKUDAI REDライトテーマ（下記FUKUDAI RED節は完了済みだが配色・スプライト・`ic()`等の資産はそのまま使う）。
-  - **次にやること（順番厳守）**: ①**ユーザーにPhase 0（tlog容量対策）の採否を確認**（🚨Critical・約5日で上限到達のため実装より先に判断が必要）②上記レビュー所見をプランファイルに反映（High-1のcoach:1175追加、High-2/3・Medium・Lowの仕様修正）③その後Phase 0（採用時）→Phase 1（staff:3775 **+ coach:1175**）から実装着手。着手前に必ず`/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`を全文読むこと（本要約はダイジェストであり詳細はプラン本文が正。**レビュー所見は現時点でプラン本文に未反映＝本HANDOFFの🔍節が唯一の記録**）。
+  - **次にやること**: ✅Phase 0採否確認（全部実施で承認済み）→✅レビュー所見のプラン反映済み→✅Phase 0実装済み（上の🚀節）→**残: push確認→本番アーカイブ確認→Phase 1（staff:3775 + coach:1175）**。着手前に必ず`/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`を全文読むこと（レビュー所見は反映済み＝プラン本文が正。上の🔍節は反映元の記録として残置）。
   - 下記「✅✅ 全面デザインリニューアル『FUKUDAI RED』」以降は**完了済みの過去プロジェクトの記録**（参考情報として残置）。
 
 - **✅✅ 全面デザインリニューアル「FUKUDAI RED」は全フェーズ完了・push済み。リニューアル作業としては完結。** 以降は実利用フィードバックでの細かい改善フェーズ。新規作業は通常どおり「1機能ずつ→構文チェック→動作確認→commit→（pushはユーザー確認後）」で進める。
