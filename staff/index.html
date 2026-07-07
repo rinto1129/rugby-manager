@@ -1078,6 +1078,133 @@ function doYearUpdate(){
   });
 }
 
+// ===== tlog容量対策（Phase 0・playerと同設計） =====
+// メインdoc appdata/tlog は直近TLOG_KEEP_DAYS日分のみ。古いレコードは選手別×半期のtla_<pid>_<year>h<1|2>へ移送。
+// 15日=coachの13日窓+2日マージン。staffは全選手のアーカイブを起動時にプリロードし、読み出しはtlogAll()で結合する。
+var TLOG_KEEP_DAYS=15;
+function tlaHalf(dateStr){return dateStr.slice(0,4)+'h'+((+dateStr.slice(5,7))<=6?1:2);}
+function tlaKey(pid,half){return 'tla_'+String(pid)+'_'+half;}
+function tlaHalves(){
+  var t=todayStr(),y=+t.slice(0,4),h=(+t.slice(5,7))<=6?1:2;
+  var out=[],cy=2026,ch=1;
+  while(cy<y||(cy===y&&ch<=h)){out.push(cy+'h'+ch);if(ch===1){ch=2;}else{ch=1;cy++;}}
+  return out;
+}
+// 保存レコードのスリム化（player finishTrainingと同一ロジック。アーカイブ移送・in-place縮小時に適用。冪等）
+var TLOG_DROP_RES={prevEx:1,note:1,videoUrl:1,estWeight:1,oneRM:1,targetSets:1};
+function slimTlogRec(log){
+  var out={};
+  for(var k in log){
+    if(!Object.prototype.hasOwnProperty.call(log,k))continue;
+    if(k==='hasInjurySkip'&&!log[k])continue;
+    if(k==='results'&&Array.isArray(log[k])){
+      out.results=log[k].map(function(r){
+        var c={};
+        for(var rk in r){
+          if(!Object.prototype.hasOwnProperty.call(r,rk))continue;
+          if(TLOG_DROP_RES[rk])continue;
+          var v=r[rk];
+          if(v==null)continue;
+          if((rk==='skipped'||rk==='skipReason'||rk==='lastVolume')&&!v)continue;
+          if(rk==='sets'&&Array.isArray(v)){
+            v=v.map(function(s){var o={};for(var sk in s){if(Object.prototype.hasOwnProperty.call(s,sk)&&s[sk]!=null)o[sk]=s[sk];}return o;});
+          }
+          c[rk]=v;
+        }
+        return c;
+      });
+      continue;
+    }
+    out[k]=log[k];
+  }
+  return out;
+}
+var _tlogArch=[],_tlogArchLoaded=false,_tlaCbs=null;
+var _tlaCache=null,_tlaCacheSrc=null,_tlaCacheArch=null;
+function tlogAll(){
+  var base=D.tlog||[];
+  if(_tlaCache&&_tlaCacheSrc===base&&_tlaCacheArch===_tlogArch)return _tlaCache;
+  var seen={},out=base.slice();
+  base.forEach(function(l){if(l&&l.id!=null)seen[l.id]=1;});
+  _tlogArch.forEach(function(l){if(l&&l.id!=null&&!seen[l.id])out.push(l);});
+  _tlaCache=out;_tlaCacheSrc=base;_tlaCacheArch=_tlogArch;
+  return out;
+}
+// 全選手×全半期のアーカイブdocを一括取得（存在しないdocは空扱い・個別失敗も空扱いで継続）
+function loadTlogArch(cb){
+  if(_tlogArchLoaded){if(cb)cb();return;}
+  if(_tlaCbs){if(cb)_tlaCbs.push(cb);return;}
+  _tlaCbs=cb?[cb]:[];
+  var halves=tlaHalves(),keys=[];
+  (D.p||[]).forEach(function(p){halves.forEach(function(hf){keys.push(tlaKey(p.id,hf));});});
+  Promise.all(keys.map(function(k){
+    return db.collection('appdata').doc(k).get().then(function(doc){
+      if(!doc.exists)return[];
+      try{var q=JSON.parse(doc.data().data);return Array.isArray(q)?q:[];}catch(e){return[];}
+    }).catch(function(e){console.error('tla load error:',k,e);return[];});
+  })).then(function(parts){
+    var seen={},out=[];
+    parts.forEach(function(arr){arr.forEach(function(l){if(l&&l.id!=null&&!seen[l.id]){seen[l.id]=1;out.push(l);}});});
+    _tlogArch=out;_tlogArchLoaded=true;_tlaCache=null;
+    var cbs=_tlaCbs||[];_tlaCbs=null;
+    cbs.forEach(function(f){try{f();}catch(e){console.error(e);}});
+  });
+}
+// プリロード完了時に表示中ページを1回だけ再描画（onSnapshotと同じ入力中・編集画面ガード）
+function kickTlogArch(){
+  loadTlogArch(function(){
+    var ae=document.activeElement;
+    var isInputting=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT');
+    if(!isInputting&&curPage&&V[curPage]&&(!viewStack||viewStack.length===0)){
+      try{
+        V[curPage]();
+        document.querySelectorAll('.ni').forEach(function(el){
+          var oa=el.getAttribute('onclick')||'';
+          var mm=oa.match(/nav\(['"]([^'"]+)['"]\)/);
+          el.classList.toggle('ac',mm&&mm[1]===curPage);
+        });
+      }catch(e){console.error(e);}
+    }
+  });
+}
+// 古いレコードのアーカイブ移送+メインdocのin-placeスリム化（1セッション1回・静かに実行・冪等）
+var _tlogArchRan=false;
+function archiveTlog(){
+  if(_tlogArchRan)return;_tlogArchRan=true;
+  var cut=toDateStr(new Date(Date.now()-TLOG_KEEP_DAYS*86400000));
+  var stale=(D.tlog||[]).filter(function(l){
+    return l&&l.id!=null&&typeof l.date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(l.date)&&l.date<cut;
+  });
+  if(!stale.length)return;
+  var groups={};
+  stale.forEach(function(l){var k=tlaKey(l.pid,tlaHalf(l.date));(groups[k]=groups[k]||[]).push(l);});
+  var keys=Object.keys(groups);
+  function step(i){
+    if(i>=keys.length)return;
+    var gk=keys[i],recs=groups[gk];
+    // ①アーカイブdocへid重複排除でマージ（移送時にスリム化＝過去の肥大レコードもここで縮む）
+    svSafeUpdate(gk,function(latest){
+      var have={};latest.forEach(function(x){if(x&&x.id!=null)have[x.id]=1;});
+      recs.forEach(function(l){if(!have[l.id])latest.push(slimTlogRec(l));});
+      return latest;
+    },function(){
+      // ②①の成功後にメインdocから移送済みidを除去+残存レコードをin-placeスリム化（旧クライアント保存分も吸収・冪等）
+      var ids={};recs.forEach(function(l){ids[l.id]=1;});
+      svSafeUpdate('tlog',function(latest){
+        return latest.filter(function(l){return !(l&&l.id!=null&&ids[l.id]);}).map(slimTlogRec);
+      },function(){
+        // 読み込み済みのメモリ上アーカイブにも反映（staffは全選手分を保持）
+        if(_tlogArchLoaded){
+          var have={};_tlogArch.forEach(function(x){if(x&&x.id!=null)have[x.id]=1;});
+          recs.forEach(function(l){if(!have[l.id])_tlogArch.push(slimTlogRec(l));});
+          _tlaCache=null;
+        }
+        step(i+1);
+      },function(e){console.error('tlog archive(main) skip:',e);});
+    },function(e){console.error('tlog archive('+gk+') skip:',e);});
+  }
+  step(0);
+}
 function startListeners(){
   Object.keys(SK).forEach(function(k){
     db.collection('appdata').doc(k).onSnapshot(function(doc){
@@ -3750,7 +3877,7 @@ function dtTab(i){document.querySelectorAll('#main-ct .tab').forEach(function(t,
 // トレーニングタブの描画（display:none中の0高さ描画を避けるため、タブが開かれた瞬間に描く）
 function renderTrainTab(){
   var pid=window._dtPid;var el=document.getElementById('dt5');if(!el)return;
-  var logs=(D.tlog||[]).filter(function(l){return idEq(l.pid,pid);}).sort(function(a,b){return (b.ts||b.date||'').localeCompare(a.ts||a.date||'');});
+  var logs=tlogAll().filter(function(l){return idEq(l.pid,pid);}).sort(function(a,b){return (b.ts||b.date||'').localeCompare(a.ts||a.date||'');});
   if(!logs.length){el.innerHTML='<div class="form-box"><div class="form-title">セッション履歴</div><div class="no">まだトレーニング記録がありません</div></div>';return;}
   // ===== 上段: 種目推移（漸進性過負荷） =====
   var exAgg={};
@@ -3846,7 +3973,7 @@ function exMetrics(sets){
 // 種目の時系列（同日集約: トップ重量=最大 / 推定1RM=最大 / ボリューム=合算）
 function getExSeries(pid,exName){
   var byDate={};
-  (D.tlog||[]).filter(function(l){return idEq(l.pid,pid)&&!l.absent;}).forEach(function(l){
+  tlogAll().filter(function(l){return idEq(l.pid,pid)&&!l.absent;}).forEach(function(l){
     var r=(l.results||[]).find(function(x){return (x.exName||'').trim()===exName&&!x.skipped;});
     if(!r||!r.sets||!r.sets.length)return;
     var m=exMetrics(r.sets);var d=l.date;
@@ -3859,7 +3986,7 @@ function getExSeries(pid,exName){
 }
 // 比較セッション（player getCompareVolume を _curTLog非依存に引数化＋全指標化）。mode: prev / week(6日前以前の直近)
 function getCompareEx(pid,exName,beforeDate,mode,curTs,curId){
-  var logs=(D.tlog||[]).filter(function(l){
+  var logs=tlogAll().filter(function(l){
     if(!idEq(l.pid,pid))return false;
     if(curId!=null&&idEq(l.id,curId))return false;
     if(l.ts&&curTs)return l.ts<curTs;
@@ -3875,7 +4002,7 @@ function getCompareEx(pid,exName,beforeDate,mode,curTs,curId){
 // 種目のestBase（最初に見つかったもの）
 function getExEstBase(pid,exName){
   var eb=null;
-  (D.tlog||[]).filter(function(l){return idEq(l.pid,pid);}).forEach(function(l){(l.results||[]).forEach(function(r){if(!eb&&(r.exName||'').trim()===exName&&r.estBase)eb=r.estBase;});});
+  tlogAll().filter(function(l){return idEq(l.pid,pid);}).forEach(function(l){(l.results||[]).forEach(function(r){if(!eb&&(r.exName||'').trim()===exName&&r.estBase)eb=r.estBase;});});
   return eb;
 }
 // 実測1RM（ph）のベスト値＋測定日
@@ -4615,7 +4742,7 @@ function delTMenu(menuId){
 }
 // 実施状況（後のステップで充実させる）
 function renderTrainingStatus(){
-  var logs=(D.tlog||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var logs=tlogAll().slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
   var h='';
   // 怪我でできなかった種目の通知（直近14日）
   var cutoff=new Date();cutoff.setDate(cutoff.getDate()-14);var cutoffStr=toDateStr(cutoff);
@@ -4677,7 +4804,7 @@ function renderTrainingStatus(){
 }
 // スタッフ側の連続スキップ検出（選手側と同じロジック）
 function getConsecutiveSkipsStaff(pid){
-  var logs=(D.tlog||[]).filter(function(l){return idEq(l.pid,pid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var logs=tlogAll().filter(function(l){return idEq(l.pid,pid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
   if(logs.length<2)return[];
   var exSkipCount={},exSeen={};
   logs.forEach(function(lg){
@@ -6226,6 +6353,8 @@ ld().then(function(){
     lds.classList.add('done');
   }
   startListeners();nav('dash'); // nav()経由=クラスA演出+トップバーaction(学年更新)が初回ロードでも揃う（旧: V.dash()直呼びだと両方欠けた）
+  kickTlogArch(); // 全選手のtlogアーカイブをプリロード（種目推移・セッション履歴の全期間表示用）
+  setTimeout(archiveTlog,1500); // tlog容量対策: 古いレコードの移送（冪等・選手側と重なっても安全）
 }).catch(function(e){
   console.error(e);
   document.getElementById('loading-screen').innerHTML='<div style="text-align:center;color:var(--pale)">'+ic('i-warn',40,'var(--gold-hot)')+'<div style="margin-top:12px;font-weight:700">読み込みエラー</div><button onclick="location.reload()" style="margin-top:14px;padding:10px 22px;cursor:pointer;border:none;border-radius:10px;background:var(--pale);color:var(--maroon-d);font-weight:700;font-family:inherit;font-size:14px">再試行</button></div>';
