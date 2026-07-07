@@ -7,7 +7,7 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-07（**🆕🆕🆕🆕🆕Phase 2完了（コミット`2c81e9c`+`362c70d`+`d765f48`・未push）。次はPhase 3（自主トレ記録）から着手する。pushは引き続き「一番最後にまとめて」（撤回されるまで有効）。**）
+- 日時: 2026-07-07（**🆕🆕🆕🆕🆕🆕Phase 3完了（コミット`fe4c7a9`+`89954cb`+`12cd3da`・未push）。次はPhase 4（種目追加+ホーム整理+身長）から着手する。pushは引き続き「一番最後にまとめて」（撤回されるまで有効）。**）
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
@@ -19,10 +19,16 @@
   - **2-C（`d765f48`）**: player getSlotMenu複製+T.training最上部「今日のプログラム」カード（cal本日weight∧ppNext()≠null→スロットメニュー+「開始する」→startTraining・本日実施済バッジ）。T.home=「TODAY: PUSH DAY」ヒーローとppカードをタップでgo('training')直行（ベルバッジはevent.stopPropagationでマイページ維持・pp空時は空ラップdivを出さない）。dev/test_today_prog.js（18アサート）
   - **検証**: jsc構文OK・括弧HEAD比均衡（player/staff/trainer）・既存全テスト+新3テスト=18本ALL PASS・エンジンブロックHEAD一致（player/staff。coach無変更）・previewブラウザ実機確認（staffスロットUI/編集フォームptypeセレクト/dashの「前回: PUSH 7/4(土)（自動確定）」表示・playerの今日のプログラムカード→開始する→出欠確認画面・ホームのヒーロー/ppカードクリック→training遷移。コンソールエラーはFirestore遮断由来のみ）
   - **運用メモ（ユーザーへ伝えるべきこと）**: 既存の「6月push」等のメニューは、スタッフが編集画面でメニュータイプをPUSH/PULLスロットに設定するだけで移行完了（移行スクリプト不要）。自動確定はカレンダーに本日type=weightの予定がある日のみ動く（カレンダー登録が前提）
-- **次: Phase 3着手（自主トレ記録・完全統合）**（プランのPhase 3節参照: `/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`。tlogに`kind:'self'`拡張・fitnessは`results:[]`+`totalVolume:0`不変条件・**High-2（自主トレ下書きの専用復元+チーム下書き上書き警告）**・Low-6/Low-7対処を含む＝プラン本文に反映済み。**Phase 0完了済みなのでPhase 3の保留は解除済み**）
+- **✅Phase 3完了（2026-07-07・コミット`fe4c7a9`/`89954cb`/`12cd3da`・未push）**: 自主トレ記録（kind:'self'・完全統合）。3コミット構成:
+  - **3-A（`fe4c7a9`・player）**: T.trainingに「＋自主トレを記録」→`showSelfTrainingMenu`3択（自主ウエイト/フィットネス/チーム誘導）。自主ウエイト=`startSelfWeightFresh`が`_curTLog{kind:'self',menuId:null,results:[]}`直作成→既存renderTrainingExec/finishTrainingに完全統合（e1rm追記・FULL TIME画面も共通）。`renderTrainingExec`先頭にmnフォールバック（self→`selfWeightMn()`）。**`addTrainingEx`=種目追加の共通実装（Phase 4でチームメニューにも開放予定・現在は`_curTLog.kind==='self'`時のみUI表示）**: estBase自動判定（EST_BASESラベル一致→過去ログ→null）・前回実績プリフィル・texlistのdatalist・`addedByPlayer:true`・`mergeTexlistFromLog`でfinishTraining成功2経路からtexlistへ静かにマージ（**Phase 4のtexlistマージは前倒し実装済み＝重複実装しない**）。フィットネス=`showSelfFitnessForm`（種類*+分*+km/RPE/メモ任意・任意項目はキー省略）→svSafeSeqで保存・**不変条件`results:[]`+`totalVolume:0`**。**High-2**=`startSelfWeight`が専用下書きチェック（`draft.kind==='self'&&draft.date===today`→promptResumeSelfDraft復元）+チーム下書き当日ありは上書き警告confirm・逆方向（beginTrainingExecに自主下書き警告）もローカル/クラウド両方に実装。**Low-7**=履歴一覧でfitnessは種類+分/km/RPE表示（0kg表示にしない）+自主バッジ・ボリュームグラフは`!l.fitness`フィルタ。todayTodoHtmlのdone判定に`kind!=='self'`（自主トレでチームtodoが消えない）。空の自主トレはalertで保存拒否。1RM未登録チップは`estBase&&!oneRM`時のみに修正（選手追加種目の誤表示防止）。dev/test_self_training.js（71アサート）
+  - **3-B（`89954cb`・staff）**: renderTrainingStatus実施カード/renderTrainTabセッション履歴行/trSessDetail展開に「自主」バッジ+fitness表示（種類+分/km/RPE・0種目0kg表示を回避）。自主ウエイト名称=「自主トレ（ウエイト）」。種目推移（exAgg/getExSeries）は自主ウエイトを自動包含=完全統合。dev/test_self_staff.js（26アサート）
+  - **3-C（`12cd3da`・coach）**: buildHistCoach/trSessDetailCにバッジ+fitness表示。insTraining欠席率の**分母**を`kind!=='self'`でフィルタ（自主トレは欠席し得ない）。**Low-6**=trained14（renderHomeViewのKPI）とdoneCount（renderTrainingViewのKPI）に`kind!=='self'`（チーム練習参加の指標）。週間ボリューム（teamVolume）は自主トレ包含のまま=仕様。dev/test_self_coach.js（21アサート）
+  - **検証**: jsc構文OK・括弧HEAD比均衡（player/staff/coach）・全21テストALL PASS・エンジンブロックHEAD一致（player/staff md5一致・coachはdiff hunkが対象5関数のみ）・trainer無変更・previewブラウザ実機確認（player: 自主トレボタン→3択→ウエイト実施画面で種目追加→フィットネスフォーム→履歴の自主バッジ+30分・5.2km・RPE7表示+グラフfitness除外／staff: 実施状況カード+選手詳細トレーニングタブ／coach: 個人レポート履歴+KPI=自主除外の値を目視。コンソールエラーはFirestore遮断由来のみ）
+  - **テスト側の学び**: main innerHTMLを検証するテストでdrain()を使う場合、**テスト冒頭で一度drain()して起動時のld()→go('home')チェーンを流しきる**こと（後のdrainで画面が上書きされ偽NGになる）。tlogAll()は参照比較キャッシュのためテストでのD.tlog変更は**in-place pushでなく配列ごと差し替え**る。
+- **次: Phase 4着手（種目追加+ホーム整理+身長）**（プランのPhase 4節参照: `/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`。**注意: 種目追加UI（addTrainingEx）とtexlistマージはPhase 3-Aで共通実装済み→Phase 4は「チームメニュー実施中もUIを出す」＝renderTrainingExecの`_curTLog.kind==='self'`ゲートを外す/緩めるだけ+Low-3（pickup変数はtodoが使うので描画だけ消す）+getTop3削除等のホーム整理+身長自己編集**）
   - メモ: jsc実行パスは`/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc`（PATHにnode/jscなし）。テスト実行: `jsc dev/prelude.js <抽出JS> dev/test_xxx.js`
   - previewサーバーは旧セッションのpreviewroot（`.claude/launch.json`参照）が稼働中でも使える＝編集後に`cp`同期すればよい（今回もそれで検証）
-  - 既存テスト回帰の実行対象は現在**18本**（player9: engine/dash/cond/ranking/mystatus/train_weak/tlog_arch/pp_auto/today_prog・staff6: dash_staff/staff_pdetail_std/std_staff/tlog_arch_staff/trainbug/tmenu_slot・coach3: trainbug/coach_report_std/tlog_arch_coach）
+  - 既存テスト回帰の実行対象は現在**21本**（player10: engine/dash/cond/ranking/mystatus/train_weak/tlog_arch/pp_auto/today_prog/self_training・staff7: dash_staff/staff_pdetail_std/std_staff/tlog_arch_staff/trainbug/tmenu_slot/self_staff・coach4: trainbug/coach_report_std/tlog_arch_coach/self_coach）
 - **✅Phase 1完了（2026-07-07・コミット`801b4d4`・未push）**: 種目推移セレクタの`<option>`にvalue属性を追加（staff/index.html:3902 renderTrainTab＋coach/index.html:1220 buildTrendCoach）。estBase無し種目の「種目名 (手入力)」テキストがvalueになり選択が巻き戻るバグを根治。dev/test_trainbug.js新設（1ファイルでstaff/coach自動判別・value属性/巻き戻らない/e1rm→topフォールバック/全null系列例外なし・各12アサートPASS）。検証: jsc構文OK・括弧HEAD比均衡(+1/+1=追加escapeHtml呼び出し分)・既存13テスト回帰PASS・エンジンmd5 3ファイル一致(`07efed94…`)・previewブラウザ両サイトでchange操作→選択維持を実機確認（コンソールエラーはFirestore遮断由来のみ）。
 
 - **🚀Phase 0（tlog容量対策）実装完了・✅push済み・GitHub Pages反映確認済み（2026-07-07・このセッション）。残りの手順**:
