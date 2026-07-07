@@ -2,74 +2,138 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>福岡大学ラグビー部 選手管理システム</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Overpass:ital,wght@0,700;0,800;0,900;1,800;1,900&family=Zen+Kaku+Gothic+New:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
-:root{--blue:#3B82F6;--green:#10B981;--purple:#8B5CF6;--bg:#0F1B2D;--card:#16263E;--text:#E8ECEF;--text2:#8B99A6;--radius:16px}
+:root{
+  --maroon:#8d0000;--maroon-d:#4f0004;--maroon-vivid:#c1121f;
+  --rose:#bd6d6d;--rose-l:#deb6b6;--pale:#f5e9e9;--ink:#2a0a0c;
+  --gold:#C9A227;--gold-hot:#F2C43D;--gold-deep:#8F6F14;
+  --bg-app:#F7F4F3;--bg-primary:#fff;
+  --text-primary:#231416;--text-secondary:#6E5A5C;--text-tertiary:#8A7578;
+  --border-tertiary:rgba(60,10,12,.08);
+  --shadow-md:0 8px 24px rgba(141,0,0,.10);
+  --font-sans:'Zen Kaku Gothic New',-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif;
+  --font-num:'Overpass',var(--font-sans);
+  --radius-lg:16px;
+}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif;background:linear-gradient(160deg,#0F1B2D 0%,#16263E 50%,#0F1B2D 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;color:var(--text)}
-.wrap{width:100%;max-width:480px;text-align:center}
-.logo{font-size:56px;margin-bottom:12px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.4))}
-h1{font-size:22px;font-weight:700;letter-spacing:.02em;margin-bottom:4px}
-.sub{font-size:13px;color:var(--text2);margin-bottom:36px;letter-spacing:.06em}
-.cards{display:flex;flex-direction:column;gap:14px}
-.card{display:flex;align-items:center;gap:16px;padding:20px 22px;background:var(--card);border-radius:var(--radius);text-decoration:none;color:var(--text);border:1px solid rgba(255,255,255,.06);transition:all .2s;position:relative;overflow:hidden}
-.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:4px 0 0 4px}
-.card.player::before{background:var(--blue)}
-.card.staff::before{background:var(--purple)}
-.card.trainer::before{background:var(--green)}
-.card.coach::before{background:#3DDC97}
-.card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.35);border-color:rgba(255,255,255,.14)}
-.card:active{transform:translateY(0)}
-.icon{font-size:34px;width:56px;height:56px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.05);border-radius:14px;flex-shrink:0}
-.info{text-align:left;flex:1}
-.info .t{font-size:16px;font-weight:700;margin-bottom:3px}
-.info .d{font-size:12px;color:var(--text2);line-height:1.5}
-.arrow{font-size:18px;color:var(--text2)}
-.footer{margin-top:36px;font-size:11px;color:var(--text2);opacity:.7}
-@media(max-width:380px){.card{padding:16px}}
+body{font-family:var(--font-sans);background:var(--bg-app);color:var(--text-primary);-webkit-font-smoothing:antialiased}
+.kicker{font-family:var(--font-num);font-style:italic;font-weight:800;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-hot)}
+.kicker--dark{color:var(--maroon)}
+.num{font-family:var(--font-num);font-weight:900;font-style:italic;letter-spacing:-.03em}
+
+.hero{position:relative;overflow:hidden;padding:56px 22px 76px;text-align:center;color:var(--pale);
+  background:radial-gradient(120% 140% at 50% -10%,var(--maroon-vivid) 0%,var(--maroon) 45%,var(--maroon-d) 72%);}
+.hero::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.07;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
+/* 本物のピッチライン構成: ハーフウェイ実線(50%)+22m実線(22%/78%)+10m破線(37%/63%)。
+   各レイヤーは幅2pxのno-repeatタイル→%配置が有効に効く(全幅タイルだと位相ゼロで無効化されるため) */
+.pitch-lines{position:absolute;inset:0;pointer-events:none;opacity:.16;
+  background-image:
+    linear-gradient(90deg,rgba(255,255,255,.9),rgba(255,255,255,.9)),
+    linear-gradient(90deg,rgba(255,255,255,.85),rgba(255,255,255,.85)),
+    linear-gradient(90deg,rgba(255,255,255,.85),rgba(255,255,255,.85)),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.8) 0 7px,transparent 7px 15px),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.8) 0 7px,transparent 7px 15px);
+  background-size:2px 100%,2px 100%,2px 100%,2px 100%,2px 100%;
+  background-position:50% 0,22% 0,78% 0,37% 0,63% 0;
+  background-repeat:no-repeat;
+}
+.ghost-num{position:absolute;pointer-events:none;user-select:none;-webkit-user-select:none;z-index:0;font:italic 900 168px/1 var(--font-num);color:transparent;-webkit-text-stroke:2px rgba(255,255,255,.14);right:-18px;top:-6px;line-height:1}
+.hero>*{position:relative;z-index:1}
+.ball-ic{color:var(--pale);opacity:.9}
+.hero h1{font-size:24px;font-weight:900;letter-spacing:.01em;margin:14px 0 6px}
+.hero .sub{font-size:12px;color:var(--rose-l);letter-spacing:.08em;font-weight:700}
+
+.wave{position:relative;height:44px;margin-top:-1px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 90' preserveAspectRatio='none'%3E%3Cpath fill='%23F7F4F3' d='M0 40 C 240 90 480 0 720 30 C 960 60 1200 10 1440 40 L1440 90 L0 90 Z'/%3E%3C/svg%3E");
+  background-size:100% 100%;background-repeat:no-repeat;
+  background-color:var(--maroon-d);}
+
+.wrap{max-width:520px;margin:0 auto;padding:0 20px 48px}
+.gates{display:flex;flex-direction:column;gap:14px;margin-top:-28px}
+.gate{position:relative;display:flex;align-items:center;gap:16px;padding:20px;background:var(--bg-primary);border-radius:var(--radius-lg);text-decoration:none;color:var(--text-primary);box-shadow:var(--shadow-md);border:1px solid var(--border-tertiary);transition:transform .16s ease,box-shadow .16s ease}
+.gate:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(141,0,0,.16)}
+.gate:active{transform:translateY(0)}
+.gate .icon{flex-shrink:0;width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:var(--pale);color:var(--maroon)}
+.gate .info{flex:1;text-align:left}
+.gate .info .kicker{margin-bottom:3px}
+.gate .info .t{font-size:16px;font-weight:900;margin-bottom:3px}
+.gate .info .d{font-size:12px;color:var(--text-secondary);line-height:1.5}
+.gate .arrow{color:var(--text-tertiary);flex-shrink:0}
+
+@media(prefers-reduced-motion:no-preference){
+  .gate{opacity:0;animation:gatein .5s cubic-bezier(.22,1,.36,1) forwards}
+  .gate:nth-child(1){animation-delay:.05s}
+  .gate:nth-child(2){animation-delay:.15s}
+  .gate:nth-child(3){animation-delay:.25s}
+  .gate:nth-child(4){animation-delay:.35s}
+  @keyframes gatein{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+}
+
+.footer{margin-top:36px;text-align:center;font-size:11px;color:var(--text-secondary);letter-spacing:.04em}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="logo">🏉</div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-ball" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><g transform="rotate(-30 12 12)"><ellipse cx="12" cy="12" rx="9" ry="5.5"/><path d="M8.5 12h7M10.7 10.3v3.4M13.3 10.3v3.4"/></g></g></symbol>
+<symbol id="i-run" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="14.5" cy="4.5" r="1.8"/><path d="M7 12l2.5-2 4-.5 2 3 3.5 1M13.5 9.5l-1.3 4 2.3 2.5.5 4.5M12.2 13.5L9 15.5l-2.5 4.5"/></g></symbol>
+<symbol id="i-clipboard" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2.5" width="6" height="3.5" rx="1"/><path d="M9 11.5h6M9 15.5h6"/></g></symbol>
+<symbol id="i-bandage" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><g transform="rotate(45 12 12)"><rect x="3.5" y="8.8" width="17" height="6.4" rx="3.2"/><path d="M10.6 12h.01M13.4 12h.01M12 10.6v.01M12 13.4v.01"/></g></g></symbol>
+<symbol id="i-chart-line" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5.5-6 4 4L20 7.5M3 21h18"/></g></symbol>
+<symbol id="i-chevron-r" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></g></symbol>
+</svg>
+<div class="hero">
+  <div class="pitch-lines" aria-hidden="true"></div>
+  <span class="ghost-num" aria-hidden="true">15</span>
+  <svg class="ball-ic" width="40" height="40" aria-hidden="true"><use href="#i-ball" xlink:href="#i-ball"></use></svg>
   <h1>福岡大学ラグビー部</h1>
   <div class="sub">PLAYER MANAGEMENT SYSTEM</div>
-  <div class="cards">
-    <a class="card player" href="./player/">
-      <div class="icon">🏃</div>
+</div>
+<div class="wave" aria-hidden="true"></div>
+<div class="wrap">
+  <div class="gates">
+    <a class="gate" href="./player/">
+      <div class="icon"><svg width="26" height="26" aria-hidden="true"><use href="#i-run" xlink:href="#i-run"></use></svg></div>
       <div class="info">
+        <div class="kicker kicker--dark">PLAYERS</div>
         <div class="t">選手サイト</div>
         <div class="d">コンディション・MAX測定・怪我報告・テーピング予約</div>
       </div>
-      <div class="arrow">→</div>
+      <svg class="arrow" width="18" height="18" aria-hidden="true"><use href="#i-chevron-r" xlink:href="#i-chevron-r"></use></svg>
     </a>
-    <a class="card trainer" href="./trainer/">
-      <div class="icon">👨‍⚕️</div>
+    <a class="gate" href="./staff/">
+      <div class="icon"><svg width="26" height="26" aria-hidden="true"><use href="#i-clipboard" xlink:href="#i-clipboard"></use></svg></div>
       <div class="info">
-        <div class="t">専門学生サイト</div>
-        <div class="d">テーピング枠管理・リハビリ記録・復帰テスト</div>
-      </div>
-      <div class="arrow">→</div>
-    </a>
-    <a class="card staff" href="./staff/">
-      <div class="icon">📋</div>
-      <div class="info">
+        <div class="kicker kicker--dark">PERFORMANCE STAFF</div>
         <div class="t">スタッフサイト</div>
         <div class="d">選手管理・怪我管理・リハビリ計画・測定会・分析</div>
       </div>
-      <div class="arrow">→</div>
+      <svg class="arrow" width="18" height="18" aria-hidden="true"><use href="#i-chevron-r" xlink:href="#i-chevron-r"></use></svg>
     </a>
-    <a class="card coach" href="./coach/">
-      <div class="icon">📊</div>
+    <a class="gate" href="./trainer/">
+      <div class="icon"><svg width="26" height="26" aria-hidden="true"><use href="#i-bandage" xlink:href="#i-bandage"></use></svg></div>
       <div class="info">
+        <div class="kicker kicker--dark">MEDICAL</div>
+        <div class="t">専門学生サイト</div>
+        <div class="d">テーピング枠管理・リハビリ記録・復帰テスト</div>
+      </div>
+      <svg class="arrow" width="18" height="18" aria-hidden="true"><use href="#i-chevron-r" xlink:href="#i-chevron-r"></use></svg>
+    </a>
+    <a class="gate" href="./coach/">
+      <div class="icon"><svg width="26" height="26" aria-hidden="true"><use href="#i-chart-line" xlink:href="#i-chart-line"></use></svg></div>
+      <div class="info">
+        <div class="kicker kicker--dark">COACHES</div>
         <div class="t">コーチ閲覧サイト</div>
         <div class="d">怪我・復帰状況・フィジカル・選手レポート（閲覧専用）</div>
       </div>
-      <div class="arrow">→</div>
+      <svg class="arrow" width="18" height="18" aria-hidden="true"><use href="#i-chevron-r" xlink:href="#i-chevron-r"></use></svg>
     </a>
   </div>
-  <div class="footer">Fukuoka University Rugby Football Club</div>
+  <div class="footer">FUKUOKA UNIV. RUGBY FOOTBALL CLUB</div>
 </div>
 </body>
 </html>
