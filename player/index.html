@@ -1045,6 +1045,7 @@ function showAutoLoginConfirm(pid){
 function confirmAutoLogin(pid){
   myPid=pid;
   initUI();
+  kickTlogArch(); // 自分のtlogアーカイブをプリロード（履歴・マイステータスの全期間表示用）
   go('home'); // doLoginと着地点を統一（ホーム=自分専用ダッシュボード。「今日やること」もここにある）
 }
 
@@ -1245,7 +1246,7 @@ function todayTodoHtml(){
   // 無条件のtlog有無判定だと休養日に永遠の未完了が出て完了カウントが壊れる（確定バグ#18）
   var todayWeightEvt=(D.cal||[]).some(function(e){return e.date===todayStr()&&e.type==='weight';});
   if(todayWeightEvt&&!isOff&&getMyMenus().length){
-    var tlogToday=(D.tlog||[]).some(function(l){return idEq(l.pid,myPid)&&l.date===todayStr();}); // 実施も欠席申告(absent)もtlogレコードになる=done
+    var tlogToday=tlogAll().some(function(l){return idEq(l.pid,myPid)&&l.date===todayStr();}); // 実施も欠席申告(absent)もtlogレコードになる=done
     todoItems.push({key:'train',done:tlogToday,label:'ウエイトトレーニング',icon:'physical',onclick:"go('training')"});
   }
   if(pInj.length){
@@ -1452,6 +1453,7 @@ function doLogin(pid){
   var p=D.p.find(function(x){return x.id===pid;});
   document.getElementById('hdr-name').textContent=p?p.name+' ('+p.position+'/'+p.year+'年)':'';
   document.getElementById('logout-btn').style.display='block';
+  kickTlogArch(); // 自分のtlogアーカイブをプリロード
   go('home');
 }
 
@@ -1727,7 +1729,10 @@ mystatus:function(){
         (rw?'<span class="bd bd-b">目安 '+rw+'kg</span>':'')+'</div>';
     });
     h+='<div style="font-size:10px;color:var(--text-tertiary);margin-top:6px">※目安重量は'+wl.label+'1RM×RPE表による概算。補助種目はフォームを保てる重量に調整してOK</div></div>';
-    var wv=getWeakWeeklyVolume(myPid,weak.lift,5);
+    // getWeakWeeklyVolumeは基準エンジンブロック内（編集禁止）でD.tlogを直読みする5週集計。
+    // メインdocは直近15日分しか持たないため、アーカイブ込みの配列へ同期swapして呼ぶ（直後に必ず復元）。
+    var _tlogSv=D.tlog;D.tlog=tlogAll();
+    var wv;try{wv=getWeakWeeklyVolume(myPid,weak.lift,5);}finally{D.tlog=_tlogSv;}
     var maxV=Math.max.apply(null,wv.map(function(x){return x.vol;}).concat([1]));
     h+='<div class="card rv" style="margin-bottom:10px"><div style="font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px">'+ic('i-chart-line',15,'var(--maroon)')+' 弱点系ボリューム（週次推移）</div>';
     if(wv.every(function(x){return!x.vol;})){
@@ -3344,7 +3349,7 @@ T.training=function(){
     menus.forEach(function(mn){
       var isPersonal=idEq(mn.scope,myPid);
       // 今日すでに実施したか
-      var doneToday=(D.tlog||[]).some(function(l){return idEq(l.pid,myPid)&&idEq(l.menuId,mn.id)&&l.date===todayStr();});
+      var doneToday=tlogAll().some(function(l){return idEq(l.pid,myPid)&&idEq(l.menuId,mn.id)&&l.date===todayStr();});
       h+='<div class="card card-click" style="margin-bottom:8px" onclick="startTraining(\''+mn.id+'\')">'+
         '<div style="display:flex;align-items:center;justify-content:space-between">'+
         '<div style="flex:1"><div style="font-weight:700;font-size:15px">'+escapeHtml(mn.name)+(isPersonal?' <span class="bd bd-a" style="font-size:9px">専用</span>':'')+(doneToday?' <span class="bd bd-g" style="font-size:9px">本日実施済</span>':'')+'</div>'+
@@ -3500,7 +3505,7 @@ function startTrainingFresh(menuId){
   var disabled=getMyDisabledEx();
   // 前回セッション検索用: 当日より前のログを新しい順に並べる
   var today=todayStr();
-  var sortedPrevLogs=(D.tlog||[]).filter(function(l){
+  var sortedPrevLogs=tlogAll().filter(function(l){
     return idEq(l.pid,myPid)&&!l.absent&&l.results&&l.date<today;
   }).sort(function(a,b){
     var at=a.ts||a.date,bt=b.ts||b.date;return bt.localeCompare(at);
@@ -3650,7 +3655,7 @@ function setTrCompare(mode){window._trCompareMode=mode;var mn=getMyMenus().find(
 function getCompareVolume(pid,exName,beforeDate,mode){
   var nowTs=(_curTLog&&_curTLog.ts)?_curTLog.ts:new Date().toISOString();
   var curId=_curTLog?_curTLog.id:null;
-  var logs=(D.tlog||[]).filter(function(l){
+  var logs=tlogAll().filter(function(l){
     if(!idEq(l.pid,pid))return false;
     if(curId&&idEq(l.id,curId))return false; // 自分自身は除外
     // タイムスタンプがあれば時刻で、なければ日付で「前」を判定
@@ -3870,7 +3875,7 @@ function updateRestTimerBtn(){
 
 // その種目の先週ボリューム（7日前〜実施直前の最新の同種目記録）
 function getLastExerciseVolume(pid,exName,beforeDate){
-  var logs=(D.tlog||[]).filter(function(l){return idEq(l.pid,pid)&&l.date<beforeDate;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var logs=tlogAll().filter(function(l){return idEq(l.pid,pid)&&l.date<beforeDate;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
   for(var i=0;i<logs.length;i++){
     var r=(logs[i].results||[]).find(function(x){return x.exName===exName&&!x.skipped;});
     if(r){
@@ -3945,6 +3950,103 @@ function slimTlogRec(log){
     out[k]=log[k];
   }
   return out;
+}
+// ===== tlog容量対策（Phase 0）: 古いレコードの選手別アーカイブ =====
+// メインdoc appdata/tlog には直近TLOG_KEEP_DAYS日分だけを残し、それより古いレコードは
+// 選手別×半期のアーカイブdoc（tla_<pid>_<year>h<1|2>・SK非登録＝購読なし・tdraft方式）へ移送する。
+// 15日=coachの13日窓（trained14等）+2日マージン。エンジンブロックのgetWeakWeeklyVolumeは7日窓で同様に安全。
+// 移送は全てトランザクション（svSafeUpdate）+id重複排除なので、同時実行・途中クラッシュでも壊れない
+// （両docに同じidが残った場合は読み出し側のidマージで1件に見え、次回実行でメイン側から消える＝冪等）。
+var TLOG_KEEP_DAYS=15;
+function tlaHalf(dateStr){return dateStr.slice(0,4)+'h'+((+dateStr.slice(5,7))<=6?1:2);}
+function tlaKey(pid,half){return 'tla_'+String(pid)+'_'+half;}
+// データ開始（2026年上期）から今日までの半期キー一覧
+function tlaHalves(){
+  var t=todayStr(),y=+t.slice(0,4),h=(+t.slice(5,7))<=6?1:2;
+  var out=[],cy=2026,ch=1;
+  while(cy<y||(cy===y&&ch<=h)){out.push(cy+'h'+ch);if(ch===1){ch=2;}else{ch=1;cy++;}}
+  return out;
+}
+var _tlogArch=[],_tlogArchLoaded=false,_tlaCbs=null,_tlaPid=null;
+var _tlaCache=null,_tlaCacheSrc=null,_tlaCacheArch=null;
+// メインdoc（D.tlog）+読み込み済みアーカイブのidマージ（メイン側優先）。参照比較キャッシュで再計算を抑制。
+function tlogAll(){
+  var base=D.tlog||[];
+  if(_tlaCache&&_tlaCacheSrc===base&&_tlaCacheArch===_tlogArch)return _tlaCache;
+  var seen={},out=base.slice();
+  base.forEach(function(l){if(l&&l.id!=null)seen[l.id]=1;});
+  _tlogArch.forEach(function(l){if(l&&l.id!=null&&!seen[l.id])out.push(l);});
+  _tlaCache=out;_tlaCacheSrc=base;_tlaCacheArch=_tlogArch;
+  return out;
+}
+// 自分のアーカイブdocを全半期分取得（選手は自分のtlogしか見ないため自分の分だけ＝通信量極小）。
+// 取得済みなら即cb。取得中は完了時にまとめてcb。個別の取得失敗は空扱い（直近データのみで動作継続）。
+function loadTlogArch(cb){
+  if(myPid==null){if(cb)cb();return;}
+  if(_tlaPid!=null&&!idEq(_tlaPid,myPid)){_tlogArch=[];_tlogArchLoaded=false;_tlaCbs=null;_tlaCache=null;} // 選手切替時は前の選手の分を破棄
+  if(_tlogArchLoaded){if(cb)cb();return;}
+  if(_tlaCbs){if(cb)_tlaCbs.push(cb);return;}
+  _tlaCbs=cb?[cb]:[];
+  var pidAtStart=myPid;_tlaPid=myPid;
+  Promise.all(tlaHalves().map(function(hf){
+    return db.collection('appdata').doc(tlaKey(pidAtStart,hf)).get().then(function(doc){
+      if(!doc.exists)return[];
+      try{var p=JSON.parse(doc.data().data);return Array.isArray(p)?p:[];}catch(e){return[];}
+    }).catch(function(e){console.error('tla load error:',hf,e);return[];});
+  })).then(function(parts){
+    if(!idEq(pidAtStart,myPid))return; // 取得中に選手が切り替わったら結果を捨てる
+    var seen={},out=[];
+    parts.forEach(function(arr){arr.forEach(function(l){if(l&&l.id!=null&&!seen[l.id]){seen[l.id]=1;out.push(l);}});});
+    _tlogArch=out;_tlogArchLoaded=true;_tlaCache=null;
+    var cbs=_tlaCbs||[];_tlaCbs=null;
+    cbs.forEach(function(f){try{f();}catch(e){console.error(e);}});
+  });
+}
+// ログイン直後のプリロード用: 取得完了時に表示中タブを1回だけ再描画（onSnapshotと同じ入力中・サブ画面ガード）
+function kickTlogArch(){
+  loadTlogArch(function(){
+    var ae=document.activeElement;
+    var isInputting=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT');
+    if(!isInputting&&!subView&&myPid&&curTab&&T[curTab]){try{T[curTab]();}catch(e){console.error(e);}}
+  });
+}
+// 古いレコードをアーカイブへ移送し、メインdocの残存レコードもスリム化する（1セッション1回・静かに実行）。
+var _tlogArchRan=false;
+function archiveTlog(){
+  if(_tlogArchRan)return;_tlogArchRan=true;
+  var cut=toDateStr(new Date(Date.now()-TLOG_KEEP_DAYS*86400000));
+  var stale=(D.tlog||[]).filter(function(l){
+    return l&&l.id!=null&&typeof l.date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(l.date)&&l.date<cut;
+  });
+  if(!stale.length)return;
+  var groups={};
+  stale.forEach(function(l){var k=tlaKey(l.pid,tlaHalf(l.date));(groups[k]=groups[k]||[]).push(l);});
+  var keys=Object.keys(groups);
+  function step(i){
+    if(i>=keys.length)return;
+    var gk=keys[i],recs=groups[gk];
+    // ①アーカイブdocへid重複排除でマージ（移送時にスリム化＝過去の肥大レコードもここで縮む）
+    svSafeUpdate(gk,function(latest){
+      var have={};latest.forEach(function(x){if(x&&x.id!=null)have[x.id]=1;});
+      recs.forEach(function(l){if(!have[l.id])latest.push(slimTlogRec(l));});
+      return latest;
+    },function(){
+      // ②①の成功後にメインdocから移送済みidを除去+残存レコードをin-placeスリム化（旧クライアント保存分も吸収・冪等）
+      var ids={};recs.forEach(function(l){ids[l.id]=1;});
+      svSafeUpdate('tlog',function(latest){
+        return latest.filter(function(l){return !(l&&l.id!=null&&ids[l.id]);}).map(slimTlogRec);
+      },function(){
+        // 読み込み済みのメモリ上アーカイブにも反映（自分の分のみ保持しているため他選手分は追加しない）
+        if(_tlogArchLoaded){
+          var have={};_tlogArch.forEach(function(x){if(x&&x.id!=null)have[x.id]=1;});
+          recs.forEach(function(l){if(idEq(l.pid,myPid)&&!have[l.id])_tlogArch.push(slimTlogRec(l));});
+          _tlaCache=null;
+        }
+        step(i+1);
+      },function(e){console.error('tlog archive(main) skip:',e);});
+    },function(e){console.error('tlog archive('+gk+') skip:',e);});
+  }
+  step(0);
 }
 function finishTraining(btnEl){
   if(!_curTLog)return;
@@ -4097,7 +4199,8 @@ function showTrainingResult(log,alerts,injurySkips,e1rmRecorded){
 
 // トレーニング履歴・グラフ
 function showTrainingHistory(){
-  var logs=(D.tlog||[]).filter(function(l){return idEq(l.pid,myPid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  if(!_tlogArchLoaded)loadTlogArch(function(){if(subView)showTrainingHistory();}); // アーカイブ未取得なら取得して再描画（通常はログイン時にプリロード済み）
+  var logs=tlogAll().filter(function(l){return idEq(l.pid,myPid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
   var h='<div style="font-size:18px;font-weight:700;margin:4px 0 14px">'+ic('i-chart',16,'var(--maroon)')+' トレーニング履歴</div>';
   if(!logs.length){h+='<div class="no">まだ記録がありません</div>';showSub(h);return;}
 
@@ -4180,7 +4283,7 @@ function getE1RMTrend(pid){
 
 // 連続スキップ検出（直近の記録で同じ種目が連続でskip/未達）
 function getConsecutiveSkips(pid){
-  var logs=(D.tlog||[]).filter(function(l){return idEq(l.pid,pid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var logs=tlogAll().filter(function(l){return idEq(l.pid,pid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
   if(logs.length<2)return[];
   // 種目ごとに、直近からの連続skip回数を数える
   var exSkipCount={};
@@ -4418,6 +4521,8 @@ ld().then(function(){
     lds.classList.add('done');
   }
   startListeners();
+  // tlog容量対策: 古いレコードのアーカイブ移送（全端末で同時に走らないようランダム遅延。冪等なので重なっても安全）
+  setTimeout(archiveTlog,5000+Math.floor(Math.random()*10000));
   // 前回のログイン情報を復元（確認画面を経由）
   try{
     var savedPid=localStorage.getItem('rm_my_pid');
