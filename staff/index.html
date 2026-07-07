@@ -4615,10 +4615,31 @@ V.training=function(){
   h+='<div class="tabs"><div class="tab'+(tab==='menus'?' ac':'')+'" onclick="trTabSwitch(\'menus\')">メニュー</div><div class="tab'+(tab==='status'?' ac':'')+'" onclick="trTabSwitch(\'status\')">実施状況</div></div><input type="hidden" id="tr-tab-sel" value="'+tab+'">';
   if(tab==='menus'){
     h+='<button class="btn btn-p" style="width:100%;margin:12px 0" onclick="goAddTMenu()">＋ 新しいメニューを作成</button>';
-    h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">プッシュ/プルなどのメニューを作成し、全員または個別の選手に配布できます。選手は推定重量を見ながら実施できます。</div>';
-    var menus=(D.tmenu||[]).slice().sort(function(a,b){return (b.createdAt||'').localeCompare(a.createdAt||'');});
+    h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">PUSH/PULLスロットに設定したメニューは、選手のトレーニング画面に「今日のプログラム」として自動表示されます（中身の差し替えは編集でOK）。</div>';
+    // PUSH/PULLスロット（各1件・中身だけ編集する運用）
+    h+='<div class="kicker" style="margin-bottom:2px">TEAM PROGRAM</div><div style="font-size:13px;font-weight:700;margin-bottom:8px">チーム定期メニュー（PUSH/PULLスロット）</div>';
+    h+='<div style="display:flex;gap:8px;margin-bottom:16px">';
+    [{pt:'push',label:'PUSH',color:'var(--blue)'},{pt:'pull',label:'PULL',color:'var(--pull)'}].forEach(function(s){
+      var sm=getSlotMenu(s.pt);
+      if(sm){
+        h+='<div class="card card-click" style="flex:1;margin:0;border-top:3px solid '+s.color+'" onclick="goTMenuDetail(\''+sm.id+'\')">'+
+          '<span class="flag" style="background:'+s.color+';color:#fff;font-size:12px">'+ic('i-'+s.pt,13)+' '+s.label+'</span>'+
+          '<div style="font-weight:700;font-size:14px;margin-top:8px">'+escapeHtml(sm.name)+'</div>'+
+          '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">'+(sm.exercises?sm.exercises.length:0)+'種目 ・ 全選手</div></div>';
+      }else{
+        h+='<div class="card" style="flex:1;margin:0;border-top:3px dashed var(--border-secondary)">'+
+          '<span class="flag" style="background:var(--bg-tertiary);color:var(--text-secondary);font-size:12px">'+s.label+'</span>'+
+          '<div style="font-size:12px;color:var(--text-secondary);margin-top:8px">未設定</div>'+
+          '<button class="btn btn-sm" style="margin-top:6px" onclick="goAddTMenuSlot(\''+s.pt+'\')">このスロットを作成</button></div>';
+      }
+    });
+    h+='</div>';
+    h+='<div style="font-size:13px;font-weight:700;margin-bottom:8px">通常メニュー（個別・汎用）</div>';
+    // アクティブスロットの2件だけ除外（異常時に同ptypeが複数あっても、負けた方はここに出て編集・削除できる）
+    var slotIds=[getSlotMenu('push'),getSlotMenu('pull')].filter(function(m){return!!m;}).map(function(m){return m.id;});
+    var menus=(D.tmenu||[]).filter(function(m){return m&&!slotIds.some(function(sid){return idEq(sid,m.id);});}).sort(function(a,b){return (b.createdAt||'').localeCompare(a.createdAt||'');});
     if(!menus.length){
-      h+='<div class="no">メニューがまだありません</div>';
+      h+='<div class="no">通常メニューはありません</div>';
     }else{
       menus.forEach(function(mn){
         var scopeLabel=mn.scope==='all'?'全選手':(function(){var p=D.p.find(function(x){return idEq(x.id,mn.scope);});return p?p.name+' 専用':'個別';})();
@@ -4644,6 +4665,11 @@ function goAddTMenu(){
   _tmenuEx=[];
   renderTMenuForm(null);
 }
+// 空スロットからの作成: ptype・配布先=全選手をプリセット
+function goAddTMenuSlot(pt){
+  _tmenuEx=[];
+  renderTMenuForm(null,{name:'',scope:'all',exercises:[],ptype:pt});
+}
 function goEditTMenu(menuId){
   var mn=(D.tmenu||[]).find(function(x){return idEq(x.id,menuId);});
   if(!mn)return;
@@ -4655,7 +4681,12 @@ function renderTMenuForm(menuId,mn){
   var players=(D.p||[]).slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
   var h='<div style="max-width:640px">';
   h+='<div class="form-box"><div class="fl" style="margin-bottom:12px"><label>メニュー名 *</label><input class="ipt" id="tm-name" value="'+escapeHtml(mn.name||'')+'" placeholder="例: プッシュ（月曜）"></div>';
-  h+='<div class="fl"><label>配布先</label><select class="ipt" id="tm-scope"><option value="all"'+(mn.scope==='all'?' selected':'')+'>全選手</option>'+players.map(function(p){return'<option value="'+p.id+'"'+(idEq(mn.scope,p.id)?' selected':'')+'>'+escapeHtml(p.name)+' 専用（怪我人など）</option>';}).join('')+'</select></div></div>';
+  h+='<div class="fl" style="margin-bottom:12px"><label>配布先</label><select class="ipt" id="tm-scope"><option value="all"'+(mn.scope==='all'?' selected':'')+'>全選手</option>'+players.map(function(p){return'<option value="'+p.id+'"'+(idEq(mn.scope,p.id)?' selected':'')+'>'+escapeHtml(p.name)+' 専用（怪我人など）</option>';}).join('')+'</select></div>';
+  h+='<div class="fl"><label>メニュータイプ</label><select class="ipt" id="tm-ptype">'+
+    '<option value=""'+(!mn.ptype?' selected':'')+'>通常（個別・汎用）</option>'+
+    '<option value="push"'+(mn.ptype==='push'?' selected':'')+'>PUSHスロット（チーム定期・1件のみ）</option>'+
+    '<option value="pull"'+(mn.ptype==='pull'?' selected':'')+'>PULLスロット（チーム定期・1件のみ）</option>'+
+    '</select><div style="font-size:11px;color:var(--text-secondary);margin-top:4px">スロットに設定すると選手のトレーニング画面に「今日のプログラム」として自動表示されます。既に同じスロットのメニューがある場合、そちらは通常メニューに戻ります。</div></div></div>';
   // 種目リスト
   h+='<div style="font-size:13px;font-weight:700;margin:16px 0 8px">種目</div>';
   h+='<div id="tm-ex-list">'+renderTMenuExList()+'</div>';
@@ -4700,26 +4731,44 @@ function saveTMenu(menuId){
   var exNames=exercises.map(function(e){return e.name;});
   function mergeTex(onDone){svSafeUpdate('texlist',function(latest){exNames.forEach(function(nm){if(latest.indexOf(nm)<0)latest.push(nm);});return latest;},onDone);}
 
-  var data={name:name,scope:scope,exercises:exercises,createdBy:'スタッフ',createdAt:menuId?undefined:todayStr()};
-  if(menuId){
-    svSafeUpdate('tmenu',function(latest){var m=latest.find(function(x){return idEq(x.id,menuId);});if(m){m.name=name;m.scope=scope;m.exercises=exercises;}return latest;},function(){
-      mergeTex();
-      popView();toast('保存しました');
-    });
-  }else{
-    data.id=Date.now();
-    svSafe('tmenu',data,function(){
-      mergeTex();
-      popView();toast('メニューを作成しました');
-    });
-  }
+  var ptype=(document.getElementById('tm-ptype')||{}).value||'';
+  if(ptype&&scope!=='all')return alert('PUSH/PULLスロットのメニューは配布先を「全選手」にしてください');
+  // 新規・編集ともsvSafeUpdateに統一。「同ptypeスロットはアクティブ1件」の不変条件を同一トランザクションで担保する
+  var ptypeTs=new Date().toISOString();
+  var newIdVal=menuId?null:Date.now();
+  var targetId=menuId||newIdVal;
+  svSafeUpdate('tmenu',function(latest){
+    if(!Array.isArray(latest))latest=[];
+    if(ptype){latest.forEach(function(x){if(x&&x.ptype===ptype&&!idEq(x.id,targetId)){delete x.ptype;delete x.ptypeTs;}});}
+    if(menuId){
+      var m=latest.find(function(x){return idEq(x.id,menuId);});
+      if(m){m.name=name;m.scope=scope;m.exercises=exercises;if(ptype){m.ptype=ptype;m.ptypeTs=ptypeTs;}else{delete m.ptype;delete m.ptypeTs;}}
+    }else if(!latest.some(function(x){return idEq(x.id,newIdVal);})){ // updateFn再実行でも冪等
+      var rec={id:newIdVal,name:name,scope:scope,exercises:exercises,createdBy:'スタッフ',createdAt:todayStr()};
+      if(ptype){rec.ptype=ptype;rec.ptypeTs=ptypeTs;}
+      latest.push(rec);
+    }
+    return latest;
+  },function(){
+    mergeTex();
+    popView();toast(menuId?'保存しました':'メニューを作成しました');
+  });
+}
+// PUSH/PULLスロットの現メニューを取得。不変条件=同ptypeはアクティブ1件だが、
+// 異常時に複数になった場合はptype付与時刻(ptypeTs)最新→id大のタイブレークで1件に確定する（読み取り側はこのヘルパーに統一）
+function getSlotMenu(pt){
+  var c=(D.tmenu||[]).filter(function(m){return m&&m.ptype===pt;});
+  if(!c.length)return null;
+  c.sort(function(a,b){return String(b.ptypeTs||'').localeCompare(String(a.ptypeTs||''))||((b.id||0)-(a.id||0));});
+  return c[0];
 }
 // メニュー詳細
 function goTMenuDetail(menuId){
   var mn=(D.tmenu||[]).find(function(x){return idEq(x.id,menuId);});if(!mn)return;
   var scopeLabel=mn.scope==='all'?'全選手':(function(){var p=D.p.find(function(x){return idEq(x.id,mn.scope);});return p?p.name+' 専用':'個別';})();
   var h='<div style="max-width:640px">';
-  h+='<div class="card" style="margin-bottom:14px"><div style="font-size:17px;font-weight:700">'+escapeHtml(mn.name)+'</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">配布先: '+scopeLabel+' ・ '+(mn.exercises?mn.exercises.length:0)+'種目</div></div>';
+  var slotFlag=(mn.ptype==='push'||mn.ptype==='pull')?'<span class="flag" style="background:'+(mn.ptype==='push'?'var(--blue)':'var(--pull)')+';color:#fff;font-size:11px;margin-left:8px">'+ic('i-'+mn.ptype,12)+' '+mn.ptype.toUpperCase()+'スロット</span>':'';
+  h+='<div class="card" style="margin-bottom:14px"><div style="font-size:17px;font-weight:700">'+escapeHtml(mn.name)+slotFlag+'</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">配布先: '+scopeLabel+' ・ '+(mn.exercises?mn.exercises.length:0)+'種目</div></div>';
   (mn.exercises||[]).forEach(function(ex){
     var estLabel=ex.estBase?(EST_BASES.find(function(b){return b.k===ex.estBase;})||{}).label:null;
     h+='<div class="card" style="margin-bottom:8px;padding:12px 14px"><div style="font-weight:600;font-size:14px;margin-bottom:8px">'+escapeHtml(ex.name)+'</div>'+
