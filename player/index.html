@@ -3913,6 +3913,39 @@ function getTodayCondition(){
   return{bad:bad,good:good&&!bad,reasons:reasons};
 }
 // 記録を保存（アラート判定込み）
+// ===== tlog容量対策（Phase 0）: 保存レコードのスリム化 =====
+// tlogは1ドキュメント1MiB上限に全レコードが同居するため、保存後に読まれないフィールドを落として容量を約45%削減する。
+// 削除対象（prevEx/note/videoUrl/estWeight/oneRM/targetSets）の読み手はrenderTrainingExecの_curTLogのみ＝保存済みレコードからは一切読まれない。
+// null/false/空文字の省略は、全消費箇所が r.skipped&& / !=null(loose) / >0 / ||'' でガードしているため挙動不変。
+// 冪等（スリム済みレコードに再適用しても無変化）。resultsを持たないレコード（欠席等）と未知の将来フィールドはそのまま通す。
+var TLOG_DROP_RES={prevEx:1,note:1,videoUrl:1,estWeight:1,oneRM:1,targetSets:1};
+function slimTlogRec(log){
+  var out={};
+  for(var k in log){
+    if(!Object.prototype.hasOwnProperty.call(log,k))continue;
+    if(k==='hasInjurySkip'&&!log[k])continue;
+    if(k==='results'&&Array.isArray(log[k])){
+      out.results=log[k].map(function(r){
+        var c={};
+        for(var rk in r){
+          if(!Object.prototype.hasOwnProperty.call(r,rk))continue;
+          if(TLOG_DROP_RES[rk])continue;
+          var v=r[rk];
+          if(v==null)continue;
+          if((rk==='skipped'||rk==='skipReason'||rk==='lastVolume')&&!v)continue;
+          if(rk==='sets'&&Array.isArray(v)){
+            v=v.map(function(s){var o={};for(var sk in s){if(Object.prototype.hasOwnProperty.call(s,sk)&&s[sk]!=null)o[sk]=s[sk];}return o;});
+          }
+          c[rk]=v;
+        }
+        return c;
+      });
+      continue;
+    }
+    out[k]=log[k];
+  }
+  return out;
+}
 function finishTraining(btnEl){
   if(!_curTLog)return;
   // 1) 二重送信ガード（連打でtlog重複作成を防ぐ）。既に処理中なら何もしない。
@@ -3971,6 +4004,7 @@ function finishTraining(btnEl){
   log.results=cleanResults;
   log.totalVolume=totalVol;
   log.hasInjurySkip=injurySkips.length>0;
+  log=slimTlogRec(log); // 容量対策: 保存直前にスリム化（_curTLog・下書きは温存＝実施画面のprevEx表示等に必要）
 
   // 推定1RMを自動計算（BIG3系の種目で、現在の推定値より高ければ記録）
   var e1rmValues={};
