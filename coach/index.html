@@ -220,6 +220,8 @@ function maybeRender(){
   // 主要キーが揃ったら描画（全部待たずに）
   var essential=['p','i','r','ph'];
   if(!essential.every(function(k){return _loaded[k];}))return;
+  // tlog容量対策: 選手リストが揃った時点で全選手のアーカイブを1回だけ取得（完了時に静かに再描画）
+  if(!window._tlaKicked){window._tlaKicked=true;loadTlogArch(function(){maybeRender();});}
   if(!_firstRender){_firstRender=true;render();return;}
   // 2回目以降＝リアルタイム更新: 300msまとめて・アニメなし・スクロール位置維持で静かに再描画
   if(_renderTimer)clearTimeout(_renderTimer);
@@ -271,6 +273,49 @@ function idEq(a,b){if(a==null||b==null)return false;return a===b||String(a)===St
 function toDateStr(d){var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
 function todayStr(){var d=new Date();var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+// ===== tlog容量対策（Phase 0・読み出し側のみ） =====
+// メインdoc appdata/tlog は直近15日分のみ（player/staffのarchiveTlogが選手別×半期のtla_<pid>_<year>h<1|2>へ移送する）。
+// coachは閲覧専用のため移送は行わず、全選手のアーカイブを起動時に取得してtlogAll()で結合して読む。
+function tlaHalf(dateStr){return dateStr.slice(0,4)+'h'+((+dateStr.slice(5,7))<=6?1:2);}
+function tlaKey(pid,half){return 'tla_'+String(pid)+'_'+half;}
+function tlaHalves(){
+  var t=todayStr(),y=+t.slice(0,4),h=(+t.slice(5,7))<=6?1:2;
+  var out=[],cy=2026,ch=1;
+  while(cy<y||(cy===y&&ch<=h)){out.push(cy+'h'+ch);if(ch===1){ch=2;}else{ch=1;cy++;}}
+  return out;
+}
+var _tlogArch=[],_tlogArchLoaded=false,_tlaCbs=null;
+var _tlaCache=null,_tlaCacheSrc=null,_tlaCacheArch=null;
+// メインdoc（D.tlog）+読み込み済みアーカイブのidマージ（メイン側優先）。参照比較キャッシュで再計算を抑制。
+function tlogAll(){
+  var base=D.tlog||[];
+  if(_tlaCache&&_tlaCacheSrc===base&&_tlaCacheArch===_tlogArch)return _tlaCache;
+  var seen={},out=base.slice();
+  base.forEach(function(l){if(l&&l.id!=null)seen[l.id]=1;});
+  _tlogArch.forEach(function(l){if(l&&l.id!=null&&!seen[l.id])out.push(l);});
+  _tlaCache=out;_tlaCacheSrc=base;_tlaCacheArch=_tlogArch;
+  return out;
+}
+// 全選手×全半期のアーカイブdocを一括取得（存在しないdocは空扱い・個別失敗も空扱いで継続）
+function loadTlogArch(cb){
+  if(_tlogArchLoaded){if(cb)cb();return;}
+  if(_tlaCbs){if(cb)_tlaCbs.push(cb);return;}
+  _tlaCbs=cb?[cb]:[];
+  var halves=tlaHalves(),keys=[];
+  (D.p||[]).forEach(function(p){halves.forEach(function(hf){keys.push(tlaKey(p.id,hf));});});
+  Promise.all(keys.map(function(k){
+    return db.collection('appdata').doc(k).get().then(function(doc){
+      if(!doc.exists)return[];
+      try{var q=JSON.parse(doc.data().data);return Array.isArray(q)?q:[];}catch(e){return[];}
+    }).catch(function(e){console.error('tla load error:',k,e);return[];});
+  })).then(function(parts){
+    var seen={},out=[];
+    parts.forEach(function(arr){arr.forEach(function(l){if(l&&l.id!=null&&!seen[l.id]){seen[l.id]=1;out.push(l);}});});
+    _tlogArch=out;_tlogArchLoaded=true;_tlaCache=null;
+    var cbs=_tlaCbs||[];_tlaCbs=null;
+    cbs.forEach(function(f){try{f();}catch(e){console.error(e);}});
+  });
+}
 function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
 function getBest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null;});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
 function getBestBIG3(pid){var sq=getBest(pid,'squat')||0;var bp=getBest(pid,'bench')||0;var dl=getBest(pid,'deadlift')||0;return(sq||bp||dl)?(sq+bp+dl):null;}
@@ -669,7 +714,7 @@ function iqrFilter(vals){
 }
 // 期間のチーム総ボリューム
 function teamVolume(from,to){
-  return D.tlog.filter(function(l){return !l.absent&&l.date>=from&&l.date<=to;})
+  return tlogAll().filter(function(l){return !l.absent&&l.date>=from&&l.date<=to;})
     .reduce(function(s,l){return s+(l.totalVolume||0);},0);
 }
 
@@ -870,7 +915,7 @@ function insPhysical(){
 // --- トレーニング ---
 function insTraining(){
   var out=[],today=todayStr();
-  var logs=D.tlog||[];
+  var logs=tlogAll();
   if(!logs.length)return out;
   // 週間ボリューム比較
   var v1=teamVolume(agoStr(6),today);
@@ -879,8 +924,8 @@ function insTraining(){
     var pct=Math.round((v1-v2)/v2*100);
     // 選手別の内訳（変化の大きい順）
     var perP=D.p.map(function(p){
-      var a=D.tlog.filter(function(l){return idEq(l.pid,p.id)&&!l.absent&&l.date>=agoStr(6);}).reduce(function(s,l){return s+(l.totalVolume||0);},0);
-      var b=D.tlog.filter(function(l){return idEq(l.pid,p.id)&&!l.absent&&l.date>=agoStr(13)&&l.date<=agoStr(7);}).reduce(function(s,l){return s+(l.totalVolume||0);},0);
+      var a=tlogAll().filter(function(l){return idEq(l.pid,p.id)&&!l.absent&&l.date>=agoStr(6);}).reduce(function(s,l){return s+(l.totalVolume||0);},0);
+      var b=tlogAll().filter(function(l){return idEq(l.pid,p.id)&&!l.absent&&l.date>=agoStr(13)&&l.date<=agoStr(7);}).reduce(function(s,l){return s+(l.totalVolume||0);},0);
       return{p:p,a:a,b:b,d:a-b};
     }).filter(function(x){return x.a>0||x.b>0;}).sort(function(x,y){return Math.abs(y.d)-Math.abs(x.d);});
     var volDetail=capRows(perP.map(function(x){
@@ -1058,8 +1103,8 @@ function insPlayer(pid){
     else if(avgS!=null&&avgS<6)out.push({lv:'warn',t:'直近7日の平均睡眠が'+avgS.toFixed(1)+'時間と不足しています',d:'回復が追いつかないと怪我・パフォーマンス低下につながります。'});
   }
   // 週間ボリューム推移
-  var w1=D.tlog.filter(function(l){return idEq(l.pid,pid)&&!l.absent&&l.date>=agoStr(6);}).reduce(function(s,l){return s+(l.totalVolume||0);},0);
-  var w2=D.tlog.filter(function(l){return idEq(l.pid,pid)&&!l.absent&&l.date>=agoStr(13)&&l.date<agoStr(6);}).reduce(function(s,l){return s+(l.totalVolume||0);},0);
+  var w1=tlogAll().filter(function(l){return idEq(l.pid,pid)&&!l.absent&&l.date>=agoStr(6);}).reduce(function(s,l){return s+(l.totalVolume||0);},0);
+  var w2=tlogAll().filter(function(l){return idEq(l.pid,pid)&&!l.absent&&l.date>=agoStr(13)&&l.date<agoStr(6);}).reduce(function(s,l){return s+(l.totalVolume||0);},0);
   if(w1&&w2){
     var vp=Math.round((w1-w2)/w2*100);
     if(vp>=30)out.push({lv:'warn',t:'週間トレーニングボリュームが先週比+'+vp+'%と急増しています',d:'今週 '+w1.toLocaleString()+'kg / 先週 '+w2.toLocaleString()+'kg。急な負荷増は怪我リスク要因です。'});
@@ -1095,7 +1140,7 @@ function exMetrics(sets){
 // 種目の時系列（同日集約: トップ重量=最大 / 推定1RM=最大 / ボリューム=合算）
 function getExSeries(pid,exName){
   var byDate={};
-  (D.tlog||[]).filter(function(l){return idEq(l.pid,pid)&&!l.absent;}).forEach(function(l){
+  tlogAll().filter(function(l){return idEq(l.pid,pid)&&!l.absent;}).forEach(function(l){
     var r=(l.results||[]).find(function(x){return (x.exName||'').trim()===exName&&!x.skipped;});
     if(!r||!r.sets||!r.sets.length)return;
     var m=exMetrics(r.sets);var d=l.date;
@@ -1108,7 +1153,7 @@ function getExSeries(pid,exName){
 }
 // 比較セッション（player getCompareVolume を _curTLog非依存に引数化＋全指標化）。mode: prev / week(6日前以前の直近)
 function getCompareEx(pid,exName,beforeDate,mode,curTs,curId){
-  var logs=(D.tlog||[]).filter(function(l){
+  var logs=tlogAll().filter(function(l){
     if(!idEq(l.pid,pid))return false;
     if(curId!=null&&idEq(l.id,curId))return false;
     if(l.ts&&curTs)return l.ts<curTs;
@@ -1124,7 +1169,7 @@ function getCompareEx(pid,exName,beforeDate,mode,curTs,curId){
 // 種目のestBase（最初に見つかったもの）
 function getExEstBase(pid,exName){
   var eb=null;
-  (D.tlog||[]).filter(function(l){return idEq(l.pid,pid);}).forEach(function(l){(l.results||[]).forEach(function(r){if(!eb&&(r.exName||'').trim()===exName&&r.estBase)eb=r.estBase;});});
+  tlogAll().filter(function(l){return idEq(l.pid,pid);}).forEach(function(l){(l.results||[]).forEach(function(r){if(!eb&&(r.exName||'').trim()===exName&&r.estBase)eb=r.estBase;});});
   return eb;
 }
 // 実測1RM（ph）のベスト値＋測定日
@@ -1154,7 +1199,7 @@ function setTrExC(v){window._trEx=(v||'').trim();var y=window.scrollY;renderPlay
 function setTrMetricC(m){window._trMetric=m;var y=window.scrollY;renderPlayerReport(_detailPid);window.scrollTo(0,y);}
 // 種目推移カードのHTML
 function buildTrendCoach(pid){
-  var logs=D.tlog.filter(function(l){return idEq(l.pid,pid)&&!l.absent;}).sort(function(a,b){return (b.ts||b.date||'').localeCompare(a.ts||a.date||'');});
+  var logs=tlogAll().filter(function(l){return idEq(l.pid,pid)&&!l.absent;}).sort(function(a,b){return (b.ts||b.date||'').localeCompare(a.ts||a.date||'');});
   var exAgg={};
   logs.forEach(function(l){(l.results||[]).forEach(function(r){if(r.skipped)return;var nm=(r.exName||'').trim();if(!nm)return;if(!exAgg[nm])exAgg[nm]={name:nm,count:0,estBase:null};exAgg[nm].count++;if(!exAgg[nm].estBase&&r.estBase)exAgg[nm].estBase=r.estBase;});});
   var exList=Object.keys(exAgg).map(function(k){return exAgg[k];}).sort(function(a,b){return b.count-a.count;});
@@ -1204,7 +1249,7 @@ function buildTrendCoach(pid){
 }
 // セッション履歴カードのHTML（折りたたみ展開）
 function buildHistCoach(pid){
-  var logs=D.tlog.filter(function(l){return idEq(l.pid,pid);}).sort(function(a,b){return (b.ts||b.date||'').localeCompare(a.ts||a.date||'');});
+  var logs=tlogAll().filter(function(l){return idEq(l.pid,pid);}).sort(function(a,b){return (b.ts||b.date||'').localeCompare(a.ts||a.date||'');});
   if(!logs.length)return'';
   var h='<div class="card" style="margin-top:12px"><div style="font-size:13px;font-weight:700;margin-bottom:10px">🏋️ セッション履歴</div>';
   logs.slice(0,20).forEach(function(lg){
@@ -1378,7 +1423,7 @@ function renderHomeView(){
     return d>=0&&d<=7;
   });
   var inputToday=D.f.filter(function(x){return x.date===today;}).length;
-  var trained14=D.tlog.filter(function(l){return !l.absent&&l.date>=agoStr(13);}).length;
+  var trained14=tlogAll().filter(function(l){return !l.absent&&l.date>=agoStr(13);}).length;
   h+='<div class="sec"><div class="grid g4">'+
     rv(kpiTile(active.length,'現在の怪我','var(--red)','件'),0)+
     rv(kpiTile(soon.length,'7日以内に復帰予定','var(--amber)','名'),1)+
@@ -1581,7 +1626,7 @@ function renderTrainingView(){
   var today=todayStr();
   var h='';
   h+=heroBlock('<em>トレーニング</em>の実施状況','実施記録・ボリューム・怪我による制限をチェックします。');
-  var logs=D.tlog.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var logs=tlogAll().slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
   var cutoff=agoStr(13);
   var recent=logs.filter(function(l){return l.date>=cutoff;});
   var doneCount=recent.filter(function(l){return !l.absent;}).length;
