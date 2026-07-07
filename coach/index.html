@@ -1217,7 +1217,7 @@ function buildTrendCoach(pid){
     return '<span style="font-size:12px;padding:9px 13px;border-radius:10px;border:1px solid var(--line-2);'+(active?'background:var(--blue);color:#0A1019;border-color:var(--blue);font-weight:700':'color:var(--txt-2)')+(disabled?';opacity:.35':';cursor:pointer')+'"'+(disabled?' title="実測1RM基準なし＝推定1RM不可"':' onclick="setTrMetricC(\''+mb[0]+'\')"')+'>'+mb[1]+'</span>';
   }).join('');
   var h='<div class="card" style="margin-top:12px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px"><div style="font-size:13px;font-weight:700">📈 種目推移</div>'+
-    '<select class="sel" onchange="setTrExC(this.value)">'+exList.map(function(e){return'<option'+(e.name===sel?' selected':'')+'>'+escapeHtml(e.name)+(e.estBase?'':' (手入力)')+'</option>';}).join('')+'</select></div>'+
+    '<select class="sel" onchange="setTrExC(this.value)">'+exList.map(function(e){return'<option value="'+escapeHtml(e.name)+'"'+(e.name===sel?' selected':'')+'>'+escapeHtml(e.name)+(e.estBase?'':' (手入力)')+'</option>';}).join('')+'</select></div>'+
     '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">'+togHtml+'</div>';
   var series=getExSeries(pid,sel);
   if(!series.length)return h+'<div style="color:var(--txt-2);font-size:12px">この種目の記録がありません</div></div>';
