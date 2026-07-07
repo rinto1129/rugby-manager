@@ -37,6 +37,8 @@ print('--- doSaveStd 正常系（PRのSQ倍率を1.8へ変更して保存） ---
 setVal('std-pos-0-sq','1.8');
 __store['std']=JSON.stringify([]);
 __alerts.length=0;
+// FUKUDAI RED: 保存成功はブロッキングalertからトーストへ移行したため、toastを捕捉して検証する
+var __toasts=[];toast=function(m){__toasts.push(String(m));};
 doSaveStd(mkEl());
 drain();
 var savedArr=JSON.parse(__store['std']||'[]');
@@ -50,7 +52,7 @@ ok('ranksのcolor温存',cfg1.ranks[4].color==='#C084FC');
 eqn('allo bp=0.45',cfg1.allo.bp,0.45);
 eqn('rx sqは3件',cfg1.rx.sq.length,3);
 ok('確認ダイアログを経由',__confirms.some(function(c){return c.indexOf('基準値を保存')>=0;}));
-ok('保存完了アラート',__alerts.some(function(a){return a.indexOf('保存しました')>=0;}));
+ok('保存完了トースト',__toasts.some(function(t){return t.indexOf('保存しました')>=0;}));
 ok('D.stdに反映',D.std.length===1&&D.std[0].pos.PR.sq===1.8);
 
 print('--- 保存後、選手側と同じgetStdCfgが新値を返す ---');

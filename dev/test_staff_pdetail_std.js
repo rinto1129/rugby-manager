@@ -16,7 +16,7 @@ D.ph=[{id:21,pid:2,date:'2026-06-20',squat:150,bench:90,deadlift:200}];
 var h=renderStdSummaryHTML(2);
 ok('見出し',has(h,'BIG3基準・体重帯'));
 ok('SQのランク表示(シルバー)',has(h,'シルバー'));
-ok('BPは弱点マーカー付き',/ブロンズ[^<]*🎯/.test(h)||has(h,'🎯'));
+ok('BPは弱点マーカー付き',/ブロンズ[\s\S]*?i-target/.test(h)||has(h,'i-target'));
 ok('DLのランク表示(ゴールド以上)',has(h,'ゴールド')||has(h,'プラチナ')||has(h,'ダイヤ'));
 ok('推奨体重帯の表示',has(h,'推奨体重帯'));
 ok('現在体重の表示',has(h,'100kg')||has(h,'選手登録の体重'));
