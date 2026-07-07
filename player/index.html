@@ -47,6 +47,10 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 .card-click{cursor:pointer;transition:all .12s}
 @media(hover:hover){.card-click:hover{border-color:var(--blue);background:var(--bg-secondary)}}
 .card-click:active{transform:scale(.98);background:var(--bg-secondary)}
+.clp{display:grid;grid-template-rows:0fr}.clp.open{grid-template-rows:1fr}.clp>div{overflow:hidden;min-height:0}
+.clp-hd{cursor:pointer;user-select:none;-webkit-user-select:none}.clp-chev{display:inline-flex;transition:transform .22s ease}.clp-hd.open .clp-chev{transform:rotate(180deg)}
+.clp-lbl-o{display:none}.clp-hd.open .clp-lbl-o{display:inline}.clp-hd.open .clp-lbl-c{display:none}
+@media(prefers-reduced-motion:no-preference){.clp{transition:grid-template-rows .22s ease}}
 .mc{background:var(--bg-secondary);border-radius:var(--radius);padding:.75rem;text-align:center}.mc .v{font-size:20px;font-weight:700}.mc .l{font-size:10px;color:var(--text-secondary);margin-top:3px}
 .fl{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}.fl label{font-size:13px;color:var(--text-secondary);font-weight:600}
 .form-box{background:var(--bg-secondary);border:1px solid var(--border-tertiary);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:16px}
@@ -1230,7 +1234,7 @@ function myPhysCardHtml(){
   }
   if(band){
     if(band.noHeight){
-      h+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-tertiary);font-size:11px;color:var(--text-secondary)">'+ic('i-scale',12)+' 身長が未登録のため体重基準を表示できません（スタッフに登録を依頼）</div>';
+      h+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-tertiary);font-size:11px;color:var(--text-secondary)">'+ic('i-scale',12)+' 身長が未登録のため体重基準を表示できません（<span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="go(\'mypage\')">マイページで登録</span>）</div>';
     }else{
       var stChip=band.status==='in'?'<span class="bd bd-g">帯内 '+ic('i-check',10)+'</span>'
         :band.status==='under'?'<span class="bd bd-a">あと +'+band.diff+'kg</span>'
@@ -1514,6 +1518,9 @@ function updateNavBadge(){
   var unreadInjNotif=(D.i||[]).filter(function(x){return idEq(x.pid,myPid)&&x.notifyPlayer&&(x.source==='player'||x.source==='match');}).length;
   dot.style.display=(unreadAnns+unreadInjNotif)>0?'block':'none';
 }
+// ホームの折りたたみ（今週の予定・お知らせ）。状態はwindowフラグで再描画をまたいで維持し、クラスをその場でtoggle（再描画しない＝revealが再発火しない）
+function homeWeekToggle(){window._homeWeekOpen=window._homeWeekOpen!==true;var c=document.getElementById('home-week-clp'),hd=document.getElementById('home-week-hd');if(c)c.classList.toggle('open',window._homeWeekOpen);if(hd)hd.classList.toggle('open',window._homeWeekOpen);}
+function homeAnnToggle(){window._homeAnnOpen=window._homeAnnOpen!==true;var c=document.getElementById('home-ann-clp'),hd=document.getElementById('home-ann-hd');if(c)c.classList.toggle('open',window._homeAnnOpen);if(hd)hd.classList.toggle('open',window._homeAnnOpen);}
 function showPlayerSelect(){
   dCA();
   // 全てのnav-btnのハイライトを解除（ログイン画面）
@@ -1536,7 +1543,6 @@ function showSub(html,backTab,backLabel){
 var T={
 home:function(){
   var isOff=(D.offday||[]).indexOf(todayStr())>=0;
-  var pickup=isOff?[]:getTodayPickup();
   var teamAnns=D.ann.filter(function(a){return!a.targetPid;}).sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,5);
   // This week calendar events
   var now=new Date();
@@ -1571,15 +1577,6 @@ home:function(){
     var skip=(D.phskip||[]).some(function(s){return s.pid===p.id&&s.date===yesterdayS2;});
     return!done&&!skip;
   }):[];
-  function getTop3(field){
-    var list=D.p.map(function(pp){var rs=D.ph.filter(function(x){return x.pid===pp.id;});var v=null;
-    if(field==='bronco'){var vs=rs.filter(function(x){return x.bronco;}).map(function(x){return x.bronco;});v=vs.length?Math.min.apply(null,vs):null;}
-    else if(field==='big3'){v=rs.length?Math.max.apply(null,rs.map(function(x){return big3(x);})):null;}
-    else{var vs2=rs.filter(function(x){return x[field];}).map(function(x){return x[field];});v=vs2.length?Math.max.apply(null,vs2):null;}
-    return{p:pp,v:v};}).filter(function(x){return x.v!==null;});
-    field==='bronco'?list.sort(function(a,b){return a.v-b.v;}):list.sort(function(a,b){return b.v-a.v;});
-    return list.slice(0,3);
-  }
   var me=myPid?D.p.find(function(x){return x.id===myPid;}):null;
   var h='';
   if(me){
@@ -1628,22 +1625,27 @@ home:function(){
   // 自分の未入力通知（昨日の測定日）＝個人向けアラートはtodo直後
   if(physMeasureYesterday2&&!phSkipYesterday2&&!physDoneYesterday){h+='<div class="alert-card alert-warn rv" style="margin-bottom:8px;cursor:pointer" onclick="go(\'physical\')">'+ic('i-chart',15)+' 昨日（'+fmt(yesterdayS2)+'）のフィジカル測定が未入力です！ → タップして入力</div>';}
   if(broncoMeasureYesterday2&&!phSkipYesterday2&&!broncoDoneYesterday){h+='<div class="alert-card alert-warn rv" style="margin-bottom:8px;cursor:pointer" onclick="go(\'physical\')">'+ic('i-run',15)+' 昨日（'+fmt(yesterdayS2)+'）のブロンコ測定が未入力です！ → タップして入力</div>';}
-  // お知らせ（部室掲示板ノーティス様式）
+  // お知らせ（部室掲示板ノーティス様式・2件表示＋残りは折りたたみ）
   if(teamAnns.length){
+    var annNi=function(a){return'<div class="notice-item"><div style="font-size:10px;color:var(--text-tertiary);font-weight:700">'+fmt(a.date)+'</div><div style="font-size:13px;white-space:pre-wrap;margin-top:3px">'+escapeHtml(a.text)+'</div></div>';};
     h+='<div class="rv" style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:7px;margin:2px 2px 0">'+ic('i-megaphone',16,'var(--maroon)')+'<span class="kicker">NOTICE BOARD</span><span style="font-size:13px;font-weight:800">お知らせ</span></div>';
-    teamAnns.forEach(function(a){h+='<div class="notice-item"><div style="font-size:10px;color:var(--text-tertiary);font-weight:700">'+fmt(a.date)+'</div><div style="font-size:13px;white-space:pre-wrap;margin-top:3px">'+escapeHtml(a.text)+'</div></div>';});
+    teamAnns.slice(0,2).forEach(function(a){h+=annNi(a);});
+    if(teamAnns.length>2){
+      var annOpen=window._homeAnnOpen===true;
+      h+='<div class="clp'+(annOpen?' open':'')+'" id="home-ann-clp"><div><div>'+teamAnns.slice(2).map(annNi).join('')+'</div></div></div>';
+      h+='<div class="clp-hd'+(annOpen?' open':'')+'" id="home-ann-hd" onclick="homeAnnToggle()" style="display:flex;align-items:center;justify-content:center;gap:5px;font-size:11px;font-weight:700;color:var(--text-secondary);padding:8px 0 2px"><span class="clp-lbl-c">他 '+(teamAnns.length-2)+' 件のお知らせを見る</span><span class="clp-lbl-o">閉じる</span><span class="clp-chev">'+ic('i-chevron-d',14)+'</span></div>';
+    }
     h+='</div>';
   }
   if(me)h+=myPhysCardHtml();
   // ppカードはタップでトレーニング画面へ直行（従来はタップしても何も起きなかった）
   var ppCardH=ppCardHtml(false);
   if(ppCardH)h+='<div onclick="go(\'training\')" style="cursor:pointer">'+ppCardH+'</div>';
-  // 今週のスケジュール（試合日からの日数差=MD-xチップ）
+  // 今週のスケジュール（今日＋次の予定を表示・残りは折りたたみ。試合日からの日数差=MD-xチップ）
   if(weekEvts.length){
     var weekMatches=weekEvts.filter(function(e){return e.type==='match';}).map(function(e){return e.date;}).sort();
     var evIc=function(t){return t==='match'?ic('i-ball',16,'var(--maroon)'):t==='practice'?ic('i-whistle',16,'var(--text-secondary)'):t==='off'?ic('i-moon',16,'var(--purple)'):t==='weight'?ic('i-dumbbell',16,'var(--blue)'):ic('i-pin',16,'var(--text-tertiary)');};
-    h+='<div class="card rv" style="margin-bottom:12px"><div class="kicker" style="margin-bottom:0">THIS WEEK</div><div style="font-weight:800;font-size:14px;margin-bottom:8px">今週のスケジュール</div>';
-    weekEvts.forEach(function(e){
+    var wkRow=function(e){
       var mdChip='';
       if(weekMatches.length){
         var nm=weekMatches.filter(function(md){return md>=e.date;})[0];
@@ -1654,23 +1656,29 @@ home:function(){
           else if(dd<=6)mdChip=' <span class="flag" style="background:var(--pale);color:var(--maroon)">MD-'+dd+'</span>';
         }
       }
-      h+='<div class="log-row"><span style="min-width:18px;display:flex;align-items:center">'+evIc(e.type)+'</span><div style="flex:1"><span style="font-weight:600;font-size:13px">'+fmt(e.date)+' '+escapeHtml(e.title)+'</span>'+mdChip+(e.detail?'<div style="font-size:11px;color:var(--text-secondary)">'+escapeHtml(e.detail)+'</div>':'')+'</div></div>';
-    });
+      return'<div class="log-row"><span style="min-width:18px;display:flex;align-items:center">'+evIc(e.type)+'</span><div style="flex:1"><span style="font-weight:600;font-size:13px">'+fmt(e.date)+' '+escapeHtml(e.title)+'</span>'+mdChip+(e.detail?'<div style="font-size:11px;color:var(--text-secondary)">'+escapeHtml(e.detail)+'</div>':'')+'</div></div>';
+    };
+    var wkToday=todayStr();
+    var wkTodayEvts=weekEvts.filter(function(e){return e.date===wkToday;});
+    var wkNext=weekEvts.filter(function(e){return e.date>wkToday;})[0]||null;
+    var wkShown=wkTodayEvts.concat(wkNext?[wkNext]:[]);
+    var wkRest=weekEvts.filter(function(e){return wkShown.indexOf(e)<0;});
+    h+='<div class="card rv" style="margin-bottom:12px"><div class="kicker" style="margin-bottom:0">THIS WEEK</div><div style="font-weight:800;font-size:14px;margin-bottom:8px">今週のスケジュール</div>';
+    if(wkShown.length){wkShown.forEach(function(e){h+=wkRow(e);});}
+    else{h+='<div style="font-size:12px;color:var(--text-secondary);padding:2px 0">今週この先の予定はありません</div>';}
+    if(wkRest.length){
+      var wkOpen=window._homeWeekOpen===true;
+      h+='<div class="clp'+(wkOpen?' open':'')+'" id="home-week-clp"><div><div style="padding-top:2px">'+wkRest.map(wkRow).join('')+'</div></div></div>';
+      h+='<div class="clp-hd'+(wkOpen?' open':'')+'" id="home-week-hd" onclick="homeWeekToggle()" style="display:flex;align-items:center;justify-content:center;gap:5px;font-size:11px;font-weight:700;color:var(--text-secondary);padding:8px 0 2px"><span class="clp-lbl-c">今週の予定をすべて見る（'+weekEvts.length+'件）</span><span class="clp-lbl-o">閉じる</span><span class="clp-chev">'+ic('i-chevron-d',14)+'</span></div>';
+    }
     h+='</div>';
   }
-  // チーム系: 未入力者一覧・本日の体組成測定者
+  // チーム系: 昨日の未入力者一覧（試合日チェック・フィジカル・ブロンコ）
   if(matchMissedAll.length){h+='<div class="card rv" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--red);display:flex;align-items:center;gap:6px">'+ic('i-ball',15)+' 試合日チェック未入力 <span style="font-size:12px;font-weight:400">'+matchMissedAll.length+'名</span></div>'+matchMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';}
   if(physMissedAll.length){h+='<div class="card rv" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--amber);display:flex;align-items:center;gap:6px">'+ic('i-chart',15)+' 昨日のフィジカル未入力 <span style="font-size:12px;font-weight:400">'+physMissedAll.length+'名</span></div>'+physMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';}
   if(broncoMissedAll.length){h+='<div class="card rv" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--amber);display:flex;align-items:center;gap:6px">'+ic('i-run',15)+' 昨日のブロンコ未入力 <span style="font-size:12px;font-weight:400">'+broncoMissedAll.length+'名</span></div>'+broncoMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';}
-  if(!isOff&&pickup.length){h+='<div class="card rv" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px">'+ic('i-scale',15,'var(--maroon)')+' 本日の体組成測定者</div>';pickup.forEach(function(pid){var p=D.p.find(function(x){return x.id===pid;});if(!p)return;var done=D.bc.some(function(r){return r.pid===pid&&r.date===todayStr();});h+='<div class="log-row">'+avH(p,24)+'<span style="font-weight:600;flex:1">'+escapeHtml(p.name)+'</span>'+(done?'<span class="bd bd-g">済</span>':'<span class="bd bd-r">未</span>')+'</div>';});h+='</div>';}
-  else if(isOff){h+='<div class="alert-card alert-info" style="margin-bottom:12px">'+ic('i-calendar',15)+' 本日は体組成測定オフです</div>';}
-  // Rankings
-  var rankItems=[{field:'squat',label:'スクワット',unit:'kg'},{field:'bench',label:'ベンチプレス',unit:'kg'},{field:'deadlift',label:'デッドリフト',unit:'kg'},{field:'big3',label:'BIG3合計',unit:'kg'},{field:'bronco',label:'ブロンコ',unit:''}];
-  h+='<div class="rv" style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px"><span style="font-weight:600;display:flex;align-items:center;gap:7px">'+ic('i-trophy',18,'var(--gold-deep)')+'ランキング TOP3</span><button class="btn btn-sm" onclick="go(\'ranking\')">全体を見る</button></div>';
-  var medalCols=['var(--gold)','var(--silver)','var(--bronze)'];
-  rankItems.forEach(function(ri){var top=getTop3(ri.field);if(!top.length)return;
-  h+='<div class="card" style="margin-bottom:8px;padding:.75rem 1rem"><div style="font-weight:600;font-size:12px;color:var(--text-secondary);margin-bottom:6px">'+ri.label+'</div>';
-  top.forEach(function(t,idx){var isMe=myPid&&t.p.id===myPid;var val=ri.field==='bronco'?broncoFmt(t.v):t.v+(ri.unit?' '+ri.unit:'');h+='<div style="display:flex;align-items:center;gap:8px;padding:3px 0;'+(isMe?'font-weight:600;color:var(--maroon)':'')+'"><span style="min-width:22px;display:flex;align-items:center">'+ic('i-medal',16,medalCols[idx])+'</span>'+avH(t.p,20)+'<span style="flex:1;font-size:13px">'+escapeHtml(t.p.name)+'</span><span style="font-weight:600;font-size:13px">'+val+'</span></div>';});h+='</div>';});
+  // ランキングは専用ページへ（ホームからはリンクのみ）
+  h+='<div class="card card-click rv" onclick="go(\'ranking\')" style="margin-bottom:12px;display:flex;align-items:center;gap:10px">'+ic('i-trophy',20,'var(--gold-deep)')+'<div style="flex:1"><div style="font-weight:800;font-size:14px">ランキング</div><div style="font-size:11px;color:var(--text-secondary)">BIG3・スクワット・ブロンコなどの順位を見る</div></div>'+ic('i-chevron-r',16,'var(--text-tertiary)')+'</div>';
   $m().innerHTML=h;
 },
 mystatus:function(){
@@ -1783,7 +1791,7 @@ mystatus:function(){
   var ffmi=getCurrentFFMIInfo(myPid);
   h+='<div class="card" style="margin-bottom:10px"><div style="font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px">'+ic('i-scale',15,'var(--maroon)')+' 体重・体組成基準</div>';
   if(band&&band.noHeight){
-    h+='<div style="font-size:12px;color:var(--text-secondary)">身長が未登録のため推奨体重帯を計算できません。スタッフに登録を依頼してください。</div>';
+    h+='<div style="font-size:12px;color:var(--text-secondary)">身長が未登録のため推奨体重帯を計算できません。<span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="go(\'mypage\')">マイページで身長を登録</span>すると表示されます。</div>';
   }else if(band){
     var stChip=band.status==='in'?'<span class="bd bd-g">帯内 '+ic('i-check',10)+'</span>'
       :band.status==='under'?'<span class="bd bd-a">帯まで +'+band.diff+'kg</span>'
@@ -1841,6 +1849,13 @@ mypage:function(){
   var totalUnread=unreadAnns+unreadInjNotif;
   var myTapeRsvs=(D.tape||[]).filter(function(t){return t.pid===myPid;}).filter(function(t){return t.date>=todayStr();}).sort(function(a,b){return a.date.localeCompare(b.date);}).slice(0,3);
   var h='<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">'+avH(p,50)+'<div style="flex:1"><div style="font-size:17px;font-weight:600">'+p.name+(totalUnread?' <span style="display:inline-block;background:var(--red);color:#fff;font-size:11px;padding:2px 8px;border-radius:99px;vertical-align:middle;margin-left:6px">'+ic('i-bell',10)+' '+totalUnread+'</span>':'')+'</div><div style="color:var(--text-secondary);font-size:12px">'+p.position+' / '+p.year+'年'+(p.note?' / '+p.note:'')+'</div></div></div>';
+  // プロフィール（身長は選手が自己編集可能。体重は体組成測定で自動記録）
+  h+='<div class="card" style="margin-bottom:12px"><div class="kicker" style="margin-bottom:2px">PROFILE</div><div style="font-weight:800;font-size:14px;margin-bottom:8px">プロフィール</div>'+
+    '<div style="display:flex;gap:8px;align-items:flex-end"><div style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">身長（cm）</label>'+
+    '<input id="mh-input" class="ipt" type="number" step="0.1" min="100" max="230" inputmode="decimal" placeholder="例：175" value="'+(p.height!=null&&p.height!==''?escapeHtml(String(p.height)):'')+'"></div>'+
+    '<button class="btn btn-p" style="flex:none;width:auto;padding-left:22px;padding-right:22px" onclick="saveMyHeight()">保存</button></div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-top:8px">身長を登録すると、マイフィジカルで推奨体重帯やFFMI（除脂肪量指数）が表示されます。体重は体組成測定で自動記録されます。</div>'+
+    '</div>';
   // 「今日やること」と試合日翌日アラートはホーム（ダッシュボード）へ移設済み
   if(myTapeRsvs.length){h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--purple)"><div style="font-weight:600;margin-bottom:6px;color:var(--purple)">'+ic('i-tape',14)+' テーピング予約</div>';myTapeRsvs.forEach(function(rsv){h+='<div class="log-row"><div style="flex:1"><div style="font-weight:600">'+fmt(rsv.date)+' '+rsv.startTime+'〜'+rsv.endTime+'</div><div style="font-size:12px;color:var(--text-secondary)">'+rsv.parts.join('・')+(rsv.staff?' / 担当: '+rsv.staff:'')+'</div></div></div>';});h+='<button class="btn" style="width:100%;margin-top:6px;font-size:12px" onclick="go(\'tape\')">予約を管理する</button></div>';}
   // Individual announcements
@@ -3720,13 +3735,16 @@ function renderTrainingExec(mn){
     }
     h+='</div>';
   });
-  // 種目追加（自主ウエイトのみ。Phase 4でチームメニュー中の追加にも開放予定＝addTrainingExは共通実装）
-  if(_curTLog&&_curTLog.kind==='self'){
+  // 種目追加（自主・チーム共通。できない/早く終わった時やメニュー外の種目を自由に追加＝addTrainingExは共通実装）
+  if(_curTLog){
+    var addHint=(_curTLog.kind==='self'&&!_curTLog.results.length)
+      ?'やった種目を追加して重量・回数を記録しよう。ベンチプレスなどBIG3系は推定1RMにも反映されます。'
+      :(_curTLog.kind!=='self'?'メニューにない種目をやった時や、追加で行った種目をここに記録できます。':'');
     h+='<div class="card" style="margin-bottom:10px;border:1.5px dashed var(--border-secondary)">'+
       '<div style="font-size:12px;font-weight:700;margin-bottom:8px">'+ic('i-plus',12,'var(--blue)')+' 種目を追加</div>'+
-      '<div style="display:flex;gap:8px"><input id="tr-add-ex" class="ipt" style="flex:1;min-width:0" placeholder="種目名（例：ベンチプレス）" list="tr-ex-hist"><button class="btn btn-p" style="flex:none" onclick="addTrainingEx()">追加</button></div>'+
+      '<div style="display:flex;gap:8px"><input id="tr-add-ex" class="ipt" style="flex:1;min-width:0" placeholder="種目名（例：ベンチプレス）" list="tr-ex-hist"><button class="btn btn-p" style="flex:none;width:auto;padding-left:22px;padding-right:22px" onclick="addTrainingEx()">追加</button></div>'+
       '<datalist id="tr-ex-hist">'+(D.texlist||[]).map(function(n){return'<option value="'+escapeHtml(n)+'">';}).join('')+'</datalist>'+
-      (_curTLog.results.length?'':'<div style="font-size:11px;color:var(--text-secondary);margin-top:8px">やった種目を追加して重量・回数を記録しよう。ベンチプレスなどBIG3系は推定1RMにも反映されます。</div>')+
+      (addHint?'<div style="font-size:11px;color:var(--text-secondary);margin-top:8px">'+addHint+'</div>':'')+
       '</div>';
   }
   h+='<button class="btn btn-p" style="width:100%;margin-top:8px" onclick="finishTraining(this)">'+ic('i-check',13)+' トレーニングを記録</button>';
@@ -4434,6 +4452,15 @@ function updDisabledEx(i,f,v){if(window._disabledExEdit[i])window._disabledExEdi
 function saveDisabledEx(){
   var list=(window._disabledExEdit||[]).filter(function(d){return d.name&&d.name.trim();}).map(function(d){return{name:d.name.trim(),reason:(d.reason||'').trim(),by:'player',date:todayStr()};});
   svSafeUpdate('p',function(latest){var me=latest.find(function(x){return idEq(x.id,myPid);});if(me)me.disabledEx=list;return latest;},function(){go('training');toast('保存しました');});
+}
+// マイページの身長自己編集（100〜230cm検証→svSafeUpdate('p')でheight更新。staff編集との後勝ち競合は許容）
+function saveMyHeight(){
+  var el=document.getElementById('mh-input');
+  var v=el?(el.value||'').trim():'';
+  if(v===''){alert('身長を入力してください');return;}
+  var n=parseFloat(v);
+  if(!isFinite(n)||n<100||n>230){alert('身長は100〜230cmの範囲で入力してください');return;}
+  svSafeUpdate('p',function(latest){var me=latest.find(function(x){return idEq(x.id,myPid);});if(me)me.height=String(n);return latest;},function(){go('mypage');toast('身長を保存しました');});
 }
 
 // ===== 自主トレ記録（Phase 3）: kind='self' =====

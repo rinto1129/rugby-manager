@@ -120,7 +120,7 @@ ok('あいさつに名前',has(home1,'テストPR'));
 ok('今日やること統合',has(home1,'今日やること'));
 ok('マイフィジカルカード',has(home1,'myphys-card'));
 ok('チーム用ヘッダーは出ない',!has(home1,'福岡大学ラグビー部'));
-ok('ランキングTOP3は残る',has(home1,'ランキング TOP3'));
+ok('ランキングはリンク行に集約（TOP3カードは撤去）',has(home1,'ランキング')&&has(home1,"go('ranking')")&&!has(home1,'ランキング TOP3'));
 
 print('--- T.home (未ログイン=チーム画面) ---');
 myPid=null;
