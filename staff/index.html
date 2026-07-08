@@ -4933,7 +4933,7 @@ V.training=function(){
     h+='<div style="font-size:13px;font-weight:700;margin-bottom:8px">通常メニュー（個別・汎用）</div>';
     // アクティブスロットの2件だけ除外（異常時に同ptypeが複数あっても、負けた方はここに出て編集・削除できる）
     var slotIds=[getSlotMenu('push'),getSlotMenu('pull')].filter(function(m){return!!m;}).map(function(m){return m.id;});
-    var menus=(D.tmenu||[]).filter(function(m){return m&&!slotIds.some(function(sid){return idEq(sid,m.id);});}).sort(function(a,b){return (b.createdAt||'').localeCompare(a.createdAt||'');});
+    var menus=(D.tmenu||[]).filter(function(m){return m&&m.ptype!=='fitness'&&!slotIds.some(function(sid){return idEq(sid,m.id);});}).sort(function(a,b){return (b.createdAt||'').localeCompare(a.createdAt||'');});
     if(!menus.length){
       h+='<div class="no">通常メニューはありません</div>';
     }else{
@@ -4944,6 +4944,25 @@ V.training=function(){
           '<div style="display:flex;align-items:center;justify-content:space-between">'+
           '<div style="flex:1"><div style="font-weight:700;font-size:15px">'+escapeHtml(mn.name)+'</div>'+
           '<div style="font-size:12px;color:var(--text-secondary);margin-top:3px">'+(mn.exercises?mn.exercises.length:0)+'種目 ・ <span style="color:'+scopeColor+';font-weight:600">'+scopeLabel+'</span></div></div>'+
+          ''+ic('i-chevron-r',16,'var(--text-tertiary)')+'</div></div>';
+      });
+    }
+    // フィットネスプログラム（オフシーズン等・ptype:'fitness'）— 選手が「これをやる」で自主トレ記録にプレフィルできる構造化ライト
+    h+='<div style="height:1px;background:var(--border-tertiary);margin:22px 0"></div>';
+    h+='<div class="kicker" style="margin-bottom:2px">FITNESS</div><div style="font-size:13px;font-weight:700;margin-bottom:6px">'+ic('i-run',14,'var(--green)')+' フィットネスプログラム</div>';
+    h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;line-height:1.5">ラン・HIIT等の構成を提示すると、選手が「これをやる」で自主トレとして記録できます（オフシーズン向け）。</div>';
+    h+='<button class="btn btn-p" style="width:100%;margin-bottom:12px" onclick="goAddFitProg()">＋ フィットネスプログラムを作成</button>';
+    var fitMenus=(D.tmenu||[]).filter(function(m){return m&&m.ptype==='fitness';}).sort(function(a,b){return (b.createdAt||'').localeCompare(a.createdAt||'');});
+    if(!fitMenus.length){
+      h+='<div class="no">フィットネスプログラムはありません</div>';
+    }else{
+      fitMenus.forEach(function(mn){
+        var scopeLabel=mn.scope==='all'?'全選手':(function(){var p=D.p.find(function(x){return idEq(x.id,mn.scope);});return p?p.name+' 専用':'個別';})();
+        var doneCnt=tlogAll().filter(function(l){return l&&l.fitness&&idEq(l.programId,mn.id);}).length;
+        h+='<div class="card card-click" style="margin-bottom:8px;border-left:3px solid var(--green)" onclick="goFitProgDetail(\''+mn.id+'\')">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between">'+
+          '<div style="flex:1"><div style="font-weight:700;font-size:15px">'+ic('i-run',13,'var(--green)')+' '+escapeHtml(mn.name)+'</div>'+
+          '<div style="font-size:12px;color:var(--text-secondary);margin-top:3px">'+((mn.items||[]).length)+'項目 ・ '+scopeLabel+(doneCnt?' ・ <span style="color:var(--green);font-weight:600">実施'+doneCnt+'名</span>':'')+'</div></div>'+
           ''+ic('i-chevron-r',16,'var(--text-tertiary)')+'</div></div>';
       });
     }
@@ -5085,6 +5104,116 @@ function goTMenuDetail(menuId){
 function delTMenu(menuId){
   if(!confirm('このメニューを削除しますか？'))return;
   svSafeUpdate('tmenu',function(latest){return latest.filter(function(x){return!idEq(x.id,menuId);});},function(){popView();V.training();});
+}
+// ===== フィットネスプログラム（Phase 8・ptype:'fitness'）=====
+// weightメニューとは構造が異なる（items=[{kind,count,minutes,rest,rpe,note}]・exercises:[]で旧コード安全）ため専用フォームで管理する。
+// スロット不変条件（同ptype1件）は課さない＝複数のフィットネスプログラムを併存可。
+var _fitItems=[]; // 作成中の項目リスト
+function goAddFitProg(){_fitItems=[];renderFitProgForm(null,null);}
+function goEditFitProg(menuId){
+  var mn=(D.tmenu||[]).find(function(x){return idEq(x.id,menuId);});
+  if(!mn)return;
+  _fitItems=JSON.parse(JSON.stringify(mn.items||[]));
+  renderFitProgForm(menuId,mn);
+}
+function renderFitProgForm(menuId,mn){
+  mn=mn||{name:'',scope:'all',desc:'',items:[]};
+  var players=(D.p||[]).slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+  var h='<div style="max-width:640px">';
+  h+='<div class="form-box"><div class="fl" style="margin-bottom:12px"><label>プログラム名 *</label><input class="ipt" id="fp-name" value="'+escapeHtml(mn.name||'')+'" placeholder="例: オフ フィットネスA"></div>';
+  h+='<div class="fl" style="margin-bottom:12px"><label>配布先</label><select class="ipt" id="fp-scope"><option value="all"'+(mn.scope==='all'?' selected':'')+'>全選手</option>'+players.map(function(p){return'<option value="'+p.id+'"'+(idEq(mn.scope,p.id)?' selected':'')+'>'+escapeHtml(p.name)+' 専用</option>';}).join('')+'</select></div>';
+  h+='<div class="fl"><label>説明（任意）</label><textarea class="ipt" id="fp-desc" style="min-height:44px" placeholder="狙い・全体の流れなど">'+escapeHtml(mn.desc||'')+'</textarea></div></div>';
+  h+='<div style="font-size:13px;font-weight:700;margin:16px 0 8px">メニュー項目</div>';
+  h+='<div id="fp-item-list">'+renderFitItemList()+'</div>';
+  h+='<button class="btn" style="width:100%;margin-top:10px" onclick="addFitItem()">＋ 項目を追加</button>';
+  h+='<div style="display:flex;gap:8px;margin-top:18px"><button class="btn" style="flex:1" onclick="V.training()">キャンセル</button><button class="btn btn-p" style="flex:2" onclick="saveFitProg('+(menuId?'\''+menuId+'\'':'null')+')">保存</button></div>';
+  h+='</div>';
+  pushView(menuId?'フィットネスプログラムを編集':'新しいフィットネスプログラム',h);
+}
+var FIT_KINDS=['ランニング','バイク','水泳','HIIT','シャトルラン','坂道ダッシュ','縄跳び','サーキット','タバタ'];
+function renderFitItemList(){
+  if(!_fitItems.length)return'<div style="font-size:12px;color:var(--text-secondary);padding:12px;text-align:center;background:var(--bg-secondary);border-radius:8px">項目がまだありません。下のボタンから追加してください。</div>';
+  return _fitItems.map(function(it,i){
+    return'<div class="card" style="margin-bottom:8px;padding:12px">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
+      '<input class="ipt" style="flex:1;font-weight:600" value="'+escapeHtml(it.kind||'')+'" placeholder="種類（例：ランニング）" oninput="updFitItem('+i+',\'kind\',this.value)" list="fp-kindhist">'+
+      '<button class="btn btn-sm btn-d" onclick="delFitItem('+i+')">削除</button></div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">'+
+        '<div style="width:70px"><label style="font-size:11px;color:var(--text-secondary)">本数</label><input class="ipt" type="number" min="1" value="'+(it.count!=null&&it.count!==''?it.count:'')+'" oninput="updFitItem('+i+',\'count\',this.value)" placeholder="5"></div>'+
+        '<div style="width:78px"><label style="font-size:11px;color:var(--text-secondary)">時間(分)</label><input class="ipt" type="number" min="0" step="any" value="'+(it.minutes!=null&&it.minutes!==''?it.minutes:'')+'" oninput="updFitItem('+i+',\'minutes\',this.value)" placeholder="3"></div>'+
+        '<div style="width:78px"><label style="font-size:11px;color:var(--text-secondary)">休憩(秒)</label><input class="ipt" type="number" min="0" value="'+(it.rest!=null&&it.rest!==''?it.rest:'')+'" oninput="updFitItem('+i+',\'rest\',this.value)" placeholder="60"></div>'+
+        '<div style="width:64px"><label style="font-size:11px;color:var(--text-secondary)">RPE</label><input class="ipt" type="number" min="1" max="10" value="'+(it.rpe!=null&&it.rpe!==''?it.rpe:'')+'" oninput="updFitItem('+i+',\'rpe\',this.value)" placeholder="8"></div>'+
+      '</div>'+
+      '<div class="fl" style="margin-top:8px"><label style="font-size:11px;color:var(--text-secondary)">メモ（任意）</label><input class="ipt" value="'+escapeHtml(it.note||'')+'" oninput="updFitItem('+i+',\'note\',this.value)" placeholder="コース・強度の指示など"></div>'+
+      '</div>';
+  }).join('')+'<datalist id="fp-kindhist">'+FIT_KINDS.map(function(n){return'<option value="'+escapeHtml(n)+'">';}).join('')+'</datalist>';
+}
+function addFitItem(){_fitItems.push({kind:'',count:'',minutes:'',rest:'',rpe:'',note:''});var el=document.getElementById('fp-item-list');if(el)el.innerHTML=renderFitItemList();}
+function delFitItem(i){_fitItems.splice(i,1);var el=document.getElementById('fp-item-list');if(el)el.innerHTML=renderFitItemList();}
+function updFitItem(i,field,val){if(_fitItems[i])_fitItems[i][field]=val;}
+function saveFitProg(menuId){
+  var name=(document.getElementById('fp-name')||{}).value.trim();
+  if(!name)return alert('プログラム名を入力してください');
+  var scope=(document.getElementById('fp-scope')||{}).value||'all';
+  var desc=(document.getElementById('fp-desc')||{}).value.trim();
+  var items=_fitItems.filter(function(it){return it.kind&&it.kind.trim();}).map(function(it){
+    return{kind:it.kind.trim(),
+      count:(it.count!==''&&it.count!=null)?(parseInt(it.count)||null):null,
+      minutes:(it.minutes!==''&&it.minutes!=null&&!isNaN(parseFloat(it.minutes)))?parseFloat(it.minutes):null,
+      rest:(it.rest!==''&&it.rest!=null)?(parseInt(it.rest)||null):null,
+      rpe:(it.rpe!==''&&it.rpe!=null)?(parseInt(it.rpe)||null):null,
+      note:it.note?String(it.note).trim():''};
+  });
+  if(!items.length)return alert('項目を1つ以上追加してください（種類は必須）');
+  var newIdVal=menuId?null:Date.now();
+  svSafeUpdate('tmenu',function(latest){
+    if(!Array.isArray(latest))latest=[];
+    if(menuId){
+      var m=latest.find(function(x){return idEq(x.id,menuId);});
+      if(m){m.name=name;m.scope=scope;m.desc=desc;m.items=items;m.ptype='fitness';m.exercises=[];delete m.ptypeTs;}
+    }else if(!latest.some(function(x){return idEq(x.id,newIdVal);})){ // updateFn再実行でも冪等
+      latest.push({id:newIdVal,name:name,scope:scope,ptype:'fitness',desc:desc,items:items,exercises:[],createdBy:'スタッフ',createdAt:todayStr()});
+    }
+    return latest;
+  },function(){
+    popView();toast(menuId?'保存しました':'フィットネスプログラムを作成しました');
+  });
+}
+// フィットネスプログラム詳細（項目表示＋実施者一覧=tlogのprogramId照合）
+function goFitProgDetail(menuId){
+  var mn=(D.tmenu||[]).find(function(x){return idEq(x.id,menuId);});if(!mn)return;
+  var scopeLabel=mn.scope==='all'?'全選手':(function(){var p=D.p.find(function(x){return idEq(x.id,mn.scope);});return p?p.name+' 専用':'個別';})();
+  var h='<div style="max-width:640px">';
+  h+='<div class="card" style="margin-bottom:14px;border-left:3px solid var(--green)"><div style="font-size:17px;font-weight:700">'+ic('i-run',15,'var(--green)')+' '+escapeHtml(mn.name)+' <span class="flag" style="background:var(--green);color:#fff;font-size:11px;margin-left:6px">フィットネス</span></div>'+
+    '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">配布先: '+scopeLabel+' ・ '+((mn.items||[]).length)+'項目</div>'+
+    (mn.desc?'<div style="font-size:13px;color:var(--text-secondary);margin-top:8px;line-height:1.6;white-space:pre-wrap">'+escapeHtml(mn.desc)+'</div>':'')+'</div>';
+  (mn.items||[]).forEach(function(it,idx){
+    var meta=[];
+    if(it.count!=null)meta.push(it.count+'本');
+    if(it.minutes!=null)meta.push(it.minutes+'分');
+    if(it.rest!=null)meta.push('休憩'+it.rest+'秒');
+    if(it.rpe!=null)meta.push('RPE'+it.rpe);
+    h+='<div class="card" style="margin-bottom:8px;padding:12px 14px"><div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:13px;font-weight:800;color:var(--green);font-family:var(--font-num)">'+(idx+1)+'</span><span style="font-weight:600;font-size:14px">'+escapeHtml(it.kind)+'</span></div>'+
+      (meta.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'+meta.map(function(m){return'<span style="background:var(--bg-secondary);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600">'+m+'</span>';}).join('')+'</div>':'')+
+      (it.note?'<div style="font-size:12px;color:var(--text-secondary);margin-top:8px;padding:6px 8px;background:var(--bg-secondary);border-radius:6px;white-space:pre-wrap">'+ic('i-info',12)+' '+escapeHtml(it.note)+'</div>':'')+
+      '</div>';
+  });
+  // 実施者一覧（fitness tlog の programId 照合。自由記録=programIdなしは含まない）
+  var doers=tlogAll().filter(function(l){return l&&l.fitness&&idEq(l.programId,menuId);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  h+='<div style="font-size:13px;font-weight:700;margin:18px 0 8px">'+ic('i-check',13,'var(--green)')+' 実施した選手（'+doers.length+'）</div>';
+  if(!doers.length){
+    h+='<div class="no">まだ実施記録はありません</div>';
+  }else{
+    doers.forEach(function(l){
+      var p=D.p.find(function(x){return idEq(x.id,l.pid);});
+      var f=l.fitness||{};
+      var fm=[];if(f.minutes!=null)fm.push(f.minutes+'分');if(f.km!=null)fm.push(f.km+'km');if(f.rpe!=null)fm.push('RPE'+f.rpe);
+      h+='<div class="log-row" style="padding:7px 0">'+(p?avH(p,26):'')+'<span style="font-weight:600;flex:1;margin-left:'+(p?'8px':'0')+'">'+escapeHtml(p?p.name:'不明な選手')+'</span><span style="font-size:11px;color:var(--text-secondary)">'+fmt(l.date)+'</span>'+(fm.length?'<span style="font-size:11px;color:var(--green);font-weight:600;margin-left:8px">'+escapeHtml(fm.join(' / '))+'</span>':'')+'</div>';
+    });
+  }
+  h+='<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-d" onclick="delTMenu(\''+menuId+'\')">削除</button><button class="btn btn-p" style="flex:1" onclick="goEditFitProg(\''+menuId+'\')">編集</button></div>';
+  h+='</div>';
+  pushView(mn.name,h);
 }
 // 実施状況（後のステップで充実させる）
 function renderTrainingStatus(){
