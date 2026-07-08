@@ -7,11 +7,12 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-08（**🆕🆕🆕🆕🆕🆕🆕🆕🆕Phase 8完了＋Phase 1〜8を全てpush済み（`93c1d81`・ユーザー指示で2026-07-08に一括push・origin/main同期済み・GitHub Pages反映）。** Fitプログラム=staff`10e711b`＋player`750ddeb`＋レビュー修正`4212a86`。敵対的レビュー5レンズ×スケプティック2名裏取り→確定所見1件（low・実施人数のpidユニーク化）修正済・偽陽性0。全27テスト回帰PASS。残るはPhase 9（GPS/スタッツExcel取込＝ユーザーの実xlsx到着待ちで着手不可）のみ＝**実質全Phase実装完了・全てデプロイ済み**。）
+- 日時: 2026-07-08（**🆕🆕🆕🆕🆕🆕🆕🆕🆕Phase 1〜8実装・レビュー・push・GitHub Pages反映まで全て完了（`93c1d81`〜`6bdb5e1`・origin/main同期済み）。次セッションでユーザーがGPS/試合スタッツの実Excelファイルを送付する予定＝到着したらPhase 9（GPS/スタッツExcel取込）に着手すること。**）
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
 
+- **🆕Phase 9着手条件が満たされる見込み（2026-07-08予告）**: ユーザーが「今からGPS等のファイル送るね」と予告し、会話クリア後に送付予定。**次セッション開始時、チャットに実Excelファイル（GPS/試合スタッツ）が添付されていたら、すぐにPhase 9に着手してよい**（もう質問攻め・計画確認は不要＝要件・設計は下記プランで確定済み）。着手時は必ず`/Users/nakayamarinnin/.claude/plans/sequential-doodling-feather.md`のPhase 9節を読み、実ファイルの列構成を見てから`gs`/`gr_<sessId>`/`gmap`のメトリクス定義を確定すること（新キーはSK登録＝ld/startListenersが自動処理・`D`初期値も同時追加を忘れずに）。ファイルがまだ届いていなければ、通常どおり待機。
 - **⚠️pushのタイミング（2026-07-07指示→2026-07-08一括push実施）**: 「pushは一番最後で！」に従いPhase 1〜8をコミットのみ積み上げ→2026-07-08にユーザー指示で**一括push完了（origin/main同期済み・未pushコミットなし）**。以降の新規作業も同方針（都度push確認は挟まず積み上げ→ユーザー明示指示でpush）。**現在 main==origin/main（先行0）**。次にコミットを積んだら、区切りでユーザーにpush可否を確認するか明示指示を待つこと。
 - **✅Phase 8完了（2026-07-08・staff`10e711b`＋player`750ddeb`＋レビュー修正`4212a86`・✅push済み）**: Fitプログラム（`ptype:'fitness'`のtmenu構造化ライト→選手「これをやる」でプレフィル→tlogにprogramId→実施者一覧）。3コミット構成:
   - **8-A（`10e711b`・staff）**: `tmenu`に`ptype:'fitness'`（`{id,name,scope,ptype:'fitness',desc,items:[{kind,count,minutes,rest,rpe,note}],exercises:[],createdBy,createdAt}`・**exercises:[]で既存weightメニュー描画コード安全**・スロット不変条件はpush/pull専用でfitnessには課さず複数併存可）。V.trainingメニュータブに**第3セクション「フィットネスプログラム」**（`i-run`緑・作成ボタン・実施N名バッジ）＋**通常メニュー一覧からptype:'fitness'除外**（`m.ptype!=='fitness'&&`をfilterに追加）。`_fitItems`/`goAddFitProg`/`goEditFitProg`/`renderFitProgForm`/`renderFitItemList`(datalist=`FIT_KINDS`)/`addFitItem`/`delFitItem`/`updFitItem`/`saveFitProg`(svSafeUpdate('tmenu')・items整形〈空/空白kind除外・count/minutes/rest/rpe数値化・空→null〉・新規id=Date.now()・冪等ガード)。`goFitProgDetail`＝項目表示＋**実施者一覧**（`tlogAll().filter(l=>l.fitness&&idEq(l.programId,menuId))`）。削除は`delTMenu`流用。
