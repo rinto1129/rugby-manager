@@ -7,19 +7,22 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-09（**🆕Phase 9-D完了・コミット済み`4f80268`（staff/index.html＋player/index.html＋dev/test_mstat.js＝試合スタッツ取込ms/msr_＋ランキング4種目）。staff=試合スタッツ取込エンジン(`parseMstatGrid`/`parseMstatTSV`/`mstatCommit`/`msLoadRows`/`msDelSession`/`MS_COLS`)＋取込ウィザードV.gpsに`match`タイプ分岐(貼付TSV専用→GPSと同じ`matchGpsRows`名前照合→`ms`索引＋`msr_<id>`保存)＋ms履歴/詳細(`msDetail`/`msDelConfirm`)。player=`msAggValues`＋ms読取り層(`_msrCache`/`msLoadRowsRO`/`msLoadMany`)＋RANK_EVENTSに`src:'ms'`4種目(`msTkl`タックル数/`msTklPct`成功率〈3本以上〉/`msCarry`キャリー/`msLb`ラインブレイク)＋T.rankingの`isGps`を`isSess`(=gs||ms共通)へ一般化＋`rankMSess`。成功率=Σmade/Σatt×100(made=D+G+P・att=made+Miss・att>=3のみ)。敵対的レビュー(7レンズ×3スケプティック裏取り・16エージェント・1.13Mトークン)→確定1件(low)修正=`gpsSetType`がmatch→gps切替で`meta.kind`を'match'のまま残しGPS練習が試合として誤保存されうる回帰(kindをtype既定へリセット)＋回帰ガードテスト・他6レンズクリーン。全28テストPASS・エンジンmd5不変(player/staff)・4ファイルLOAD OK・ブラウザ実機OK・本番Firestoreテスト保存(ms/gmap/msr_)は削除済み。次はマイデータ⑥試合スタッツ(任意)＋仕上げ(実ファイル5点投入)。Phase 1〜8はpush済み(origin/main同期)、9-A(`3cb8825`)＋9-B(`9f174fd`)＋9-C(`82869de`)＋9-D(`4f80268`)＋HANDOFF群は未push。**）
+- 日時: 2026-07-09（**🆕9-D完了(`4f80268`)に続き、仕上げ用TSVを準備・検証完了。ただしユーザーへの2質問が未回答のままモデル切替(sonnet-5)でセッション区切り＝次セッションはまずこの2点をユーザーに確認すること（下記「🔴次にやること」参照）。作業自体はコミット済み・破棄なし。**）
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
 
-- **🆕Phase 9 進行中（プラン: `/Users/nakayamarinnin/.claude/plans/users-nakayamarinnin-documents-0701-070-luminous-hopcroft.md`＝必読・これが正）。9-A/9-B/9-C/9-D完了、残るはプランの「### 仕上げ」＋任意のマイデータ⑥試合スタッツ**。承認は「進めて！」で取得済み＝要件・設計確定・再質問不要。同プランに沿って着手してよい。
+- **🆕未回答の2質問（前セッション末にAskUserQuestionしたがユーザーは`/model claude-sonnet-5`で応答＝実質未回答。次セッション冒頭で改めて確認すること）**:
+  1. **実データ投入は誰が行うか**: (a)ユーザーが本番staff画面(https://rinto1129.github.io/rugby-manager/staff/)からガイド通り貼付/選択して投入（推奨・同姓/異体字の照合を人が判断できる） (b)Claudeがブラウザで代行投入（本番Firestoreに直接書くことになる＝要注意、かつ曖昧照合はどのみち都度確認が要る）。
+  2. **9-A〜9-D＋HANDOFF群（未pushコミット・現在9件）をpushするか**。「pushは一番最後で／都度確認せず積み上げ→明示指示でpush」が既定方針なので、明示指示が無ければpushしない。
+  - どちらも急ぐ話ではないので、次セッション冒頭でAskUserQuestion等で確認してから進めること。ユーザーが本メッセージなどで既に方針を示していればそれに従い、この確認はスキップしてよい。
+- **🆕Phase 9 進行中（プラン: `/Users/nakayamarinnin/.claude/plans/users-nakayamarinnin-documents-0701-070-luminous-hopcroft.md`＝必読・これが正）。9-A/9-B/9-C/9-D完了、残るはプランの「### 仕上げ」（実データ投入・上記質問1で分岐）＋任意のマイデータ⑥試合スタッツ**。承認は「進めて！」で取得済み＝要件・設計確定・再質問不要（実装内容自体は）。
   - **✅9-A完了（`3cb8825`・staffのみ・未push）**: GPS取込ウィザード。詳細は下の「✅Phase 9-A完了」節参照。
   - **✅9-B完了（`9f174fd`・player/index.htmlのみ・未push）**: ランキングにGPS6種目。詳細は下の「✅Phase 9-B完了」節参照。
   - **✅9-C完了（`82869de`・player/index.html＋dev/test_mydata.js・未push）**: マイデータ⑥GPS。詳細は下の「✅Phase 9-C完了」節参照。
   - **✅9-D完了（`4f80268`・staff＋player＋dev/test_mstat.js・未push）**: 試合スタッツ取込＋ランキング4種目。詳細は下の「✅Phase 9-D完了」節参照。
-  - **⏭次にやる候補（どちらもプラン内・優先順はユーザーに確認）**:
-    - **(a) 仕上げ＝実ファイル5点の初期投入（プラン88-90行目）＝🆕TSV準備完了・本番投入待ち**: **重要発見: スタッツPDF/GPS PDFはグリフ埋込でなく`pymupdf(fitz)`でテキスト・表(`find_tables()`)がクリーン抽出できた**（HANDOFFの旧「文字化け」記載は誤り。`python3 -m pip install --user pymupdf openpyxl`で導入）。Claudeが全6セッションを抽出→`MS_COLS`/`GPS_COLS`順TSVへ変換→**staffパーサ(`parseMstatTSV`/`parseGpsTSV`/`parseGpsGrid`)で再パースして数値一致を検証済み**。成果物=`/Users/nakayamarinnin/Documents/福大/スタッツ/取込用TSV/`（`00_取込ガイド.txt`＋①GPS試合工大A(17名)②GPS試合工大B(23名)③スタッツvsFIT_A(18名)④スタッツvsFIT_B(23名)）。練習GPS(0701/0703各15名)はstaffのExcel直接選択で投入（`0701~0703.xlsx`のシート0701/0703）。名前はフルネームに補正済(find_tablesが佐古野→佐古とクリップするのを生テキストで補正)。**⚠️プレビュー環境=本番Firestore接続なので、投入は本番staff画面(https://rinto1129.github.io/rugby-manager/staff/)からユーザーが行う（同姓〈古賀・生力・和合〉/異体字〈﨑迫・渡邉/渡邊〉の照合はユーザーが選択）。→ユーザーがガイド通り貼付投入すれば完了**。TSV再生成スクリプトはこのセッションのbash履歴参照(fitz find_tables→列マップ)。
-    - **(b) マイデータ⑥に試合スタッツを並べる（任意・9-C同型）**: player T.mydata ⑥GPS節(player:5221付近)の後ろに、`_msrCache`/`msLoadRowsRO`/`msLoadMany`/`msAggValues`(9-Dでplayerに追加済み・グローバル)を使って自分の試合スタッツ(タックル成功率/キャリー/LB等の推移・自己ベスト・チーム内順位)を追加。プランの正式9-Dには非含だがHANDOFF既定で「並べられる」と明記済み。test_mydata拡張。
+  - **✅仕上げ用TSV準備完了（コミット無し・成果物はリポジトリ外）＝🆕上記質問1の回答待ちで投入は未実施**: **重要発見: スタッツPDF/GPS PDFはグリフ埋込でなく`pymupdf(fitz)`でテキスト・表(`find_tables()`)がクリーン抽出できた**（HANDOFFの旧「文字化け」記載は誤り。`python3 -m pip install --user pymupdf openpyxl`で導入）。Claudeが全6セッションを抽出→`MS_COLS`/`GPS_COLS`順TSVへ変換→**staffパーサ(`parseMstatTSV`/`parseGpsTSV`/`parseGpsGrid`)で再パースして数値一致を検証済み**。成果物=`/Users/nakayamarinnin/Documents/福大/スタッツ/取込用TSV/`（`00_取込ガイド.txt`＋①GPS試合工大A(17名)②GPS試合工大B(23名)③スタッツvsFIT_A(18名)④スタッツvsFIT_B(23名)）。練習GPS(0701/0703各15名)はstaffのExcel直接選択で投入（`0701~0703.xlsx`のシート0701/0703）。名前はフルネームに補正済(find_tablesが佐古野→佐古とクリップするのを生テキストで補正)。**⚠️プレビュー環境=本番Firestore接続と判明**（このセッションで検証中に一度テスト書込→即削除済み。詳細はメモリ`project_preview_is_production_firestore`）。→質問1の回答に従って投入すること。TSV再生成手順はこのセッションのbash履歴参照(fitz `find_tables()`→列マップ→staffパーサで再検証、のパイプライン)。
+  - **⏭任意タスク**: マイデータ⑥に試合スタッツを並べる（9-C同型）: player T.mydata ⑥GPS節(player:5221付近)の後ろに、`_msrCache`/`msLoadRowsRO`/`msLoadMany`/`msAggValues`(9-Dでplayerに追加済み・グローバル)を使って自分の試合スタッツ(タックル成功率/キャリー/LB等の推移・自己ベスト・チーム内順位)を追加。プランの正式9-Dには非含だがHANDOFF既定で「並べられる」と明記済み。test_mydata拡張。優先度は低い（データ投入後でよい）。
   - **⚠️9-A実装で判明・9-B以降に効く重要事実**:
     - **staffには既存モーション基盤があった**（`.rv`マーカー→MutationObserver`_armReveal()`でスクロールreveal、`data-cu`属性→`_cuRun()`カウントアップ、`_visitedTabs`+`_navAnim`でセッション1回/タブ制限＝onSnapshot再描画で再発火しない冪等ガード内蔵、`_reduceMotion()`）。→プランの`gx-`層をJS新規実装せず**既存基盤を再利用**し、gx-はshimmer/glow/pop/ウィザード進行バー/チェック描画の**装飾専用CSSのみ**新設（全て`@media(prefers-reduced-motion:no-preference)`ガード）。playerも同型の基盤があるはず＝先に確認して再利用すること（重複実装しない）。
     - **選手名照合**: 実選手はフルネーム「姓 名」、GPS/スタッツは姓のみ。姓重複あり（古賀×2・大石×2・上田×2）＝一意なら自動・重複はambig(select)。**gmap学習は姓が一意/未登録(異体字)のみ**（曖昧姓は学習しない＝9-Aレビュー修正）。異体字（渡邉U+9089/渡邊U+908A・﨑U+FA11）はNFKC非吸収→gmap辞書で救済。
