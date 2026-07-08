@@ -7,16 +7,16 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-09（**🆕Phase 9-B完了・コミット待ち（player/index.html＝ランキングにGPS6種目追加）。SK/D配線(gs/ms)＋RANK_EVENTS 6種目(src:'gs')＋GPS読取り層(`_grCache`/`gpsLoadRowsRO`/`gpsLoadMany`)＋純関数集計(`gpsAggValues`=合算/最大/加重wr・0分除外・`gpsWindowCutoff`/`gpsSelSessions`)＋T.rankingのGPS分岐(セッション/累計チップ・非同期ロードゲート・`_rkInvoke`冪等ガード)＋スピードテーマCSS装飾。敵対的レビュー(5レンズ・15エージェント・680Kトークン)→確定1件(MEDIUM=非同期clobber)修正・LOW1件は現行staff実装では実害なし(下記)。player全15テストPASS(新規test_gps_rank=40アサート)・エンジンmd5不変・ブラウザ実機OK。次は9-C。Phase 1〜8はpush済み(origin/main同期)、9-A(staff`3cb8825`)＋9-B＋HANDOFF群は未push。**）
+- 日時: 2026-07-09（**🆕Phase 9-C完了・コミット済み`82869de`（player/index.html＋dev/test_mydata.js＝マイデータ⑥GPS実装）。T.mydataの⑥GPS(従来プレースホルダ)を実装＝①ヒーローカード(直近出場セッションの走行距離km/最高速度km/h/スプリント本＋補助指標・maroon→orangeグラデ+スピードライン装飾)②距離+高強度ラン推移チャート(`md-gps-dist`・bar+line dual軸・試合マーカーmaroon強調)③最高速度推移(`md-gps-spd`)+自己ベスト④チーム内順位チップ(D.p名簿基準)。`_mdRange`連動＋非同期ロードゲート(`_gpsPend`→`gpsLoadMany`→`curTab==='mydata'&&!subView`再描画)。9-Bの読取り層(`_grCache`/`gpsLoadRowsRO`/`gpsLoadMany`/`gpsAggValues`)を共用。敵対的レビュー(6レンズ×スケプティック・14エージェント・1.12Mトークン)→確定4件(全low)中2件修正(下記)・反証4件。player全15テストPASS(test_mydata=GPS新規30+アサート)・エンジンmd5不変(`fb8c64c…`)・ブラウザ実機OK。次は9-D。Phase 1〜8はpush済み(origin/main同期)、9-A(staff`3cb8825`)＋9-B(`9f174fd`)＋9-C(`82869de`)＋HANDOFF群は未push。**）
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
 
-- **🆕Phase 9 進行中（プラン: `/Users/nakayamarinnin/.claude/plans/users-nakayamarinnin-documents-0701-070-luminous-hopcroft.md`＝必読・これが正）。9-A/9-B完了、次は9-C**。承認は「進めて！」で取得済み＝要件・設計確定・再質問不要。9-C以降も同プランに沿って着手してよい。
+- **🆕Phase 9 進行中（プラン: `/Users/nakayamarinnin/.claude/plans/users-nakayamarinnin-documents-0701-070-luminous-hopcroft.md`＝必読・これが正）。9-A/9-B/9-C完了、次は9-D**。承認は「進めて！」で取得済み＝要件・設計確定・再質問不要。9-D以降も同プランに沿って着手してよい。
   - **✅9-A完了（`3cb8825`・staffのみ・未push）**: GPS取込ウィザード。詳細は下の「✅Phase 9-A完了」節参照。
-  - **✅9-B完了（コミット待ち・player/index.htmlのみ）**: ランキングにGPS6種目。詳細は下の「✅Phase 9-B完了」節参照。
-  - **⏭9-C（次にやる・マイデータ⑥GPS・player:5090付近の`D.gs&&D.gs.length`ガード内を実装）**: プランの9-C節参照。**9-Bで既に置いた読取り層をそのまま共用できる**（`_grCache`/`gpsLoadRowsRO`/`gpsLoadMany`/`gpsAggValues`/`gpsWindowCutoff`/`gpsSelSessions`＝全てT.rankingの直前に定義済み・グローバル）。マイデータは「自分のpid1名分」を全grから抽出（期間セレクタ`_mdRange`連動）。ヒーローカード(距離/最高速度km/h/スプリントの3大数字)＋距離+高強度ランの推移チャート(md_接頭辞・dC先行・固定高)＋自己ベスト＋チーム内順位。試合セッションはmaronマーカー強調。**注意: gpsAggValuesはpid別マップを返すので、自分1名なら`gpsAggValues([rows],metric)[myPid]`で取れる。推移チャートはセッション単位の生値が要る＝grを日付順に並べて自分の行を拾う**。dev/test_mydata.js拡張。
-  - **⏭9-D（試合スタッツ取込ms/msr_＋ランキング4種目）**: プラン参照。**9-Bで`ms`はSK/D配線済み・RANK_EVENTSに`src:'ms'`追加口コメント有(player:2860付近)**。仕上げに実ファイル5点を初期投入（GPS PDFとスタッツPDFはClaudeがTSV化してstaff貼付欄から投入）。
+  - **✅9-B完了（`9f174fd`・player/index.htmlのみ・未push）**: ランキングにGPS6種目。詳細は下の「✅Phase 9-B完了」節参照。
+  - **✅9-C完了（`82869de`・player/index.html＋dev/test_mydata.js・未push）**: マイデータ⑥GPS。詳細は下の「✅Phase 9-C完了」節参照。
+  - **⏭9-D（次にやる・試合スタッツ取込ms/msr_＋ランキング4種目）**: プラン83-86行目参照。**9-Bで`ms`はSK/D配線済み(player:344/821)・RANK_EVENTSに`src:'ms'`追加口コメント有(player:2936付近＝`{field:'tackles',...,src:'ms'}`のコメント行)**。staff V.gpsに「試合スタッツ」取込タイプ追加(貼付TSV→同じ名前照合→`ms`索引＋`msr_<id>`保存)＋RANK_EVENTSに`src:'ms'`種目(タックル数/タックル成功率〈3タックル以上のみ〉/キャリー数/ラインブレイク)＋dev/test_mstat.js。**9-C同様、マイデータ⑥はGPSに続けて試合スタッツも並べられる（既存GPS読取り層と同型で`msr_`層を足す）**。仕上げに実ファイル5点を初期投入（GPS PDFとスタッツPDFはClaudeがTSV化してstaff貼付欄から投入）。
   - **⚠️9-A実装で判明・9-B以降に効く重要事実**:
     - **staffには既存モーション基盤があった**（`.rv`マーカー→MutationObserver`_armReveal()`でスクロールreveal、`data-cu`属性→`_cuRun()`カウントアップ、`_visitedTabs`+`_navAnim`でセッション1回/タブ制限＝onSnapshot再描画で再発火しない冪等ガード内蔵、`_reduceMotion()`）。→プランの`gx-`層をJS新規実装せず**既存基盤を再利用**し、gx-はshimmer/glow/pop/ウィザード進行バー/チェック描画の**装飾専用CSSのみ**新設（全て`@media(prefers-reduced-motion:no-preference)`ガード）。playerも同型の基盤があるはず＝先に確認して再利用すること（重複実装しない）。
     - **選手名照合**: 実選手はフルネーム「姓 名」、GPS/スタッツは姓のみ。姓重複あり（古賀×2・大石×2・上田×2）＝一意なら自動・重複はambig(select)。**gmap学習は姓が一意/未登録(異体字)のみ**（曖昧姓は学習しない＝9-Aレビュー修正）。異体字（渡邉U+9089/渡邊U+908A・﨑U+FA11）はNFKC非吸収→gmap辞書で救済。
@@ -24,8 +24,23 @@
   - **プレビュー環境（重要・9-A/9-B実証）**: プレビューハーネスは起動プロセスを**サンドボックス化しscratchpad配下しか読めない**（リポジトリ直下を直接配信すると404）。→`.claude/launch.json`のdirectoryを**自セッションの**scratchpadの`previewroot`に向け（`.claude/launch.json`はgit非管理＝毎セッション書き換えてよい）、`cp player/index.html <previewroot>/player/index.html`で同期してから起動/リロード。**注意: launch.jsonは前セッションのpreviewrootを指したまま残る＝新セッションは自分のパスに更新すること**。**Firestoreはこの環境では接続不可の場合がある**（9-Bセッションはオフライン＝`preview_eval`で`D.p`/`D.gs`/`_grCache`/`myPid`をモック注入して`T.ranking()`を直接呼び描画確認した。avH()はp.idを数値modで使うのでモックidは**数値**に）。本番Firestoreに書いたら必ず消すこと。
   - **実ファイル（`/Users/nakayamarinnin/Documents/福大/スタッツ/`）**: `0701~0703.xlsx`（平日練習GPS・シート`0701`/`0703`＋元データ）／`0622~0626.xlsx`（別週練習GPS）／`0704　工大A.pdf`・`0704 福工大B.pdf`（試合GPS・Excel印刷PDF）／`260704 vs FIT Stats.pdf`・`260704 vs FIT B Match Stats.pdf`（試合スタッツ21p・PDF内グリフ番号埋込で機械抽出は文字化け→貼付TSV方式）。
   - **RANK_EVENTS追加項目（9-B・ユーザー確定）**: 総走行距離(km)・最高速度(km/h併記)・スプリント(距離m/回数)・高強度ラン(m)・ワークレート(m/min) の**全部**、セッション選択＋期間累計の両対応。
-- **⚠️pushのタイミング（2026-07-07指示→2026-07-08一括push実施）**: 「pushは一番最後で！」に従いPhase 1〜8をコミットのみ積み上げ→2026-07-08にユーザー指示で**一括push完了（origin/main同期済み・未pushコミットなし）**。以降の新規作業も同方針（都度push確認は挟まず積み上げ→ユーザー明示指示でpush）。**現在 main==origin/main（先行0）**。次にコミットを積んだら、区切りでユーザーにpush可否を確認するか明示指示を待つこと。
-- **✅Phase 9-B完了（2026-07-09・player/index.htmlのみ・コミット待ち）**: ランキングにGPS6種目追加。
+- **⚠️pushのタイミング（2026-07-07指示→2026-07-08一括push実施）**: 「pushは一番最後で！」に従いPhase 1〜8をコミットのみ積み上げ→2026-07-08にユーザー指示で**一括push完了（origin/main同期済み・未pushコミットなし）**。以降の新規作業も同方針（都度push確認は挟まず積み上げ→ユーザー明示指示でpush）。**現在 main は origin/main より先行（未pushコミット群＝9-A`3cb8825`／9-B`9f174fd`／9-C`82869de`＋HANDOFF更新群）。Phase 1〜8はpush済み**。次の区切りでユーザーにpush可否を確認するか明示指示を待つこと。
+- **✅Phase 9-C完了（2026-07-09・`82869de`・player/index.html＋dev/test_mydata.js・未push）**: マイデータ⑥GPS実装。
+  - **実装（T.mydata・player:5221付近〜）**: 従来プレースホルダだった⑥GPSを実装。**9-Bの読取り層をそのまま共用**（`_grCache`/`gpsLoadRowsRO`/`gpsLoadMany`/`gpsAggValues`/`gpsWindowCutoff`/`gpsSelSessions`＝player:2858付近・グローバル）。`window._mdRange`('30'/'90'/'all')連動＝`inR(s.date)`で範囲内GPSセッションのみ対象。自分の行は各`gr_<id>`から`idEq(x.pid,myPid)`＋`min>0`(出場)で抽出、日付昇順。
+    - **①ヒーローカード**: 直近出場セッションの3大数字＝走行距離(km)/最高速度(km/h=max×3.6)/スプリント(本=`sprN`)＋補助(ワークレート`wr`/高強度ラン`hsr`/出場`min`)。`.gps-hero`(maroon→orangeグラデ＋`.spd-lines`スピードライン装飾＋`.rv`reveal)。
+    - **②距離＋高強度ラン推移チャート** `md-gps-dist`(type:'bar'ベース＋line混在・dual軸y/y1)。試合セッションは線のマーカーを`pointRadius`配列(試合6/練習3)＋maroon色で強調。
+    - **③最高速度推移** `md-gps-spd`(line・試合マーカー強調)＋自己ベスト(reduce最大×3.6)。**1セッション時は非表示＋案内**(`gpsMine.length>=2`ガード)。
+    - **④チーム内順位チップ** `.gps-rankchip`＝期間内・全選手集計(`gpsAggValues`)からの走行距離/最高速度/**スプリント本数**の順位。**母数は`D.p`名簿基準(`rosterSet`)**＝退部/卒業のorphan `gr_`行を除外(9-Bランキング`filterPlayers`と同基準)。
+  - **非同期ロードゲート**: 期間内gr_が未キャッシュなら`_gpsPend`にidを積み「読み込み中」描画→`$m().innerHTML=h`直後に`if(_gpsPend)gpsLoadMany(_gpsPend,function(){if(curTab==='mydata'&&!subView)T.mydata();})`（キャッシュ収束でループ無し・別タブ移動時は#main非上書き＝`loadTlogArch`(player:5070)と同型ガード）。**T.mydataは`_rkInvoke`のような世代カウンタ無し**だが、再描画が現在状態を都度読み直し・キャッシュ収束で問題なし（既存tlogArchパターン踏襲）。
+  - **CSS装飾(player:257付近・GPSスピードテーマ)**: `.gps-hero`/`.gps-hero-*`/`.spd-lines`/`.gps-rankchip` 新設。全て静的（JSカウントアップは9-B同様に**入れない**＝onSnapshot再描画での再発火回避）・reveal入場は既存`.rv`基盤に相乗り(reduce-motionで`.rv-armed{opacity:0}`が効かない設計＝情報欠落なし)。
+  - **敵対的レビュー（6レンズ×スケプティック裏取り・14エージェント・1.12Mトークン）→確定4件(全low)中2件修正・反証4件**:
+    - **確定#1(aggmath+uiemptyの2レンズ独立収束＝高信頼・修正済)**: スプリント順位チップが`gpsSpr`(距離m)で順位付けするのにヒーローは同じ「スプリント」ラベルで`sprN`(本数)を表示＝同一画面でラベル衝突・誤読。→修正=チップを`gpsSprN`(本数)基準に(`['スプリント','gpsSprN']`)＝ヒーロー3大数字と指標一致。回帰テスト追加(本数vs距離で順位が割れるデータ)。
+    - **確定#2(regression・修正済)**: チーム内順位の母数が`D.p`名簿と非交差＝退部/卒業のorphan `gr_`行が母数を水増し・9-Bランキング(名簿基準)と乖離。→修正=`rosterSet`で名簿在籍pidのみ集計。回帰テスト追加(名簿外pid=9999を無視して2人中判定)。
+    - **確定#3(async・非改変・記載のみ)**: `gpsLoadRowsRO`にin-flight重複排除が無く、ロード窓(~200ms)内のonSnapshot再描画で同一`gr_`を二重get()しうる。**9-B共有読取り層(player:2858付近)の既存挙動で9-C差分は非接触・[]で収束しデータ被害なし・Spark読取りを稀に二重消費するだけ**＝スコープ外(共有層改変はランキング回帰リスク)。**将来ランキング/マイデータ両方の負荷が気になれば`_grInFlight`セットでdedupを共有層に足す**。
+    - **反証4件(修正不要)**: dist/max欠損NaN・date欠落TypeError＝staff `parseGpsGrid`→`gpsCommit`が必ず数値/日付を入れるため実データ到達不能／単一セッション時の距離チャート表示・速度チャート非表示の非対称＝設計上正当。**ただしユーザーの無エラー方針に沿い防御ガード`(hr.dist||0)`/`(hr.max||0)`/`(x.date||'').slice(5)`を先回りで付与**(ヒーローの他フィールドは元々`||0`済みで統一)。
+  - **検証**: JSC LOAD OK・**エンジンブロックmd5不変`fb8c64c61ae792554d05d01ceaf307c2`**(player:441-625・変更は全て領域外)・括弧デルタHEAD一致(-1は既存の正規表現リテラルノイズ)・**player全15テストPASS**(test_mydata拡張=GPS新規30+アサート〈ヒーロー3数字・bar+line 2データセット・試合pointRadius[6,3]・自己ベスト・順位・非同期loading→再描画・期間連動・0分除外・orphan除外・本数順位〉)・**ブラウザ実機**(previewroot cp同期→モック注入〈D.p/D.gs/_grCache/myPid・**myPidはD.p在籍必須**〉→モバイル寸法375×812にリサイズ〈**0×0だとレイアウト潰れる**〉で全数値一致・試合マーカー強調・修正2件〈本数順位1位・orphan除外2人中〉確認・コンソールはFirestoreオフラインのみ)。staff/coach/trainer無変更。**本番Firestore未書込み(オフライン・メモリ内モックのみ)**。
+  - **運用メモ（ユーザーへ）**: 選手はマイデータ画面の「⑥GPS」で、期間(30/90日/全期間)内の自分のGPSを見られる。上部ヒーローに直近セッションの走行距離・最高速度・スプリント本数、その下に距離+高強度ランの推移(試合は大きい点で強調)・最高速度の推移と自己ベスト・チーム内順位(走行距離/最高速度/スプリント本数)。スタッフがGPSを取り込むと自動でここに反映。**マイデータ⑥に試合スタッツ(タックル等)を並べるのは9-Dで追加予定**。
+- **✅Phase 9-B完了（2026-07-09・`9f174fd`・player/index.htmlのみ・未push）**: ランキングにGPS6種目追加。
   - **配線**: SK(player:344)/D(player:821)に `gs`(`rm_gps_sessions`)・`ms`(`rm_match_stats`) 追加（**SK追加＝startListenersが自動購読**。gmapはstaff限定なのでplayerには入れない）。coach/trainerは非追加＝GPSはスコープ外（プラン通り）。
   - **RANK_EVENTSレジストリ(player:2848付近)**: 既存7種目(SQ/BP/DL/チンニング/クリーン/BIG3/ブロンコ)の後に`src:'gs'`で6種目追加＝`gpsDist`(m保存→km表示・fmt)／`gpsMaxSpd`(m/s保存→km/h表示・fmt `v*3.6`)／`gpsSpr`(m)／`gpsSprN`(回)／`gpsHsr`(m)／`gpsWr`(m/分)。`src`有無で測定会系(D.ph/msess)とGPS系(D.gs/gr_)を分岐。**9-Dで`src:'ms'`種目を足す口コメント有**。
   - **GPS読取り層（T.ranking直前・グローバル・9-C/9-Dで共用）**: `_grCache`／`gpsLoadRowsRO(id,cb)`(=staffの`gpsLoadRows`と同型の読取専用。`gr_<id>`オンデマンドget→キャッシュ。**失敗も`[]`でキャッシュ＝再描画ループ防止**)／`gpsLoadMany(ids,cb)`(全idキャッシュ済みなら同期cb＝テスト/描画の同期パス)。
