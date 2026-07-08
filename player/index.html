@@ -240,6 +240,19 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 .rkp-col.first .rkp-stand-num{font-size:30px}
 .rkp-youchip{display:flex;align-items:center;gap:10px;background:linear-gradient(100deg,var(--maroon),var(--maroon-vivid));color:var(--pale);border-radius:12px;padding:10px 15px;margin:12px 0;box-shadow:0 4px 16px rgba(141,0,0,.24)}
 .rkp-you-rank{font-family:var(--font-num);font-style:italic;font-weight:900;font-size:25px;line-height:1}
+/* ===== ランキングGPS種目（9-B）：セッション/期間チップ＋スピードテーマ装飾 ===== */
+.gps-chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:3px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.gps-chips::-webkit-scrollbar{display:none}
+.gps-chip{flex:0 0 auto;white-space:nowrap;border:1px solid var(--border-tertiary);background:var(--bg-primary);color:var(--text-secondary);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer}
+.gps-chip.on{background:linear-gradient(100deg,var(--maroon),var(--maroon-vivid));color:var(--pale);border-color:transparent;box-shadow:0 3px 10px rgba(141,0,0,.22)}
+/* 順位バーをmaroon→orangeグラデにし、1位の数値もグラデ文字に（静的＝情報欠落なし） */
+.rk-row.gps-spd .rk-bar{background:linear-gradient(90deg,rgba(193,18,31,.20),rgba(245,130,31,.13) 58%,rgba(245,130,31,0))}
+.gps-spd.rkp-col.first .rkp-val{background:linear-gradient(92deg,var(--maroon),#F5821F);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.rk-row.gps-spd .rk-bar::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 22%,rgba(255,255,255,.55) 50%,transparent 78%);transform:translateX(-110%)}
+@media(prefers-reduced-motion:no-preference){
+  .gps-spd.rv-armed.in .rk-bar::after{animation:gpsshimmer 1.15s cubic-bezier(.4,0,.2,1) .12s 1}
+}
+@keyframes gpsshimmer{to{transform:translateX(240%)}}
 /* コンディション: 部位チップ（pale地→選択はJSでmaroon塗り） */
 .part-chip{background:var(--pale);border-color:transparent;color:var(--maroon-d)}
 </style>
@@ -341,7 +354,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 if(window.Chart){Chart.defaults.color='#6E5A5C';Chart.defaults.borderColor='rgba(60,10,12,.08)';Chart.defaults.scale.grid.color='rgba(60,10,12,.08)';if(typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches)Chart.defaults.animation=false;}
 firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
 var db=firebase.firestore();
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',phskip:'rm_phskip',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm',pp:'rm_pushpull',std:'rm_standards',tgroup:'rm_tgroup'};
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',phskip:'rm_phskip',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm',pp:'rm_pushpull',std:'rm_standards',tgroup:'rm_tgroup',gs:'rm_gps_sessions',ms:'rm_match_stats'};
 var RCATS=['ケア','ROM改善','患部外トレーニング','トレーニング','アジリティ','フィットネス','サポート','オフ'];
 var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'#0891B2',サポート:'#059669',オフ:'var(--text-secondary)'};
 var RCAT_BG={ケア:'var(--blue-bg)',ROM改善:'var(--green-bg)',患部外トレーニング:'var(--amber-bg)',トレーニング:'var(--red-bg)',アジリティ:'var(--purple-bg)',フィットネス:'#E0F2FE',サポート:'#D1FAE5',オフ:'var(--bg-tertiary)'};
@@ -818,7 +831,7 @@ function getChart(injId){
 var PARTS=['頭部','頸部','肩','鎖骨','肘','手首','指','腰','股関節','大腿','膝','すね','足首','踵','アキレス腱','ふくらはぎ','足の甲','足趾','その他'];
 var INJ_TYPES=['捻挫','肉離れ','骨折','脱臼','打撲','靭帯損傷','半月板損傷','脳震盪','裂傷','腱炎','疲労骨折','その他'];
 var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
-var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],phskip:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],pp:[],std:[],tgroup:[]};
+var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],phskip:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],pp:[],std:[],tgroup:[],gs:[],ms:[]};
 var myPid=null,curTab='home',charts={},subView=null;
 
 function ld(){
@@ -2839,8 +2852,67 @@ function markPhysSkip(){
   });
 }
 
+// ===== GPS読取り層（9-B・ランキング/マイデータ共用）=====
+// gr_<id>行データ（[{pid,min,dist(m),wr,hsr,hsrN,spr,sprN,max(m/s),z}]）をオンデマンド取得＋参照キャッシュ。
+// staff側 gpsLoadRows と同型の「読み取り専用」。取込はstaffのみ＝playerは読むだけ。
+var _grCache={};
+function gpsLoadRowsRO(id,cb){
+  if(_grCache[id]){if(cb)cb(_grCache[id]);return;}
+  db.collection('appdata').doc('gr_'+id).get().then(function(doc){
+    var rows=[];if(doc.exists){try{var q=JSON.parse(doc.data().data);if(Array.isArray(q))rows=q;}catch(e){}}
+    _grCache[id]=rows;if(cb)cb(rows);
+  }).catch(function(e){console.error('gr load error',e);_grCache[id]=[];if(cb)cb([]);}); // 失敗も空でキャッシュ＝再描画ループ防止
+}
+// 複数gr_docをまとめて取得。全idがキャッシュ済みなら同期でcb（描画の同期パス／テスト用）
+function gpsLoadMany(ids,cb){
+  ids=ids||[];
+  var missing=ids.filter(function(id){return _grCache[id]==null;});
+  if(!missing.length){if(cb)cb();return;}
+  var pending=missing.length;
+  missing.forEach(function(id){gpsLoadRowsRO(id,function(){pending--;if(pending===0&&cb)cb();});});
+}
+// 期間累計の起点日（today-days）。'YYYY-MM-DD'を返す（純関数・境界は>=で当日から遡ってdays日）
+function gpsWindowCutoff(today,days){var d=new Date(today);d.setDate(d.getDate()-days);return toDateStr(d);}
+// セレクタ選択（'r30'|'r90'|<sessId>）→ 対象gsセッション配列（純関数）
+function gpsSelSessions(sel,gsList,today){
+  gsList=gsList||[];
+  if(sel==='r30'||sel==='r90'){
+    var cut=gpsWindowCutoff(today,sel==='r30'?30:90);
+    return gsList.filter(function(s){return String(s&&s.date||'')>=cut;});
+  }
+  return gsList.filter(function(s){return idEq(s.id,sel);});
+}
+// 行データ配列群（rowsList=セッションごとの行配列）→ pid別集計値マップ（純関数・テスト対象）
+// 集計規則: dist/spr/sprN/hsr=合算・maxSpd=最大・wr=Σdist/Σmin(加重平均)・出場0分の行は全指標から除外
+function gpsAggValues(rowsList,metric){
+  var byPid={};
+  (rowsList||[]).forEach(function(rows){
+    (rows||[]).forEach(function(r){
+      if(!r||!(r.min>0))return; // 0分除外
+      var a=byPid[r.pid]||(byPid[r.pid]={dist:0,spr:0,sprN:0,hsr:0,min:0,max:0,n:0});
+      a.dist+=(+r.dist||0);a.spr+=(+r.spr||0);a.sprN+=(+r.sprN||0);a.hsr+=(+r.hsr||0);a.min+=(+r.min||0);
+      if((+r.max||0)>a.max)a.max=(+r.max||0);
+      a.n++;
+    });
+  });
+  var out={};
+  Object.keys(byPid).forEach(function(pk){
+    var a=byPid[pk];if(!a.n)return;var v=null;
+    if(metric==='gpsDist')v=a.dist;
+    else if(metric==='gpsSpr')v=a.spr;
+    else if(metric==='gpsSprN')v=a.sprN;
+    else if(metric==='gpsHsr')v=a.hsr;
+    else if(metric==='gpsMaxSpd')v=a.max;
+    else if(metric==='gpsWr')v=a.min>0?Math.round(a.dist/a.min*10)/10:null;
+    out[pk]=v;
+  });
+  return out;
+}
+
 // 全体ランキング表示
+var _rkInvoke=0; // T.ranking呼び出し世代（GPS非同期ロード後の再描画を最新invokeのみに限定）
 T.ranking=function(){
+  var _myInvoke=++_rkInvoke;
   var FW=['PR','HO','LO','FL','No.8'];
   var BK=['SH','SO','CTB','WTB','FB'];
   var POS_LIST=['PR','HO','LO','FL','No.8','SH','SO','CTB','WTB','FB'];
@@ -2852,11 +2924,16 @@ T.ranking=function(){
     {field:'chinning',label:'チンニング',full:'チンニング',unit:'kg',better:'max'},
     {field:'clean',label:'クリーン',full:'クリーン',unit:'kg',better:'max'},
     {field:'big3',label:'BIG3',full:'BIG3合計',unit:'kg',better:'max'},
-    {field:'bronco',label:'ブロンコ',full:'ブロンコ',unit:'',better:'min',fmt:broncoFmt}
-    // 将来（Phase 9でGPS/試合スタッツ取込後にレジストリへ追加）:
-    // {field:'gpsDist',label:'走行距離',full:'総走行距離',unit:'m',better:'max',src:'gs'},
-    // {field:'gpsMaxSpd',label:'最高速度',full:'最高速度',unit:'km/h',better:'max',src:'gs'},
-    // {field:'tackles',label:'タックル',full:'タックル成功数',unit:'',better:'max',src:'stats'}
+    {field:'bronco',label:'ブロンコ',full:'ブロンコ',unit:'',better:'min',fmt:broncoFmt},
+    // Phase 9-B: GPS取込データ（src:'gs'＝測定会でなくGPSセッション/期間累計を参照）。値はgr_<id>行データ由来
+    {field:'gpsDist',label:'走行距離',full:'総走行距離',unit:'m',better:'max',src:'gs',fmt:function(v){return(v/1000).toFixed(2)+' km';}},
+    {field:'gpsMaxSpd',label:'最高速度',full:'最高速度',unit:'',better:'max',src:'gs',fmt:function(v){return(v*3.6).toFixed(1)+' km/h';}},
+    {field:'gpsSpr',label:'スプリント距離',full:'スプリント距離(6.0m/s〜)',unit:'m',better:'max',src:'gs'},
+    {field:'gpsSprN',label:'スプリント回数',full:'スプリント回数',unit:'回',better:'max',src:'gs'},
+    {field:'gpsHsr',label:'高強度ラン',full:'高強度ラン(4.5m/s〜)',unit:'m',better:'max',src:'gs'},
+    {field:'gpsWr',label:'ワークレート',full:'ワークレート',unit:'m/分',better:'max',src:'gs'}
+    // 将来（9-Dで試合スタッツ取込後にレジストリへ追加）:
+    // {field:'tackles',label:'タックル',full:'タックル成功数',unit:'',better:'max',src:'ms'}
   ];
   var ALLO_FIELD={};STD_LIFTS.forEach(function(l){ALLO_FIELD[l.ph]=l.k;});
   // 測定会フィルター：最新の測定会をデフォルトに
@@ -2869,7 +2946,14 @@ T.ranking=function(){
   var curYear=S.year||'';
   var curMode=S.mode==='allo'?'allo':'raw'; // raw=実測1RM / allo=アロメトリック補正スコア（BIG3のみ）
   var curSessId=(S.sess&&(S.sess==='all'||sortedSess.some(function(s){return s.id===S.sess;})))?S.sess:(sortedSess.length?sortedSess[0].id:'all');
-  function persistRk(){window._rkS={ev:curField,group:curGroup,pos:curPos,year:curYear,mode:curMode,sess:curSessId};}
+  // GPSセッション（src:'gs'種目用）：日付降順＋先頭に期間累計2種。既定=最新セッション
+  var today=todayStr();
+  var sortedGps=(D.gs||[]).slice().sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))||(b.ts||0)-(a.ts||0);});
+  var GPS_CUM=[{id:'r30',name:'直近30日'},{id:'r90',name:'直近90日'}];
+  var gpsOptIds=GPS_CUM.map(function(o){return o.id;}).concat(sortedGps.map(function(s){return s.id;}));
+  var defGps=sortedGps.length?sortedGps[0].id:'r30';
+  var curGpsSess=(S.gsess!=null&&gpsOptIds.some(function(id){return idEq(id,S.gsess);}))?S.gsess:defGps;
+  function persistRk(){window._rkS={ev:curField,group:curGroup,pos:curPos,year:curYear,mode:curMode,sess:curSessId,gsess:curGpsSess};}
 
   function filterPlayers(){
     return D.p.filter(function(p){
@@ -2885,9 +2969,11 @@ T.ranking=function(){
     var curEv=RANK_EVENTS.find(function(e){return e.field===curField;})||RANK_EVENTS[0];
     var fi=curEv;
     var isMin=curEv.better==='min'; // ブロンコ等: 小さいほど上位
+    var isGps=curEv.src==='gs'; // GPS種目=測定会でなくGPSセッション/期間累計を参照
     var players=filterPlayers();
     // 測定会フィルター対応のベスト計算
     function getSessVal(pid,field){
+      if(isGps){var gv=gpsValMap?gpsValMap[pid]:null;return gv==null?null:gv;} // GPSは集計マップから
       var rs=D.ph.filter(function(x){
         if(x.pid!==pid)return false;
         if(curSessId!=='all'&&x.msessId!==curSessId)return false;
@@ -2899,6 +2985,7 @@ T.ranking=function(){
     }
     // 前回測定会の値を取得
     function getPrevSessVal(pid,field){
+      if(isGps)return null; // GPS種目は前回差を表示しない
       if(curSessId==='all')return null;
       var idx=sortedSess.findIndex(function(s){return s.id===curSessId;});
       if(idx<0||idx>=sortedSess.length-1)return null;
@@ -2910,30 +2997,24 @@ T.ranking=function(){
     }
     var alloK=ALLO_FIELD[curField];
     var useAllo=curMode==='allo'&&!!alloK;
-    var rk=players.map(function(p){
-      var v=getSessVal(p.id,curField);
-      var prev=getPrevSessVal(p.id,curField);
-      return{p:p,v:v,prev:prev};
-    }).filter(function(x){return x.v!==null;});
-    if(useAllo){
-      // 補正スコア順: セッション内1RM ÷ 現在体重^b。体重不明の選手は算出不能のため除外
-      var bExp=getStdCfg().allo[alloK];
-      rk=rk.map(function(t){
-        var wI=getCurrentWeightInfo(t.p.id);
-        if(!wI||bExp==null)return null;
-        return{p:t.p,v:Math.round(t.v/Math.pow(wI.w,bExp)*10)/10,raw:t.v,prev:null};
-      }).filter(function(x){return!!x;});
-    }
-    isMin?rk.sort(function(a,b){return a.v-b.v;}):rk.sort(function(a,b){return b.v-a.v;});
-
     var curSessObj=sortedSess.find(function(s){return s.id===curSessId;});
     var curSessLabel=curSessId==='all'?'全期間':(curSessObj?curSessObj.name:'全期間');
-    var h='<button class="btn-back" onclick="go(\'home\')">'+ic('i-back',14)+' ホーム</button><div class="kicker" style="margin-top:8px">TEAM RANKING</div><div style="font-size:18px;font-weight:900;margin:0 0 4px;display:flex;align-items:center;gap:8px">'+ic('i-trophy',20,'var(--gold-deep)')+'ランキング</div><div style="font-size:11px;color:var(--text-secondary);margin:0 0 12px">'+escapeHtml(curEv.full)+'・'+escapeHtml(curSessLabel)+'</div>';
+    var gpsSessLabel=curGpsSess==='r30'?'直近30日累計':curGpsSess==='r90'?'直近90日累計':(function(){var s=sortedGps.find(function(x){return idEq(x.id,curGpsSess);});return s?(s.label||fmt(s.date)):'—';})();
+    var headLabel=isGps?gpsSessLabel:curSessLabel;
+    var h='<button class="btn-back" onclick="go(\'home\')">'+ic('i-back',14)+' ホーム</button><div class="kicker" style="margin-top:8px">TEAM RANKING</div><div style="font-size:18px;font-weight:900;margin:0 0 4px;display:flex;align-items:center;gap:8px">'+ic('i-trophy',20,'var(--gold-deep)')+'ランキング</div><div style="font-size:11px;color:var(--text-secondary);margin:0 0 12px">'+escapeHtml(curEv.full)+'・'+escapeHtml(headLabel)+'</div>';
     // 種目選択（主要操作＝最上部・常時表示）
     h+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">種目</div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
     RANK_EVENTS.map(function(f){return'<button class="btn btn-sm'+(curField===f.field?' btn-p':'')+'" onclick="rankSF(\''+f.field+'\')">'+f.label+'</button>';}).join('')+
     '</div></div>';
+    // GPSセッション/期間セレクタ（GPS種目のみ・常時表示。チップ横スクロール）
+    if(isGps){
+      h+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">セッション・期間</div>'+
+      '<div class="gps-chips">'+
+      GPS_CUM.map(function(o){return'<button class="gps-chip'+(idEq(curGpsSess,o.id)?' on':'')+'" onclick="rankGSess(\''+o.id+'\')">'+escapeHtml(o.name)+'累計</button>';}).join('')+
+      sortedGps.map(function(s){var lb=(s.kind==='match'?'試 ':'')+(s.label||fmt(s.date));return'<button class="gps-chip'+(idEq(curGpsSess,s.id)?' on':'')+'" onclick="rankGSess(\''+s.id+'\')">'+escapeHtml(lb)+'</button>';}).join('')+
+      '</div>'+(sortedGps.length?'':'<div style="font-size:11px;color:var(--text-secondary);margin-top:6px">GPSデータがまだありません。スタッフが取り込むとここに表示されます。</div>')+'</div>';
+    }
 
     // 絞り込みトグル（測定会・並び順・グループ・ポジション・学年を折りたたみ＝表彰台を上部に見せる）
     var fo=!!window._rkFO;
@@ -2948,12 +3029,14 @@ T.ranking=function(){
       ic(fo?'i-chevron-u':'i-chevron-d',16,'var(--text-tertiary)')+
     '</div>';
     if(fo){
-      // 測定会セレクター
+      // 測定会セレクター（GPS種目のときは上部のセッション/期間チップを使うので非表示）
+      if(!isGps){
       h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">測定会</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
       '<button class="btn btn-sm'+(curSessId==='all'?' btn-p':'')+'" onclick="rankSSess(0)">全期間</button>'+
       sortedSess.map(function(s,si){return'<button class="btn btn-sm'+(curSessId===s.id?' btn-p':'')+'" onclick="rankSSessIdx('+si+')">'+escapeHtml(s.name)+'</button>';}).join('')+
       '</div></div>';
+      }
       // 並び順（BIG3系のみ: 実測1RM / アロメトリック補正スコア）
       if(alloK){
         h+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">並び順</div>'+
@@ -2986,6 +3069,34 @@ T.ranking=function(){
       '</div></div>';
     }
 
+    // GPS種目：対象セッションの行データをキャッシュから解決（未ロードならヘッダーだけ描画→ロード完了で同一invokeのみ再描画）
+    var gpsValMap=null;
+    if(isGps){
+      var inclIds=gpsSelSessions(curGpsSess,sortedGps,today).map(function(s){return s.id;});
+      if(!inclIds.every(function(id){return _grCache[id]!=null;})){
+        $m().innerHTML=h+'<div class="no" style="padding:22px 0">GPSデータを読み込み中…</div>';
+        // ロード完了時の再描画は「最新invoke かつ まだランキング画面にいる」ときだけ（非同期ガード規約=line 5068 loadTlogArch と同型）。
+        // 別タブへ移動/サブ画面を開いた後にfetchが返っても#mainを上書きしない（入力中フォーム破壊防止）。
+        gpsLoadMany(inclIds,function(){if(_myInvoke===_rkInvoke&&curTab==='ranking'&&!subView)renderRank();});
+        return;
+      }
+      gpsValMap=gpsAggValues(inclIds.map(function(id){return _grCache[id]||[];}),curField);
+    }
+    // ランキング配列を構築
+    var rk=players.map(function(p){
+      return{p:p,v:getSessVal(p.id,curField),prev:getPrevSessVal(p.id,curField)};
+    }).filter(function(x){return x.v!==null;});
+    if(useAllo){
+      // 補正スコア順: セッション内1RM ÷ 現在体重^b。体重不明の選手は算出不能のため除外
+      var bExp=getStdCfg().allo[alloK];
+      rk=rk.map(function(t){
+        var wI=getCurrentWeightInfo(t.p.id);
+        if(!wI||bExp==null)return null;
+        return{p:t.p,v:Math.round(t.v/Math.pow(wI.w,bExp)*10)/10,raw:t.v,prev:null};
+      }).filter(function(x){return!!x;});
+    }
+    isMin?rk.sort(function(a,b){return a.v-b.v;}):rk.sort(function(a,b){return b.v-a.v;});
+
     // ランキング表示（表彰台＋バー付きリスト）
     var fmtV=function(v){if(useAllo)return String(v);if(curEv.fmt)return curEv.fmt(v);return v+(fi.unit?' '+fi.unit:'');};
     var diffStrOf=function(t){
@@ -3008,7 +3119,7 @@ T.ranking=function(){
     var rowHtml=function(t,rankNo,extraCls){
       var p=t.p;var isMe=myPid&&idEq(p.id,myPid);
       var avaInner=p.photo?'background-image:url('+p.photo+')':'background:var(--bg-tertiary);color:var(--maroon)';
-      return'<div class="rk-row'+(isMe?' me':'')+(extraCls?' '+extraCls:'')+'">'+
+      return'<div class="rk-row'+(isMe?' me':'')+(isGps?' gps-spd':'')+(extraCls?' '+extraCls:'')+'">'+
         '<div class="rk-bar" style="width:'+barPct(t.v)+'%"></div>'+
         '<div class="rk-rownum">'+rankNo+'</div>'+
         '<div class="rk-rowava" style="'+avaInner+'">'+(p.photo?'':iniOf(p))+'</div>'+
@@ -3021,7 +3132,7 @@ T.ranking=function(){
       if(myIdx<0)return'';
       return'<div class="rkp-youchip rv">'+ic('i-user',18,'var(--pale)')+
         '<div style="flex:1;min-width:0"><div style="font-size:10px;font-weight:800;letter-spacing:.08em;opacity:.85">YOUR RANK</div>'+
-        '<div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(curEv.full)+'・'+escapeHtml(curSessLabel)+'</div></div>'+
+        '<div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(curEv.full)+'・'+escapeHtml(headLabel)+'</div></div>'+
         '<div style="text-align:right;line-height:1;flex-shrink:0"><span class="rkp-you-rank">'+(myIdx+1)+'</span><span style="font-size:12px;font-weight:800"> 位</span><div style="font-size:10px;opacity:.85;margin-top:2px">'+rk.length+'人中</div></div>'+
       '</div>';
     };
@@ -3034,7 +3145,7 @@ T.ranking=function(){
         var avaSz=rankNo===1?66:50;
         var crown=rankNo===1?'<span class="rkp-crown">'+ic('i-trophy',22,'var(--gold-deep)')+'</span>':'';
         var sub=useAllo?'<div class="rkp-diff" style="color:var(--text-secondary)">1RM '+t.raw+'kg</div>':(diffStrOf(t)?'<div class="rkp-diff">'+diffStrOf(t)+'</div>':'');
-        return'<div class="rkp-col '+cls+'">'+
+        return'<div class="rkp-col '+cls+(isGps?' gps-spd':'')+'">'+
           '<div class="rkp-ava-wrap">'+crown+
             '<div class="rkp-ava">'+avH(p,avaSz)+'<span class="rkp-badge" style="background:'+medalCol+'">'+rankNo+'</span></div>'+
           '</div>'+
@@ -3046,7 +3157,7 @@ T.ranking=function(){
         '</div>';
       };
       // DOM順は順位順[1,2,3]（読み上げ順）・CSS orderで視覚上は[2,1,3]の中央高配置
-      h+='<div class="rkp-podium rv">'+podCol(rk[0],1)+podCol(rk[1],2)+podCol(rk[2],3)+'</div>';
+      h+='<div class="rkp-podium rv'+(isGps?' gps-spd':'')+'">'+podCol(rk[0],1)+podCol(rk[1],2)+podCol(rk[2],3)+'</div>';
       h+=youChip();
       if(rk.length>3){
         h+='<div style="display:flex;flex-direction:column;gap:7px">';
@@ -3070,6 +3181,7 @@ T.ranking=function(){
   window.rankSM=function(m){curMode=m;persistRk();renderRank();};
   window.rankSSess=function(v){curSessId=v===0?'all':v;persistRk();renderRank();};
   window.rankSSessIdx=function(idx){curSessId=sortedSess[idx]?sortedSess[idx].id:'all';persistRk();renderRank();};
+  window.rankGSess=function(sel){curGpsSess=sel;persistRk();renderRank();};
   window.rankSG=function(g){curGroup=g;curPos='';persistRk();renderRank();};
   window.rankSP=function(p){curPos=p;persistRk();renderRank();};
   window.rankSY=function(y){curYear=y;persistRk();renderRank();};
