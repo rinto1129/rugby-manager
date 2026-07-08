@@ -108,9 +108,10 @@ if(IS_STAFF){
   ok('通常一覧に個別ウエイトは残る',has(vh,'個別ウエイト'));
   ok('getSlotMenuはfitnessを拾わない（push/pullのみ）',getSlotMenu('push')&&getSlotMenu('push').name==='PUSHメニュー');
 
-  print('--- goFitProgDetail: 実施者一覧（programId照合） ---');
+  print('--- goFitProgDetail: 実施者一覧（programId照合・pidユニーク人数） ---');
   D.tlog=[
     {id:'l1',pid:1,date:'2026-07-05',fitness:{ftype:'ラン',minutes:30,rpe:6},programId:3,results:[],totalVolume:0},
+    {id:'l1b',pid:1,date:'2026-07-07',fitness:{ftype:'ラン',minutes:33},programId:3,results:[],totalVolume:0},
     {id:'l2',pid:2,date:'2026-07-06',fitness:{ftype:'ラン',minutes:25},programId:'3',results:[],totalVolume:0},
     {id:'l3',pid:1,date:'2026-07-05',fitness:{ftype:'バイク',minutes:44},results:[],totalVolume:0},
     {id:'l4',pid:2,date:'2026-07-05',fitness:{ftype:'ラン',minutes:11},programId:99,results:[],totalVolume:0}
@@ -118,12 +119,25 @@ if(IS_STAFF){
   goFitProgDetail('3');
   var dh=__pushedHtml;
   ok('項目表示',has(dh,'ラン'));
-  ok('実施者2名（progId数値3＋文字列"3"の両方）',has(dh,'実施した選手（2）'));
+  ok('実施者2名（延べ3件でもpidユニーク=2名。数値3＋文字列"3"）',has(dh,'実施した選手（2）'));
   ok('実施者に田中',has(dh,'田中'));
   ok('実施者に佐藤',has(dh,'佐藤'));
+  ok('田中は1行に集約（重複表示しない）',dh.split('田中').length===2);
+  ok('反復実施は「2回」バッジ',has(dh,'2回'));
+  ok('集約行は最新実施(7/07・33分)を採用（古い30分側でなく）',has(dh,'33分'));
   ok('自由記録(programIdなし)は含まない',dh.split('44分').length===1);
   ok('別プログラムのログは含まない',dh.split('11分').length===1);
   ok('削除/編集導線',has(dh,"delTMenu('3')")&&has(dh,"goEditFitProg('3')"));
+
+  print('--- V.training: 実施人数はpidユニーク ---');
+  D.tmenu=[{id:3,name:'オフフィット',scope:'all',ptype:'fitness',items:[{kind:'ラン',minutes:30}],exercises:[],createdAt:'2026-07-03'}];
+  D.tlog=[
+    {id:'a',pid:1,date:'2026-07-05',fitness:{ftype:'ラン',minutes:30},programId:3,results:[],totalVolume:0},
+    {id:'b',pid:1,date:'2026-07-07',fitness:{ftype:'ラン',minutes:30},programId:3,results:[],totalVolume:0}
+  ];
+  __els['tr-tab-sel']=mkEl();__els['tr-tab-sel'].value='menus';
+  V.training();
+  ok('延べ2件・1名 → 「実施1名」',has(__els['main-ct'].innerHTML,'実施1名'));
 
   print('--- goFitProgDetail: 実施ゼロ ---');
   D.tlog=[];

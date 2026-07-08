@@ -4958,7 +4958,8 @@ V.training=function(){
     }else{
       fitMenus.forEach(function(mn){
         var scopeLabel=mn.scope==='all'?'全選手':(function(){var p=D.p.find(function(x){return idEq(x.id,mn.scope);});return p?p.name+' 専用':'個別';})();
-        var doneCnt=tlogAll().filter(function(l){return l&&l.fitness&&idEq(l.programId,mn.id);}).length;
+        // 実施「人数」= programId一致のfitness tlogをpidでユニーク化（延べ件数ではない。反復実施で水増ししない）
+        var doneCnt=(function(){var s={};tlogAll().forEach(function(l){if(l&&l.fitness&&idEq(l.programId,mn.id))s[String(l.pid)]=1;});return Object.keys(s).length;})();
         h+='<div class="card card-click" style="margin-bottom:8px;border-left:3px solid var(--green)" onclick="goFitProgDetail(\''+mn.id+'\')">'+
           '<div style="display:flex;align-items:center;justify-content:space-between">'+
           '<div style="flex:1"><div style="font-weight:700;font-size:15px">'+ic('i-run',13,'var(--green)')+' '+escapeHtml(mn.name)+'</div>'+
@@ -5198,17 +5199,20 @@ function goFitProgDetail(menuId){
       (it.note?'<div style="font-size:12px;color:var(--text-secondary);margin-top:8px;padding:6px 8px;background:var(--bg-secondary);border-radius:6px;white-space:pre-wrap">'+ic('i-info',12)+' '+escapeHtml(it.note)+'</div>':'')+
       '</div>';
   });
-  // 実施者一覧（fitness tlog の programId 照合。自由記録=programIdなしは含まない）
-  var doers=tlogAll().filter(function(l){return l&&l.fitness&&idEq(l.programId,menuId);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
-  h+='<div style="font-size:13px;font-weight:700;margin:18px 0 8px">'+ic('i-check',13,'var(--green)')+' 実施した選手（'+doers.length+'）</div>';
-  if(!doers.length){
+  // 実施者一覧（fitness tlog の programId 照合。自由記録=programIdなしは含まない）。
+  // 選手ごとに集約＝人数を数える（延べ件数ではない）。各行は最新実施＋通算回数を表示（反復実施で重複表示しない）。
+  var doerLogs=tlogAll().filter(function(l){return l&&l.fitness&&idEq(l.programId,menuId);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var byPid={},pidOrder=[];
+  doerLogs.forEach(function(l){var key=String(l.pid);if(!byPid[key]){byPid[key]={latest:l,count:0};pidOrder.push(key);}byPid[key].count++;}); // 日付降順=最初が最新
+  h+='<div style="font-size:13px;font-weight:700;margin:18px 0 8px">'+ic('i-check',13,'var(--green)')+' 実施した選手（'+pidOrder.length+'）</div>';
+  if(!pidOrder.length){
     h+='<div class="no">まだ実施記録はありません</div>';
   }else{
-    doers.forEach(function(l){
-      var p=D.p.find(function(x){return idEq(x.id,l.pid);});
+    pidOrder.forEach(function(key){
+      var d=byPid[key],l=d.latest,p=D.p.find(function(x){return idEq(x.id,l.pid);});
       var f=l.fitness||{};
       var fm=[];if(f.minutes!=null)fm.push(f.minutes+'分');if(f.km!=null)fm.push(f.km+'km');if(f.rpe!=null)fm.push('RPE'+f.rpe);
-      h+='<div class="log-row" style="padding:7px 0">'+(p?avH(p,26):'')+'<span style="font-weight:600;flex:1;margin-left:'+(p?'8px':'0')+'">'+escapeHtml(p?p.name:'不明な選手')+'</span><span style="font-size:11px;color:var(--text-secondary)">'+fmt(l.date)+'</span>'+(fm.length?'<span style="font-size:11px;color:var(--green);font-weight:600;margin-left:8px">'+escapeHtml(fm.join(' / '))+'</span>':'')+'</div>';
+      h+='<div class="log-row" style="padding:7px 0">'+(p?avH(p,26):'')+'<span style="font-weight:600;flex:1;margin-left:'+(p?'8px':'0')+'">'+escapeHtml(p?p.name:'不明な選手')+(d.count>1?' <span class="bd bd-g" style="font-size:9px">'+d.count+'回</span>':'')+'</span><span style="font-size:11px;color:var(--text-secondary)">'+fmt(l.date)+'</span>'+(fm.length?'<span style="font-size:11px;color:var(--green);font-weight:600;margin-left:8px">'+escapeHtml(fm.join(' / '))+'</span>':'')+'</div>';
     });
   }
   h+='<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-d" onclick="delTMenu(\''+menuId+'\')">削除</button><button class="btn btn-p" style="flex:1" onclick="goEditFitProg(\''+menuId+'\')">編集</button></div>';
