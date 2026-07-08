@@ -7,12 +7,12 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-08（**🆕🆕Phase 9-A完了・コミット済み未push（`3cb8825`）。staff GPS取込ウィザードV.gps＋取込エンジン＋gx-装飾モーション。敵対的レビュー(5レンズ)→確定3件(HIGH/MEDIUM/LOW)修正済み。全staff11テストPASS・エンジンmd5不変・ブラウザ実機OK。次は9-B(playerランキングGPS6種目)。Phase 1〜8はpush済み(origin/main同期)。使用モデルclaude-opus-4-8。**）
+- 日時: 2026-07-09（**🆕Phase 9-A完了・コミット済み未push（`3cb8825`＋HANDOFF`36b7aa3`）。staff GPS取込ウィザードV.gps＋取込エンジン＋gx-装飾モーション。敵対的レビュー(5レンズ)→確定3件(HIGH/MEDIUM/LOW)修正済み。全staff11テストPASS・エンジンmd5不変・ブラウザ実機OK。ユーザーが「9-Bへ進む」を選択済み＝次セッションはそのまま9-B着手でよい（再確認不要）。Phase 1〜8はpush済み(origin/main同期)。使用モデルをclaude-sonnet-5に切替。**）
 - 更新者: Claude
 
 ## 🔴 次セッションが最初にやること（ユーザー指示・最優先）
 
-- **🆕🆕Phase 9 進行中（プラン: `/Users/nakayamarinnin/.claude/plans/users-nakayamarinnin-documents-0701-070-luminous-hopcroft.md`＝必読・これが正）。9-A完了、次は9-B**。承認は「進めて！」で取得済み＝要件・設計確定・再質問不要。9-B以降も同プランに沿って着手してよい。
+- **🆕Phase 9 進行中（プラン: `/Users/nakayamarinnin/.claude/plans/users-nakayamarinnin-documents-0701-070-luminous-hopcroft.md`＝必読・これが正）。9-A完了、次は9-B**。承認は「進めて！」で取得済み＋2026-07-09にAskUserQuestionで「9-Bへ進む」を明示選択済み＝要件・設計確定・再質問不要。9-B以降も同プランに沿って着手してよい。
   - **✅9-A完了（`3cb8825`・staffのみ・未push）**: GPS取込ウィザード。詳細は下の「✅Phase 9-A完了」節参照。
   - **⏭9-B（次にやる・player/index.html）**: ランキングにGPS6種目追加。RANK_EVENTSレジストリ(player:2848付近・`src:'gs'`追加口コメント有)に `gpsDist/gpsMaxSpd/gpsSpr/gpsSprN/gpsHsr/gpsWr` を追加。SK(player:344)/D(player:821)に `gs`・`ms` 追加（gmapはstaffのみ＝playerには追加しない）。T.ranking(player:2884-2963)で`src:'gs'`選択時はGPSセッションセレクタ（D.gs日付降順＋「直近30日/90日累計」）。値取得は`gr_<sessId>`オンデマンドget＋`_grCache`（**staff側の実装済みヘルパー名と揃える: gpsLoadRows/gpsNameMap等はstaff限定なので、playerには読取り用の同等ロジックを新規に置く**）。累計=dist/spr/sprN/hsr合算・maxSpd最大・wr=Σdist/Σmin加重平均・0分除外。**player側もgx-装飾を使うなら、staffと同様に既存の`.rv`/`data-cu`reveal基盤があるか先に確認**（staffには既存基盤があったのでgx-層はCSS装飾のみに留めた＝プランの新規JS実装は不要だった。playerも同型のはず）。dev/test_gps_rank.js。
   - **⏭9-C（マイデータ⑥GPS・player:5090の`D.gs&&D.gs.length`ガード内を実装）／9-D（試合スタッツ取込ms/msr_＋ランキング4種目）**: プラン参照。仕上げに実ファイル5点を初期投入（GPS PDFとスタッツPDFはClaudeがTSV化してstaff貼付欄から投入）。
