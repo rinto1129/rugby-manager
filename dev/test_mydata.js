@@ -193,15 +193,156 @@ ok('30日=2点',lab30===2);
 ok('全期間=3点',labAll===3);
 ok('setMdRangeで_mdRange更新',(setMdRange('90'),window._mdRange==='90'));
 
-// ============ 7. GPS枠: D.gsが無ければ非表示（P9まで） ============
-print('--- GPS: D.gs無しは非表示 ---');
+// ============ 7. GPS⑥（9-C）: ヒーロー/推移/自己ベスト/チーム内順位/非同期/期間連動/0分除外 ============
+print('--- GPS⑥: D.gs無しは非表示 ---');
 resetD();
 D.ph=[{id:1,pid:1,date:agoStr(3),squat:150}];
-T.mydata();var g1=__els['main'].innerHTML;
-ok('D.gs無しでGPSセクション非表示',!has(g1,'GPS・試合スタッツ'));
-D.gs=[{id:1,pid:1,date:TODAY}];
-T.mydata();var g2=__els['main'].innerHTML;
-ok('D.gsありでGPSセクション表示',has(g2,'GPS・試合スタッツ'));
+_grCache={};
+T.mydata();flush();var g1=__els['main'].innerHTML;
+ok('D.gs無しでGPSセクション非表示',!has(g1,'md-gps-dist')&&!has(g1,'GPSデータを読み込み中')&&!has(g1,'走行距離'));
+
+print('--- GPS⑥: 同期パス（_grCacheプリロード）でヒーロー/推移/自己ベスト/順位 ---');
+resetD();
+D.p=[{id:1,name:'ラン 太郎',position:'WTB',year:2,height:'180'},{id:2,name:'スピ 次郎',position:'FB',year:3},{id:3,name:'ディ 三郎',position:'No.8',year:4}];
+myPid=1;window._mdRange='90';
+D.gs=[
+  {id:101,date:agoStr(2),kind:'practice',label:'火曜練習',ts:2000},
+  {id:102,date:agoStr(6),kind:'match',label:'vs 工大',team:'A',ts:1000}
+];
+_grCache={};
+_grCache[101]=[
+  {pid:1,min:70,dist:6800,wr:97,hsr:850,hsrN:40,spr:320,sprN:6,max:8.6},
+  {pid:2,min:70,dist:5200,wr:74,hsr:600,hsrN:30,spr:210,sprN:3,max:9.1},
+  {pid:3,min:70,dist:7400,wr:106,hsr:920,hsrN:44,spr:410,sprN:8,max:7.4}
+];
+_grCache[102]=[
+  {pid:1,min:40,dist:4200,wr:105,hsr:520,hsrN:26,spr:260,sprN:4,max:8.9},
+  {pid:2,min:80,dist:8000,wr:100,hsr:900,hsrN:50,spr:360,sprN:5,max:9.4},
+  {pid:3,min:0,dist:0,wr:0,hsr:0,spr:0,sprN:0,max:0}   // p3は試合0分＝集計・順位から自動除外
+];
+T.mydata();flush();
+var gm=__els['main'].innerHTML;
+// ヒーロー：直近セッション=101(agoStr2>agoStr6)＝火曜練習・自分 dist6800→6.80km / max8.6→31.0km/h / sprN6
+ok('ヒーローカード(gps-hero)',has(gm,'gps-hero'));
+ok('ヒーロー直近=火曜練習(練習バッジ)',has(gm,'火曜練習')&&has(gm,'練習'));
+ok('ヒーロー距離6.80km',has(gm,'6.80'));
+ok('ヒーロー最高速度31.0km/h',has(gm,'31.0'));
+ok('ヒーロースプリント6本',has(gm,'6<span class="u">本'));
+ok('ヒーロー補助指標(ワークレート/高強度ラン/出場)',has(gm,'ワークレート')&&has(gm,'高強度ラン')&&has(gm,'出場'));
+// ②距離＋高強度ラン推移チャート
+ok('距離+高強度ラン推移 canvas',has(gm,'md-gps-dist'));
+ok('charts.md_gps_dist=bar+line 2データセット',charts.md_gps_dist&&charts.md_gps_dist.config.data.datasets.length===2);
+ok('  dataset0=bar(走行距離/y軸)',charts.md_gps_dist.config.data.datasets[0].type==='bar'&&charts.md_gps_dist.config.data.datasets[0].yAxisID==='y');
+ok('  dataset1=line(高強度ラン/y1軸)',charts.md_gps_dist.config.data.datasets[1].type==='line'&&charts.md_gps_dist.config.data.datasets[1].yAxisID==='y1');
+ok('  距離データ=[試4.2,火6.8]昇順',JSON.stringify(charts.md_gps_dist.config.data.datasets[0].data)==='[4.2,6.8]');
+ok('  高強度ランデータ=[試520,火850]昇順',JSON.stringify(charts.md_gps_dist.config.data.datasets[1].data)==='[520,850]');
+ok('  試合マーカー強調(pointRadius=[6,3])',JSON.stringify(charts.md_gps_dist.config.data.datasets[1].pointRadius)==='[6,3]');
+// ③最高速度：推移＋自己ベスト（自己ベスト=max8.9→32.0km/h・直近ヒーローの31.0と別値）
+ok('最高速度推移 canvas(2セッション)',has(gm,'md-gps-spd'));
+ok('自己ベスト表示(32.0km/h)',has(gm,'自己ベスト')&&has(gm,'32.0'));
+ok('charts.md_gps_spd=km/hデータ[試32.0,火31.0]',charts.md_gps_spd&&JSON.stringify(charts.md_gps_spd.config.data.datasets[0].data)==='[32,31]');
+// ④チーム内順位（期間内・全選手集計・0分除外・名簿基準）。スプリントは本数(gpsSprN)＝ヒーロー3大数字と一致
+// dist: p1=11000,p2=13200,p3=7400 → p1は2位/3 ; max: p1=8.9,p2=9.4,p3=7.4 → p1は2位/3 ; sprN: p1=10,p2=8,p3=8(102は0分除外) → p1は1位/3
+ok('順位チップ(gps-rankchip)',has(gm,'gps-rankchip'));
+ok('順位: 走行距離=2位',/rk">2<span class="u">位<\/span><\/div><div class="cap">走行距離/.test(gm));
+ok('順位: 最高速度=2位',/rk">2<span class="u">位<\/span><\/div><div class="cap">最高速度/.test(gm));
+ok('順位: スプリント(本数)=1位',/rk">1<span class="u">位<\/span><\/div><div class="cap">スプリント/.test(gm));
+ok('順位: 母数=3人中',has(gm,'3人中'));
+// 再描画冪等（onSnapshot 3連打でアニメ再発火/例外なし・dC先行）
+var bfG=__fail;
+T.mydata();flush();T.mydata();flush();
+ok('GPS込み再描画（冪等）で例外なし',__fail===bfG&&!!charts.md_gps_dist);
+
+print('--- GPS⑥: 非同期ロード（__store→loading→再描画・無限ループ無し） ---');
+resetD();
+D.p=[{id:1,name:'ラン 太郎',position:'WTB',year:2,height:'180'}];
+myPid=1;window._mdRange='90';curTab='mydata';subView=null;
+D.gs=[{id:501,date:agoStr(1),kind:'practice',label:'月曜練習',ts:1}];
+_grCache={};__store={};
+__store['gr_501']=JSON.stringify([{pid:1,min:60,dist:6000,wr:100,hsr:700,hsrN:35,spr:300,sprN:5,max:8.0}]);
+T.mydata();
+var load1=__els['main'].innerHTML;
+ok('未ロード時は「読み込み中」',has(load1,'GPSデータを読み込み中'));
+ok('未ロード時はヒーロー未描画',!has(load1,'gps-hero'));
+drain();flush(); // gpsLoadRowsRO の .then → callbackでT.mydata再描画 → チャートsetTimeout
+var load2=__els['main'].innerHTML;
+ok('ロード後にヒーロー表示(月曜練習)',has(load2,'gps-hero')&&has(load2,'月曜練習'));
+ok('gr_行データがキャッシュされた',_grCache[501]&&_grCache[501].length===1);
+ok('ロード後は「読み込み中」が消える（収束＝無限ループ無し）',!has(load2,'GPSデータを読み込み中'));
+
+print('--- GPS⑥: 期間セレクタ(_mdRange)連動＝範囲外セッション除外 ---');
+resetD();
+D.p=[{id:1,name:'ラン 太郎',position:'WTB',year:2,height:'180'}];
+myPid=1;
+D.gs=[{id:601,date:agoStr(5),kind:'practice',label:'今週',ts:2},{id:602,date:agoStr(200),kind:'practice',label:'半年前',ts:1}];
+_grCache={};
+_grCache[601]=[{pid:1,min:60,dist:6000,wr:100,hsr:700,hsrN:35,spr:300,sprN:5,max:8.0}];
+_grCache[602]=[{pid:1,min:60,dist:9000,wr:150,hsr:1000,hsrN:50,spr:500,sprN:9,max:9.5}];
+window._mdRange='30';T.mydata();flush();
+var r30=__els['main'].innerHTML;
+ok('30日: 範囲内601(今週)のみ・602(半年前)は除外',has(r30,'今週')&&!has(r30,'半年前'));
+ok('30日: 1セッション→速度推移グラフ非表示＋案内',!has(r30,'md-gps-spd')&&has(r30,'2回以上になると'));
+window._mdRange='all';T.mydata();flush();
+ok('全期間: 601+602とも対象＝距離データ2点',charts.md_gps_dist&&charts.md_gps_dist.config.data.datasets[0].data.length===2);
+
+print('--- GPS⑥: 自分が全セッション0分（出場なし）→ 案内・ヒーロー無し ---');
+resetD();
+D.p=[{id:1,name:'ラン 太郎',position:'WTB',year:2,height:'180'},{id:2,name:'他 選手'}];
+myPid=1;window._mdRange='90';
+D.gs=[{id:701,date:agoStr(3),kind:'match',label:'欠場試合',ts:1}];
+_grCache={};
+_grCache[701]=[{pid:1,min:0,dist:0,wr:0,hsr:0,spr:0,sprN:0,max:0},{pid:2,min:60,dist:6000,wr:100,hsr:700,spr:300,sprN:5,max:8}];
+T.mydata();flush();
+var z=__els['main'].innerHTML;
+ok('0分のみ→出場記録なし案内',has(z,'あなたが出場したGPSセッションの記録がありません'));
+ok('0分のみ→ヒーロー無し',!has(z,'gps-hero'));
+
+print('--- GPS⑥: 期間内にGPSセッションが無い（全て範囲外）→ 案内 ---');
+resetD();
+D.p=[{id:1,name:'ラン 太郎',position:'WTB',year:2,height:'180'}];
+myPid=1;window._mdRange='30';
+D.gs=[{id:801,date:agoStr(120),kind:'practice',label:'昔の練習',ts:1}];
+_grCache={};_grCache[801]=[{pid:1,min:60,dist:6000,wr:100,hsr:700,spr:300,sprN:5,max:8}];
+T.mydata();flush();
+var noRange=__els['main'].innerHTML;
+ok('30日: 範囲内セッション0→「この期間のGPS記録がありません」',has(noRange,'この期間のGPS記録がありません'));
+ok('30日: ヒーロー無し',!has(noRange,'gps-hero'));
+
+// レビュー確定#2: チーム内順位の母数はD.p名簿基準（退部/卒業のorphan gr_行は除外＝9-Bランキングと同基準）
+print('--- GPS⑥: 順位母数はD.p名簿基準（orphan pidを除外） ---');
+resetD();
+D.p=[{id:1,name:'ラン 太郎',position:'WTB',year:2,height:'180'},{id:2,name:'現役 次郎'}]; // pid3は名簿に無い（退部想定）
+myPid=1;window._mdRange='90';
+D.gs=[{id:901,date:agoStr(3),kind:'practice',label:'練習',ts:1}];
+_grCache={};
+_grCache[901]=[
+  {pid:1,min:60,dist:6000,wr:100,hsr:700,hsrN:35,spr:300,sprN:5,max:8.0},
+  {pid:2,min:60,dist:5000,wr:83,hsr:600,hsrN:30,spr:250,sprN:4,max:7.8},
+  {pid:3,min:60,dist:9000,wr:150,hsr:1000,hsrN:50,spr:500,sprN:9,max:9.9}  // orphan（名簿外）＝母数・順位から除外されるべき
+];
+T.mydata();flush();
+var orphan=__els['main'].innerHTML;
+// 名簿基準: 母数は在籍2名のみ。走行距離 p1=6000>p2=5000 → p1は1位/2人中（orphanの9000は無視）
+ok('orphan除外: 母数=2人中（名簿在籍者のみ）',has(orphan,'2人中')&&!has(orphan,'3人中'));
+ok('orphan除外: 走行距離=1位（名簿外の高値9000を無視）',/rk">1<span class="u">位<\/span><\/div><div class="cap">走行距離/.test(orphan));
+
+// レビュー確定#1: スプリント順位はヒーローと同じ「本数(sprN)」基準（距離sprではない）
+print('--- GPS⑥: スプリント順位は本数(sprN)基準でヒーローと一致 ---');
+resetD();
+D.p=[{id:1,name:'ラン 太郎',position:'WTB',year:2,height:'180'},{id:2,name:'距離 次郎'}];
+myPid=1;window._mdRange='90';
+D.gs=[{id:911,date:agoStr(3),kind:'practice',label:'練習',ts:1}];
+_grCache={};
+// p1: 本数多い(8本)・距離短い(200m) / p2: 本数少ない(2本)・距離長い(900m)
+_grCache[911]=[
+  {pid:1,min:60,dist:6000,wr:100,hsr:700,hsrN:40,spr:200,sprN:8,max:8.0},
+  {pid:2,min:60,dist:6000,wr:100,hsr:700,hsrN:20,spr:900,sprN:2,max:8.0}
+];
+T.mydata();flush();
+var sp=__els['main'].innerHTML;
+ok('ヒーロー: 自分のスプリント本数=8本',has(sp,'8<span class="u">本'));
+// 本数(sprN)基準なら p1(8本)>p2(2本) → 自分1位。もし距離(spr)基準ならp1(200)<p2(900)で2位になる＝本数基準であることを検証
+ok('スプリント順位=1位（本数基準・距離基準なら2位のはず）',/rk">1<span class="u">位<\/span><\/div><div class="cap">スプリント/.test(sp));
 
 // ============ 8. go('mydata')でルーティング ============
 print('--- ルーティング: go(mydata) ---');

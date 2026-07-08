@@ -253,6 +253,25 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
   .gps-spd.rv-armed.in .rk-bar::after{animation:gpsshimmer 1.15s cubic-bezier(.4,0,.2,1) .12s 1}
 }
 @keyframes gpsshimmer{to{transform:translateX(240%)}}
+/* ===== マイデータ⑥GPS（9-C）：ヒーローカード＋スピードライン装飾＋チーム内順位チップ ===== */
+.gps-hero{position:relative;overflow:hidden;border-radius:var(--radius-lg);background:linear-gradient(118deg,var(--maroon-d) 0%,var(--maroon) 50%,#c1121f 82%,#F5821F 130%);color:var(--pale);padding:15px 17px 16px;margin-bottom:10px;box-shadow:var(--shadow-md)}
+.gps-hero>*{position:relative;z-index:1}
+.gps-hero .spd-lines{position:absolute;inset:0;z-index:0;pointer-events:none;background:repeating-linear-gradient(114deg,transparent 0 22px,rgba(255,255,255,.055) 22px 24px);-webkit-mask-image:linear-gradient(100deg,transparent,#000 60%);mask-image:linear-gradient(100deg,transparent,#000 60%)}
+.gps-hero-top{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.gps-hero-badge{font-size:9px;font-weight:800;letter-spacing:.04em;padding:2px 9px;border-radius:999px;background:rgba(255,255,255,.18);color:var(--pale)}
+.gps-hero-grid{display:flex;gap:6px}
+.gps-hero-cell{flex:1;text-align:center}
+.gps-hero-num{font-family:var(--font-num);font-style:italic;font-weight:900;font-size:27px;line-height:.96;letter-spacing:-.02em}
+.gps-hero-num .u{font-size:12px;font-style:normal;font-weight:700;margin-left:1px;opacity:.82}
+.gps-hero-lbl{font-size:9.5px;font-weight:700;opacity:.82;margin-top:3px;letter-spacing:.02em}
+.gps-hero-sub{display:flex;gap:15px;margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.2)}
+.gps-hero-sub>div{font-size:11px;opacity:.94;white-space:nowrap}
+.gps-hero-sub b{font-family:var(--font-num);font-style:italic;font-weight:800;font-size:14px;margin-right:2px}
+.gps-rankchips{display:flex;gap:7px;flex-wrap:wrap}
+.gps-rankchip{flex:1;min-width:92px;background:var(--bg-primary);border:1px solid var(--border-tertiary);border-radius:12px;padding:9px 11px}
+.gps-rankchip .rk{font-family:var(--font-num);font-style:italic;font-weight:900;font-size:21px;line-height:1;color:var(--maroon)}
+.gps-rankchip .rk .u{font-size:11px;font-weight:700;font-style:normal;margin-left:1px}
+.gps-rankchip .cap{font-size:10px;color:var(--text-secondary);font-weight:700;margin-top:3px}
 /* コンディション: 部位チップ（pale地→選択はJSでmaroon塗り） */
 .part-chip{background:var(--pale);border-color:transparent;color:var(--maroon-d)}
 </style>
@@ -5199,10 +5218,81 @@ T.mydata=function(){
     h+='<div style="font-size:11px;color:var(--text-tertiary);margin:-2px 0 6px">フィジカル測定を2回以上記録すると推移グラフが表示されます。</div>';
   }
 
-  // ⑥ GPS（P9まで自動非表示：D.gs が存在する時のみ）
+  // ⑥ GPS（スタッフ取込済みの時のみ表示。_mdRange期間内のセッションを対象。読取り層は9-Bと共用）
+  var gpsMine=[];            // {date,label,kind,r} 自分が出場した(min>0)セッション（日付昇順）
+  var gpsDistData=null,gpsSpdData=null; // チャート用（下部setTimeoutで描画）
+  var _gpsPend=null;         // 未ロードのgr_id群（描画後に読み込み→再描画）
   if(D.gs&&D.gs.length){
-    h+=secHead('GPS・試合スタッツ','i-run');
-    h+='<div class="card" style="margin-bottom:8px"><div style="font-size:12px;color:var(--text-secondary)">GPSデータは今後の実装で表示されます。</div></div>';
+    h+=secHead('GPS','i-run');
+    var gpsAsc=(D.gs||[]).slice().sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''))||((a.ts||0)-(b.ts||0));});
+    var gpsInR=gpsAsc.filter(function(s){return inR(s.date);});
+    var gpsIds=gpsInR.map(function(s){return s.id;});
+    var gpsReady=gpsIds.every(function(id){return _grCache[id]!=null;});
+    if(!gpsInR.length){
+      h+='<div class="card" style="margin-bottom:8px"><div style="font-size:12px;color:var(--text-secondary);line-height:1.6">この期間のGPS記録がありません。期間を「全期間」に広げると過去のセッションが見られます。</div></div>';
+    }else if(!gpsReady){
+      _gpsPend=gpsIds; // 描画完了後に読み込み→同一タブなら再描画（下部で発火）
+      h+='<div class="card" style="margin-bottom:8px"><div class="no" style="padding:14px 0;font-size:12px;color:var(--text-secondary)">GPSデータを読み込み中…</div></div>';
+    }else{
+      // 自分の行を各セッションから抽出（min>0＝実際に出場したセッションのみ）
+      gpsInR.forEach(function(s){
+        var row=(_grCache[s.id]||[]).find(function(x){return idEq(x.pid,myPid);});
+        if(row&&row.min>0)gpsMine.push({date:s.date,label:s.label||fmt(s.date),kind:s.kind,r:row});
+      });
+      if(!gpsMine.length){
+        h+='<div class="card" style="margin-bottom:8px"><div style="font-size:12px;color:var(--text-secondary);line-height:1.6">この期間にあなたが出場したGPSセッションの記録がありません。</div></div>';
+      }else{
+        // ①ヒーローカード（直近セッション・3大数字＋補助指標。スピードライン装飾＋reveal）
+        var hero=gpsMine[gpsMine.length-1],hr=hero.r;
+        h+='<div class="card gps-hero rv" style="margin-bottom:10px"><div class="spd-lines"></div>'+
+          '<div class="gps-hero-top"><span class="gps-hero-badge">'+(hero.kind==='match'?'試合':'練習')+'</span>'+
+          '<span style="font-size:12px;font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escapeHtml(hero.label)+'</span>'+
+          '<span style="font-size:10px;opacity:.72;margin-left:auto;white-space:nowrap">'+fmt(hero.date)+'</span></div>'+
+          '<div class="gps-hero-grid">'+
+          '<div class="gps-hero-cell"><div class="gps-hero-num">'+((hr.dist||0)/1000).toFixed(2)+'<span class="u">km</span></div><div class="gps-hero-lbl">走行距離</div></div>'+
+          '<div class="gps-hero-cell"><div class="gps-hero-num">'+((hr.max||0)*3.6).toFixed(1)+'<span class="u">km/h</span></div><div class="gps-hero-lbl">最高速度</div></div>'+
+          '<div class="gps-hero-cell"><div class="gps-hero-num">'+(hr.sprN||0)+'<span class="u">本</span></div><div class="gps-hero-lbl">スプリント</div></div>'+
+          '</div>'+
+          '<div class="gps-hero-sub"><div><b>'+(hr.wr||0)+'</b>m/分 ワークレート</div>'+
+          '<div><b>'+(hr.hsr||0).toLocaleString()+'</b>m 高強度ラン</div>'+
+          '<div><b>'+(hr.min||0)+'</b>分 出場</div></div></div>';
+        // ②距離＋高強度ランの推移チャート（試合セッション=maroonマーカー強調・reveal後に描画）
+        gpsDistData={labels:gpsMine.map(function(x){return(x.date||'').slice(5);}),
+          dist:gpsMine.map(function(x){return Math.round((x.r.dist||0)/1000*100)/100;}),
+          hsr:gpsMine.map(function(x){return x.r.hsr||0;}),
+          match:gpsMine.map(function(x){return x.kind==='match';})};
+        h+='<div class="card rv" style="margin-bottom:8px"><div style="font-size:12px;font-weight:700;margin-bottom:8px">走行距離・高強度ランの推移 <span style="font-size:10px;color:var(--text-tertiary);font-weight:600">（●＝試合）</span></div><div style="position:relative;height:190px"><canvas id="md-gps-dist"></canvas></div></div>';
+        // ③最高速度：自己ベスト＋推移
+        var pbSpd=gpsMine.reduce(function(m,x){return(x.r.max||0)>m.v?{v:x.r.max||0,label:x.label}:m;},{v:0,label:''});
+        h+='<div class="card rv" style="margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px"><div style="font-size:12px;font-weight:700">最高速度の推移</div>'+
+          '<div style="text-align:right"><div style="font-size:9px;color:var(--text-secondary);font-weight:700">自己ベスト</div><div style="font-family:var(--font-num);font-style:italic;font-weight:900;font-size:17px;color:var(--maroon)">'+(pbSpd.v*3.6).toFixed(1)+'<span style="font-size:10px">km/h</span></div></div></div>';
+        if(gpsMine.length>=2){
+          gpsSpdData={labels:gpsMine.map(function(x){return(x.date||'').slice(5);}),
+            kmh:gpsMine.map(function(x){return Math.round((x.r.max||0)*3.6*10)/10;}),
+            match:gpsMine.map(function(x){return x.kind==='match';})};
+          h+='<div style="position:relative;height:150px"><canvas id="md-gps-spd"></canvas></div>';
+        }else{
+          h+='<div style="font-size:11px;color:var(--text-tertiary)">セッションが2回以上になると推移グラフが表示されます。</div>';
+        }
+        h+='</div>';
+        // ④チーム内順位チップ（期間内・全選手の集計からの順位。gpsAggValuesは0分行を自動除外）
+        var teamRows=gpsIds.map(function(id){return _grCache[id]||[];});
+        var rosterSet={};D.p.forEach(function(pp){rosterSet[pp.id]=1;}); // 名簿在籍者のみ母数に（9-Bランキングと同基準・退部/卒業のorphan gr_行は除外）
+        function gpsRankOf(metric){
+          var mp=gpsAggValues(teamRows,metric),mv=mp[myPid];
+          if(mv==null)return null;
+          var n=0,better=0;Object.keys(mp).forEach(function(k){if(mp[k]==null||!rosterSet[k])return;n++;if(mp[k]>mv)better++;});
+          return{rank:better+1,n:n};
+        }
+        // 指標はヒーロー3大数字と対応（走行距離=gpsDist・最高速度=gpsMaxSpd・スプリント=gpsSprN本数。距離gpsSprでなく本数で揃える）
+        var rchips=[['走行距離','gpsDist'],['最高速度','gpsMaxSpd'],['スプリント','gpsSprN']].map(function(c){return[c[0],gpsRankOf(c[1])];}).filter(function(c){return!!c[1];});
+        if(rchips.length){
+          h+='<div class="gps-rankchips" style="margin-bottom:8px">'+rchips.map(function(c){
+            return '<div class="gps-rankchip rv"><div class="rk">'+c[1].rank+'<span class="u">位</span></div><div class="cap">'+c[0]+'・'+c[1].n+'人中</div></div>';
+          }).join('')+'</div>';
+        }
+      }
+    }
   }
 
   // ⑦ 怪我履歴
@@ -5233,6 +5323,9 @@ T.mydata=function(){
 
   h+='<div style="height:20px"></div>';
   $m().innerHTML=h;
+
+  // GPS gr_行データが未ロードなら読み込み→まだマイデータ画面ならフル再描画（キャッシュ済みで収束＝ループ無し。非同期ガード規約=loadTlogArchと同型）
+  if(_gpsPend)gpsLoadMany(_gpsPend,function(){if(curTab==='mydata'&&!subView)T.mydata();});
 
   // ---- チャート描画（md_接頭辞・dC先行・固定高。onSnapshot再描画に冪等）
   setTimeout(function(){
@@ -5284,6 +5377,27 @@ T.mydata=function(){
       if(e4){
         dC('md_br');
         charts.md_br=new Chart(e4,{type:'line',data:{labels:brRecs.map(function(r){return r.date.slice(5);}),datasets:[{label:'Bronco',data:brRecs.map(function(r){return r.bronco;}),borderColor:'#8d0000',backgroundColor:'#8d0000',borderWidth:3,tension:.3,pointBackgroundColor:'#fff',pointBorderColor:'#8d0000',pointBorderWidth:2,pointRadius:4,pointHoverRadius:7}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(42,10,12,0.96)',padding:10,cornerRadius:10,callbacks:{label:function(c){return broncoFmt(c.parsed.y);}}}},scales:{y:{reverse:true,grid:{color:'rgba(60,10,12,0.08)'},ticks:{color:'#6E5A5C',font:{size:10},callback:function(v){return broncoFmt(v);}}},x:{grid:{display:false},ticks:{color:'#6E5A5C',font:{size:10}}}}}});
+      }
+    }
+    // ⑥ GPS: 走行距離(棒)＋高強度ラン(線)。試合セッションは線のマーカーをmaroonで強調
+    if(gpsDistData){
+      var eg=document.getElementById('md-gps-dist');
+      if(eg){
+        var cg=eg.getContext('2d');
+        var gg=cg.createLinearGradient(0,0,0,190);gg.addColorStop(0,'rgba(193,18,31,0.42)');gg.addColorStop(1,'rgba(245,130,31,0.06)');
+        dC('md_gps_dist');
+        charts.md_gps_dist=new Chart(eg,{type:'bar',data:{labels:gpsDistData.labels,datasets:[
+          {type:'bar',label:'走行距離(km)',data:gpsDistData.dist,backgroundColor:gg,borderColor:'rgba(193,18,31,0.55)',borderWidth:1,borderRadius:5,yAxisID:'y',order:2},
+          {type:'line',label:'高強度ラン(m)',data:gpsDistData.hsr,borderColor:'#B45309',backgroundColor:'#B45309',borderWidth:2.5,tension:.35,yAxisID:'y1',order:1,pointRadius:gpsDistData.match.map(function(m){return m?6:3;}),pointBackgroundColor:gpsDistData.match.map(function(m){return m?'#8d0000':'#B45309';}),pointBorderColor:'#fff',pointBorderWidth:1.5,pointHoverRadius:8}
+        ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:10,color:'#6E5A5C',font:{size:11}}},tooltip:{backgroundColor:'rgba(42,10,12,0.96)',padding:10,cornerRadius:10,callbacks:{label:function(c){return ' '+c.dataset.label+': '+(c.dataset.yAxisID==='y'?c.parsed.y+' km':c.parsed.y.toLocaleString()+' m');}}}},scales:{y:{position:'left',grid:{color:'rgba(60,10,12,0.08)'},ticks:{color:'#6E5A5C',font:{size:10}},title:{display:true,text:'km',color:'#8d0000',font:{size:9}}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{color:'#B45309',font:{size:10}},title:{display:true,text:'高強度ラン(m)',color:'#B45309',font:{size:9}}},x:{grid:{display:false},ticks:{color:'#6E5A5C',font:{size:10}}}}}});
+      }
+    }
+    // ⑥ GPS: 最高速度(km/h)の推移。試合セッションはマーカーをmaroonで強調
+    if(gpsSpdData){
+      var es=document.getElementById('md-gps-spd');
+      if(es){
+        dC('md_gps_spd');
+        charts.md_gps_spd=new Chart(es,{type:'line',data:{labels:gpsSpdData.labels,datasets:[{label:'最高速度(km/h)',data:gpsSpdData.kmh,borderColor:'#c1121f',backgroundColor:'#c1121f',borderWidth:3,tension:.3,pointRadius:gpsSpdData.match.map(function(m){return m?6:3;}),pointBackgroundColor:gpsSpdData.match.map(function(m){return m?'#8d0000':'#c1121f';}),pointBorderColor:'#fff',pointBorderWidth:1.5,pointHoverRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(42,10,12,0.96)',padding:10,cornerRadius:10,callbacks:{label:function(c){return c.parsed.y+' km/h';}}}},scales:{y:{grid:{color:'rgba(60,10,12,0.08)'},ticks:{color:'#6E5A5C',font:{size:10}}},x:{grid:{display:false},ticks:{color:'#6E5A5C',font:{size:10}}}}}});
       }
     }
   },80);
