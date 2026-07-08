@@ -3406,7 +3406,13 @@ var _curTLog=null; // 実施中のトレーニング記録
 
 // 自分に配布されているメニューを取得
 function getMyMenus(){
-  return (D.tmenu||[]).filter(function(m){return m.scope==='all'||idEq(m.scope,myPid);});
+  // フィットネスプログラム（ptype:'fitness'）はウエイトメニューの導線（配布一覧・開始・出欠）に混ぜない。
+  // 「おすすめプログラム」セクションにgetFitMenus()で別出しし、これをやる→フィットネス記録へ導く。
+  return (D.tmenu||[]).filter(function(m){return m&&m.ptype!=='fitness'&&(m.scope==='all'||idEq(m.scope,myPid));});
+}
+// 自分に配布されたフィットネスプログラム（ptype:'fitness'）。
+function getFitMenus(){
+  return (D.tmenu||[]).filter(function(m){return m&&m.ptype==='fitness'&&(m.scope==='all'||idEq(m.scope,myPid));});
 }
 // PUSH/PULLスロットの現メニューを取得。不変条件=同ptypeはアクティブ1件だが、
 // 異常時に複数になった場合はptype付与時刻(ptypeTs)最新→id大のタイブレークで1件に確定する（staffと同実装）
@@ -3506,6 +3512,22 @@ T.training=function(){
         '<div style="flex:1"><div style="font-weight:700;font-size:15px">'+escapeHtml(mn.name)+(isPersonal?' <span class="bd bd-a" style="font-size:9px">専用</span>':'')+(doneToday?' <span class="bd bd-g" style="font-size:9px">本日実施済</span>':'')+'</div>'+
         '<div style="font-size:12px;color:var(--text-secondary);margin-top:3px">'+(mn.exercises?mn.exercises.length:0)+'種目</div></div>'+
         '<span style="color:var(--blue);font-size:18px">›</span></div></div>';
+    });
+  }
+  // おすすめプログラム（スタッフ提示のフィットネス・Phase 8）。これをやる→フィットネス記録にプレフィル
+  var fitMenus=getFitMenus();
+  if(fitMenus.length){
+    h+='<div style="font-size:13px;font-weight:700;margin:18px 0 8px;display:flex;align-items:center;gap:6px">'+ic('i-run',15,'var(--green)')+' おすすめプログラム</div>';
+    fitMenus.forEach(function(mn){
+      var kinds=(mn.items||[]).map(function(it){return (it.kind||'').trim();}).filter(Boolean);
+      var summ=kinds.slice(0,3).join(' / ')+(kinds.length>3?' 他':'');
+      var didToday=tlogAll().some(function(l){return idEq(l.pid,myPid)&&l.fitness&&idEq(l.programId,mn.id)&&l.date===todayStr();});
+      h+='<div class="card" style="margin-bottom:8px;border-left:3px solid var(--green)">'+
+        '<div><div style="font-weight:700;font-size:15px">'+escapeHtml(mn.name)+(didToday?' <span class="bd bd-g" style="font-size:9px">本日実施済</span>':'')+'</div>'+
+        '<div style="font-size:12px;color:var(--text-secondary);margin-top:2px">'+((mn.items||[]).length)+'項目'+(summ?' ・ '+escapeHtml(summ):'')+'</div>'+
+        (mn.desc?'<div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;line-height:1.5">'+escapeHtml(mn.desc)+'</div>':'')+'</div>'+
+        '<button class="btn btn-p" style="width:100%;margin-top:10px;padding:11px" onclick="startFitProgram(\''+mn.id+'\')">'+ic('i-run',13)+' これをやる</button>'+
+        '</div>';
     });
   }
   // 自主トレ記録（チームメニュー以外のウエイト/フィットネス）
@@ -4720,15 +4742,46 @@ function mergeTexlistFromLog(log){
 }
 // フィットネス記録フォーム（種類は必須・時間は必須・距離/RPE/メモは任意）
 var SELF_FTYPES=['ランニング','バイク','水泳','HIIT','シャトルラン','坂道ダッシュ','縄跳び'];
-function showSelfFitnessForm(){
+// スタッフ提示のフィットネスプログラムを開始→フィットネス記録フォームへプレフィル（programId保持・全編集可）。
+// 合計時間=Σ(本数or1)×分（大まかな目安・編集可）／種類=最初の項目／メモ=説明＋全項目の要約。
+function startFitProgram(menuId){
+  var mn=getFitMenus().find(function(x){return idEq(x.id,menuId);});
+  if(!mn){alert('プログラムが見つかりません。画面を再読み込みしてください。');return;}
+  var items=mn.items||[];
+  var totalMin=0;
+  items.forEach(function(it){if(it.minutes!=null&&!isNaN(it.minutes))totalMin+=(it.count>0?it.count:1)*it.minutes;});
+  var ftype=(items[0]&&items[0].kind)?items[0].kind:mn.name;
+  var lines=items.map(function(it){
+    var det=[];
+    if(it.count!=null)det.push(it.count+'本');
+    if(it.minutes!=null)det.push(it.minutes+'分');
+    if(it.rest!=null)det.push('休憩'+it.rest+'秒');
+    if(it.rpe!=null)det.push('RPE'+it.rpe);
+    return [it.kind||'',det.join(' '),it.note||''].filter(Boolean).join(' ');
+  }).filter(Boolean);
+  var note=(mn.desc?mn.desc+'\n':'')+lines.join('\n');
+  showSelfFitnessForm({programId:mn.id,programName:mn.name,ftype:ftype,minutes:totalMin>0?totalMin:'',note:note,items:items});
+}
+function showSelfFitnessForm(prefill){
+  prefill=prefill||{};
   var h='<div style="font-size:17px;font-weight:700;margin:4px 0 6px;display:flex;align-items:center;gap:8px">'+ic('i-run',18,'var(--green)')+' フィットネスを記録</div>';
   h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">'+fmt(todayStr())+' の自主トレ</div>';
+  // プログラム由来なら内容を参照カードで表示（編集は下のフォームで）
+  if(prefill.programId!=null&&prefill.items&&prefill.items.length){
+    h+='<div class="card" style="margin-bottom:12px;background:var(--bg-primary);border-left:3px solid var(--green)"><div style="font-size:11px;color:var(--green);font-weight:700;margin-bottom:6px">'+ic('i-run',12,'var(--green)')+' プログラム「'+escapeHtml(prefill.programName||'')+'」の内容</div>';
+    prefill.items.forEach(function(it){
+      var det=[];if(it.count!=null)det.push(it.count+'本');if(it.minutes!=null)det.push(it.minutes+'分');if(it.rest!=null)det.push('休憩'+it.rest+'秒');if(it.rpe!=null)det.push('RPE'+it.rpe);
+      h+='<div style="font-size:12px;color:var(--text-secondary);padding:2px 0"><span style="font-weight:600;color:var(--text-primary)">'+escapeHtml(it.kind||'')+'</span>'+(det.length?' — '+escapeHtml(det.join(' / ')):'')+(it.note?'（'+escapeHtml(it.note)+'）':'')+'</div>';
+    });
+    h+='<div style="font-size:10px;color:var(--text-tertiary);margin-top:6px">↓ 実際にやった内容に合わせて編集して記録してください</div></div>';
+  }
   h+='<div class="card" style="margin-bottom:12px">';
-  h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">種類 <span style="color:var(--red)">*</span></label><input id="sf-type" class="ipt" placeholder="例：ランニング" list="sf-type-hist"><datalist id="sf-type-hist">'+SELF_FTYPES.map(function(n){return'<option value="'+n+'">';}).join('')+'</datalist></div>';
-  h+='<div style="display:flex;gap:10px"><div class="fl" style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">時間（分） <span style="color:var(--red)">*</span></label><input id="sf-min" class="ipt" type="number" min="1" inputmode="numeric" placeholder="30"></div>'+
+  h+='<input type="hidden" id="sf-progid" value="'+escapeHtml(prefill.programId!=null?String(prefill.programId):'')+'">';
+  h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">種類 <span style="color:var(--red)">*</span></label><input id="sf-type" class="ipt" placeholder="例：ランニング" value="'+escapeHtml(prefill.ftype||'')+'" list="sf-type-hist"><datalist id="sf-type-hist">'+SELF_FTYPES.map(function(n){return'<option value="'+n+'">';}).join('')+'</datalist></div>';
+  h+='<div style="display:flex;gap:10px"><div class="fl" style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">時間（分） <span style="color:var(--red)">*</span></label><input id="sf-min" class="ipt" type="number" min="1" inputmode="numeric" placeholder="30" value="'+escapeHtml(prefill.minutes!=null&&prefill.minutes!==''?String(prefill.minutes):'')+'"></div>'+
     '<div class="fl" style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">距離（km・任意）</label><input id="sf-km" class="ipt" type="number" step="any" inputmode="decimal" placeholder="5"></div></div>';
   h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">きつさ（RPE 1〜10・任意）</label><select id="sf-rpe" class="ipt"><option value="">選択しない</option>'+[1,2,3,4,5,6,7,8,9,10].map(function(n){return'<option value="'+n+'">'+n+(n<=3?'（楽）':n>=9?'（限界近い）':n>=7?'（きつい）':'')+'</option>';}).join('')+'</select></div>';
-  h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">メモ（任意）</label><textarea id="sf-note" class="ipt" rows="2" placeholder="コース・内容など"></textarea></div>';
+  h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">メモ（任意）</label><textarea id="sf-note" class="ipt" rows="2" placeholder="コース・内容など">'+escapeHtml(prefill.note||'')+'</textarea></div>';
   h+='</div>';
   h+='<button class="btn btn-p" style="width:100%;padding:12px" onclick="saveSelfFitness(this)">'+ic('i-check',13)+' 記録する</button>';
   h+='<button class="btn" style="width:100%;margin-top:8px" onclick="showSelfTrainingMenu()">戻る</button>';
@@ -4752,6 +4805,10 @@ function saveSelfFitness(btnEl){
   if(note)fit.note=note;
   // 不変条件: results:[] + totalVolume:0 を必ず持たせる（既存の全集計コードが(l.results||[])で無傷に通る）
   var log={id:newId(),pid:myPid,menuId:null,kind:'self',date:todayStr(),ts:new Date().toISOString(),fitness:fit,results:[],totalVolume:0};
+  // スタッフ提示プログラム由来なら programId を付与（実施者一覧の照合用。自由記録は付与しない＝トップレベルはslimTlogRecでパススルー）
+  var progEl=document.getElementById('sf-progid');
+  var progId=progEl?(progEl.value||'').trim():'';
+  if(progId)log.programId=progId;
   svSafeSeq([{k:'tlog',rec:log}],function(){
     showSelfFitnessResult(log);
   },function(){
