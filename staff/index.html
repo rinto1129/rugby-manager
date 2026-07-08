@@ -5068,6 +5068,90 @@ function gpsDelSession(id){
   });
 }
 
+// ============================================================
+// ===== 試合スタッツ取込エンジン（Phase9-D）: 貼付TSV専用。名前照合はGPSと同じmatchGpsRowsを再利用 =====
+// ============================================================
+// 固定列プリセット（0基点index）: No/名前/タックル計/成功%/Dominate/Good/Passive/Miss/Steal/キャリー/LB/Beaten/Pass+/Pass-
+// ※成功%(pct)は取り込まない（成功率はDominate/Good/Passive/Missから算出＝データ源に依存しない）
+var MS_COLS={no:0,name:1,tkl:2,pct:3,tklD:4,tklG:5,tklP:6,tklM:7,steal:8,carry:9,lb:10,beaten:11,passP:12,passM:13};
+// グリッド（行×セル配列。TSV split相当）→ 行データ配列。B列(名前)が実名の行だけ採用、データ開始後の非採用行で打ち切り（GPSと同じ規則）
+// 返り値: {rows:[{name,no,tkl,tklD,tklG,tklP,tklM,steal,carry,lb,beaten,passP,passM}], scanned, stopped}
+function parseMstatGrid(grid){
+  var out=[],started=false,stopped='';
+  if(!grid||!grid.length)return{rows:out,scanned:0,stopped:'empty'};
+  var scanned=0;
+  for(var i=0;i<grid.length;i++){
+    var row=grid[i]||[];
+    var rawName=row[MS_COLS.name];
+    var nm=normName(rawName);
+    // 名前セルの妥当性: 空/停止語/『列N』ヘッダ/数字のみ は選手名でない（GPS_STOPNAMESを共用）
+    var isName=nm&&!GPS_STOPNAMES[nm.toLowerCase?nm.toLowerCase():nm]&&!GPS_STOPNAMES[nm]&&!/^列\d*$/.test(nm)&&!/^[0-9.]+$/.test(nm);
+    if(!isName){
+      if(started){stopped='row'+i;break;} // データ開始後の非採用行で打ち切り（下部の合計/別表を拾わない）
+      continue; // データ開始前（ヘッダ/空行）はスキップ
+    }
+    started=true;scanned++;
+    var gi=function(idx){var v=gpsNum(row[idx]);return isFinite(v)?Math.round(v):0;};
+    out.push({
+      name:String(rawName).trim(),
+      no:gi(MS_COLS.no),
+      tkl:gi(MS_COLS.tkl),tklD:gi(MS_COLS.tklD),tklG:gi(MS_COLS.tklG),tklP:gi(MS_COLS.tklP),tklM:gi(MS_COLS.tklM),
+      steal:gi(MS_COLS.steal),carry:gi(MS_COLS.carry),lb:gi(MS_COLS.lb),beaten:gi(MS_COLS.beaten),
+      passP:gi(MS_COLS.passP),passM:gi(MS_COLS.passM)
+    });
+  }
+  return{rows:out,scanned:scanned,stopped:stopped};
+}
+// TSV文字列 → グリッド → parseMstatGrid（Excelコピー / Claude変換PDFの受け皿）
+function parseMstatTSV(text){
+  var lines=String(text==null?'':text).replace(/\r\n?/g,'\n').split('\n');
+  var grid=lines.map(function(l){return l.split('\t');});
+  return parseMstatGrid(grid);
+}
+// 確定行を保存: msr_<id>へ行データ直set → 成功後ms索引へsvSafeUpdate（冪等）→ gmap学習（GPSと同じ辞書を共用）
+// matched=matchGpsRows結果（pid確定済みのみ採用）, meta={id?,date,label,team}（種別は常に試合＝kind保存なし）
+function mstatCommit(matched,meta,onDone,onError){
+  var use=(matched||[]).filter(function(m){return m.pid!=null;});
+  var rowData=use.map(function(m){var r=m.row;return{pid:m.pid,no:r.no,tkl:r.tkl,tklD:r.tklD,tklG:r.tklG,tklP:r.tklP,tklM:r.tklM,steal:r.steal,carry:r.carry,lb:r.lb,beaten:r.beaten,passP:r.passP,passM:r.passM};});
+  var id=meta.id!=null?meta.id:Date.now();
+  // gmap学習: 曖昧姓（同姓複数）は学習しない（GPSと同じガード）
+  var _snCount={};(D.p||[]).forEach(function(p){var sk=surnameKey(p.name);if(sk)_snCount[sk]=(_snCount[sk]||0)+1;});
+  var learn={};use.forEach(function(m){if(m.key&&!(_snCount[m.key]>1))learn[m.key]=m.pid;});
+  db.collection('appdata').doc('msr_'+id).set({data:JSON.stringify(rowData)}).then(function(){
+    svSafeUpdate('ms',function(latest){
+      if(latest.some(function(s){return idEq(s.id,id);}))return latest; // 冪等: 同id再追加しない
+      latest.push({id:id,date:meta.date,label:meta.label||'',team:meta.team||'',n:rowData.length,ts:Date.now()});
+      return latest;
+    },function(){
+      _msrCache[id]=rowData;
+      svSafeUpdate('gmap',function(latest){
+        var rec=latest.find(function(x){return x&&x.id==='namemap';});
+        if(!rec){rec={id:'namemap',map:{}};latest.push(rec);}
+        if(!rec.map||typeof rec.map!=='object')rec.map={};
+        Object.keys(learn).forEach(function(k){rec.map[k]=learn[k];});
+        return latest;
+      });
+      if(onDone)onDone(id,rowData.length);
+    },onError);
+  }).catch(function(e){console.error('msr save error',e);if(onError)onError(e);else alert('保存に失敗しました');});
+}
+// msr_<id>行データをオンデマンド取得（参照キャッシュ）
+var _msrCache={};
+function msLoadRows(id,cb){
+  if(_msrCache[id]){if(cb)cb(_msrCache[id]);return;}
+  db.collection('appdata').doc('msr_'+id).get().then(function(doc){
+    var rows=[];if(doc.exists){try{var q=JSON.parse(doc.data().data);if(Array.isArray(q))rows=q;}catch(e){}}
+    _msrCache[id]=rows;if(cb)cb(rows);
+  }).catch(function(e){console.error('msr load error',e);if(cb)cb([]);});
+}
+// 試合スタッツセッション削除: ms索引から除去 → msr_docを空化（GPSと同型）
+function msDelSession(id){
+  svSafeUpdate('ms',function(latest){return latest.filter(function(s){return!idEq(s.id,id);});},function(){
+    delete _msrCache[id];
+    db.collection('appdata').doc('msr_'+id).set({data:'[]'}).catch(function(e){console.error('msr del error',e);});
+  });
+}
+
 // ---- GPS取込ウィザード（V.gps）: 状態はwindow._gpsWiz、workbookは_gpsWB。ステップ遷移はnav非経由のため既存revealは再発火しない ----
 var _gpsWB=null;
 function gpsWizInit(force){
@@ -5076,7 +5160,7 @@ function gpsWizInit(force){
   }
 }
 function gpsReset(){window._gpsWiz=null;_gpsWB=null;gpsWizInit(true);V.gps();}
-function gpsSetType(t){gpsWizInit();window._gpsWiz.type=t;window._gpsWiz.err='';V.gps();}
+function gpsSetType(t){gpsWizInit();var st=window._gpsWiz;if(st.type!==t){st.type=t;st.step=1;st.parse=null;st.matched=[];st.sheets=null;st.sheetName='';st.savedId=null;st.saving=false;st.saveId=null;_gpsWB=null;st.meta.kind=(t==='match')?'match':'practice';}st.err='';V.gps();}
 function gpsReadMeta(){
   var st=window._gpsWiz;
   var d=document.getElementById('gps-date');if(d&&d.value)st.meta.date=d.value;
@@ -5114,6 +5198,13 @@ function gpsParseTSV(){
   if(!txt||!txt.trim()){st.err='貼り付け欄が空です';V.gps();return;}
   st.parse=parseGpsTSV(txt);
   st.err=st.parse.rows.length?'':'選手データを検出できませんでした（Excelの表をヘッダ含めてそのまま貼り付けてください）';
+  V.gps();
+}
+function gpsParseMstatTSV(){
+  var st=window._gpsWiz;var el=document.getElementById('gps-tsv');var txt=el?el.value:'';
+  if(!txt||!txt.trim()){st.err='貼り付け欄が空です';V.gps();return;}
+  st.parse=parseMstatTSV(txt);
+  st.err=st.parse.rows.length?'':'選手データを検出できませんでした（No/名前/タックル…の表をヘッダ含めて貼り付けてください）';
   V.gps();
 }
 function gpsDragOver(ev){ev.preventDefault();var el=document.getElementById('gps-drop');if(el)el.classList.add('over');}
@@ -5168,9 +5259,40 @@ function gpsDoSave(){
   if(!st.saveId)st.saveId=Date.now(); // 保存試行ごとにid固定＝万一再入してもgs索引の冪等ガードが効き重複しない
   var meta={id:st.saveId,date:st.meta.date,kind:st.meta.kind,label:st.meta.label,team:st.meta.team};
   V.gps(); // 再描画でボタンをdisabled（st.saving）に反映
-  gpsCommit(st.matched,meta,function(id,n){st.saving=false;st.savedId=id;st.savedN=n;st.step=3;V.gps();},function(){st.saving=false;st.saveId=null;st.err='保存に失敗しました。通信環境をご確認ください';V.gps();});
+  var okCb=function(id,n){st.saving=false;st.savedId=id;st.savedN=n;st.step=3;V.gps();};
+  var errCb=function(){st.saving=false;st.saveId=null;st.err='保存に失敗しました。通信環境をご確認ください';V.gps();};
+  if(st.type==='match')mstatCommit(st.matched,meta,okCb,errCb);
+  else gpsCommit(st.matched,meta,okCb,errCb);
 }
 function gpsDelConfirm(id){var s=(D.gs||[]).find(function(x){return idEq(x.id,id);});if(!s)return;if(confirm((s.label||fmt(s.date))+' のセッションを削除しますか？（元に戻せません）'))gpsDelSession(id);}
+function msDelConfirm(id){var s=(D.ms||[]).find(function(x){return idEq(x.id,id);});if(!s)return;if(confirm((s.label||fmt(s.date))+' の試合スタッツを削除しますか？（元に戻せません）'))msDelSession(id);}
+function msDetail(id){
+  var s=(D.ms||[]).find(function(x){return idEq(x.id,id);});if(!s)return;
+  msLoadRows(id,function(rows){
+    var sorted=rows.slice().sort(function(a,b){return ((b.tklD||0)+(b.tklG||0)+(b.tklP||0))-((a.tklD||0)+(a.tklG||0)+(a.tklP||0));});
+    var h='<div style="max-width:900px">';
+    h+='<div class="card" style="margin-bottom:12px;display:flex;gap:14px;flex-wrap:wrap;align-items:center">'+
+      '<div style="font-weight:800;font-size:15px">'+escapeHtml(s.label||fmt(s.date))+'</div>'+
+      '<span class="flag" style="background:var(--maroon);color:#fff">試合</span>'+
+      (s.team?'<span style="font-size:12px;color:var(--text-secondary)">チーム'+escapeHtml(s.team)+'</span>':'')+
+      '<span style="font-size:12px;color:var(--text-secondary)">'+fmt(s.date)+' ・ '+rows.length+'名</span></div>';
+    h+='<div style="overflow-x:auto"><table class="tbl" style="min-width:640px"><thead><tr>'+
+      '<th style="text-align:left">選手</th><th>タックル</th><th>成功率</th><th>Miss</th><th>キャリー</th><th>LB</th><th>Pass+/-</th></tr></thead><tbody>';
+    sorted.forEach(function(r){
+      var p=(D.p||[]).find(function(x){return idEq(x.id,r.pid);});
+      var made=(r.tklD||0)+(r.tklG||0)+(r.tklP||0),att=made+(r.tklM||0);
+      h+='<tr><td style="text-align:left">'+(p?escapeHtml(p.name):'?')+'</td>'+
+        '<td style="text-align:center">'+(r.tkl||0)+'</td>'+
+        '<td style="text-align:center">'+(att>0?Math.round(made/att*100)+'%':'—')+'</td>'+
+        '<td style="text-align:center">'+(r.tklM||0)+'</td>'+
+        '<td style="text-align:center">'+(r.carry||0)+'</td>'+
+        '<td style="text-align:center">'+(r.lb||0)+'</td>'+
+        '<td style="text-align:center">'+(r.passP||0)+' / '+(r.passM||0)+'</td></tr>';
+    });
+    h+='</tbody></table></div></div>';
+    pushView(escapeHtml(s.label||fmt(s.date))+' の詳細',h);
+  });
+}
 function gpsDetail(id){
   var s=(D.gs||[]).find(function(x){return idEq(x.id,id);});if(!s)return;
   gpsLoadRows(id,function(rows){
@@ -5226,7 +5348,13 @@ V.gps=function(){
       '<button class="btn'+(st.type==='gps'?' btn-p':'')+'" style="font-size:12px" onclick="gpsSetType(\'gps\')">'+ic('i-bolt',13)+' GPS（走行）</button>'+
       '<button class="btn'+(st.type==='match'?' btn-p':'')+'" style="font-size:12px" onclick="gpsSetType(\'match\')">'+ic('i-ball',13)+' 試合スタッツ</button></div>';
     if(st.type==='match'){
-      h+='<div style="font-size:13px;color:var(--text-secondary);line-height:1.7;padding:8px 0">試合スタッツ（タックル・キャリー等）の取込はまもなく対応します（Phase 9-D）。まずはGPSデータをお試しください。</div>';
+      // 貼り付けのみ（PDFはClaudeがTSV化 / 元Excelコピー）
+      h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:5px;line-height:1.6">試合スタッツ表（<b>No / 名前 / タックル計 / 成功% / Dominate / Good / Passive / Miss / Steal / キャリー / LB / Beaten / Pass+ / Pass-</b>）をコピーして貼り付けてください（ヘッダ含めてOK）。</div>'+
+        '<textarea class="ipt" id="gps-tsv" placeholder="No＜tab＞名前＜tab＞タックル計… の表を貼り付け" style="min-height:110px;font-family:var(--font-num);font-size:12px"></textarea>'+
+        '<button class="btn" style="margin-top:6px;font-size:12px" onclick="gpsParseMstatTSV()">'+ic('i-clipboard',13)+' 貼り付けを解析</button>';
+      if(st.parse&&st.parse.rows.length){
+        h+='<div class="card" style="margin-top:14px;background:var(--green-bg);border-left:3px solid var(--green)"><span style="font-size:13px;font-weight:700;color:var(--green)">'+ic('i-check-c',14)+' <span data-cu="'+st.parse.rows.length+'">'+st.parse.rows.length+'</span>名分のスタッツを検出しました</span></div>';
+      }
     }else{
       // D&Dゾーン
       h+='<div class="gx-drop" id="gps-drop" ondragover="gpsDragOver(event)" ondragleave="gpsDragLeave(event)" ondrop="gpsDrop(event)" onclick="var f=document.getElementById(\'gps-file\');if(f)f.click();">'+
@@ -5250,17 +5378,15 @@ V.gps=function(){
     }
     h+='</div>';
 
-    if(st.type!=='match'){
-      // メタ情報
-      h+='<div class="card'+ai+'" style="margin-bottom:14px"><div style="font-weight:800;font-size:14px;margin-bottom:10px">セッション情報</div>'+
-        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">'+
-        '<div class="fl"><label>日付</label><input type="date" class="ipt" id="gps-date" value="'+escapeHtml(st.meta.date||'')+'"></div>'+
-        '<div class="fl"><label>種別</label><select class="ipt" id="gps-kind"><option value="practice"'+(st.meta.kind!=='match'?' selected':'')+'>練習</option><option value="match"'+(st.meta.kind==='match'?' selected':'')+'>試合</option></select></div>'+
-        '<div class="fl"><label>ラベル（任意）</label><input type="text" class="ipt" id="gps-label" placeholder="例: 火曜練習 / vs 福岡工大" value="'+escapeHtml(st.meta.label||'')+'"></div>'+
-        '<div class="fl"><label>チーム（任意）</label><select class="ipt" id="gps-team"><option value=""'+(!st.meta.team?' selected':'')+'>なし</option><option'+(st.meta.team==='A'?' selected':'')+'>A</option><option'+(st.meta.team==='B'?' selected':'')+'>B</option></select></div>'+
-        '</div></div>';
-      h+='<div style="display:flex;justify-content:flex-end"><button class="btn btn-p" onclick="gpsToStep2()">選手照合へ進む '+ic('i-chevron-r',14)+'</button></div>';
-    }
+    // メタ情報（GPS=種別あり / 試合スタッツ=種別なし・常に試合）
+    h+='<div class="card'+ai+'" style="margin-bottom:14px"><div style="font-weight:800;font-size:14px;margin-bottom:10px">'+(st.type==='match'?'試合情報':'セッション情報')+'</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">'+
+      '<div class="fl"><label>日付</label><input type="date" class="ipt" id="gps-date" value="'+escapeHtml(st.meta.date||'')+'"></div>'+
+      (st.type==='match'?'':'<div class="fl"><label>種別</label><select class="ipt" id="gps-kind"><option value="practice"'+(st.meta.kind!=='match'?' selected':'')+'>練習</option><option value="match"'+(st.meta.kind==='match'?' selected':'')+'>試合</option></select></div>')+
+      '<div class="fl"><label>ラベル（任意）</label><input type="text" class="ipt" id="gps-label" placeholder="'+(st.type==='match'?'例: vs 福岡工大':'例: 火曜練習 / vs 福岡工大')+'" value="'+escapeHtml(st.meta.label||'')+'"></div>'+
+      '<div class="fl"><label>チーム（任意）</label><select class="ipt" id="gps-team"><option value=""'+(!st.meta.team?' selected':'')+'>なし</option><option'+(st.meta.team==='A'?' selected':'')+'>A</option><option'+(st.meta.team==='B'?' selected':'')+'>B</option></select></div>'+
+      '</div></div>';
+    h+='<div style="display:flex;justify-content:flex-end"><button class="btn btn-p" onclick="gpsToStep2()">選手照合へ進む '+ic('i-chevron-r',14)+'</button></div>';
   }
 
   // ===== STEP 2: 選手照合 =====
@@ -5275,7 +5401,7 @@ V.gps=function(){
       var info=gpsBadge(m.status);var r=m.row||{};
       h+='<div class="log-row" style="align-items:center;gap:10px;flex-wrap:wrap">'+
         '<div style="flex:0 0 90px;font-weight:700;font-size:13px">'+escapeHtml(m.name)+'</div>'+
-        '<div style="flex:0 0 auto;min-width:130px;font-size:11px;color:var(--text-tertiary)">'+((r.dist||0)/1000).toFixed(2)+'km ・ '+((r.max||0)*3.6).toFixed(1)+'km/h</div>'+
+        '<div style="flex:0 0 auto;min-width:130px;font-size:11px;color:var(--text-tertiary)">'+(st.type==='match'?('タックル'+(r.tkl||0)+'・キャリー'+(r.carry||0)):(((r.dist||0)/1000).toFixed(2)+'km ・ '+((r.max||0)*3.6).toFixed(1)+'km/h'))+'</div>'+
         '<div id="gpm-b-'+idx+'" class="'+info.cls+'" style="flex:0 0 auto;font-size:11px;min-width:70px">'+info.html+'</div>'+
         '<select class="ipt" style="flex:1 1 160px;min-width:140px" onchange="gpsSetMatch('+idx+',this.value)">'+gpsPlayerOpts(m.pid,m.cand)+'</select></div>';
     });
@@ -5289,7 +5415,7 @@ V.gps=function(){
     if(st.savedId){
       h+='<div class="card'+ai+'" style="margin-bottom:14px"><div class="gx-save-ok">'+
         '<svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="23" fill="none" stroke="var(--green)" stroke-width="2" opacity=".35"></circle><path class="gx-check'+(anim?' gx-check-draw':'')+'" d="M15 27 L23 35 L38 18"></path></svg>'+
-        '<div style="font-weight:800;font-size:16px;margin-top:8px">'+st.savedN+'名分のセッションを保存しました</div>'+
+        '<div style="font-weight:800;font-size:16px;margin-top:8px">'+st.savedN+'名分の'+(st.type==='match'?'試合スタッツ':'セッション')+'を保存しました</div>'+
         '<div style="font-size:12px;color:var(--text-secondary);margin-top:2px">選手のマイデータ・ランキングに反映されます</div></div></div>';
       h+='<div style="display:flex;justify-content:center;gap:8px"><button class="btn btn-p" onclick="gpsReset()">'+ic('i-plus',13)+' 続けて取り込む</button></div>';
     }else{
@@ -5297,7 +5423,7 @@ V.gps=function(){
       h+='<div class="card'+ai+'" style="margin-bottom:14px"><div style="font-weight:800;font-size:14px;margin-bottom:10px">保存内容の確認</div>'+
         '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-bottom:10px">'+
         '<div><span style="color:var(--text-secondary)">日付</span><br><b>'+escapeHtml(fmt(st.meta.date)||st.meta.date)+'</b></div>'+
-        '<div><span style="color:var(--text-secondary)">種別</span><br><b>'+(st.meta.kind==='match'?'試合':'練習')+'</b></div>'+
+        (st.type==='match'?'':'<div><span style="color:var(--text-secondary)">種別</span><br><b>'+(st.meta.kind==='match'?'試合':'練習')+'</b></div>')+
         (st.meta.label?'<div><span style="color:var(--text-secondary)">ラベル</span><br><b>'+escapeHtml(st.meta.label)+'</b></div>':'')+
         (st.meta.team?'<div><span style="color:var(--text-secondary)">チーム</span><br><b>'+escapeHtml(st.meta.team)+'</b></div>':'')+
         '<div><span style="color:var(--text-secondary)">保存人数</span><br><b class="gx-badge-ok" data-cu="'+s3.save+'">'+s3.save+'</b> 名</div></div>';
@@ -5306,24 +5432,26 @@ V.gps=function(){
       if(s3.warn)h+='<div style="margin-top:8px;font-size:12px;color:var(--amber)">'+ic('i-warn',12)+' '+s3.warn+'名は未照合のため保存されません（戻って選択できます）</div>';
       h+='</div>';
       h+='<div style="display:flex;justify-content:space-between"><button class="btn" onclick="gpsBackStep(2)">'+ic('i-chevron-l',14)+' 戻る</button>'+
-        '<button class="btn btn-p" id="gps-save-btn" onclick="gpsDoSave()"'+(st.saving?' disabled':'')+'>'+ic('i-check',14)+' '+(st.saving?'保存中…':'このセッションを保存')+'</button></div>';
+        '<button class="btn btn-p" id="gps-save-btn" onclick="gpsDoSave()"'+(st.saving?' disabled':'')+'>'+ic('i-check',14)+' '+(st.saving?'保存中…':(st.type==='match'?'この試合スタッツを保存':'このセッションを保存'))+'</button></div>';
     }
   }
 
-  // ===== 取込履歴 =====
-  var gs=(D.gs||[]).slice().sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))||(b.ts||0)-(a.ts||0);});
-  h+='<div class="rv" style="margin-top:26px;font-weight:800;font-size:14px;display:flex;align-items:center;gap:6px">'+ic('i-clipboard',15)+' 取込履歴 <span style="font-size:12px;color:var(--text-tertiary);font-weight:600">('+gs.length+')</span></div>';
-  if(!gs.length){
-    h+='<div class="no" style="margin-top:10px">まだ取り込まれたセッションはありません。</div>';
+  // ===== 取込履歴（取込タイプに応じてGPS=D.gs / 試合スタッツ=D.msを表示）=====
+  var isMatch=st.type==='match';
+  var hist=(isMatch?(D.ms||[]):(D.gs||[])).slice().sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))||(b.ts||0)-(a.ts||0);});
+  h+='<div class="rv" style="margin-top:26px;font-weight:800;font-size:14px;display:flex;align-items:center;gap:6px">'+ic('i-clipboard',15)+' '+(isMatch?'試合スタッツ履歴':'GPS取込履歴')+' <span style="font-size:12px;color:var(--text-tertiary);font-weight:600">('+hist.length+')</span></div>';
+  if(!hist.length){
+    h+='<div class="no" style="margin-top:10px">まだ取り込まれた'+(isMatch?'試合スタッツ':'セッション')+'はありません。</div>';
   }else{
     h+='<div style="margin-top:10px">';
-    gs.forEach(function(s){
+    hist.forEach(function(s){
+      var isMt=isMatch||s.kind==='match'; // 試合スタッツは常に試合・GPSはkindで判定
       h+='<div class="log-row rv" style="align-items:center;gap:10px;flex-wrap:wrap">'+
-        '<span class="flag" style="background:'+(s.kind==='match'?'var(--maroon)':'var(--green)')+';color:#fff;flex:0 0 auto">'+(s.kind==='match'?'試合':'練習')+'</span>'+
+        '<span class="flag" style="background:'+(isMt?'var(--maroon)':'var(--green)')+';color:#fff;flex:0 0 auto">'+(isMt?'試合':'練習')+'</span>'+
         '<div style="flex:1 1 160px;min-width:0"><div style="font-size:13px;font-weight:700">'+escapeHtml(s.label||fmt(s.date))+(s.team?' <span style="font-size:11px;color:var(--text-secondary)">('+escapeHtml(s.team)+')</span>':'')+'</div>'+
         '<div style="font-size:11px;color:var(--text-tertiary)">'+fmt(s.date)+' ・ '+(s.n||0)+'名</div></div>'+
-        '<button class="btn btn-sm" onclick="gpsDetail('+JSON.stringify(s.id)+')">'+ic('i-search',12)+' 詳細</button>'+
-        '<button class="btn btn-sm" onclick="gpsDelConfirm('+JSON.stringify(s.id)+')">'+ic('i-trash',12)+'</button></div>';
+        '<button class="btn btn-sm" onclick="'+(isMatch?'msDetail':'gpsDetail')+'('+JSON.stringify(s.id)+')">'+ic('i-search',12)+' 詳細</button>'+
+        '<button class="btn btn-sm" onclick="'+(isMatch?'msDelConfirm':'gpsDelConfirm')+'('+JSON.stringify(s.id)+')">'+ic('i-trash',12)+'</button></div>';
     });
     h+='</div>';
   }
