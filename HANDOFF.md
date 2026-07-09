@@ -7,10 +7,10 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-09（**🆕新プラン(ブロンコ/プロフィール移設/グループ/自主トレ) 全9フェーズ実装＋全テスト回帰まで完了。⚠️未commit・未push＝ユーザーのデプロイ可否確認待ち。**）
+- 日時: 2026-07-09（**🆕新プラン(ブロンコ/プロフィール移設/グループ/自主トレ) 全9フェーズ実装＋全36テスト回帰＋敵対的レビュー＝完了。`c84e355`でpush済み（origin/main同期・未pushコミット0）。次は実利用フィードバック待ち。**）
 - 更新者: Claude
 
-## 🟢 新プラン（ブロンコ他4機能）＝実装完了・デプロイ待ち
+## 🟢 新プラン（ブロンコ他4機能）＝実装・push完了（`c84e355`）
 
 - **承認済みプラン: `/Users/nakayamarinnin/.claude/plans/resilient-puzzling-stallman.md`＋`...-agent-ae375c0522ce4f4d8.md`。全9フェーズを1機能ずつ実装→各フェーズでjsc模擬実行→全件回帰まで完了。**
   - **内容4件（全て実装済み）**: A=ブロンコのポジション別目標ランク制／B=マイページのプロフィール（身長＋時間帯アンケート）を設定サブ画面`showProfileSettings()`へ移設／C=ウエイトグループ表示強化（player: `myGroupCardHtml`リッチ化＋`showAllGroups()`全班一覧 / staff: V.tgroup先頭に`tgSavedCardHtml()`保存済み編成カード）／D=自主トレfitnessに「ブロンコ」「1K（1,000m走）」を分:秒タイム(`timeSec`)入力で追加。
@@ -19,7 +19,7 @@
   - **確定初期値（ゴールド基準秒・実装値）**: PR310/HO310・LO290/FL290/No.8=290・SH265・SO275/CTB275・WTB270/FB270。判定=達成率=ゴールド基準秒÷ベストタイム秒（速いほど高ランク）。ベスト=`getBest(pid,'bronco')`（Math.min）。ランク閾値=既存 bronze0.70/silver0.85/gold1.00/platinum1.10/diamond1.20。
   - **⚠️次セッションでの最重要事項**:
     - **node も jsc も PATH に無い**。jsc は `/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc` に実在（これで模擬実行可能）。構文チェックは `"$JSC" dev/prelude.js /tmp/x.js` が SyntaxError を出さなければOK（実行=ロード完走が構文健全の証拠）。
-    - **⚠️未commit・未push**。ユーザーがデプロイ可否を指示したら、変更3HTML＋dev＋HANDOFF.md を commit/push（反映後 Cmd+Shift+R）。git push はユーザー明示指示が必要（メモリ`feedback_autonomy`）。
+    - **✅push済み（`c84e355`・origin/main同期）**。ユーザーはブラウザで Cmd+Shift+R して本番反映を確認。次の変更時も git push はユーザー明示指示が必要（メモリ`feedback_autonomy`）。
     - プレビューは本番Firestore接続（メモリ`project_preview_is_production_firestore`）→保存系検証はjscモックで担保済み・ブラウザ検証は読み取り専用のみ。
   - 旧プラン（Phase 9: `...luminous-hopcroft.md`）は完了・push済み。以下は参考情報。
 
