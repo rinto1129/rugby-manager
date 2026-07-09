@@ -27,7 +27,10 @@ D.tlog=[
   {id:9003,pid:1,menuId:null,kind:'self',date:agoS(1),ts:'2026-07-06T10:00:00.000Z',
    fitness:{ftype:'ランニング',minutes:30,km:5.2,rpe:7,note:'朝ラン'},results:[],totalVolume:0},
   // 欠席
-  {id:9004,pid:1,menuId:102,date:TODAY,ts:new Date().toISOString(),absent:true,absentReason:'体調不良',results:[],totalVolume:0}
+  {id:9004,pid:1,menuId:102,date:TODAY,ts:new Date().toISOString(),absent:true,absentReason:'体調不良',results:[],totalVolume:0},
+  // フィットネス（タイム種目=timeSecのみ・minutesキーなし・km自動）
+  {id:9005,pid:1,menuId:null,kind:'self',date:agoS(1),ts:'2026-07-06T11:00:00.000Z',
+   fitness:{ftype:'ブロンコ',timeSec:290,km:1.2},results:[],totalVolume:0}
 ];
 
 print('--- renderTrainTab: セッション履歴のバッジ+fitness表示 ---');
@@ -40,6 +43,7 @@ ok('自主バッジ表示',has(h5,'>自主<'));
 ok('自主ウエイトの名称=自主トレ（ウエイト）',has(h5,'自主トレ（ウエイト）'));
 ok('fitness行: 種類+時間表示',has(h5,'ランニング')&&has(h5,'30分'));
 ok('fitness行: 距離/RPEも表示',has(h5,'5.2km')&&has(h5,'RPE7'));
+ok('fitness行: タイム種目は分秒表示(ブロンコ 4分50秒)',has(h5,'ブロンコ')&&has(h5,'4分50秒'));
 ok('fitness行: 0kg表示にしない',!has(h5,'ランニング</span><span style="font-size:12px;color:var(--text-secondary);margin-right:8px">0種目'));
 ok('チーム行は従来表示（種目数+kg）',has(h5,'チームメニュー')&&has(h5,'1種目')&&has(h5,'500kg'));
 ok('欠席行は従来表示',has(h5,'欠席'));
@@ -58,6 +62,9 @@ ok('fitness詳細: メモ',has(fd,'朝ラン'));
 ok('fitness詳細: 自主バッジ',has(fd,'>自主<'));
 var wd=trSessDetail(D.tlog[1]);
 ok('自主ウエイト詳細: 従来のセット表示',has(wd,'ベンチプレス')&&has(wd,'80kg×8'));
+var td=trSessDetail(D.tlog[4]);
+ok('タイム種目詳細: タイム 4分50秒',has(td,'タイム 4分50秒'));
+ok('タイム種目詳細: 距離 1.2km',has(td,'距離 1.2km'));
 
 print('--- renderTrainingStatus: 実施状況カード ---');
 var okSt=true,hs='';
@@ -65,6 +72,7 @@ try{hs=renderTrainingStatus();}catch(e){okSt=false;print('  exception: '+e);}
 ok('renderTrainingStatus完走',okSt);
 ok('実施カード: 自主バッジ',has(hs,'>自主<'));
 ok('実施カード: fitnessは種類+時間表示',has(hs,'ランニング')&&has(hs,'30分'));
+ok('実施カード: タイム種目は分秒表示(4分50秒)',has(hs,'4分50秒'));
 ok('実施カード: fitnessに「0種目 ・ ボリューム 0kg」を出さない',!has(hs,'0種目 ・ ボリューム 0kg'));
 ok('実施カード: 自主ウエイトは種目数+kg表示',has(hs,'1種目 ・ ボリューム 640kg'));
 ok('実施カード: 欠席カードは従来どおり',has(hs,'欠席'));

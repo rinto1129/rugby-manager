@@ -225,6 +225,43 @@ var fit2=saved3[saved3.length-1];
 ok('任意項目省略: km/rpe/noteキーなし',fit2.fitness&&!('km'in fit2.fitness)&&!('rpe'in fit2.fitness)&&!('note'in fit2.fitness));
 D.tlog=saved3;
 
+print('--- タイム種目（ブロンコ/1K）: timeSec保存・minutes省略・km自動 ---');
+ok('SELF_FTYPESにブロンコ/1K',has(hf,'ブロンコ')&&has(hf,'1K'));
+ok('フォームに分:秒タイム入力欄',has(hf,'id="sf-tm"')&&has(hf,'id="sf-ts"'));
+var phLen=D.ph.length;
+el('sf-type').value='ブロンコ';el('sf-tm').value='4';el('sf-ts').value='50';el('sf-rpe').value='';el('sf-note').value='';
+__alerts.length=0;
+saveSelfFitness(mkEl());drain();
+var savedB=JSON.parse(__store['tlog']);
+var fitB=savedB[savedB.length-1];
+ok('ブロンコ: timeSec=290',fitB.fitness&&fitB.fitness.timeSec===290);
+ok('ブロンコ: minutesキーを持たない',!('minutes'in fitB.fitness));
+ok('ブロンコ: km自動1.2',fitB.fitness.km===1.2);
+ok('ブロンコ: results:[]/totalVolume:0 不変',Array.isArray(fitB.results)&&fitB.results.length===0&&fitB.totalVolume===0);
+ok('ブロンコ: phに書かない(D.ph不変)',D.ph.length===phLen);
+ok('ブロンコ完了画面 4分50秒',has(__els['main'].innerHTML,'4分50秒'));
+ok('保存フローでalertなし',__alerts.length===0);
+D.tlog=savedB;
+el('sf-type').value='1K（1,000m走）';el('sf-tm').value='3';el('sf-ts').value='20';
+saveSelfFitness(mkEl());drain();
+var savedK=JSON.parse(__store['tlog']);
+var fitK=savedK[savedK.length-1];
+ok('1K: timeSec=200',fitK.fitness.timeSec===200);
+ok('1K: km自動1.0',fitK.fitness.km===1.0);
+ok('1K: minutesキーなし',!('minutes'in fitK.fitness));
+D.tlog=savedK;
+__alerts.length=0;
+el('sf-type').value='ブロンコ';el('sf-tm').value='';el('sf-ts').value='';
+saveSelfFitness(mkEl());drain();
+ok('タイム未入力→alert',__alerts.length===1);
+// 通常の分記録が従来通り保存されることの回帰
+__alerts.length=0;
+el('sf-type').value='ランニング';el('sf-min').value='25';el('sf-km').value='';el('sf-rpe').value='';el('sf-note').value='';
+saveSelfFitness(mkEl());drain();
+var savedR=JSON.parse(__store['tlog']);
+ok('分記録は従来通りminutes保存',savedR[savedR.length-1].fitness.minutes===25);
+D.tlog=savedR;
+
 print('--- todayTodoHtml: 自主トレでチームtodoが消えない ---');
 // この時点でD.tlogには本日の自主ウエイト+フィットネスのみ（チーム記録なし）
 // 未完了の行だけonclickが残る仕様 → go('training')の有無でdone状態を判定できる
@@ -247,6 +284,7 @@ var hh=__els['main'].innerHTML;
 ok('自主バッジ表示',has(hh,'>自主<'));
 ok('fitness: ftype+時間表示',has(hh,'ランニング')&&has(hh,'30分'));
 ok('fitness: 距離/RPEも表示',has(hh,'5.2km')&&has(hh,'RPE7'));
+ok('fitness: タイム種目は分秒表示(4分50秒)',has(hh,'4分50秒'));
 ok('自主ウエイトの名称表示',has(hh,'自主トレ（ウエイト）'));
 ok('fitnessが0kg表示にならない',!has(hh,'ランニング</div><div style="font-size:11px;color:var(--text-secondary)">'+fmt(TODAY)+'</div></div><div style="font-weight:700;color:var(--blue)">0kg'));
 ok('グラフ入力からfitness除外',__chartLogs&&__chartLogs.every(function(l){return !l.fitness;}));

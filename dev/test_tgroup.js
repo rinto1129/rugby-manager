@@ -238,5 +238,45 @@ ok('生成後: 午前組/午後組の見出し',has(out2,'午前組')||has(out2,
 ok('生成後: 班チップ(tgChipTap)',has(out2,'tgChipTap('));
 ok('生成後: 保存ボタン(tgSave)',has(out2,'tgSave()'));
 
+// ============ 12. 保存済み編成カード（読み取り専用・_tgStateと独立） ============
+print('--- V.tgroup 保存済み編成カード ---');
+var TD=todayStr();
+D.p=[{id:401,name:'班長',position:'PR',year:2},{id:402,name:'副班',position:'LO',year:3},{id:403,name:'三番',position:'HO',year:1}];
+D.tgroup=[{id:99,ts:99,date:TD,by:'staff',mode:'ampm',excluded:[],shifts:[
+  {key:'am',label:'午前',groups:[[401,402]]},
+  {key:'pm',label:'午後',groups:[[403]]}
+]}];
+window._tgSavedOpen=undefined;window._tgState=undefined;
+V.tgroup();
+var sv=__els['main-ct'].innerHTML;
+ok('保存済み編成カード見出し',has(sv,'現在の保存済み編成'));
+ok('選手に公開中バッジ',has(sv,'選手に公開中'));
+ok('保存日表示',has(sv,fmt(TD)));
+ok('午前組/午後組ラベル',has(sv,'午前組')&&has(sv,'午後組'));
+ok('A班表示',has(sv,'A班'));
+ok('メンバー名表示',has(sv,'班長')&&has(sv,'副班')&&has(sv,'三番'));
+
+print('--- tgSetMode後も保存済みカードは残る（_tgStateと独立） ---');
+tgSetMode('single'); // 編集状態のshifts=[]に消えるが保存済みカードは別ソース
+var sv2=__els['main-ct'].innerHTML;
+ok('モード変更後も保存済み編成が残る',has(sv2,'現在の保存済み編成')&&has(sv2,'班長'));
+
+print('--- 折りたたみ（既定=開→トグルで閉） ---');
+window._tgSavedOpen=undefined;window._tgSurveyOpen=false;
+// 編集エリア(_tgState)には名前を出さない空状態を固定→保存済みカード本体だけで名前判定
+window._tgState={mode:'ampm',excluded:[],shifts:[],generated:false,_reason:{},sel:null};
+V.tgroup();
+// min-width:118px は保存済みカードの班カード固有マーカー（編集エリアの除外ドロップダウン等と混同しない）
+ok('既定は開いて明細表示',has(__els['main-ct'].innerHTML,'min-width:118px'));
+tgSavedToggle();
+var sv3=__els['main-ct'].innerHTML;
+ok('トグルで閉じて明細消える',!has(sv3,'min-width:118px'));
+ok('閉じてもヘッダーは残る',has(sv3,'現在の保存済み編成'));
+
+print('--- 保存済みなしのメッセージ ---');
+D.tgroup=[];window._tgState=undefined;
+V.tgroup();
+ok('保存なしメッセージ',has(__els['main-ct'].innerHTML,'保存済みの編成はまだありません'));
+
 if(__fail){print('\nFAILED: '+__fail+' test(s)');throw new Error('tgroup tests failed');}
 print('\nALL TGROUP TESTS PASSED');

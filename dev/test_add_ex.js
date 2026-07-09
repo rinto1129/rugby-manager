@@ -123,12 +123,17 @@ var home2=__els['main'].innerHTML;
 ok('お知らせ1件はclpなし',!has(home2,'home-ann-clp'));
 ok('お知らせ1件でも本文は出る',has(home2,'単発のお知らせ'));
 
-// ============ 3. 身長自己編集 ============
-print('--- マイページ: プロフィールカード ---');
+// ============ 3. 身長自己編集（設定サブ画面へ移設） ============
+print('--- マイページ: プロフィール導線→設定サブ画面 ---');
 myPid=1;subView=null;
 T.mypage();
 var mp=__els['main'].innerHTML;
-ok('プロフィールカード（PROFILE/mh-input/saveMyHeight）',has(mp,'PROFILE')&&has(mp,'mh-input')&&has(mp,'saveMyHeight()'));
+ok('導線カード（PROFILE/プロフィール設定/showProfileSettings）',has(mp,'PROFILE')&&has(mp,'プロフィール設定')&&has(mp,'showProfileSettings()'));
+ok('身長サマリー(180cm)',has(mp,'180cm'));
+subView=null;
+showProfileSettings();
+var mp=__els['main'].innerHTML;
+ok('設定サブ画面（mh-input/saveMyHeight）',has(mp,'mh-input')&&has(mp,'saveMyHeight()'));
 ok('現在の身長がプリフィル(value=180)',has(mp,'value="180"'));
 
 print('--- saveMyHeight: バリデーション ---');

@@ -16,7 +16,10 @@ D.p=[
 ];
 D.ph=[
   {id:11,pid:1,date:'2026-06-20',squat:150,bench:110,deadlift:180},
-  {id:13,pid:2,date:'2026-06-25',squat:150,bench:100}
+  {id:13,pid:2,date:'2026-06-25',squat:150,bench:100},
+  {id:41,pid:1,date:'2026-05-01',bronco:300},
+  {id:42,pid:1,date:'2026-06-20',bronco:295},
+  {id:43,pid:3,date:'2026-06-20',bronco:265}
 ];
 D.bc=[{id:21,pid:1,date:'2026-06-28',weight:102,fat:16,muscle:48}];
 D.f=[{id:31,pid:1,date:'2026-07-01',rpe:5,sleep:7,duration:60,weight:101,inputAt:'2026-07-01T08:00:00'}];
@@ -69,6 +72,14 @@ ok('体重帯カード',has(ms,'体重・体組成基準'));
 ok('帯内メッセージ',has(ms,'推奨帯内です'));
 ok('FFMI表示26.4',has(ms,'>26.4<'));
 ok('FFMI帯内チップ',has(ms,'帯内 ')&&has(ms,'#i-check'));
+print('--- T.mystatus PR: ブロンコカード ---');
+ok('ブロンコカードのゴースト BR',has(ms,'>BR<'));
+ok('ブロンコ ベスト4分55秒(min=295)',has(ms,'4分55秒'));
+ok('ブロンコ ゴールド基準5分10秒',has(ms,'ゴールド基準 5分10秒'));
+ok('ブロンコ ポジション別基準ラベル',has(ms,'ポジション別基準'));
+ok('ブロンコ 次ランク（プラチナまで あと14秒）',has(ms,'プラチナまで あと14秒'));
+ok('ブロンコ 目標タイム 4分41秒',has(ms,'目標 4分41秒'));
+ok('ブロンコ 前回差チップ -5秒',has(ms,'-5秒'));
 
 print('--- T.mystatus (WTB: DL未測定CTA・FFMI CTA・BP弱点ボリューム) ---');
 myPid=2;
@@ -78,12 +89,15 @@ ok('DL未測定CTA',has(ms2,'フィジカル測定で1RMを記録するとラン
 ok('FFMI測定CTA',has(ms2,'体脂肪率つきの体組成を記録すると'));
 ok('弱点=ベンチプレス処方箋',has(ms2,'処方箋 — 弱点: ベンチプレス'));
 ok('BP系記録なしメッセージ',has(ms2,'ベンチプレス系トレーニング記録がまだありません'));
+ok('ブロンコ 記録なしCTA',has(ms2,'ブロンコを記録するとランクが判定されます'));
 
 print('--- T.mystatus (SH: 体重なし) ---');
 myPid=3;
 T.mystatus();
 var ms3=document.getElementById('main').innerHTML;
 ok('体重なし案内',has(ms3,'体重データがありません'));
+ok('体重なしでもブロンコカード表示(SH 4分25秒)',has(ms3,'4分25秒'));
+ok('体重なしブロンコ ゴールド基準4分25秒',has(ms3,'ゴールド基準 4分25秒'));
 
 print('--- T.mystatus (ポジ未登録) ---');
 myPid=4;

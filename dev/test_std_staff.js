@@ -31,6 +31,11 @@ ok('rx入力（SQ弱点の3行目）',has(h1,'std-rx-sq-2-name'));
 ok('リセットボタンなし（未保存時）',!has(h1,'初期値に戻す'));
 // PR SQ倍率のプリフィル
 eqn('PR SQ倍率プリフィル',String(document.getElementById('std-pos-0-sq').value),'1.55');
+ok('ブロンコ基準ヘッダー',has(h1,'ブロンコ基準'));
+ok('ブロンコ分マス std-pos-0-br-m',has(h1,'std-pos-0-br-m'));
+ok('ブロンコ秒マス std-pos-9-br-s',has(h1,'std-pos-9-br-s'));
+eqn('PR ブロンコ分プリフィル(310→5)',String(document.getElementById('std-pos-0-br-m').value),'5');
+eqn('PR ブロンコ秒プリフィル(310→10)',String(document.getElementById('std-pos-0-br-s').value),'10');
 
 print('--- doSaveStd 正常系（PRのSQ倍率を1.8へ変更して保存） ---');
 // 全入力値はレジストリに残っているので、変更したい所だけ上書き
@@ -51,6 +56,9 @@ eqn('gold pct=1',cfg1.ranks[2].pct,1);
 ok('ranksのcolor温存',cfg1.ranks[4].color==='#C084FC');
 eqn('allo bp=0.45',cfg1.allo.bp,0.45);
 eqn('rx sqは3件',cfg1.rx.sq.length,3);
+eqn('PR bronco=310(初期同期値で保存)',cfg1.pos.PR.bronco,310);
+eqn('HO bronco=310',cfg1.pos.HO.bronco,310);
+eqn('SH bronco=265',cfg1.pos.SH.bronco,265);
 ok('確認ダイアログを経由',__confirms.some(function(c){return c.indexOf('基準値を保存')>=0;}));
 ok('保存完了トースト',__toasts.some(function(t){return t.indexOf('保存しました')>=0;}));
 ok('D.stdに反映',D.std.length===1&&D.std[0].pos.PR.sq===1.8);
@@ -64,6 +72,33 @@ var h2=renderStd();
 ok('カスタム設定バッジ',has(h2,'カスタム設定を使用中'));
 ok('リセットボタンあり',has(h2,'初期値に戻す'));
 eqn('新値がプリフィル',String(document.getElementById('std-pos-0-sq').value),'1.8');
+
+print('--- ブロンコ基準の保存（PRを4:50=290秒へ） ---');
+setVal('std-pos-0-br-m','4');setVal('std-pos-0-br-s','50');
+__alerts.length=0;__confirms.length=0;
+doSaveStd(mkEl());
+drain();
+var cfgB=JSON.parse(__store['std'])[0];
+eqn('PR bronco=290',cfgB.pos.PR.bronco,290);
+eqn('HO broncoはデフォルト310のまま',cfgB.pos.HO.bronco,310);
+eqn('getStdCfg PR bronco=290',getStdCfg().pos.PR.bronco,290);
+
+print('--- ブロンコ基準バリデーション ---');
+setVal('std-pos-0-br-s','99'); // 秒99=範囲外
+__alerts.length=0;__confirms.length=0;
+var beforeB=__store['std'];
+doSaveStd(mkEl());
+drain();
+ok('秒範囲エラーalert',__alerts.some(function(a){return a.indexOf('ブロンコ基準')>=0;}));
+ok('br秒範囲外はconfirmまで行かない',__confirms.length===0);
+ok('br秒範囲外はストア不変',__store['std']===beforeB);
+setVal('std-pos-0-br-s','50');
+setVal('std-pos-0-br-m','2'); // 2:50=170秒<180 合計範囲外
+__alerts.length=0;
+doSaveStd(mkEl());
+drain();
+ok('合計が3:00未満でエラー',__alerts.some(function(a){return a.indexOf('3:00')>=0;}));
+setVal('std-pos-0-br-m','4');
 
 print('--- バリデーション: 範囲外・昇順違反は保存されない ---');
 setVal('std-pos-0-sq','9');           // 範囲外
@@ -100,6 +135,7 @@ doResetStd(mkEl());
 drain();
 eqn('空配列に戻る',JSON.parse(__store['std']).length,0);
 ok('getStdCfgがデフォルトへ復帰',getStdCfg().pos.PR.sq===1.55);
+ok('reset後 bronco=310(デフォルト)',getStdCfg().pos.PR.bronco===310);
 
 print('--- キャンセル時は何もしない ---');
 __confirmAnswer=false;

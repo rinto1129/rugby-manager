@@ -445,16 +445,16 @@ function getPlayer1RM(pid,estBase){
 var STD_LIFTS=[{k:'sq',ph:'squat',label:'スクワット',short:'SQ'},{k:'bp',ph:'bench',label:'ベンチプレス',short:'BP'},{k:'dl',ph:'deadlift',label:'デッドリフト',short:'DL'}];
 var STD_DEFAULT={
   pos:{
-    'PR':  {sq:1.55,bp:1.25,dl:1.90,ffmiLo:25,  ffmiHi:28,  bfLo:14,bfHi:20},
-    'HO':  {sq:1.60,bp:1.25,dl:1.95,ffmiLo:24,  ffmiHi:27,  bfLo:13,bfHi:18},
-    'LO':  {sq:1.55,bp:1.20,dl:1.90,ffmiLo:24,  ffmiHi:27,  bfLo:12,bfHi:17},
-    'FL':  {sq:1.65,bp:1.30,dl:2.00,ffmiLo:24,  ffmiHi:26.5,bfLo:11,bfHi:16},
-    'No.8':{sq:1.65,bp:1.30,dl:2.00,ffmiLo:24,  ffmiHi:27,  bfLo:12,bfHi:17},
-    'SH':  {sq:1.70,bp:1.25,dl:2.00,ffmiLo:22,  ffmiHi:24.5,bfLo:9, bfHi:13},
-    'SO':  {sq:1.65,bp:1.25,dl:1.95,ffmiLo:22,  ffmiHi:25,  bfLo:9, bfHi:14},
-    'CTB': {sq:1.70,bp:1.30,dl:2.05,ffmiLo:23,  ffmiHi:25.5,bfLo:10,bfHi:14},
-    'WTB': {sq:1.70,bp:1.25,dl:2.00,ffmiLo:22.5,ffmiHi:25,  bfLo:8, bfHi:13},
-    'FB':  {sq:1.70,bp:1.25,dl:2.00,ffmiLo:22.5,ffmiHi:25,  bfLo:9, bfHi:13}
+    'PR':  {sq:1.55,bp:1.25,dl:1.90,bronco:310,ffmiLo:25,  ffmiHi:28,  bfLo:14,bfHi:20},
+    'HO':  {sq:1.60,bp:1.25,dl:1.95,bronco:310,ffmiLo:24,  ffmiHi:27,  bfLo:13,bfHi:18},
+    'LO':  {sq:1.55,bp:1.20,dl:1.90,bronco:290,ffmiLo:24,  ffmiHi:27,  bfLo:12,bfHi:17},
+    'FL':  {sq:1.65,bp:1.30,dl:2.00,bronco:290,ffmiLo:24,  ffmiHi:26.5,bfLo:11,bfHi:16},
+    'No.8':{sq:1.65,bp:1.30,dl:2.00,bronco:290,ffmiLo:24,  ffmiHi:27,  bfLo:12,bfHi:17},
+    'SH':  {sq:1.70,bp:1.25,dl:2.00,bronco:265,ffmiLo:22,  ffmiHi:24.5,bfLo:9, bfHi:13},
+    'SO':  {sq:1.65,bp:1.25,dl:1.95,bronco:275,ffmiLo:22,  ffmiHi:25,  bfLo:9, bfHi:14},
+    'CTB': {sq:1.70,bp:1.30,dl:2.05,bronco:275,ffmiLo:23,  ffmiHi:25.5,bfLo:10,bfHi:14},
+    'WTB': {sq:1.70,bp:1.25,dl:2.00,bronco:270,ffmiLo:22.5,ffmiHi:25,  bfLo:8, bfHi:13},
+    'FB':  {sq:1.70,bp:1.25,dl:2.00,bronco:270,ffmiLo:22.5,ffmiHi:25,  bfLo:9, bfHi:13}
   },
   ranks:[
     {k:'bronze',label:'ブロンズ',pct:0.70,color:'#E8A05C'},
@@ -530,6 +530,28 @@ function getLiftRankInfo(pid,liftK){
     nextTargetKg:next?Math.round(next.pct*goldTarget*10)/10:null,
     nextNeedKg:(next&&oneRM)?Math.max(0,Math.ceil((next.pct*goldTarget-oneRM)*2)/2):null
   };
+}
+// ブロンコランク判定。ratio=ゴールド基準秒÷ベストタイム秒（速いほど高い）。ranks閾値はBIG3と共通。
+// timeSecOpt指定時はその値で判定（ランキングの測定会フィルタ用）。省略時は getBest(pid,'bronco')。
+function getBroncoRankInfo(pid,timeSecOpt){
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  if(!p||!p.position)return null;
+  var cfg=getStdCfg(),posStd=cfg.pos[p.position];
+  if(!posStd||!posStd.bronco)return null;
+  var goldSec=posStd.bronco;
+  var best=(timeSecOpt!=null)?timeSecOpt:getBest(pid,'bronco');
+  var ratio=best?goldSec/best:0;
+  var ranks=cfg.ranks.slice().sort(function(a,b){return a.pct-b.pct;});
+  var cur=null,next=null;
+  for(var i=0;i<ranks.length;i++){
+    if(best&&ratio>=ranks[i].pct)cur=ranks[i];
+    else if(!next)next=ranks[i];
+  }
+  var nextTargetSec=next?Math.floor(goldSec/next.pct):null; // このタイム以下で次ランク
+  return{goldSec:goldSec,best:best,ratio:ratio,rank:cur,next:next,
+    nextTargetSec:nextTargetSec,
+    nextNeedSec:(next&&best)?Math.max(0,best-nextTargetSec):null,
+    achieved:!!(best&&ratio>=1)};
 }
 // アロメトリック補正スコア = 1RM ÷ 体重^b（体格差を除いた公平比較用）
 function getAlloScore(pid,liftK){
@@ -1004,6 +1026,8 @@ function getBest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!
 function getBestBIG3(pid){var sq=getBest(pid,'squat')||0;var bp=getBest(pid,'bench')||0;var dl=getBest(pid,'deadlift')||0;return (sq||bp||dl)?(sq+bp+dl):null;}
 function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
+// フィットネス記録の時間表示: タイム記録(timeSec)なら分秒、従来の分記録(minutes)なら「N分」。無ければ空。3ファイル同一。
+function fitTimeStr(f){return f.timeSec!=null?broncoFmt(f.timeSec):(f.minutes!=null?f.minutes+'分':'');}
 function broncoFromInputs(minId,secId){var m=parseInt(document.getElementById(minId).value)||0,s=parseInt(document.getElementById(secId).value)||0;return m*60+s||null;}
 function dC(k){if(charts[k]){charts[k].destroy();delete charts[k];}}
 function dCA(){for(var k in charts){charts[k].destroy();}charts={};}
@@ -1241,6 +1265,15 @@ function liftDiffChip(pid,phField){
   return d>0?'<span class="bd bd-g" style="font-size:9px;display:inline-flex;align-items:center;gap:2px">'+ic('i-up',9)+'+'+d+'kg</span>'
             :'<span class="bd bd-r" style="font-size:9px;display:inline-flex;align-items:center;gap:2px">'+ic('i-down',9)+d+'kg</span>';
 }
+// ブロンコの直近2回のタイム差チップ。短縮（速くなった）=緑・改善。
+function broncoDiffChip(pid){
+  var rs=D.ph.filter(function(x){return x.pid===pid&&x.bronco!=null;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  if(rs.length<2)return'';
+  var d=rs[0].bronco-rs[1].bronco;
+  if(!d)return'<span class="bd" style="background:var(--bg-tertiary);color:var(--text-secondary);font-size:9px">±0</span>';
+  return d<0?'<span class="bd bd-g" style="font-size:9px;display:inline-flex;align-items:center;gap:2px">'+ic('i-up',9)+'-'+Math.abs(d)+'秒</span>'
+            :'<span class="bd bd-r" style="font-size:9px;display:inline-flex;align-items:center;gap:2px">'+ic('i-down',9)+'+'+d+'秒</span>';
+}
 
 // ランク進捗バー（全幅=ダイヤ基準+5%。各ランク閾値に濃色ノッチ、現在値をmaroonグラデで塗る。fillはreveal時にscaleX伸長）
 function rankProgressBarHtml(inf,cfg){
@@ -1254,6 +1287,33 @@ function rankProgressBarHtml(inf,cfg){
   }).join('');
   return'<div style="position:relative;height:10px;background:var(--bg-tertiary);border-radius:99px;margin:10px 0 6px;border:1px solid var(--border-tertiary)">'+
     '<div class="bar-fill" style="position:absolute;left:0;top:0;bottom:0;width:'+fill.toFixed(1)+'%;border-radius:99px;background:linear-gradient(90deg,var(--rose),var(--maroon),var(--maroon-vivid))"></div>'+ticks+'</div>';
+}
+// ブロンコのランクカード（mystatusのレール4枚目＋体重なし分岐で共用）。BIG3カードと同体裁・体重非依存。
+function broncoRankCardHtml(binf,cfg){
+  if(!binf)return'';
+  var col=binf.rank?binf.rank.color:'#8A7578';
+  var h='<div class="rail-card rv">'+
+    '<span class="ghost-num ghost-num--light" aria-hidden="true" style="right:4px;top:auto;bottom:-24px;font-size:80px">BR</span>'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap"><span style="font-weight:800;font-size:13px">ブロンコ</span>'+broncoDiffChip(myPid)+'</div>';
+  if(binf.best!=null){
+    h+='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">'+
+      '<span class="num" style="font-size:clamp(26px,7vw,36px)">'+broncoFmt(binf.best)+'</span>'+
+      '<span class="bd" style="background:'+col+';color:var(--ink);font-weight:800">'+(binf.rank?escapeHtml(binf.rank.label):'ランク外')+'</span></div>'+
+      '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">ゴールド基準 '+broncoFmt(binf.goldSec)+'</div>';
+    h+=rankProgressBarHtml({oneRM:binf.best,ratio:binf.ratio},cfg);
+    h+='<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary)"><span>達成率 '+Math.round(binf.ratio*100)+'%</span><span>ポジション別基準</span></div>';
+    if(binf.next){
+      h+='<div style="margin-top:6px;font-size:12px;font-weight:600;color:var(--blue)">'+escapeHtml(binf.next.label)+'まで あと'+binf.nextNeedSec+'秒 <span style="font-size:10px;color:var(--text-secondary)">（目標 '+broncoFmt(binf.nextTargetSec)+'）</span></div>';
+    }else{
+      h+='<div style="margin-top:6px;font-size:12px;font-weight:700;color:'+darkenForLight(col)+'">'+ic('i-medal',12,'var(--gold-deep)')+' 最高ランク到達！</div>';
+    }
+  }else{
+    h+='<div class="num" style="font-size:28px;color:var(--text-tertiary)">—</div>'+
+      '<div style="margin-top:8px;font-size:12px;color:var(--text-secondary)">ブロンコを記録するとランクが判定されます</div>'+
+      '<button class="btn btn-sm" style="margin-top:6px" onclick="showBroncoFormDirect()">タイムを記録する</button>';
+  }
+  h+='</div>';
+  return h;
 }
 
 // マイフィジカルカード（ホームのヒーロー）: BIG3ランクバッジ×3＋体重帯ステータス。詳細画面はステップ3で接続
@@ -1299,7 +1359,7 @@ function myPhysCardHtml(){
   }
   if(band){
     if(band.noHeight){
-      h+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-tertiary);font-size:11px;color:var(--text-secondary)">'+ic('i-scale',12)+' 身長が未登録のため体重基準を表示できません（<span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="go(\'mypage\')">マイページで登録</span>）</div>';
+      h+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-tertiary);font-size:11px;color:var(--text-secondary)">'+ic('i-scale',12)+' 身長が未登録のため体重基準を表示できません（<span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="showProfileSettings()">身長を登録</span>）</div>';
     }else{
       var stChip=band.status==='in'?'<span class="bd bd-g">帯内 '+ic('i-check',10)+'</span>'
         :band.status==='under'?'<span class="bd bd-a">あと +'+band.diff+'kg</span>'
@@ -1759,7 +1819,7 @@ mystatus:function(){
     h+='<div class="card" style="margin-top:10px"><div style="font-size:13px;color:var(--text-secondary)">ポジションが未登録のため基準を表示できません。スタッフに登録を依頼してください。</div></div>';
     $m().innerHTML=h;return;
   }
-  h+='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">'+escapeHtml(p.position)+'基準：体重×ポジション別倍率でゴールドを基準に5段階ランク</div>';
+  h+='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">'+escapeHtml(p.position)+'基準：体重×ポジション別倍率でゴールドを基準に5段階ランク。ブロンコはポジション別の基準タイムで判定</div>';
   // BIG3 CLUB（400/450/500クラブ。閾値はコード定数＝基準エンジン非接触）
   var b3=getBestBIG3(myPid);
   if(b3){
@@ -1782,6 +1842,9 @@ mystatus:function(){
   var wInfo=getCurrentWeightInfo(myPid);
   if(!wInfo){
     h+='<div class="card"><div style="font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:6px">'+ic('i-scale',15,'var(--maroon)')+' 体重データがありません</div><div style="font-size:12px;color:var(--text-secondary);line-height:1.6">ランク判定・体重基準には現在体重が必要です。コンディション入力で体重を記録するか、体組成を測定してください。</div><button class="btn btn-sm btn-p" style="margin-top:8px" onclick="showBCForm()">体組成を記録する</button></div>';
+    // ブロンコは体重に依存しないので体重なしでも表示する
+    var _bnfNW=getBroncoRankInfo(myPid);
+    if(_bnfNW)h+='<div style="font-size:11px;color:var(--text-secondary);margin:12px 0 6px;font-weight:700">ブロンコ</div><div class="rail">'+broncoRankCardHtml(_bnfNW,cfg)+'</div>';
     $m().innerHTML=h;return;
   }
   var weak=getWeakLift(myPid);
@@ -1816,6 +1879,7 @@ mystatus:function(){
     }
     h+='</div>';
   });
+  h+=broncoRankCardHtml(getBroncoRankInfo(myPid),cfg);
   h+='</div>';
   // === 処方箋（弱点種目）＋週次ボリューム ===
   if(weak){
@@ -1858,7 +1922,7 @@ mystatus:function(){
   var ffmi=getCurrentFFMIInfo(myPid);
   h+='<div class="card" style="margin-bottom:10px"><div style="font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px">'+ic('i-scale',15,'var(--maroon)')+' 体重・体組成基準</div>';
   if(band&&band.noHeight){
-    h+='<div style="font-size:12px;color:var(--text-secondary)">身長が未登録のため推奨体重帯を計算できません。<span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="go(\'mypage\')">マイページで身長を登録</span>すると表示されます。</div>';
+    h+='<div style="font-size:12px;color:var(--text-secondary)">身長が未登録のため推奨体重帯を計算できません。<span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="showProfileSettings()">身長を登録</span>すると表示されます。</div>';
   }else if(band){
     var stChip=band.status==='in'?'<span class="bd bd-g">帯内 '+ic('i-check',10)+'</span>'
       :band.status==='under'?'<span class="bd bd-a">帯まで +'+band.diff+'kg</span>'
@@ -1916,28 +1980,18 @@ mypage:function(){
   var totalUnread=unreadAnns+unreadInjNotif;
   var myTapeRsvs=(D.tape||[]).filter(function(t){return t.pid===myPid;}).filter(function(t){return t.date>=todayStr();}).sort(function(a,b){return a.date.localeCompare(b.date);}).slice(0,3);
   var h='<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">'+avH(p,50)+'<div style="flex:1"><div style="font-size:17px;font-weight:600">'+p.name+(totalUnread?' <span style="display:inline-block;background:var(--red);color:#fff;font-size:11px;padding:2px 8px;border-radius:99px;vertical-align:middle;margin-left:6px">'+ic('i-bell',10)+' '+totalUnread+'</span>':'')+'</div><div style="color:var(--text-secondary);font-size:12px">'+p.position+' / '+p.year+'年'+(p.note?' / '+p.note:'')+'</div></div></div>';
-  // プロフィール（身長は選手が自己編集可能。体重は体組成測定で自動記録）
+  // プロフィール（身長・ウエイト時間帯）は設定サブ画面へ移設。マイページは導線のみ（Phase B）。
   var wg=(p.wg&&typeof p.wg==='object')?p.wg:{};
-  h+='<div class="card" style="margin-bottom:12px"><div class="kicker" style="margin-bottom:2px">PROFILE</div><div style="font-weight:800;font-size:14px;margin-bottom:8px">プロフィール</div>'+
-    '<div style="display:flex;gap:8px;align-items:flex-end"><div style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">身長（cm）</label>'+
-    '<input id="mh-input" class="ipt" type="number" step="0.1" min="100" max="230" inputmode="decimal" placeholder="例：175" value="'+(p.height!=null&&p.height!==''?escapeHtml(String(p.height)):'')+'"></div>'+
-    '<button class="btn btn-p" style="flex:none;width:auto;padding-left:22px;padding-right:22px" onclick="saveMyHeight()">保存</button></div>'+
-    '<div style="font-size:11px;color:var(--text-secondary);margin-top:8px">身長を登録すると、マイフィジカルで推奨体重帯やFFMI（除脂肪量指数）が表示されます。体重は体組成測定で自動記録されます。</div>'+
-    // ウエイト時間帯アンケート（グループ分けの参考。Phase 7）
-    '<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-tertiary)">'+
-      '<div class="kicker" style="margin-bottom:2px">WEIGHT SESSION</div>'+
-      '<div style="font-weight:800;font-size:14px;margin-bottom:2px">ウエイト時間帯アンケート</div>'+
-      '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">午前組／午後組の振り分けに使います。学期が替わったら更新してください。</div>'+
-      '<div style="font-size:12px;font-weight:700;margin-bottom:5px">月・水・金で5限がある曜日</div>'+
-      '<div style="display:flex;gap:16px;margin-bottom:12px">'+
-        WG_DAYS.map(function(d){return '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="wg-'+d.k+'"'+(((wg.f5||[]).indexOf(d.k)>=0)?' checked':'')+'> '+d.label+'</label>';}).join('')+
-      '</div>'+
-      '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin-bottom:12px"><input type="checkbox" id="wg-far"'+(wg.far?' checked':'')+'> 大学から遠い（通学に時間がかかる）</label>'+
-      '<div style="font-size:12px;font-weight:700;margin-bottom:5px">時間帯の希望</div>'+
-      '<select id="wg-pref" class="ipt" style="margin-bottom:10px"><option value=""'+(!wg.pref?' selected':'')+'>どちらでも</option><option value="am"'+(wg.pref==='am'?' selected':'')+'>午前がいい</option><option value="pm"'+(wg.pref==='pm'?' selected':'')+'>午後がいい</option></select>'+
-      '<button class="btn btn-p" style="width:100%" onclick="saveMyWg()">時間帯を保存</button>'+
-    '</div>'+
-    '</div>';
+  var _htTxt=(p.height!=null&&p.height!=='')?escapeHtml(String(p.height))+'cm':'<span style="color:var(--red);font-weight:700">未設定</span>';
+  var _prefTxt=wg.pref==='am'?'午前希望':wg.pref==='pm'?'午後希望':'希望なし';
+  var _f5Txt=(wg.f5&&wg.f5.length)?wg.f5.map(function(k){return {mon:'月',wed:'水',fri:'金'}[k]||k;}).join('・'):'なし';
+  var _wgTxt=(p.wg&&p.wg.upd)?('5限 '+_f5Txt+'／'+_prefTxt):'<span style="color:var(--red);font-weight:700">未回答</span>';
+  h+='<div class="card card-click" onclick="showProfileSettings()" style="margin-bottom:12px;display:flex;align-items:center;gap:12px;cursor:pointer">'+
+    ic('i-user',18,'var(--maroon)')+
+    '<div style="flex:1;min-width:0"><div class="kicker" style="margin-bottom:2px">PROFILE</div><div style="font-weight:800;font-size:14px">プロフィール設定</div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-top:3px">身長 '+_htTxt+' ・ '+_wgTxt+'</div></div>'+
+    ic('i-chevron-r',18,'var(--text-tertiary)')+
+  '</div>';
   // 「今日やること」と試合日翌日アラートはホーム（ダッシュボード）へ移設済み
   if(myTapeRsvs.length){h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--purple)"><div style="font-weight:600;margin-bottom:6px;color:var(--purple)">'+ic('i-tape',14)+' テーピング予約</div>';myTapeRsvs.forEach(function(rsv){h+='<div class="log-row"><div style="flex:1"><div style="font-weight:600">'+fmt(rsv.date)+' '+rsv.startTime+'〜'+rsv.endTime+'</div><div style="font-size:12px;color:var(--text-secondary)">'+rsv.parts.join('・')+(rsv.staff?' / 担当: '+rsv.staff:'')+'</div></div></div>';});h+='<button class="btn" style="width:100%;margin-top:6px;font-size:12px" onclick="go(\'tape\')">予約を管理する</button></div>';}
   // Individual announcements
@@ -3041,6 +3095,7 @@ T.ranking=function(){
     var isGps=curEv.src==='gs'; // GPS種目=測定会でなくGPSセッション/期間累計を参照
     var isMs=curEv.src==='ms';  // 試合スタッツ種目=試合セッション/期間累計を参照
     var isSess=isGps||isMs;     // セッション/期間セレクタを使う種目（GPS/試合スタッツ共通）
+    var isBroncoEv=(curField==='bronco'); // ブロンコ種目=ポジション別目標ランクの色バッジを添える
     // 現在種目のセッション文脈（GPS or 試合スタッツ）を解決
     var sessSorted=isMs?sortedMs:sortedGps;
     var sessCur=isMs?curMsSess:curGpsSess;
@@ -3082,6 +3137,7 @@ T.ranking=function(){
     '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
     RANK_EVENTS.map(function(f){return'<button class="btn btn-sm'+(curField===f.field?' btn-p':'')+'" onclick="rankSF(\''+f.field+'\')">'+f.label+'</button>';}).join('')+
     '</div></div>';
+    if(isBroncoEv)h+='<div style="font-size:10px;color:var(--text-secondary);margin:-2px 0 10px;line-height:1.5">バッジ＝ポジション別の目標ランク（'+ic('i-check',9)+' ＝ゴールド基準達成）。表示中の値（測定会フィルタ後）で判定します</div>';
     // セッション/期間セレクタ（GPS/試合スタッツ種目のみ・常時表示。チップ横スクロール）
     if(isSess){
       h+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">'+(isMs?'試合・期間':'セッション・期間')+'</div>'+
@@ -3187,6 +3243,14 @@ T.ranking=function(){
     };
     // 補正スコア時は前回差の代わりに実測1RMを添える
     var subX=function(t){return useAllo?' / 1RM '+t.raw+'kg':(diffStrOf(t)?' / '+diffStrOf(t):'');};
+    // ブロンコ種目: 各選手にポジション別目標ランクの色バッジ（表示中の値t.vで判定）
+    var broncoChip=function(t){
+      if(!isBroncoEv)return'';
+      var bi=getBroncoRankInfo(t.p.id,t.v);
+      if(!bi)return'';
+      if(!bi.rank)return' <span class="bd" style="font-size:8px;background:var(--bg-tertiary);color:var(--text-secondary)">目標未達</span>';
+      return' <span class="bd" style="font-size:8px;background:'+bi.rank.color+';color:var(--ink);font-weight:800">'+(bi.achieved?ic('i-check',8)+' ':'')+escapeHtml(bi.rank.label)+'</span>';
+    };
     if(!rk.length){h+='<div class="no">データがありません</div>';$m().innerHTML=h;return;}
     var maxV=isMin?Math.max.apply(null,rk.map(function(r){return r.v;})):rk[0].v;
     var minV=isMin?Math.min.apply(null,rk.map(function(r){return r.v;})):0;
@@ -3201,7 +3265,7 @@ T.ranking=function(){
         '<div class="rk-bar" style="width:'+barPct(t.v)+'%"></div>'+
         '<div class="rk-rownum">'+rankNo+'</div>'+
         '<div class="rk-rowava" style="'+avaInner+'">'+(p.photo?'':iniOf(p))+'</div>'+
-        '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:'+(isMe?'700':'600')+';color:'+(isMe?'var(--maroon)':'var(--text-primary)')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(p.name)+(isMe?' (自分)':'')+'</div><div style="font-size:10px;color:var(--text-secondary)">'+(p.position||'-')+'・'+(p.year||'-')+'年'+subX(t)+'</div></div>'+
+        '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:'+(isMe?'700':'600')+';color:'+(isMe?'var(--maroon)':'var(--text-primary)')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(p.name)+(isMe?' (自分)':'')+'</div><div style="font-size:10px;color:var(--text-secondary)">'+(p.position||'-')+'・'+(p.year||'-')+'年'+subX(t)+broncoChip(t)+'</div></div>'+
         '<div style="font-weight:800;font-size:15px;color:var(--text-primary)">'+fmtV(t.v)+'</div>'+
       '</div>';
     };
@@ -3228,7 +3292,7 @@ T.ranking=function(){
             '<div class="rkp-ava">'+avH(p,avaSz)+'<span class="rkp-badge" style="background:'+medalCol+'">'+rankNo+'</span></div>'+
           '</div>'+
           '<div class="rkp-name" style="'+(isMe?'color:var(--maroon)':'')+'">'+escapeHtml(p.name)+(isMe?' (自分)':'')+'</div>'+
-          '<div class="rkp-meta">'+(p.position||'-')+'・'+(p.year||'-')+'年</div>'+
+          '<div class="rkp-meta">'+(p.position||'-')+'・'+(p.year||'-')+'年'+broncoChip(t)+'</div>'+
           '<div class="rkp-val">'+fmtV(t.v).replace(/ /g,'')+'</div>'+
           sub+
           '<div class="rkp-stand"><span class="rkp-stand-num">'+rankNo+'</span></div>'+
@@ -4641,7 +4705,7 @@ function showTrainingHistory(){
     if(lg.fitness){
       // フィットネス記録: 種類+時間（+距離/RPE）を表示（0kg表示にしない）
       var f=lg.fitness;
-      var fMeta=(f.minutes!=null?f.minutes+'分':'')+(f.km!=null?' ・ '+f.km+'km':'')+(f.rpe!=null?' ・ RPE'+f.rpe:'');
+      var fMeta=fitTimeStr(f)+(f.km!=null?' ・ '+f.km+'km':'')+(f.rpe!=null?' ・ RPE'+f.rpe:'');
       h+='<div class="card" style="margin-bottom:6px;padding:10px 12px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:600">'+ic('i-run',12,'var(--green)')+' '+escapeHtml(f.ftype||'フィットネス')+selfBadge+'</div><div style="font-size:11px;color:var(--text-secondary)">'+fmt(lg.date)+'</div></div><div style="font-weight:700;color:var(--green);font-size:13px">'+escapeHtml(fMeta)+'</div></div></div>';
       return;
     }
@@ -4753,7 +4817,7 @@ function saveMyHeight(){
   if(v===''){alert('身長を入力してください');return;}
   var n=parseFloat(v);
   if(!isFinite(n)||n<100||n>230){alert('身長は100〜230cmの範囲で入力してください');return;}
-  svSafeUpdate('p',function(latest){var me=latest.find(function(x){return idEq(x.id,myPid);});if(me)me.height=String(n);return latest;},function(){go('mypage');toast('身長を保存しました');});
+  svSafeUpdate('p',function(latest){var me=latest.find(function(x){return idEq(x.id,myPid);});if(me)me.height=String(n);return latest;},function(){showProfileSettings();toast('身長を保存しました');});
 }
 
 // ===== Phase 7: ウエイト時間帯アンケート（wg）=====
@@ -4767,7 +4831,29 @@ function saveMyWg(){
   var prefEl=document.getElementById('wg-pref');var pref=prefEl?(prefEl.value||''):'';
   if(pref!=='am'&&pref!=='pm')pref=null;
   var wg={f5:f5,far:far,pref:pref,upd:new Date().toISOString()};
-  svSafeUpdate('p',function(latest){var me=latest.find(function(x){return idEq(x.id,myPid);});if(me)me.wg=wg;return latest;},function(){go('mypage');toast('ウエイト時間帯を保存しました');});
+  svSafeUpdate('p',function(latest){var me=latest.find(function(x){return idEq(x.id,myPid);});if(me)me.wg=wg;return latest;},function(){showProfileSettings();toast('ウエイト時間帯を保存しました');});
+}
+// プロフィール設定サブ画面（身長＋ウエイト時間帯アンケート）。既存id(mh-input/wg-*)据え置きでsaveMyHeight/saveMyWgが無改修で動く。
+function showProfileSettings(){
+  var p=D.p.find(function(x){return x.id===myPid;});if(!p)return;
+  var wg=(p.wg&&typeof p.wg==='object')?p.wg:{};
+  var h='<div class="card" style="margin-bottom:12px">'+
+    '<div style="display:flex;gap:8px;align-items:flex-end"><div style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">身長（cm）</label>'+
+    '<input id="mh-input" class="ipt" type="number" step="0.1" min="100" max="230" inputmode="decimal" placeholder="例：175" value="'+(p.height!=null&&p.height!==''?escapeHtml(String(p.height)):'')+'"></div>'+
+    '<button class="btn btn-p" style="flex:none;width:auto;padding-left:22px;padding-right:22px" onclick="saveMyHeight()">保存</button></div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-top:8px">身長を登録すると、マイフィジカルで推奨体重帯やFFMI（除脂肪量指数）が表示されます。体重は体組成測定で自動記録されます。</div></div>';
+  h+='<div class="card" style="margin-bottom:12px"><div class="kicker" style="margin-bottom:2px">WEIGHT SESSION</div>'+
+    '<div style="font-weight:800;font-size:14px;margin-bottom:2px">ウエイト時間帯アンケート</div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">午前組／午後組の振り分けに使います。学期が替わったら更新してください。</div>'+
+    '<div style="font-size:12px;font-weight:700;margin-bottom:5px">月・水・金で5限がある曜日</div>'+
+    '<div style="display:flex;gap:16px;margin-bottom:12px">'+
+      WG_DAYS.map(function(d){return '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="wg-'+d.k+'"'+(((wg.f5||[]).indexOf(d.k)>=0)?' checked':'')+'> '+d.label+'</label>';}).join('')+
+    '</div>'+
+    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin-bottom:12px"><input type="checkbox" id="wg-far"'+(wg.far?' checked':'')+'> 大学から遠い（通学に時間がかかる）</label>'+
+    '<div style="font-size:12px;font-weight:700;margin-bottom:5px">時間帯の希望</div>'+
+    '<select id="wg-pref" class="ipt" style="margin-bottom:10px"><option value=""'+(!wg.pref?' selected':'')+'>どちらでも</option><option value="am"'+(wg.pref==='am'?' selected':'')+'>午前がいい</option><option value="pm"'+(wg.pref==='pm'?' selected':'')+'>午後がいい</option></select>'+
+    '<button class="btn btn-p" style="width:100%" onclick="saveMyWg()">時間帯を保存</button></div>';
+  showSub(h);
 }
 // 自分の所属グループ情報を返す（tgroup最新レコードから。未設定/除外/未割当ならnull）
 function myGroupInfo(){
@@ -4781,23 +4867,73 @@ function myGroupInfo(){
       var g=groups[gi]||[];
       if(g.some(function(pid){return idEq(pid,myPid);})){
         var mates=g.filter(function(pid){return !idEq(pid,myPid);}).map(function(pid){var pp=D.p.find(function(x){return idEq(x.id,pid);});return pp?pp.name:null;}).filter(Boolean);
-        return {mode:rec.mode,shiftKey:sh.key,shiftLabel:sh.label||'',groupLetter:String.fromCharCode(65+gi),mates:mates};
+        return {mode:rec.mode,shiftKey:sh.key,shiftLabel:sh.label||'',shiftIdx:si,groupLetter:String.fromCharCode(65+gi),members:g.slice(),mates:mates};
       }
     }
   }
   return null;
 }
-// グループ表示カード（トレーニング/ホームで共用。未所属は''）
+// グループ表示カード（トレーニング/ホームで共用。未所属は''）。タップで全班一覧(showAllGroups)へ。
 function myGroupCardHtml(){
   var gi=myGroupInfo();
   if(!gi)return '';
   var isAmpm=gi.mode==='ampm';
-  var shiftTxt=(isAmpm&&gi.shiftLabel)?escapeHtml(gi.shiftLabel)+'組・':'';
-  var matesTxt=gi.mates.length?'<div style="font-size:11px;color:var(--text-secondary);margin-top:3px">同じ班：'+escapeHtml(gi.mates.join('・'))+'</div>':'';
-  return '<div class="card" style="margin-bottom:14px;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--maroon-bg,rgba(139,26,45,.08)),transparent 70%);border-left:3px solid var(--maroon)">'+
-    '<div style="flex:none">'+ic('i-users',24,'var(--maroon)')+'</div>'+
-    '<div style="flex:1;min-width:0"><div style="font-size:11px;color:var(--text-secondary);font-weight:700;letter-spacing:.04em">MY GROUP</div>'+
-    '<div style="font-size:16px;font-weight:800">'+shiftTxt+gi.groupLetter+'班</div>'+matesTxt+'</div></div>';
+  var isAm=gi.shiftKey==='am';
+  var shiftChip=(isAmpm&&gi.shiftLabel)?'<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;background:'+(isAm?'rgba(59,130,246,.25)':'rgba(168,85,247,.25)')+';color:#fff;border:1px solid '+(isAm?'rgba(59,130,246,.55)':'rgba(168,85,247,.55)')+'">'+escapeHtml(gi.shiftLabel)+'組</span>':'';
+  var members=gi.members||[];
+  var avatars=members.map(function(pid,i){
+    var pp=D.p.find(function(x){return idEq(x.id,pid);});if(!pp)return'';
+    var isMe=idEq(pid,myPid);
+    return '<div style="margin-left:'+(i?'-8px':'0')+';position:relative;z-index:'+(30-i)+';border-radius:50%;box-shadow:0 0 0 2px '+(isMe?'var(--rose)':'rgba(0,0,0,.35)')+'">'+avH(pp,30)+'</div>';
+  }).filter(Boolean).join('');
+  var names=members.map(function(pid){
+    var pp=D.p.find(function(x){return idEq(x.id,pid);});if(!pp)return'';
+    var isMe=idEq(pid,myPid);
+    var posL=pp.position?'<span style="opacity:.65;font-size:9px">'+escapeHtml(POS_NUM[pp.position]||pp.position)+'</span> ':'';
+    return '<span style="font-size:11px;'+(isMe?'font-weight:800;color:#ffd7dd':'color:rgba(255,255,255,.82)')+'">'+posL+escapeHtml(pp.name)+(isMe?'(自分)':'')+'</span>';
+  }).filter(Boolean).join('<span style="opacity:.4;color:#fff;margin:0 2px">・</span>');
+  return '<div class="card card-click" onclick="showAllGroups()" style="margin-bottom:14px;position:relative;overflow:hidden;cursor:pointer;background:linear-gradient(135deg,var(--maroon),#5b0f1f 62%);border:1px solid rgba(139,26,45,.55);box-shadow:0 8px 24px -10px rgba(139,26,45,.75)">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">'+
+      '<span style="font-size:10px;font-weight:800;letter-spacing:.12em;color:rgba(255,255,255,.72)">MY GROUP</span>'+shiftChip+'</div>'+
+    '<div style="display:flex;align-items:center;gap:13px">'+
+      '<div class="num" style="font-size:30px;font-weight:900;color:#fff;line-height:1;flex:none">'+gi.groupLetter+'班</div>'+
+      '<div style="flex:1;min-width:0">'+
+        (avatars?'<div style="display:flex;align-items:center;margin-bottom:5px">'+avatars+'</div>':'')+
+        '<div style="line-height:1.55">'+names+'</div>'+
+      '</div>'+
+      '<div style="flex:none;text-align:center;color:rgba(255,255,255,.9)">'+ic('i-chevron-r',20)+'<div style="font-size:9px;font-weight:700;margin-top:-3px">全班を見る</div></div>'+
+    '</div></div>';
+}
+// 全班のウエイトグループ編成を一覧表示（選手が全班閲覧）。戻り先は現在タブ。
+function showAllGroups(){
+  var recs=D.tgroup||[];var rec=recs.length?recs[recs.length-1]:null;
+  var back=curTab||'home',backLbl=back==='training'?'トレーニングに戻る':'ホームに戻る';
+  if(!rec||!rec.shifts||!rec.shifts.length){showSub('<div class="no">まだ編成がありません。スタッフが組むとここに表示されます。</div>',back,backLbl);return;}
+  var h='<div class="kicker" style="margin-bottom:2px">WEIGHT GROUPS</div><div style="font-size:18px;font-weight:900;margin-bottom:2px">ウエイトグループ編成</div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:14px">'+fmt(rec.date)+' 更新'+(rec.mode==='single'?'':'（午前／午後シフト）')+'</div>';
+  rec.shifts.forEach(function(sh){
+    var groups=sh.groups||[];
+    if(!groups.some(function(g){return g&&g.length;}))return;
+    var isAm=sh.key==='am';
+    if(rec.mode!=='single'&&sh.label){
+      h+='<div style="font-size:13px;font-weight:800;margin:16px 0 8px;display:flex;align-items:center;gap:7px"><span style="width:9px;height:9px;border-radius:50%;background:'+(isAm?'var(--blue)':'var(--purple)')+'"></span>'+escapeHtml(sh.label)+'組</div>';
+    }
+    groups.forEach(function(g,gi){
+      if(!g||!g.length)return;
+      var letter=String.fromCharCode(65+gi);
+      var isMyGroup=g.some(function(pid){return idEq(pid,myPid);});
+      h+='<div class="card" style="margin-bottom:8px'+(isMyGroup?';border:1.5px solid var(--maroon-vivid);box-shadow:0 0 12px -4px var(--maroon-vivid)':'')+'">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:15px;font-weight:900">'+letter+'班</span>'+
+        (isMyGroup?'<span style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:99px;background:var(--maroon);color:#fff">MY</span>':'')+
+        '<span style="font-size:11px;color:var(--text-secondary);margin-left:auto">'+g.length+'名</span></div>'+
+        '<div style="display:flex;flex-direction:column;gap:6px">'+g.map(function(pid){
+          var pp=D.p.find(function(x){return idEq(x.id,pid);});if(!pp)return'';
+          var isMe=idEq(pid,myPid);
+          return '<div style="display:flex;align-items:center;gap:8px">'+avH(pp,26)+'<span style="font-size:13px;font-weight:'+(isMe?'800':'600')+(isMe?';color:var(--maroon-vivid)':'')+'">'+escapeHtml(pp.name)+(isMe?'（自分）':'')+'</span><span style="font-size:10px;color:var(--text-secondary);margin-left:auto">'+escapeHtml(pp.position||'-')+'</span></div>';
+        }).filter(Boolean).join('')+'</div></div>';
+    });
+  });
+  showSub(h,back,backLbl);
 }
 
 // ===== 自主トレ記録（Phase 3）: kind='self' =====
@@ -4932,7 +5068,9 @@ function mergeTexlistFromLog(log){
   },function(){},function(){});
 }
 // フィットネス記録フォーム（種類は必須・時間は必須・距離/RPE/メモは任意）
-var SELF_FTYPES=['ランニング','バイク','水泳','HIIT','シャトルラン','坂道ダッシュ','縄跳び'];
+var SELF_FTYPES=['ランニング','バイク','水泳','HIIT','シャトルラン','坂道ダッシュ','縄跳び','ブロンコ','1K（1,000m走）'];
+var SELF_TIMED_FTYPES={'ブロンコ':1.2,'1K（1,000m走）':1.0}; // タイム入力種目→自動距離km
+function selfTimedKm(ftype){var k=(ftype||'').trim();return SELF_TIMED_FTYPES[k]!=null?SELF_TIMED_FTYPES[k]:null;}
 // スタッフ提示のフィットネスプログラムを開始→フィットネス記録フォームへプレフィル（programId保持・全編集可）。
 // 合計時間=Σ(本数or1)×分（大まかな目安・編集可）／種類=最初の項目／メモ=説明＋全項目の要約。
 function startFitProgram(menuId){
@@ -4953,8 +5091,20 @@ function startFitProgram(menuId){
   var note=(mn.desc?mn.desc+'\n':'')+lines.join('\n');
   showSelfFitnessForm({programId:mn.id,programName:mn.name,ftype:ftype,minutes:totalMin>0?totalMin:'',note:note,items:items});
 }
+// 種類が「ブロンコ」「1K」等のタイム種目のとき、分入力→分:秒タイム入力に切替（距離は自動）。
+function sfSyncTimeMode(){
+  var v=(document.getElementById('sf-type').value||'').trim();
+  var km=selfTimedKm(v);
+  var t=document.getElementById('sf-timed-wrap'),m=document.getElementById('sf-min-wrap');
+  if(!t||!m)return;
+  t.style.display=km!=null?'':'none';
+  m.style.display=km!=null?'none':'';
+  var ak=document.getElementById('sf-auto-km');
+  if(ak&&km!=null)ak.textContent='距離 '+km+'km（自動記録）';
+}
 function showSelfFitnessForm(prefill){
   prefill=prefill||{};
+  var _timedKm=selfTimedKm(prefill.ftype);
   var h='<div style="font-size:17px;font-weight:700;margin:4px 0 6px;display:flex;align-items:center;gap:8px">'+ic('i-run',18,'var(--green)')+' フィットネスを記録</div>';
   h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">'+fmt(todayStr())+' の自主トレ</div>';
   // プログラム由来なら内容を参照カードで表示（編集は下のフォームで）
@@ -4968,9 +5118,14 @@ function showSelfFitnessForm(prefill){
   }
   h+='<div class="card" style="margin-bottom:12px">';
   h+='<input type="hidden" id="sf-progid" value="'+escapeHtml(prefill.programId!=null?String(prefill.programId):'')+'">';
-  h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">種類 <span style="color:var(--red)">*</span></label><input id="sf-type" class="ipt" placeholder="例：ランニング" value="'+escapeHtml(prefill.ftype||'')+'" list="sf-type-hist"><datalist id="sf-type-hist">'+SELF_FTYPES.map(function(n){return'<option value="'+n+'">';}).join('')+'</datalist></div>';
-  h+='<div style="display:flex;gap:10px"><div class="fl" style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">時間（分） <span style="color:var(--red)">*</span></label><input id="sf-min" class="ipt" type="number" min="1" inputmode="numeric" placeholder="30" value="'+escapeHtml(prefill.minutes!=null&&prefill.minutes!==''?String(prefill.minutes):'')+'"></div>'+
-    '<div class="fl" style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">距離（km・任意）</label><input id="sf-km" class="ipt" type="number" step="any" inputmode="decimal" placeholder="5"></div></div>';
+  h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">種類 <span style="color:var(--red)">*</span></label><input id="sf-type" class="ipt" placeholder="例：ランニング" value="'+escapeHtml(prefill.ftype||'')+'" oninput="sfSyncTimeMode()" list="sf-type-hist"><datalist id="sf-type-hist">'+SELF_FTYPES.map(function(n){return'<option value="'+n+'">';}).join('')+'</datalist></div>';
+  // 通常種目: 時間(分)＋距離(km)
+  h+='<div id="sf-min-wrap" style="display:'+(_timedKm!=null?'none':'')+'"><div style="display:flex;gap:10px"><div class="fl" style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">時間（分） <span style="color:var(--red)">*</span></label><input id="sf-min" class="ipt" type="number" min="1" inputmode="numeric" placeholder="30" value="'+escapeHtml(prefill.minutes!=null&&prefill.minutes!==''?String(prefill.minutes):'')+'"></div>'+
+    '<div class="fl" style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">距離（km・任意）</label><input id="sf-km" class="ipt" type="number" step="any" inputmode="decimal" placeholder="5"></div></div></div>';
+  // タイム種目(ブロンコ/1K): 分:秒タイム＋距離は自動
+  h+='<div id="sf-timed-wrap" style="display:'+(_timedKm!=null?'':'none')+'"><label style="font-size:11px;color:var(--text-secondary)">タイム（分・秒） <span style="color:var(--red)">*</span></label>'+
+    '<div style="display:flex;align-items:center;gap:6px;margin-top:2px"><input id="sf-tm" class="ipt" type="number" min="0" inputmode="numeric" placeholder="4" style="width:72px;text-align:center"><span style="font-weight:700">分</span><input id="sf-ts" class="ipt" type="number" min="0" max="59" inputmode="numeric" placeholder="50" style="width:72px;text-align:center"><span style="font-weight:700">秒</span></div>'+
+    '<div id="sf-auto-km" style="font-size:11px;color:var(--text-secondary);margin-top:6px">'+(_timedKm!=null?'距離 '+_timedKm+'km（自動記録）':'')+'</div></div>';
   h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">きつさ（RPE 1〜10・任意）</label><select id="sf-rpe" class="ipt"><option value="">選択しない</option>'+[1,2,3,4,5,6,7,8,9,10].map(function(n){return'<option value="'+n+'">'+n+(n<=3?'（楽）':n>=9?'（限界近い）':n>=7?'（きつい）':'')+'</option>';}).join('')+'</select></div>';
   h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">メモ（任意）</label><textarea id="sf-note" class="ipt" rows="2" placeholder="コース・内容など">'+escapeHtml(prefill.note||'')+'</textarea></div>';
   h+='</div>';
@@ -4980,18 +5135,27 @@ function showSelfFitnessForm(prefill){
 }
 function saveSelfFitness(btnEl){
   var ftype=(document.getElementById('sf-type').value||'').trim();
-  var minV=document.getElementById('sf-min').value;
-  var kmV=document.getElementById('sf-km').value;
   var rpeV=document.getElementById('sf-rpe').value;
   var note=(document.getElementById('sf-note').value||'').trim();
   if(!ftype){alert('種類を入力してください');return;}
-  var minutes=parseFloat(minV);
-  if(!isFilled(minV)||!(minutes>0)){alert('時間（分）を入力してください');return;}
-  var km=null;
-  if(isFilled(kmV)){km=parseFloat(kmV);if(!(km>0)){alert('距離（km）の値が正しくありません');return;}}
+  var autoKm=selfTimedKm(ftype);
+  var fit;
+  if(autoKm!=null){
+    // タイム種目(ブロンコ/1K): 分:秒→秒。minutesキーは持たせず timeSec のみ（判断3）。距離は自動。
+    var tSec=broncoFromInputs('sf-tm','sf-ts');
+    if(!tSec||!(tSec>0)||tSec>=3600){alert('タイム（分・秒）を入力してください');return;}
+    fit={ftype:ftype,timeSec:tSec,km:autoKm};
+  }else{
+    var minV=document.getElementById('sf-min').value;
+    var kmV=document.getElementById('sf-km').value;
+    var minutes=parseFloat(minV);
+    if(!isFilled(minV)||!(minutes>0)){alert('時間（分）を入力してください');return;}
+    var km=null;
+    if(isFilled(kmV)){km=parseFloat(kmV);if(!(km>0)){alert('距離（km）の値が正しくありません');return;}}
+    fit={ftype:ftype,minutes:minutes};
+    if(km!=null)fit.km=km;
+  }
   if(!guardSubmit(btnEl,'記録中…'))return;
-  var fit={ftype:ftype,minutes:minutes};
-  if(km!=null)fit.km=km;
   if(rpeV)fit.rpe=parseInt(rpeV);
   if(note)fit.note=note;
   // 不変条件: results:[] + totalVolume:0 を必ず持たせる（既存の全集計コードが(l.results||[])で無傷に通る）
@@ -5009,13 +5173,15 @@ function saveSelfFitness(btnEl){
 }
 function showSelfFitnessResult(log){
   var f=log.fitness||{};
-  var h='<div class="hero"><div class="ghost-num">'+(f.minutes||0)+'</div>'+
+  var isTimed=f.timeSec!=null;
+  var ghost=isTimed?Math.floor(f.timeSec/60):(f.minutes||0);
+  var h='<div class="hero"><div class="ghost-num">'+ghost+'</div>'+
     '<div class="kicker" style="color:var(--rose-l)">FULL TIME</div>'+
-    '<div style="font-size:30px;font-weight:900;font-family:var(--font-num);font-style:italic;line-height:1.15">'+(f.minutes||0)+'<span style="font-size:13px;font-weight:700"> 分</span></div>'+
+    '<div style="font-size:30px;font-weight:900;font-family:var(--font-num);font-style:italic;line-height:1.15">'+(isTimed?broncoFmt(f.timeSec):((f.minutes||0)+'<span style="font-size:13px;font-weight:700"> 分</span>'))+'</div>'+
     '<div style="font-size:11px;opacity:.85">'+ic('i-check',12)+' '+escapeHtml(f.ftype||'フィットネス')+'・記録完了</div>'+
   '</div>';
   h+='<div class="card" style="margin-bottom:12px;padding:6px 14px 10px"><div class="kicker" style="margin:8px 0 1px">SELF TRAINING</div><div style="font-size:12px;font-weight:700;margin-bottom:4px">記録内容</div>';
-  var rows=[['種類',escapeHtml(f.ftype||'-')],['時間',(f.minutes||0)+'分']];
+  var rows=[['種類',escapeHtml(f.ftype||'-')],[isTimed?'タイム':'時間',fitTimeStr(f)]];
   if(f.km!=null)rows.push(['距離',f.km+'km']);
   if(f.rpe!=null)rows.push(['RPE',String(f.rpe)]);
   if(f.note)rows.push(['メモ',escapeHtml(f.note)]);
@@ -5205,7 +5371,7 @@ T.mydata=function(){
       '<div class="mc"><div class="v" style="font-size:18px">'+ffmi.ffm+'</div><div class="l">除脂肪量(kg)</div></div>'+
       '<div class="mc"><div class="v" style="font-size:18px">'+ffmi.fat+'</div><div class="l">体脂肪率(%)</div></div></div></div>';
   }else if(!p.height){
-    h+='<div class="card" style="margin-bottom:8px"><div style="font-size:12px;color:var(--text-secondary);line-height:1.6">身長が未登録のためFFMI（体重の中身＝筋肉量の指標）を計算できません。<span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="go(\'mypage\')">マイページで身長を登録</span>してください。</div></div>';
+    h+='<div class="card" style="margin-bottom:8px"><div style="font-size:12px;color:var(--text-secondary);line-height:1.6">身長が未登録のためFFMI（体重の中身＝筋肉量の指標）を計算できません。<span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="showProfileSettings()">身長を登録</span>してください。</div></div>';
   }else{
     h+='<div class="card" style="margin-bottom:8px"><div style="font-size:12px;color:var(--text-secondary);line-height:1.6">体脂肪率つきの体組成を記録すると、FFMIや体脂肪率・筋量の推移が見られます。</div><button class="btn btn-sm btn-p" style="margin-top:8px" onclick="showBCForm()">'+ic('i-scale',13)+' 体組成を記録する</button></div>';
   }

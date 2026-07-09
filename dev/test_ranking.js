@@ -20,7 +20,11 @@ D.p=[
 D.ph=[
   {id:11,pid:1,date:'2026-06-20',squat:165},
   {id:12,pid:2,date:'2026-06-21',squat:180},
-  {id:13,pid:3,date:'2026-06-22',squat:200}
+  {id:13,pid:3,date:'2026-06-22',squat:200},
+  // ブロンコ: SH(gold265)260=ゴールド達成✓ / PR(gold310)330=シルバー / LO(gold290)450=目標未達
+  {id:21,pid:1,date:'2026-06-20',bronco:260},
+  {id:22,pid:2,date:'2026-06-21',bronco:330},
+  {id:23,pid:3,date:'2026-06-22',bronco:450}
 ];
 D.bc=[];D.f=[];D.std=[];D.msess=[];D.offday=[];D.ann=[];D.cal=[];D.md=[];D.matchsel=[];D.phskip=[];D.i=[];D.wc=[];D.tape=[];D.pp=[];D.a=[];D.e1rm=[];D.tlog=[];
 
@@ -63,15 +67,23 @@ rankSM('raw');
 var r3=document.getElementById('main').innerHTML;
 ok('体重不明選手が戻る',has(r3,'体重不明'));
 
-print('--- ブロンコでは並び順トグル非表示 ---');
+print('--- ブロンコでは並び順トグル非表示＋目標ランクバッジ ---');
 rankSF('bronco');
 var r4=document.getElementById('main').innerHTML;
 ok('トグル消滅',!has(r4,'並び順'));
+ok('ブロンコ凡例',has(r4,'バッジ＝ポジション別の目標ランク'));
+ok('ゴールドバッジ色(#FFD24A)',has(r4,'background:#FFD24A'));   // SH 260=達成
+ok('達成マーク(i-check)がバッジに',has(r4,'#i-check'));
+ok('シルバーバッジ色(#C9D4E4)',has(r4,'background:#C9D4E4'));   // PR 330=シルバー
+ok('ランク外は目標未達バッジ',has(r4,'目標未達'));               // LO 450
+ok('ブロンコ昇順1位=軽量選手(SH 260)',r4.indexOf('軽量選手')<r4.indexOf('重量選手'));
 rankSF('squat');
 
 print('--- ブロンコからSQに戻ってもモード保持で壊れない ---');
 var r5=document.getElementById('main').innerHTML;
 ok('SQ表示復帰',has(r5,'並び順'));
+ok('SQ表示ではブロンコ凡例なし',!has(r5,'バッジ＝ポジション別の目標ランク'));
+ok('SQ表示では目標未達バッジなし',!has(r5,'目標未達'));
 
 print('--- 種目切替(BIG3)で例外なく描画継続 ---');
 rankSF('big3');

@@ -32,7 +32,9 @@ D.tlog=[
   {id:9004,pid:1,menuId:null,kind:'self',date:agoS(2),ts:'2026-07-05T18:00:00.000Z',
    results:[{exName:'ベンチプレス',estBase:'bench',sets:[{weight:80,reps:8,rir:2}],volume:640,addedByPlayer:true}],totalVolume:640},
   {id:9005,pid:1,menuId:null,kind:'self',date:agoS(1),ts:'2026-07-06T10:00:00.000Z',
-   fitness:{ftype:'ランニング',minutes:30,km:5.2,rpe:7,note:'朝ラン'},results:[],totalVolume:0}
+   fitness:{ftype:'ランニング',minutes:30,km:5.2,rpe:7,note:'朝ラン'},results:[],totalVolume:0},
+  {id:9006,pid:1,menuId:null,kind:'self',date:agoS(1),ts:'2026-07-06T11:00:00.000Z',
+   fitness:{ftype:'ブロンコ',timeSec:290,km:1.2},results:[],totalVolume:0}
 ];
 
 // kpiタイルは値がdata-cnt="N"に入る。ラベル直前200文字からdata-cntを拾う
@@ -54,8 +56,9 @@ print('--- トレーニングビューKPI: doneCountはチーム練習のみ（L
 var okTr=true,ht='';
 try{renderTrainingView();ht=__els['main'].innerHTML;}catch(e){okTr=false;print('  exception: '+e);}
 ok('renderTrainingView完走',okTr);
-ok('実施記録（14日）=2（自主2件を含めない）',kpiVal(ht,'実施記録（14日）')===2);
+ok('実施記録（14日）=2（自主3件を含めない）',kpiVal(ht,'実施記録（14日）')===2);
 ok('欠席（14日）=1（従来どおり）',kpiVal(ht,'欠席（14日）')===1);
+ok('記録一覧: タイム種目は分秒表示(4分50秒)',has(ht,'4分50秒'));
 // 週間ボリュームは自主トレを包含（完全統合が仕様）
 var v7=teamVolume(agoS(6),todayStr());
 ok('週間ボリューム: 自主ウエイトを包含（500+600+640）',v7===1740);
@@ -82,12 +85,14 @@ D.tmenu=[{id:102,name:'チームメニュー',scope:'all',exercises:[]}];
 D.tlog=[
   {id:9001,pid:1,menuId:102,date:agoS(3),ts:'2026-07-04T10:00:00.000Z',results:[{exName:'スクワット',sets:[{weight:100,reps:5,rir:2}],volume:500}],totalVolume:500},
   {id:9004,pid:1,menuId:null,kind:'self',date:agoS(2),ts:'2026-07-05T18:00:00.000Z',results:[{exName:'ベンチプレス',estBase:'bench',sets:[{weight:80,reps:8,rir:2}],volume:640}],totalVolume:640},
-  {id:9005,pid:1,menuId:null,kind:'self',date:agoS(1),ts:'2026-07-06T10:00:00.000Z',fitness:{ftype:'ランニング',minutes:30,km:5.2,rpe:7,note:'朝ラン'},results:[],totalVolume:0}
+  {id:9005,pid:1,menuId:null,kind:'self',date:agoS(1),ts:'2026-07-06T10:00:00.000Z',fitness:{ftype:'ランニング',minutes:30,km:5.2,rpe:7,note:'朝ラン'},results:[],totalVolume:0},
+  {id:9006,pid:1,menuId:null,kind:'self',date:agoS(1),ts:'2026-07-06T11:00:00.000Z',fitness:{ftype:'ブロンコ',timeSec:290,km:1.2},results:[],totalVolume:0}
 ];
 var hb=buildHistCoach(1);
 ok('自主バッジ表示',has(hb,'>自主<'));
 ok('自主ウエイトの名称=自主トレ（ウエイト）',has(hb,'自主トレ（ウエイト）'));
 ok('fitness行: 種類+時間+距離+RPE',has(hb,'ランニング')&&has(hb,'30分')&&has(hb,'5.2km')&&has(hb,'RPE7'));
+ok('fitness行: タイム種目は分秒表示(ブロンコ 4分50秒)',has(hb,'ブロンコ')&&has(hb,'4分50秒'));
 ok('fitness行: 0種目/0kg表示にしない',!has(hb,'ランニング</span><span style="font-size:11px;color:var(--txt-2);margin-right:8px">0種目'));
 ok('チーム行は従来表示',has(hb,'チームメニュー')&&has(hb,'500kg'));
 
@@ -98,6 +103,9 @@ ok('fitness詳細: 時間/距離/RPE',has(fd,'時間 30分')&&has(fd,'距離 5.2
 ok('fitness詳細: メモ',has(fd,'朝ラン'));
 var wd=trSessDetailC(D.tlog[1],1);
 ok('自主ウエイト詳細: 従来のセット表示',has(wd,'ベンチプレス')&&has(wd,'80kg×8'));
+var tdc=trSessDetailC(D.tlog[3],1);
+ok('タイム種目詳細: タイム 4分50秒',has(tdc,'タイム 4分50秒'));
+ok('タイム種目詳細: 距離 1.2km',has(tdc,'距離 1.2km'));
 
 print('--- 既存集計の無傷確認 ---');
 var okAgg=true;

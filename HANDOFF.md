@@ -7,10 +7,23 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-09（**🆕Phase 9 完全完了。実データ投入をユーザーが本番staff画面から全6セッション実施済み（練習GPS 0701/0703・試合GPS 工大A/B・試合スタッツ vsFIT A/B）。コードは全push済み（origin/main同期・未pushコミット0）。残るは任意タスクのみ。**）
+- 日時: 2026-07-09（**🆕新プラン(ブロンコ/プロフィール移設/グループ/自主トレ) 全9フェーズ実装＋全テスト回帰まで完了。⚠️未commit・未push＝ユーザーのデプロイ可否確認待ち。**）
 - 更新者: Claude
 
-## 🔴 次セッションが最初にやること
+## 🟢 新プラン（ブロンコ他4機能）＝実装完了・デプロイ待ち
+
+- **承認済みプラン: `/Users/nakayamarinnin/.claude/plans/resilient-puzzling-stallman.md`＋`...-agent-ae375c0522ce4f4d8.md`。全9フェーズを1機能ずつ実装→各フェーズでjsc模擬実行→全件回帰まで完了。**
+  - **内容4件（全て実装済み）**: A=ブロンコのポジション別目標ランク制／B=マイページのプロフィール（身長＋時間帯アンケート）を設定サブ画面`showProfileSettings()`へ移設／C=ウエイトグループ表示強化（player: `myGroupCardHtml`リッチ化＋`showAllGroups()`全班一覧 / staff: V.tgroup先頭に`tgSavedCardHtml()`保存済み編成カード）／D=自主トレfitnessに「ブロンコ」「1K（1,000m走）」を分:秒タイム(`timeSec`)入力で追加。
+  - **変更ファイル**: player/staff/coach の index.html（trainerは変更不要）＋dev/テスト（新規`test_bronco_std.js`/`test_bronco_board_staff.js`/`test_bronco_coach.js`＋拡張`test_std_staff`/`test_mystatus`/`test_ranking`/`test_tgroup`/`test_tgroup_player`/`test_self_training`/`test_self_staff`/`test_self_coach`/`test_add_ex`/`test_mydata`）。
+  - **検証済み**: ①3ファイル同期を md5 で照合一致（`getBroncoRankInfo`/`broncoFmt`/`fitTimeStr`／STD_DEFAULT.bronco 10値）②新規 new Chart 追加ゼロ（Chart.js不使用ルール遵守）③STD_LIFTSにbronco未追加④**全36テスト実行 全合格**（player/staff/coach 全系列）。敵対的レビューworkflowも実施。
+  - **確定初期値（ゴールド基準秒・実装値）**: PR310/HO310・LO290/FL290/No.8=290・SH265・SO275/CTB275・WTB270/FB270。判定=達成率=ゴールド基準秒÷ベストタイム秒（速いほど高ランク）。ベスト=`getBest(pid,'bronco')`（Math.min）。ランク閾値=既存 bronze0.70/silver0.85/gold1.00/platinum1.10/diamond1.20。
+  - **⚠️次セッションでの最重要事項**:
+    - **node も jsc も PATH に無い**。jsc は `/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc` に実在（これで模擬実行可能）。構文チェックは `"$JSC" dev/prelude.js /tmp/x.js` が SyntaxError を出さなければOK（実行=ロード完走が構文健全の証拠）。
+    - **⚠️未commit・未push**。ユーザーがデプロイ可否を指示したら、変更3HTML＋dev＋HANDOFF.md を commit/push（反映後 Cmd+Shift+R）。git push はユーザー明示指示が必要（メモリ`feedback_autonomy`）。
+    - プレビューは本番Firestore接続（メモリ`project_preview_is_production_firestore`）→保存系検証はjscモックで担保済み・ブラウザ検証は読み取り専用のみ。
+  - 旧プラン（Phase 9: `...luminous-hopcroft.md`）は完了・push済み。以下は参考情報。
+
+## 🔴 次セッションが最初にやること（旧Phase 9・完了済み・参考）
 
 - **✅Phase 9 全部完了**: 9-A/9-B/9-C/9-D実装＋push済み、実データ投入もユーザーが本番へ完了。**push済み（`3fcd067`時点でorigin/main同期・未pushコミット0）**。
 - **⏭残るは任意タスクのみ（急がない・ユーザー希望があれば）**:

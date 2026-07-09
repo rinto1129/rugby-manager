@@ -590,16 +590,16 @@ function getPlayer1RM(pid,estBase){
 var STD_LIFTS=[{k:'sq',ph:'squat',label:'スクワット',short:'SQ'},{k:'bp',ph:'bench',label:'ベンチプレス',short:'BP'},{k:'dl',ph:'deadlift',label:'デッドリフト',short:'DL'}];
 var STD_DEFAULT={
   pos:{
-    'PR':  {sq:1.55,bp:1.25,dl:1.90,ffmiLo:25,  ffmiHi:28,  bfLo:14,bfHi:20},
-    'HO':  {sq:1.60,bp:1.25,dl:1.95,ffmiLo:24,  ffmiHi:27,  bfLo:13,bfHi:18},
-    'LO':  {sq:1.55,bp:1.20,dl:1.90,ffmiLo:24,  ffmiHi:27,  bfLo:12,bfHi:17},
-    'FL':  {sq:1.65,bp:1.30,dl:2.00,ffmiLo:24,  ffmiHi:26.5,bfLo:11,bfHi:16},
-    'No.8':{sq:1.65,bp:1.30,dl:2.00,ffmiLo:24,  ffmiHi:27,  bfLo:12,bfHi:17},
-    'SH':  {sq:1.70,bp:1.25,dl:2.00,ffmiLo:22,  ffmiHi:24.5,bfLo:9, bfHi:13},
-    'SO':  {sq:1.65,bp:1.25,dl:1.95,ffmiLo:22,  ffmiHi:25,  bfLo:9, bfHi:14},
-    'CTB': {sq:1.70,bp:1.30,dl:2.05,ffmiLo:23,  ffmiHi:25.5,bfLo:10,bfHi:14},
-    'WTB': {sq:1.70,bp:1.25,dl:2.00,ffmiLo:22.5,ffmiHi:25,  bfLo:8, bfHi:13},
-    'FB':  {sq:1.70,bp:1.25,dl:2.00,ffmiLo:22.5,ffmiHi:25,  bfLo:9, bfHi:13}
+    'PR':  {sq:1.55,bp:1.25,dl:1.90,bronco:310,ffmiLo:25,  ffmiHi:28,  bfLo:14,bfHi:20},
+    'HO':  {sq:1.60,bp:1.25,dl:1.95,bronco:310,ffmiLo:24,  ffmiHi:27,  bfLo:13,bfHi:18},
+    'LO':  {sq:1.55,bp:1.20,dl:1.90,bronco:290,ffmiLo:24,  ffmiHi:27,  bfLo:12,bfHi:17},
+    'FL':  {sq:1.65,bp:1.30,dl:2.00,bronco:290,ffmiLo:24,  ffmiHi:26.5,bfLo:11,bfHi:16},
+    'No.8':{sq:1.65,bp:1.30,dl:2.00,bronco:290,ffmiLo:24,  ffmiHi:27,  bfLo:12,bfHi:17},
+    'SH':  {sq:1.70,bp:1.25,dl:2.00,bronco:265,ffmiLo:22,  ffmiHi:24.5,bfLo:9, bfHi:13},
+    'SO':  {sq:1.65,bp:1.25,dl:1.95,bronco:275,ffmiLo:22,  ffmiHi:25,  bfLo:9, bfHi:14},
+    'CTB': {sq:1.70,bp:1.30,dl:2.05,bronco:275,ffmiLo:23,  ffmiHi:25.5,bfLo:10,bfHi:14},
+    'WTB': {sq:1.70,bp:1.25,dl:2.00,bronco:270,ffmiLo:22.5,ffmiHi:25,  bfLo:8, bfHi:13},
+    'FB':  {sq:1.70,bp:1.25,dl:2.00,bronco:270,ffmiLo:22.5,ffmiHi:25,  bfLo:9, bfHi:13}
   },
   ranks:[
     {k:'bronze',label:'ブロンズ',pct:0.70,color:'#E8A05C'},
@@ -675,6 +675,28 @@ function getLiftRankInfo(pid,liftK){
     nextTargetKg:next?Math.round(next.pct*goldTarget*10)/10:null,
     nextNeedKg:(next&&oneRM)?Math.max(0,Math.ceil((next.pct*goldTarget-oneRM)*2)/2):null
   };
+}
+// ブロンコランク判定。ratio=ゴールド基準秒÷ベストタイム秒（速いほど高い）。ranks閾値はBIG3と共通。
+// timeSecOpt指定時はその値で判定（ランキングの測定会フィルタ用）。省略時は getBest(pid,'bronco')。
+function getBroncoRankInfo(pid,timeSecOpt){
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  if(!p||!p.position)return null;
+  var cfg=getStdCfg(),posStd=cfg.pos[p.position];
+  if(!posStd||!posStd.bronco)return null;
+  var goldSec=posStd.bronco;
+  var best=(timeSecOpt!=null)?timeSecOpt:getBest(pid,'bronco');
+  var ratio=best?goldSec/best:0;
+  var ranks=cfg.ranks.slice().sort(function(a,b){return a.pct-b.pct;});
+  var cur=null,next=null;
+  for(var i=0;i<ranks.length;i++){
+    if(best&&ratio>=ranks[i].pct)cur=ranks[i];
+    else if(!next)next=ranks[i];
+  }
+  var nextTargetSec=next?Math.floor(goldSec/next.pct):null; // このタイム以下で次ランク
+  return{goldSec:goldSec,best:best,ratio:ratio,rank:cur,next:next,
+    nextTargetSec:nextTargetSec,
+    nextNeedSec:(next&&best)?Math.max(0,best-nextTargetSec):null,
+    achieved:!!(best&&ratio>=1)};
 }
 // アロメトリック補正スコア = 1RM ÷ 体重^b（体格差を除いた公平比較用）
 function getAlloScore(pid,liftK){
@@ -1284,6 +1306,8 @@ function getBest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!
 function getBestBIG3(pid){var sq=getBest(pid,'squat')||0;var bp=getBest(pid,'bench')||0;var dl=getBest(pid,'deadlift')||0;return(sq||bp||dl)?(sq+bp+dl):null;}
 function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
+// フィットネス記録の時間表示: タイム記録(timeSec)なら分秒、従来の分記録(minutes)なら「N分」。無ければ空。3ファイル同一。
+function fitTimeStr(f){return f.timeSec!=null?broncoFmt(f.timeSec):(f.minutes!=null?f.minutes+'分':'');}
 // ID型安全比較ヘルパー（数値・文字列どちらでも一致を判定）
 function idEq(a,b){if(a==null||b==null)return false;return a===b||String(a)===String(b);}
 function fmtDateTime(iso){if(!iso)return'';var d=new Date(iso);if(isNaN(d))return'';var now=new Date();var ys=d.getFullYear()!==now.getFullYear()?(d.getFullYear()+'/'):'';return ys+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
@@ -1797,7 +1821,7 @@ absence:function(){
 physical:function(){
   var pf=document.getElementById('phypf')?document.getElementById('phypf').value:'';
   var recs=D.ph.filter(function(r){return!pf||String(r.pid)===pf;}).sort(function(a,b){return b.date.localeCompare(a.date);});
-  var h='<div class="srch"><select class="ipt" style="width:auto" id="phypf" onchange="V.physical()"><option value="">全選手</option>'+D.p.map(function(p){return'<option value="'+p.id+'"'+(pf===String(p.id)?' selected':'')+'>'+escapeHtml(p.name)+'</option>';}).join('')+'</select><button class="btn" onclick="goMarkPhSkip()">測定なしを設定</button></div><div id="ph-alerts"></div>';
+  var h='<div class="srch"><select class="ipt" style="width:auto" id="phypf" onchange="V.physical()"><option value="">全選手</option>'+D.p.map(function(p){return'<option value="'+p.id+'"'+(pf===String(p.id)?' selected':'')+'>'+escapeHtml(p.name)+'</option>';}).join('')+'</select><button class="btn" onclick="goMarkPhSkip()">測定なしを設定</button></div>'+phBroncoBoardHtml()+'<div id="ph-alerts"></div>';
   if(pf)h+='<div class="chart-wrap"><canvas id="ch-phys"></canvas></div>';
   h+=recs.length?recs.slice(0,40).map(function(r){var p=D.p.find(function(x){return x.id===r.pid;});if(!p)return'';return'<div class="card" style="padding:.6rem 1rem;margin-bottom:5px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+avH(p,26)+'<span style="font-weight:600">'+escapeHtml(p.name)+'</span><div><div style="color:var(--text-secondary);font-size:12px">'+fmt(r.date)+'</div>'+(r.inputAt?'<div style="font-size:10px;color:var(--text-secondary);opacity:.7">入力 '+fmtDateTime(r.inputAt)+(r.editedAt?' (修正済)':'')+'</div>':'')+'</div><span>SQ:'+(r.squat||'-')+'</span><span>BP:'+(r.bench||'-')+'</span><span>DL:'+(r.deadlift||'-')+'</span><span style="font-weight:600;color:var(--blue)">BIG3:'+big3(r)+'</span><span>Bronco:'+(r.bronco?broncoFmt(r.bronco):'-')+'</span><span style="margin-left:auto;display:flex;gap:4px"><button class="btn btn-sm" onclick="goEditPhys('+r.id+')">編集</button><button class="btn btn-sm btn-d" onclick="doDelPhys('+r.id+')">削除</button></span></div></div>';}).join(''):'<div class="no">記録なし</div>';
   $m().innerHTML=h;if(pf)setTimeout(function(){renderPhysChart(parseInt(pf));},60);renderPhysAlerts();
@@ -3749,6 +3773,54 @@ function renderPhysChart(pid){var recs=D.ph.filter(function(x){return x.pid===pi
       }
     }
   });}
+// ブロンコ目標達成ボード（V.physical先頭・折りたたみ。onSnapshot再描画対策で開閉はwindow._phBroncoOpen。Chart.js不使用）
+function phBroncoToggle(){window._phBroncoOpen=window._phBroncoOpen!==true;V.physical();}
+function phBroncoBoardHtml(){
+  var cfg=getStdCfg();
+  var open=window._phBroncoOpen===true;
+  var totMeasured=0,totAchieved=0,totPlayers=0;
+  var rows=POS.map(function(ps){
+    var std=cfg.pos[ps];
+    var goldSec=(std&&std.bronco)?std.bronco:null;
+    var members=D.p.filter(function(p){return p.position===ps;});
+    var chips=members.map(function(p){
+      var bi=getBroncoRankInfo(p.id);
+      totPlayers++;
+      var measured=!!(bi&&bi.best!=null);
+      if(measured)totMeasured++;
+      var achieved=!!(bi&&bi.achieved);
+      if(achieved)totAchieved++;
+      var col=measured?(bi.rank?bi.rank.color:'#8A7578'):'var(--border-tertiary)';
+      return'<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px 3px 3px;border:1.5px solid '+col+';border-radius:99px;background:var(--bg-primary)">'+
+        avH(p,22)+
+        '<span style="font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px">'+escapeHtml(p.name)+
+        (measured?'<span style="color:var(--text-secondary);font-weight:700">'+broncoFmt(bi.best)+'</span>'+(achieved?ic('i-check',11,'var(--green)'):'')
+                 :'<span style="color:var(--text-tertiary);font-weight:400">未測定</span>')+
+        '</span></div>';
+    }).join('');
+    return{ps:ps,goldSec:goldSec,members:members,chips:chips};
+  });
+  var head='<div class="card card-click" onclick="phBroncoToggle()" style="margin-bottom:'+(open?'0':'12px')+';display:flex;align-items:center;gap:10px;cursor:pointer">'+
+    ic('i-run',18,'var(--maroon)')+
+    '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">ブロンコ目標達成ボード</div>'+
+    '<div style="font-size:11px;color:var(--text-secondary)">ゴールド達成 <b style="color:var(--maroon)">'+totAchieved+'</b> / 測定済 '+totMeasured+' / 全 '+totPlayers+'名</div></div>'+
+    ic(open?'i-chevron-u':'i-chevron-d',18,'var(--text-tertiary)')+
+  '</div>';
+  if(!open)return head;
+  var body='<div class="card" style="margin:0 0 12px;border-top-left-radius:0;border-top-right-radius:0">';
+  rows.forEach(function(r,i){
+    body+='<div style="padding:8px 0'+(i<rows.length-1?';border-bottom:1px solid var(--border-tertiary)':'')+'">'+
+      '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:'+(r.members.length?'6':'0')+'px"><span style="font-weight:700;font-size:13px;min-width:40px">'+escapeHtml(r.ps)+'</span>'+
+      '<span style="font-size:11px;color:var(--text-secondary)">ゴールド基準 '+(r.goldSec?broncoFmt(r.goldSec):'—')+'</span></div>'+
+      (r.members.length?'<div style="display:flex;flex-wrap:wrap;gap:6px">'+r.chips+'</div>':'<div style="font-size:11px;color:var(--text-tertiary);padding-left:48px">選手なし</div>')+
+      '</div>';
+  });
+  body+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid var(--border-tertiary)">'+
+    cfg.ranks.slice().sort(function(a,b){return a.pct-b.pct;}).map(function(rk){return'<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--text-secondary)"><span style="width:8px;height:8px;border-radius:50%;background:'+rk.color+';border:1px solid var(--border-secondary)"></span>'+escapeHtml(rk.label)+'</span>';}).join('')+
+    '<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--text-secondary)">'+ic('i-check',11,'var(--green)')+'ゴールド達成</span></div>';
+  body+='</div>';
+  return head+body;
+}
 function renderPhysAlerts(){var e=document.getElementById('ph-alerts');if(!e)return;var al=[];D.p.forEach(function(p){var recs=D.ph.filter(function(x){return x.pid===p.id;}).sort(function(a,b){return a.date.localeCompare(b.date);});if(recs.length<2)return;var l=recs[recs.length-1],pv=recs[recs.length-2];['squat','bench','deadlift','chinning','clean'].forEach(function(f){if(!l[f]||!pv[f])return;var d=l[f]-pv[f],pct=Math.round(d/pv[f]*100);var fname={squat:'SQ',bench:'BP',deadlift:'DL',chinning:'チンニング',clean:'クリーン'}[f]||f;if(d>0)al.push({t:'up',txt:p.name+': '+fname+' '+pv[f]+'→'+l[f]+'kg (+'+pct+'%) '+ic('i-trend-up',12)});else if(pct<=-5)al.push({t:'down',txt:p.name+': '+fname+' '+pv[f]+'→'+l[f]+'kg ('+pct+'%) '+ic('i-trend-down',12)});});if(l.bronco&&pv.bronco){var d2=l.bronco-pv.bronco,pct2=Math.round(d2/pv.bronco*100);if(d2<0)al.push({t:'up',txt:p.name+': ブロンコ '+broncoFmt(pv.bronco)+'→'+broncoFmt(l.bronco)+' '+ic('i-trend-up',12)});else if(pct2>=5)al.push({t:'down',txt:p.name+': ブロンコ '+broncoFmt(pv.bronco)+'→'+broncoFmt(l.bronco)+' '+ic('i-trend-down',12)});}});e.innerHTML=al.map(function(a){return'<div class="alert-card '+(a.t==='up'?'alert-up':'alert-down')+'">'+a.txt+'</div>';}).join('');}
 
 // === ADD INJURY (with search, side, other) ===
@@ -3986,7 +4058,7 @@ function renderTrainTab(){
     if(lg.fitness){
       // フィットネス記録: 種目数/0kgの代わりに種類+時間（+距離/RPE）を出す
       var ff=lg.fitness;
-      var fMeta=(ff.minutes!=null?ff.minutes+'分':'')+(ff.km!=null?' ・ '+ff.km+'km':'')+(ff.rpe!=null?' ・ RPE'+ff.rpe:'');
+      var fMeta=fitTimeStr(ff)+(ff.km!=null?' ・ '+ff.km+'km':'')+(ff.rpe!=null?' ・ RPE'+ff.rpe:'');
       h+='<div class="log-row" style="cursor:pointer" onclick="toggleTrSess('+lg.id+')"><span style="min-width:14px;color:var(--text-tertiary)" id="trsess-arw-'+lg.id+'">'+ic('i-chevron-r',12)+'</span><span style="min-width:64px;color:var(--text-secondary)">'+fmt(lg.date)+'</span><span style="flex:1;font-weight:600;font-size:13px">'+escapeHtml(ff.ftype||'フィットネス')+selfBadge+'</span><span style="font-weight:700;color:var(--green);font-size:12px;text-align:right">'+escapeHtml(fMeta)+'</span></div>';
       h+='<div id="trsess-'+lg.id+'" style="display:none">'+trSessDetail(lg)+'</div>';
       return;
@@ -4113,7 +4185,7 @@ function trSessDetail(lg){
     // フィットネス記録の展開内容（results:[]のため下のセット表示は通らない）
     var fd=lg.fitness;
     h+='<div style="padding:6px 0"><div style="font-weight:600;font-size:13px;margin-bottom:4px">'+ic('i-run',12,'var(--green)')+' '+escapeHtml(fd.ftype||'フィットネス')+' <span class="bd bd-b" style="font-size:9px">自主</span></div>'+
-      '<div style="font-size:12px;color:var(--text-secondary)">'+(fd.minutes!=null?'時間 '+fd.minutes+'分':'')+(fd.km!=null?' ／ 距離 '+fd.km+'km':'')+(fd.rpe!=null?' ／ RPE '+fd.rpe:'')+'</div>'+
+      '<div style="font-size:12px;color:var(--text-secondary)">'+(fitTimeStr(fd)?(fd.timeSec!=null?'タイム ':'時間 ')+fitTimeStr(fd):'')+(fd.km!=null?' ／ 距離 '+fd.km+'km':'')+(fd.rpe!=null?' ／ RPE '+fd.rpe:'')+'</div>'+
       (fd.note?'<div style="font-size:11px;color:var(--text-secondary);margin-top:4px;white-space:pre-wrap">'+escapeHtml(fd.note)+'</div>':'')+'</div>';
     return h+'</div>';
   }
@@ -4816,11 +4888,47 @@ function tgReasonBadge(pid){
   return '<span style="font-size:8px;font-weight:700;color:'+col+';border:1px solid '+col+';border-radius:99px;padding:0 5px;margin-left:5px">'+r+'</span>';
 }
 function tgToggleSurvey(){window._tgSurveyOpen=window._tgSurveyOpen!==true;V.tgroup();}
+// 現在の保存済み編成（選手に公開中）の読み取り専用カード。編集中の_tgStateとは独立に常に見える。既定=開。
+function tgSavedToggle(){window._tgSavedOpen=(window._tgSavedOpen===false);V.tgroup();}
+function tgSavedCardHtml(){
+  var recs=D.tgroup||[];
+  var rec=recs.length?recs[recs.length-1]:null;
+  var open=window._tgSavedOpen!==false;
+  if(!rec||!rec.shifts||!rec.shifts.length){
+    return '<div class="card" style="margin-bottom:12px"><div style="font-weight:800;font-size:14px">現在の保存済み編成</div><div style="font-size:11px;color:var(--text-secondary);margin-top:4px">保存済みの編成はまだありません。下で組んで保存すると選手に公開されます。</div></div>';
+  }
+  var head='<div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="tgSavedToggle()">'+
+    '<div><div style="font-weight:800;font-size:14px">現在の保存済み編成 <span class="bd bd-g" style="font-size:9px">選手に公開中</span></div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">'+fmt(rec.date)+' 保存 ・ '+(rec.mode==='ampm'?'午前/午後':'分割なし')+'</div></div>'+
+    '<span style="font-size:12px;color:var(--blue);font-weight:700">'+(open?'閉じる':'開く')+' '+ic(open?'i-chevron-u':'i-chevron-d',13)+'</span></div>';
+  var body='';
+  if(open){
+    body='<div style="margin-top:10px;border-top:1px solid var(--border-tertiary);padding-top:10px">';
+    rec.shifts.forEach(function(sh){
+      var groups=(sh.groups||[]).filter(function(g){return g&&g.length;});
+      if(!groups.length)return;
+      if(rec.mode==='ampm'&&sh.label){
+        body+='<div style="font-size:12px;font-weight:800;margin:8px 0 6px;color:'+(sh.key==='am'?'var(--blue)':'var(--purple)')+'">'+escapeHtml(sh.label)+'組</div>';
+      }
+      body+='<div style="display:flex;flex-wrap:wrap;gap:8px">';
+      groups.forEach(function(g,gi){
+        var letter=String.fromCharCode(65+gi);
+        body+='<div style="border:1px solid var(--border-tertiary);border-radius:10px;padding:7px 10px;min-width:118px"><div style="font-size:12px;font-weight:800;margin-bottom:4px">'+letter+'班 <span style="font-size:10px;color:var(--text-secondary);font-weight:400">'+g.length+'名</span></div>'+
+          g.map(function(pid){var pp=D.p.find(function(x){return idEq(x.id,pid);});return pp?'<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">'+avH(pp,20)+'<span style="font-size:11px">'+escapeHtml(pp.name)+'</span></div>':'';}).filter(Boolean).join('')+
+          '</div>';
+      });
+      body+='</div>';
+    });
+    body+='</div>';
+  }
+  return '<div class="card" style="margin-bottom:12px">'+head+body+'</div>';
+}
 
 V.tgroup=function(){
   tgInit(false);
   var st=window._tgState;
   var h='<div style="max-width:920px">';
+  h+=tgSavedCardHtml();
   h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;line-height:1.6">選手の申告（5限・遠方・希望）をもとに午前/午後へ自動振分し、各シフト内をBIG3総合強度で3人組にします。チップを2つタップで入替（シフト跨ぎ可）、保存で選手サイトに反映されます。</div>';
 
   // 1. モード
@@ -5690,7 +5798,7 @@ function renderFitProgForm(menuId,mn){
   h+='</div>';
   pushView(menuId?'フィットネスプログラムを編集':'新しいフィットネスプログラム',h);
 }
-var FIT_KINDS=['ランニング','バイク','水泳','HIIT','シャトルラン','坂道ダッシュ','縄跳び','サーキット','タバタ'];
+var FIT_KINDS=['ランニング','バイク','水泳','HIIT','シャトルラン','坂道ダッシュ','縄跳び','サーキット','タバタ','ブロンコ','1K（1,000m走）'];
 function renderFitItemList(){
   if(!_fitItems.length)return'<div style="font-size:12px;color:var(--text-secondary);padding:12px;text-align:center;background:var(--bg-secondary);border-radius:8px">項目がまだありません。下のボタンから追加してください。</div>';
   return _fitItems.map(function(it,i){
@@ -5770,7 +5878,7 @@ function goFitProgDetail(menuId){
     pidOrder.forEach(function(key){
       var d=byPid[key],l=d.latest,p=D.p.find(function(x){return idEq(x.id,l.pid);});
       var f=l.fitness||{};
-      var fm=[];if(f.minutes!=null)fm.push(f.minutes+'分');if(f.km!=null)fm.push(f.km+'km');if(f.rpe!=null)fm.push('RPE'+f.rpe);
+      var fm=[];if(fitTimeStr(f))fm.push(fitTimeStr(f));if(f.km!=null)fm.push(f.km+'km');if(f.rpe!=null)fm.push('RPE'+f.rpe);
       h+='<div class="log-row" style="padding:7px 0">'+(p?avH(p,26):'')+'<span style="font-weight:600;flex:1;margin-left:'+(p?'8px':'0')+'">'+escapeHtml(p?p.name:'不明な選手')+(d.count>1?' <span class="bd bd-g" style="font-size:9px">'+d.count+'回</span>':'')+'</span><span style="font-size:11px;color:var(--text-secondary)">'+fmt(l.date)+'</span>'+(fm.length?'<span style="font-size:11px;color:var(--green);font-weight:600;margin-left:8px">'+escapeHtml(fm.join(' / '))+'</span>':'')+'</div>';
     });
   }
@@ -5837,7 +5945,7 @@ function renderTrainingStatus(){
     if(lg.fitness){
       // フィットネス記録: 種目数/0kgの代わりに種類+時間（+距離/RPE）を出す
       var ff=lg.fitness;
-      var fMeta=escapeHtml(ff.ftype||'フィットネス')+(ff.minutes!=null?' ・ '+ff.minutes+'分':'')+(ff.km!=null?' ・ '+ff.km+'km':'')+(ff.rpe!=null?' ・ RPE'+ff.rpe:'');
+      var fMeta=escapeHtml(ff.ftype||'フィットネス')+(fitTimeStr(ff)?' ・ '+fitTimeStr(ff):'')+(ff.km!=null?' ・ '+ff.km+'km':'')+(ff.rpe!=null?' ・ RPE'+ff.rpe:'');
       h+='<div class="card card-click" style="margin-bottom:8px" onclick="goPlayerDetail('+lg.pid+',5)"><div style="display:flex;align-items:center;gap:10px">'+avH(p,30)+
         '<div style="flex:1"><div style="font-weight:600;font-size:14px">'+escapeHtml(p.name)+selfBadge+'</div><div style="font-size:11px;color:var(--text-secondary)">'+fmt(lg.date)+' ・ '+fMeta+'</div></div></div></div>';
       return;
@@ -7288,14 +7396,15 @@ V.standards=function(){
     (saved?'<span class="bd bd-b">カスタム設定を使用中</span>':'<span class="bd bd-a">未保存（コード内の初期値で動作中）</span>')+'</div>';
   // --- ポジション別テーブル ---
   h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:700;margin-bottom:4px">ポジション別基準</div>'+
-    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">ゴールド基準1RM＝体重×倍率。推奨体重帯＝FFMI帯×身長²÷(1−体脂肪率)で算出。</div>'+
-    '<div style="overflow-x:auto"><table style="border-collapse:collapse;min-width:660px">'+
-    '<tr><th style="text-align:left;padding:4px 8px;font-size:11px">ポジ</th>'+POSF.map(function(f){return'<th style="padding:4px 4px;font-size:10px;color:var(--text-secondary);font-weight:600">'+f.label+'</th>';}).join('')+'</tr>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">ゴールド基準1RM＝体重×倍率。推奨体重帯＝FFMI帯×身長²÷(1−体脂肪率)で算出。ブロンコ基準はゴールド到達タイム（分:秒）。</div>'+
+    '<div style="overflow-x:auto"><table style="border-collapse:collapse;min-width:790px">'+
+    '<tr><th style="text-align:left;padding:4px 8px;font-size:11px">ポジ</th>'+POSF.map(function(f){return'<th style="padding:4px 4px;font-size:10px;color:var(--text-secondary);font-weight:600">'+f.label+'</th>';}).join('')+'<th style="padding:4px 4px;font-size:10px;color:var(--text-secondary);font-weight:600">ブロンコ基準<br>(分:秒)</th></tr>'+
     POS.map(function(ps,pi){
       var row=cfg.pos[ps]||{};
+      var bm=Math.floor((row.bronco||0)/60),bs=(row.bronco||0)%60;
       return'<tr><td style="padding:3px 8px;font-weight:700;font-size:12px;white-space:nowrap">'+ps+'</td>'+POSF.map(function(f){
         return'<td style="padding:3px 3px"><input class="ipt" style="width:66px;padding:6px 4px;text-align:center;font-size:13px" type="number" step="0.01" id="std-pos-'+pi+'-'+f.k+'" value="'+row[f.k]+'"></td>';
-      }).join('')+'</tr>';
+      }).join('')+'<td style="padding:3px 3px;white-space:nowrap"><input class="ipt" style="width:44px;padding:6px 3px;text-align:center;font-size:13px" type="number" min="0" id="std-pos-'+pi+'-br-m" value="'+bm+'"><span style="font-size:11px;color:var(--text-secondary)"> : </span><input class="ipt" style="width:44px;padding:6px 3px;text-align:center;font-size:13px" type="number" min="0" id="std-pos-'+pi+'-br-s" value="'+bs+'"></td></tr>';
     }).join('')+'</table></div></div>';
   // --- ランク閾値 ---
   h+='<div class="card" style="margin-bottom:12px"><div style="font-weight:700;margin-bottom:4px">ランク閾値（×ゴールド基準）</div>'+
@@ -7351,6 +7460,10 @@ function doSaveStd(btn){
     row.ffmiHi=num('std-pos-'+pi+'-ffmiHi',ps+' FFMI上限',15,35);
     row.bfLo=num('std-pos-'+pi+'-bfLo',ps+' 脂肪%下限',3,35);
     row.bfHi=num('std-pos-'+pi+'-bfHi',ps+' 脂肪%上限',3,35);
+    var _bm=parseFloat((document.getElementById('std-pos-'+pi+'-br-m')||{}).value);
+    var _bs=parseFloat((document.getElementById('std-pos-'+pi+'-br-s')||{}).value);
+    if(!(_bm>=0)||!(_bs>=0&&_bs<=59)){errs.push(ps+' ブロンコ基準（分と秒0〜59）');row.bronco=null;}
+    else{var _bt=Math.round(_bm*60+_bs);if(!(_bt>=180&&_bt<=600)){errs.push(ps+' ブロンコ基準（3:00〜10:00）');row.bronco=null;}else row.bronco=_bt;}
     if(row.ffmiLo!=null&&row.ffmiHi!=null&&row.ffmiLo>row.ffmiHi)errs.push(ps+' FFMIが下限>上限');
     if(row.bfLo!=null&&row.bfHi!=null&&row.bfLo>row.bfHi)errs.push(ps+' 脂肪%が下限>上限');
     cfg.pos[ps]=row;

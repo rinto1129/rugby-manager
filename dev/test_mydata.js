@@ -131,11 +131,11 @@ ok('getCurrentFFMIInfo=26.2',ffmi&&ffmi.ffmi===26.2&&ffmi.ffm===85&&ffmi.fat===1
 T.mydata();var md=__els['main'].innerHTML;
 ok('レンダーにFFMIラベル',has(md,'FFMI（除脂肪量指数）'));
 ok('レンダーにFFMI値26.2',has(md,'26.2'));
-ok('身長未登録導線は出ない（身長あり）',!has(md,'マイページで身長を登録'));
-// 身長未登録→導線
+ok('身長未登録導線は出ない（身長あり）',!has(md,'身長を登録'));
+// 身長未登録→プロフィール設定サブ画面への導線
 D.p[0].height='';
 T.mydata();var md2=__els['main'].innerHTML;
-ok('身長未登録でマイページ導線',has(md2,'マイページで身長を登録'));
+ok('身長未登録でプロフィール設定導線',has(md2,'身長を登録')&&has(md2,'showProfileSettings()'));
 
 // ============ 5. T.mydata 完走 + セクション + チャート生成（冪等） ============
 print('--- T.mydata: 完走・セクション・チャート ---');
