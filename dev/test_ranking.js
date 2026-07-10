@@ -100,5 +100,13 @@ rankSY('');
 var r6=document.getElementById('main').innerHTML;
 ok('学年リセットで表彰台復帰',has(r6,'rkp-podium'));
 
+print('--- 測定会フィルタの既定は「全期間」(all)（最新測定会固定を廃止） ---');
+D.msess=[{id:'s1',name:'6月測定会',startDate:'2026-06-15'}];
+T.ranking();
+var r7=document.getElementById('main').innerHTML;
+ok('全期間ボタンが既定でアクティブ(btn-p)',has(r7,'btn btn-sm btn-p" onclick="rankSSess(0)"'));
+ok('測定会s1ボタンは既定で非アクティブ',!has(r7,'btn btn-sm btn-p" onclick="rankSSessIdx(0)"'));
+D.msess=[];
+
 print(__fail===0?'ALL RANKING TESTS PASSED':'FAILED: '+__fail+' test(s)');
 if(__fail>0)throw new Error('ranking tests failed');

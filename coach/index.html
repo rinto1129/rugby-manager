@@ -317,7 +317,7 @@ function loadTlogArch(cb){
   });
 }
 function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
-function getBest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null;});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
+function getBest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
 function getBestBIG3(pid){var sq=getBest(pid,'squat')||0;var bp=getBest(pid,'bench')||0;var dl=getBest(pid,'deadlift')||0;return(sq||bp||dl)?(sq+bp+dl):null;}
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
 // フィットネス記録の時間表示: タイム記録(timeSec)なら分秒、従来の分記録(minutes)なら「N分」。無ければ空。3ファイル同一。
@@ -344,6 +344,13 @@ var STD_DEFAULT={
     {k:'platinum',label:'プラチナ',pct:1.10,color:'#6FE3E1'},
     {k:'diamond',label:'ダイヤ',pct:1.20,color:'#C084FC'}
   ],
+  broncoRanks:[
+    {k:'bronze',label:'ブロンズ',pct:0.70,color:'#E8A05C'},
+    {k:'silver',label:'シルバー',pct:0.85,color:'#C9D4E4'},
+    {k:'gold',label:'ゴールド',pct:1.00,color:'#FFD24A'},
+    {k:'platinum',label:'プラチナ',pct:1.10,color:'#6FE3E1'},
+    {k:'diamond',label:'ダイヤ',pct:1.20,color:'#C084FC'}
+  ],
   allo:{sq:0.33,bp:0.45,dl:0.33},
   rx:{
     sq:[{name:'フロントスクワット',sets:3,reps:6,rir:2},{name:'ブルガリアンスクワット',sets:3,reps:8,rir:2},{name:'レッグプレス',sets:3,reps:10,rir:2}],
@@ -355,7 +362,7 @@ var STD_DEFAULT={
 function getStdCfg(){
   var saved=(D.std&&D.std[0])||null;
   if(!saved)return STD_DEFAULT;
-  var cfg={pos:{},ranks:(saved.ranks&&saved.ranks.length?saved.ranks:STD_DEFAULT.ranks),allo:saved.allo||STD_DEFAULT.allo,rx:saved.rx||STD_DEFAULT.rx};
+  var cfg={pos:{},ranks:(saved.ranks&&saved.ranks.length?saved.ranks:STD_DEFAULT.ranks),broncoRanks:(saved.broncoRanks&&saved.broncoRanks.length?saved.broncoRanks:STD_DEFAULT.broncoRanks),allo:saved.allo||STD_DEFAULT.allo,rx:saved.rx||STD_DEFAULT.rx};
   Object.keys(STD_DEFAULT.pos).forEach(function(pk){
     var d=STD_DEFAULT.pos[pk],s=(saved.pos||{})[pk]||{},m={};
     Object.keys(d).forEach(function(f){m[f]=(s[f]!=null&&s[f]!==''?s[f]:d[f]);});
@@ -422,7 +429,7 @@ function getBroncoRankInfo(pid,timeSecOpt){
   var goldSec=posStd.bronco;
   var best=(timeSecOpt!=null)?timeSecOpt:getBest(pid,'bronco');
   var ratio=best?goldSec/best:0;
-  var ranks=cfg.ranks.slice().sort(function(a,b){return a.pct-b.pct;});
+  var ranks=(cfg.broncoRanks&&cfg.broncoRanks.length?cfg.broncoRanks:cfg.ranks).slice().sort(function(a,b){return a.pct-b.pct;});
   var cur=null,next=null;
   for(var i=0;i<ranks.length;i++){
     if(best&&ratio>=ranks[i].pct)cur=ranks[i];

@@ -10,16 +10,28 @@ D.p=[{id:1,name:'未登録選手',position:'',height:'',weight:''}];
 D.ph=[];
 ok('未登録メッセージ',has(renderStdSummaryHTML(1),'ポジション未登録のため基準未表示'));
 
-print('--- 通常ケース（PR・弱点=BP・身長あり） ---');
+print('--- 通常ケース（PR・弱点=BP・身長あり・ブロンコ/懸垂/クリーンあり） ---');
 D.p=[{id:2,name:'テストPR',position:'PR',height:'180',weight:'100'}];
-D.ph=[{id:21,pid:2,date:'2026-06-20',squat:150,bench:90,deadlift:200}];
+D.ph=[{id:21,pid:2,date:'2026-06-20',squat:150,bench:90,deadlift:200,bronco:300,chinning:20,clean:100}];
 var h=renderStdSummaryHTML(2);
 ok('見出し',has(h,'BIG3基準・体重帯'));
+ok('4枠グリッド',has(h,'repeat(4,1fr)'));
 ok('SQのランク表示(シルバー)',has(h,'シルバー'));
 ok('BPは弱点マーカー付き',/ブロンズ[\s\S]*?i-target/.test(h)||has(h,'i-target'));
 ok('DLのランク表示(ゴールド以上)',has(h,'ゴールド')||has(h,'プラチナ')||has(h,'ダイヤ'));
 ok('推奨体重帯の表示',has(h,'推奨体重帯'));
 ok('現在体重の表示',has(h,'100kg')||has(h,'選手登録の体重'));
+ok('ブロンコ枠のタイム表示(5分00秒)',has(h,'ブロンコ 5分00秒'));
+ok('ブロンコのランクバッジ(PR gold=310,best=300→ゴールド)',/ゴールド[\s\S]*?ブロンコ 5分00秒/.test(h)||has(h,'ゴールド'));
+ok('懸垂ベスト値行(20kg)',has(h,'懸垂')&&has(h,'20kg'));
+ok('クリーンベスト値行(100kg)',has(h,'クリーン')&&has(h,'100kg'));
+
+print('--- ブロンコ未測定は"-"（懸垂/クリーンも-） ---');
+D.p=[{id:5,name:'ブロンコなし',position:'PR',height:'180',weight:'100'}];
+D.ph=[{id:51,pid:5,date:'2026-06-20',squat:150,bench:120,deadlift:200}]; // bronco/chinning/clean無し
+var h5=renderStdSummaryHTML(5);
+ok('ブロンコ枠は"-"表示',/>-<\/div><div class="l">ブロンコ<\/div>/.test(h5)||has(h5,'>ブロンコ</div>'));
+ok('懸垂/クリーンは"-"',/懸垂 <b[^>]*>-<\/b>/.test(h5));
 
 print('--- 身長未登録 ---');
 D.p=[{id:3,name:'身長なし',position:'SH',height:'',weight:'70'}];

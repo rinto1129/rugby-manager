@@ -463,6 +463,13 @@ var STD_DEFAULT={
     {k:'platinum',label:'プラチナ',pct:1.10,color:'#6FE3E1'},
     {k:'diamond',label:'ダイヤ',pct:1.20,color:'#C084FC'}
   ],
+  broncoRanks:[
+    {k:'bronze',label:'ブロンズ',pct:0.70,color:'#E8A05C'},
+    {k:'silver',label:'シルバー',pct:0.85,color:'#C9D4E4'},
+    {k:'gold',label:'ゴールド',pct:1.00,color:'#FFD24A'},
+    {k:'platinum',label:'プラチナ',pct:1.10,color:'#6FE3E1'},
+    {k:'diamond',label:'ダイヤ',pct:1.20,color:'#C084FC'}
+  ],
   allo:{sq:0.33,bp:0.45,dl:0.33},
   rx:{
     sq:[{name:'フロントスクワット',sets:3,reps:6,rir:2},{name:'ブルガリアンスクワット',sets:3,reps:8,rir:2},{name:'レッグプレス',sets:3,reps:10,rir:2}],
@@ -474,7 +481,7 @@ var STD_DEFAULT={
 function getStdCfg(){
   var saved=(D.std&&D.std[0])||null;
   if(!saved)return STD_DEFAULT;
-  var cfg={pos:{},ranks:(saved.ranks&&saved.ranks.length?saved.ranks:STD_DEFAULT.ranks),allo:saved.allo||STD_DEFAULT.allo,rx:saved.rx||STD_DEFAULT.rx};
+  var cfg={pos:{},ranks:(saved.ranks&&saved.ranks.length?saved.ranks:STD_DEFAULT.ranks),broncoRanks:(saved.broncoRanks&&saved.broncoRanks.length?saved.broncoRanks:STD_DEFAULT.broncoRanks),allo:saved.allo||STD_DEFAULT.allo,rx:saved.rx||STD_DEFAULT.rx};
   Object.keys(STD_DEFAULT.pos).forEach(function(pk){
     var d=STD_DEFAULT.pos[pk],s=(saved.pos||{})[pk]||{},m={};
     Object.keys(d).forEach(function(f){m[f]=(s[f]!=null&&s[f]!==''?s[f]:d[f]);});
@@ -541,7 +548,7 @@ function getBroncoRankInfo(pid,timeSecOpt){
   var goldSec=posStd.bronco;
   var best=(timeSecOpt!=null)?timeSecOpt:getBest(pid,'bronco');
   var ratio=best?goldSec/best:0;
-  var ranks=cfg.ranks.slice().sort(function(a,b){return a.pct-b.pct;});
+  var ranks=(cfg.broncoRanks&&cfg.broncoRanks.length?cfg.broncoRanks:cfg.ranks).slice().sort(function(a,b){return a.pct-b.pct;});
   var cur=null,next=null;
   for(var i=0;i<ranks.length;i++){
     if(best&&ratio>=ranks[i].pct)cur=ranks[i];
@@ -1019,10 +1026,44 @@ function rc(v){return v<=3?'var(--green)':v<=6?'var(--amber)':'var(--red)';}
 function sc(v){return v>=7?'var(--green)':v>=5?'var(--amber)':'var(--red)';}
 function getCurrentMSess(){
   var today=todayStr();
-  return(D.msess||[]).find(function(s){return s.startDate<=today&&s.endDate>=today;})||null;
+  var cands=(D.msess||[]).filter(function(s){
+    if(s.closed||!s.startDate||!s.endDate)return false;
+    if(s.startDate>today)return false;
+    var graceEnd=toDateStr(new Date(new Date(s.endDate).getTime()+14*86400000));
+    return today<=graceEnd;
+  });
+  if(!cands.length)return null;
+  cands.sort(function(a,b){
+    var aIn=(today<=a.endDate)?1:0,bIn=(today<=b.endDate)?1:0;
+    if(aIn!==bIn)return bIn-aIn;
+    return (b.startDate||'').localeCompare(a.startDate||'');
+  });
+  return cands[0];
+}
+// 測定会の参加状況を一元判定（staff V.msess/goMSessDetail と同一基準・md5同期）。
+// done: ph記録が (msessId一致) または (msessId無し && 期間内日付)。ブロンコ系は bronco!=null のみ入力済み。
+// skip: phskip が同基準。done/skip/missed は D.p を重複なく分割（doneを最優先、skipはdone除外）。
+// ブロンコ系判定: fromCalType==='bronco_measure' または 名前に「ブロンコ」を含む。
+function msessStatus(s){
+  var isBronco=(s.fromCalType==='bronco_measure')||(String(s.name||'').indexOf('ブロンコ')>=0);
+  function inSess(r){
+    if(idEq(r.msessId,s.id))return true;
+    return (r.msessId==null||r.msessId==='')&&r.date>=s.startDate&&r.date<=s.endDate;
+  }
+  var recs=(D.ph||[]).filter(function(r){return inSess(r)&&(!isBronco||r.bronco!=null);});
+  var donePids=[...new Set(recs.map(function(r){return r.pid;}))];
+  var isDone=function(pid){return donePids.some(function(d){return idEq(d,pid);});};
+  var seen={},skips=[];
+  (D.phskip||[]).forEach(function(sk){
+    if(!inSess(sk)||isDone(sk.pid))return;
+    var k=String(sk.pid);if(seen[k])return;seen[k]=1;skips.push(sk);
+  });
+  var skippedPids=skips.map(function(sk){return sk.pid;});
+  var missedPids=(D.p||[]).filter(function(p){return!isDone(p.id)&&!skippedPids.some(function(sk){return idEq(sk,p.id);});}).map(function(p){return p.id;});
+  return{isBronco:isBronco,recs:recs,skips:skips,donePids:donePids,skippedPids:skippedPids,missedPids:missedPids};
 }
 
-function getBest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null;});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
+function getBest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
 function getBestBIG3(pid){var sq=getBest(pid,'squat')||0;var bp=getBest(pid,'bench')||0;var dl=getBest(pid,'deadlift')||0;return (sq||bp||dl)?(sq+bp+dl):null;}
 function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
@@ -1162,11 +1203,16 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
 // ===== ウエイトPUSH/PULL交互管理（pp）＝チーム全員共通・グローバル1列（playerは表示のみ） =====
 function ppNext(){
   var a=Array.isArray(D.pp)?D.pp:[]; if(!a.length)return null;
-  var t=a[a.length-1]&&a[a.length-1].type; return(t==='push'||t==='pull')?t:null;
+  var last=a[a.length-1]; var t=last&&last.type; if(t!=='push'&&t!=='pull')return null;
+  // 当日の自動確定(by:auto)は表示上まだ当日実施タイプを見せ、翌日から反転（日跨ぎ対応）。手動flipは即時反映。
+  if(last.by==='auto'&&last.date===todayStr())return t==='push'?'pull':'push';
+  return t;
 }
 function ppNextWeightDay(){
   var t=todayStr();
-  var doneToday=Array.isArray(D.pp)&&D.pp.length>=2&&D.pp[D.pp.length-1].date===t;
+  var last=(Array.isArray(D.pp)&&D.pp.length>=2)?D.pp[D.pp.length-1]:null;
+  // 当日実施済み判定は手動flip(by!=='auto')のみ。当日の自動確定は表示上まだ当日を次のウエイト日として見せる。
+  var doneToday=!!last&&last.date===t&&last.by!=='auto';
   var ds=(D.cal||[]).filter(function(e){return e&&e.type==='weight'&&typeof e.date==='string'&&(doneToday?e.date>t:e.date>=t);}).map(function(e){return e.date;});
   if(!ds.length)return null; ds.sort();
   return{date:ds[0],isToday:ds[0]===t};
@@ -1300,7 +1346,7 @@ function broncoRankCardHtml(binf,cfg){
       '<span class="num" style="font-size:clamp(26px,7vw,36px)">'+broncoFmt(binf.best)+'</span>'+
       '<span class="bd" style="background:'+col+';color:var(--ink);font-weight:800">'+(binf.rank?escapeHtml(binf.rank.label):'ランク外')+'</span></div>'+
       '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">ゴールド基準 '+broncoFmt(binf.goldSec)+'</div>';
-    h+=rankProgressBarHtml({oneRM:binf.best,ratio:binf.ratio},cfg);
+    h+=rankProgressBarHtml({oneRM:binf.best,ratio:binf.ratio},{ranks:(cfg.broncoRanks&&cfg.broncoRanks.length?cfg.broncoRanks:cfg.ranks)});
     h+='<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary)"><span>達成率 '+Math.round(binf.ratio*100)+'%</span><span>ポジション別基準</span></div>';
     if(binf.next){
       h+='<div style="margin-top:6px;font-size:12px;font-weight:600;color:var(--blue)">'+escapeHtml(binf.next.label)+'まで あと'+binf.nextNeedSec+'秒 <span style="font-size:10px;color:var(--text-secondary)">（目標 '+broncoFmt(binf.nextTargetSec)+'）</span></div>';
@@ -1684,24 +1730,16 @@ home:function(){
   var matchMissedAll=wasMatchYesterday?D.p.filter(function(p){
     return selectedForMatch.indexOf(p.id)>=0&&!D.md.some(function(m){return m.pid===p.id&&m.date===yesterdayS2;});
   }):[];
-  // 測定日アラート（昨日の測定日で未入力だったか翌日に通知）
-  var yesterdayCalEvts2=(D.cal||[]).filter(function(e){return e.date===yesterdayS2;});
-  var physMeasureYesterday2=yesterdayCalEvts2.some(function(e){return e.type==='phys_measure';});
-  var broncoMeasureYesterday2=yesterdayCalEvts2.some(function(e){return e.type==='bronco_measure';});
-  var phSkipYesterday2=myPid&&(D.phskip||[]).some(function(s){return s.pid===myPid&&s.date===yesterdayS2;});
-  var physDoneYesterday=myPid&&D.ph.some(function(r){return r.pid===myPid&&r.date===yesterdayS2&&(r.squat!=null||r.bench!=null||r.deadlift!=null||r.chinning!=null||r.clean!=null);});
-  var broncoDoneYesterday=myPid&&D.ph.some(function(r){return r.pid===myPid&&r.date===yesterdayS2&&r.bronco!=null;});
-  // 未入力者一覧（全体・昨日分）
-  var physMissedAll=physMeasureYesterday2?D.p.filter(function(p){
-    var done=D.ph.some(function(r){return r.pid===p.id&&r.date===yesterdayS2&&(r.squat!=null||r.bench!=null||r.deadlift!=null||r.chinning!=null||r.clean!=null);});
-    var skip=(D.phskip||[]).some(function(s){return s.pid===p.id&&s.date===yesterdayS2;});
-    return!done&&!skip;
-  }):[];
-  var broncoMissedAll=broncoMeasureYesterday2?D.p.filter(function(p){
-    var done=D.ph.some(function(r){return r.pid===p.id&&r.date===yesterdayS2&&r.bronco!=null;});
-    var skip=(D.phskip||[]).some(function(s){return s.pid===p.id&&s.date===yesterdayS2;});
-    return!done&&!skip;
-  }):[];
+  // 測定会アラート: 未締切セッション（測定会当日〜終了+14日の猶予窓・締切済は除外）を対象。
+  // 記録なし(phskip)申告済みは「済み扱い」で未入力から除外される（staff側の記録なし設定が反映される）。
+  var todayH=todayStr();
+  var openMSess=(D.msess||[]).filter(function(s){
+    if(s.closed||!s.startDate||!s.endDate)return false;
+    if(s.startDate>todayH)return false;
+    var graceEnd=toDateStr(new Date(new Date(s.endDate).getTime()+14*86400000));
+    return todayH<=graceEnd;
+  });
+  var openMSessStatus=openMSess.map(function(s){return{s:s,st:msessStatus(s)};});
   var me=myPid?D.p.find(function(x){return x.id===myPid;}):null;
   var h='';
   if(me){
@@ -1747,9 +1785,14 @@ home:function(){
   }else{
     h+='<div style="text-align:center;margin-bottom:16px">'+ic('i-ball',30,'var(--maroon)')+'<div style="font-size:18px;font-weight:900;margin-top:4px">福岡大学ラグビー部</div><div class="kicker">FUKUOKA UNIV. RFC</div></div>';
   }
-  // 自分の未入力通知（昨日の測定日）＝個人向けアラートはtodo直後
-  if(physMeasureYesterday2&&!phSkipYesterday2&&!physDoneYesterday){h+='<div class="alert-card alert-warn rv" style="margin-bottom:8px;cursor:pointer" onclick="go(\'physical\')">'+ic('i-chart',15)+' 昨日（'+fmt(yesterdayS2)+'）のフィジカル測定が未入力です！ → タップして入力</div>';}
-  if(broncoMeasureYesterday2&&!phSkipYesterday2&&!broncoDoneYesterday){h+='<div class="alert-card alert-warn rv" style="margin-bottom:8px;cursor:pointer" onclick="go(\'physical\')">'+ic('i-run',15)+' 昨日（'+fmt(yesterdayS2)+'）のブロンコ測定が未入力です！ → タップして入力</div>';}
+  // 自分の未入力通知（未締切セッション・測定会当日〜締切/猶予まで。記録なし申告済みなら消える）＝個人向けアラートはtodo直後
+  if(myPid){
+    openMSessStatus.forEach(function(o){
+      if(!o.st.missedPids.some(function(pid){return idEq(pid,myPid);}))return;
+      var isBr=o.st.isBronco;
+      h+='<div class="alert-card alert-warn rv" style="margin-bottom:8px;cursor:pointer" onclick="go(\'physical\')">'+ic(isBr?'i-run':'i-chart',15)+' 『'+escapeHtml(o.s.name)+'』の'+(isBr?'ブロンコ':'フィジカル')+'測定が未入力です！ → タップして入力</div>';
+    });
+  }
   // お知らせ（部室掲示板ノーティス様式・2件表示＋残りは折りたたみ）
   if(teamAnns.length){
     var annNi=function(a){return'<div class="notice-item"><div style="font-size:10px;color:var(--text-tertiary);font-weight:700">'+fmt(a.date)+'</div><div style="font-size:13px;white-space:pre-wrap;margin-top:3px">'+escapeHtml(a.text)+'</div></div>';};
@@ -1802,8 +1845,13 @@ home:function(){
   }
   // チーム系: 昨日の未入力者一覧（試合日チェック・フィジカル・ブロンコ）
   if(matchMissedAll.length){h+='<div class="card rv" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--red);display:flex;align-items:center;gap:6px">'+ic('i-ball',15)+' 試合日チェック未入力 <span style="font-size:12px;font-weight:400">'+matchMissedAll.length+'名</span></div>'+matchMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';}
-  if(physMissedAll.length){h+='<div class="card rv" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--amber);display:flex;align-items:center;gap:6px">'+ic('i-chart',15)+' 昨日のフィジカル未入力 <span style="font-size:12px;font-weight:400">'+physMissedAll.length+'名</span></div>'+physMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';}
-  if(broncoMissedAll.length){h+='<div class="card rv" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--amber);display:flex;align-items:center;gap:6px">'+ic('i-run',15)+' 昨日のブロンコ未入力 <span style="font-size:12px;font-weight:400">'+broncoMissedAll.length+'名</span></div>'+broncoMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';}
+  // 測定会ごとの未入力者一覧（未締切セッション・記録なし申告済みは除外＝staffの記録なしが反映される）
+  openMSessStatus.forEach(function(o){
+    var missed=o.st.missedPids.map(function(pid){return D.p.find(function(x){return idEq(x.id,pid);});}).filter(Boolean);
+    if(!missed.length)return;
+    var isBr=o.st.isBronco;
+    h+='<div class="card rv" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--amber);display:flex;align-items:center;gap:6px">'+ic(isBr?'i-run':'i-chart',15)+' 『'+escapeHtml(o.s.name)+'』'+(isBr?'ブロンコ':'フィジカル')+'未入力 <span style="font-size:12px;font-weight:400">'+missed.length+'名</span></div>'+missed.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';
+  });
   // ランキングは専用ページへ（ホームからはリンクのみ）
   h+='<div class="card card-click rv" onclick="go(\'ranking\')" style="margin-bottom:12px;display:flex;align-items:center;gap:10px">'+ic('i-trophy',20,'var(--gold-deep)')+'<div style="flex:1"><div style="font-weight:800;font-size:14px">ランキング</div><div style="font-size:11px;color:var(--text-secondary)">BIG3・スクワット・ブロンコなどの順位を見る</div></div>'+ic('i-chevron-r',16,'var(--text-tertiary)')+'</div>';
   $m().innerHTML=h;
@@ -2524,7 +2572,8 @@ function doBronco(btnEl){
   if(!br)return alert('タイムを入力してください');
   if(!guardSubmit(btnEl,'記録中…'))return; // 二重送信ガード
   var date=document.getElementById('br-date').value;
-  var newRec={id:newId(),pid:myPid,date:date,squat:null,bench:null,deadlift:null,bronco:br};
+  var curSess=getCurrentMSess();
+  var newRec={id:newId(),pid:myPid,date:date,squat:null,bench:null,deadlift:null,bronco:br,msessId:curSess?curSess.id:null};
   svSafeSeq([{k:'ph',rec:newRec}],function(){
     var pBR=getBest(myPid,'bronco');
     var isPB=pBR&&br<pBR;
@@ -3063,7 +3112,7 @@ T.ranking=function(){
   var curPos=S.pos||'';
   var curYear=S.year||'';
   var curMode=S.mode==='allo'?'allo':'raw'; // raw=実測1RM / allo=アロメトリック補正スコア（BIG3のみ）
-  var curSessId=(S.sess&&(S.sess==='all'||sortedSess.some(function(s){return s.id===S.sess;})))?S.sess:(sortedSess.length?sortedSess[0].id:'all');
+  var curSessId=(S.sess&&(S.sess==='all'||sortedSess.some(function(s){return s.id===S.sess;})))?S.sess:'all';
   // GPSセッション（src:'gs'種目用）：日付降順＋先頭に期間累計2種。既定=最新セッション
   var today=todayStr();
   var sortedGps=(D.gs||[]).slice().sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))||(b.ts||0)-(a.ts||0);});
@@ -5014,6 +5063,8 @@ function addTrainingEx(){
   var el=document.getElementById('tr-add-ex');
   var name=el?(el.value||'').trim():'';
   if(!name){alert('種目名を入力してください');return;}
+  // ブロンコ/1K等のタイム種目はウエイト記録に追加させない（フィットネスのタイム種目から記録する）
+  if(selfTimedKm(name)!=null){alert('「'+name+'」はタイム種目です。ホーム→自主トレ→フィットネスから記録してください。');return;}
   if(_curTLog.results.some(function(r){return r.exName===name;})){alert('同じ種目がすでにあります');return;}
   var eb=null;
   EST_BASES.forEach(function(b){if(!eb&&b.label===name)eb=b.k;});
@@ -5070,7 +5121,17 @@ function mergeTexlistFromLog(log){
 // フィットネス記録フォーム（種類は必須・時間は必須・距離/RPE/メモは任意）
 var SELF_FTYPES=['ランニング','バイク','水泳','HIIT','シャトルラン','坂道ダッシュ','縄跳び','ブロンコ','1K（1,000m走）'];
 var SELF_TIMED_FTYPES={'ブロンコ':1.2,'1K（1,000m走）':1.0}; // タイム入力種目→自動距離km
-function selfTimedKm(ftype){var k=(ftype||'').trim();return SELF_TIMED_FTYPES[k]!=null?SELF_TIMED_FTYPES[k]:null;}
+function selfTimedKm(ftype){
+  var raw=(ftype||'').trim();
+  if(SELF_TIMED_FTYPES[raw]!=null)return SELF_TIMED_FTYPES[raw]; // 完全一致テーブルを優先
+  // フォールバック: NFKC正規化＋小文字化＋空白/カンマ除去でエイリアス吸収（全角/半角・表記ゆらぎ対策）
+  var n=raw.normalize?raw.normalize('NFKC'):raw;
+  n=n.toLowerCase().replace(/[\s,、]/g,'');
+  if(!n)return null;
+  if(n.indexOf('ブロンコ')>=0||n.indexOf('bronco')>=0)return 1.2;
+  if(n.indexOf('1km')>=0||n.indexOf('1000m')>=0||/(^|[^0-9])1k($|[^0-9m])/.test(n))return 1.0;
+  return null;
+}
 // スタッフ提示のフィットネスプログラムを開始→フィットネス記録フォームへプレフィル（programId保持・全編集可）。
 // 合計時間=Σ(本数or1)×分（大まかな目安・編集可）／種類=最初の項目／メモ=説明＋全項目の要約。
 function startFitProgram(menuId){
@@ -5118,7 +5179,7 @@ function showSelfFitnessForm(prefill){
   }
   h+='<div class="card" style="margin-bottom:12px">';
   h+='<input type="hidden" id="sf-progid" value="'+escapeHtml(prefill.programId!=null?String(prefill.programId):'')+'">';
-  h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">種類 <span style="color:var(--red)">*</span></label><input id="sf-type" class="ipt" placeholder="例：ランニング" value="'+escapeHtml(prefill.ftype||'')+'" oninput="sfSyncTimeMode()" list="sf-type-hist"><datalist id="sf-type-hist">'+SELF_FTYPES.map(function(n){return'<option value="'+n+'">';}).join('')+'</datalist></div>';
+  h+='<div class="fl"><label style="font-size:11px;color:var(--text-secondary)">種類 <span style="color:var(--red)">*</span></label><input id="sf-type" class="ipt" placeholder="例：ランニング" value="'+escapeHtml(prefill.ftype||'')+'" oninput="sfSyncTimeMode()" onchange="sfSyncTimeMode()" list="sf-type-hist"><datalist id="sf-type-hist">'+SELF_FTYPES.map(function(n){return'<option value="'+n+'">';}).join('')+'</datalist></div>';
   // 通常種目: 時間(分)＋距離(km)
   h+='<div id="sf-min-wrap" style="display:'+(_timedKm!=null?'none':'')+'"><div style="display:flex;gap:10px"><div class="fl" style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">時間（分） <span style="color:var(--red)">*</span></label><input id="sf-min" class="ipt" type="number" min="1" inputmode="numeric" placeholder="30" value="'+escapeHtml(prefill.minutes!=null&&prefill.minutes!==''?String(prefill.minutes):'')+'"></div>'+
     '<div class="fl" style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">距離（km・任意）</label><input id="sf-km" class="ipt" type="number" step="any" inputmode="decimal" placeholder="5"></div></div></div>';

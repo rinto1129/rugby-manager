@@ -54,6 +54,9 @@ eqn('HO sqはデフォルト1.6',cfg1.pos.HO.sq,1.6);
 eqn('ranksは5件',cfg1.ranks.length,5);
 eqn('gold pct=1',cfg1.ranks[2].pct,1);
 ok('ranksのcolor温存',cfg1.ranks[4].color==='#C084FC');
+eqn('broncoRanksは5件',cfg1.broncoRanks.length,5);
+eqn('broncoRanks gold pct=1',cfg1.broncoRanks[2].pct,1);
+ok('broncoRanksのcolor温存',cfg1.broncoRanks[4].color==='#C084FC');
 eqn('allo bp=0.45',cfg1.allo.bp,0.45);
 eqn('rx sqは3件',cfg1.rx.sq.length,3);
 eqn('PR bronco=310(初期同期値で保存)',cfg1.pos.PR.bronco,310);
@@ -72,6 +75,43 @@ var h2=renderStd();
 ok('カスタム設定バッジ',has(h2,'カスタム設定を使用中'));
 ok('リセットボタンあり',has(h2,'初期値に戻す'));
 eqn('新値がプリフィル',String(document.getElementById('std-pos-0-sq').value),'1.8');
+
+print('--- ブロンコ ランク閾値の保存（BIG3 ranks とは独立） ---');
+var h3=renderStd();
+ok('ブロンコ閾値カード見出し',has(h3,'ブロンコ ランク閾値'));
+ok('ブロンコ閾値5枠 std-brrank-4',has(h3,'std-brrank-4'));
+eqn('ブロンコgoldプリフィル1',String(document.getElementById('std-brrank-2').value),'1');
+setVal('std-brrank-2','1.05'); // ブロンコgoldだけ1.05へ（BIG3 goldは1.0のまま）
+__alerts.length=0;__confirms.length=0;
+doSaveStd(mkEl());
+drain();
+var cfgBR=JSON.parse(__store['std'])[0];
+eqn('保存 broncoRanks gold=1.05',cfgBR.broncoRanks[2].pct,1.05);
+eqn('BIG3 ranks goldは1.0据置',cfgBR.ranks[2].pct,1.0);
+eqn('getStdCfg broncoRanks gold=1.05',getStdCfg().broncoRanks[2].pct,1.05);
+eqn('getStdCfg ranks goldは1.0据置',getStdCfg().ranks[2].pct,1.0);
+setVal('std-brrank-2','1'); // 戻す
+
+print('--- ブロンコ閾値: 昇順違反は保存されない ---');
+setVal('std-brrank-3','0.9'); // プラチナ0.9 < ゴールド1.0
+__alerts.length=0;__confirms.length=0;
+var beforeBR=__store['std'];
+doSaveStd(mkEl());
+drain();
+ok('ブロンコ昇順違反を指摘',__alerts.some(function(a){return a.indexOf('ブロンコランク%は昇順')>=0;}));
+ok('br昇順違反はconfirmまで行かない',__confirms.length===0);
+ok('br昇順違反はストア不変',__store['std']===beforeBR);
+setVal('std-brrank-3','1.1'); // 戻す
+
+print('--- ブロンコ閾値: 範囲外(2超)は保存されない ---');
+setVal('std-brrank-4','2.5');
+__alerts.length=0;__confirms.length=0;
+var beforeBR2=__store['std'];
+doSaveStd(mkEl());
+drain();
+ok('ブロンコ範囲エラーalert',__alerts.some(function(a){return a.indexOf('ブロンコランク%')>=0;}));
+ok('br範囲外はストア不変',__store['std']===beforeBR2);
+setVal('std-brrank-4','1.2'); // 戻す
 
 print('--- ブロンコ基準の保存（PRを4:50=290秒へ） ---');
 setVal('std-pos-0-br-m','4');setVal('std-pos-0-br-s','50');
@@ -136,6 +176,7 @@ drain();
 eqn('空配列に戻る',JSON.parse(__store['std']).length,0);
 ok('getStdCfgがデフォルトへ復帰',getStdCfg().pos.PR.sq===1.55);
 ok('reset後 bronco=310(デフォルト)',getStdCfg().pos.PR.bronco===310);
+ok('reset後 broncoRanks gold=1(デフォルト)',getStdCfg().broncoRanks[2].pct===1);
 
 print('--- キャンセル時は何もしない ---');
 __confirmAnswer=false;

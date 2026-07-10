@@ -144,4 +144,27 @@ var aI2=ppNow();
 ok('統合(e1rm失敗): この経路でもppAutoFlipが走った',aI2.length===2&&aI2[1].by==='auto'&&aI2[1].type==='pull');
 ok('統合: alertなし（確定失敗時もトレ記録成立を邪魔しない）',__alerts.length===0);
 
+print('--- 日跨ぎ対応: ppNext（当日autoは実施タイプを凍結・翌日反転・手動は即時） ---');
+// A) auto当日 → 表示は当日実施タイプ(push)を維持（last.type=pullの逆）
+setPP([{id:1,type:'push',date:'2026-07-01',by:'staff'},{id:2,type:'pull',date:TODAY,by:'auto'}]);
+ok('auto当日: ppNextは当日実施タイプpushを凍結',ppNext()==='push');
+// B) auto翌日（date≠today）→ 反転後pullを返す
+setPP([{id:1,type:'push',date:'2026-07-01',by:'staff'},{id:2,type:'pull',date:YESTERDAY,by:'auto'}]);
+ok('auto翌日: ppNextは反転後pullを返す',ppNext()==='pull');
+// C) 手動flip当日 → 即時反映（pull）
+setPP([{id:1,type:'push',date:'2026-07-01',by:'staff'},{id:2,type:'pull',date:TODAY,by:'staff'}]);
+ok('手動flip当日: ppNextは即時pull',ppNext()==='pull');
+
+print('--- 日跨ぎ対応: ppNextWeightDay（当日autoは当日を次ウエイト日に維持・手動は前進） ---');
+var TOMORROW=(function(){var d=new Date();d.setDate(d.getDate()+7);return toDateStr(d);})();
+D.cal=[{id:1,date:TODAY,type:'weight'},{id:2,date:TOMORROW,type:'weight'}];
+// D) auto当日 → 次のウエイト日は当日のまま（isToday=true）
+setPP([{id:1,type:'push',date:'2026-07-01',by:'staff'},{id:2,type:'pull',date:TODAY,by:'auto'}]);
+var wdAuto=ppNextWeightDay();
+ok('auto当日: 次ウエイト日は当日維持(isToday)',!!wdAuto&&wdAuto.isToday===true&&wdAuto.date===TODAY);
+// E) 手動flip当日 → 次のウエイト日は翌ウエイト日へ前進
+setPP([{id:1,type:'push',date:'2026-07-01',by:'staff'},{id:2,type:'pull',date:TODAY,by:'staff'}]);
+var wdMan=ppNextWeightDay();
+ok('手動flip当日: 次ウエイト日は翌回へ前進(isToday=false)',!!wdMan&&wdMan.isToday===false&&wdMan.date===TOMORROW);
+
 if(__fail===0)print('ALL PP-AUTO TESTS PASSED');else print(__fail+' TESTS FAILED');

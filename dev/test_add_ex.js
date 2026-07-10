@@ -62,6 +62,23 @@ document.getElementById('tr-add-ex').value='ベンチプレス';
 addTrainingEx();
 ok('メニュー既存種目の追加も重複拒否',__alerts.length===1&&_curTLog.results.length===beforeLen+1);
 
+print('--- 種目追加: タイム種目(ブロンコ/1K)はウエイトに追加させない（ガード） ---');
+var beforeGuard=_curTLog.results.length;
+__alerts.length=0;
+document.getElementById('tr-add-ex').value='ブロンコ';
+addTrainingEx();
+ok('ブロンコ追加はガードでalert・増えない',__alerts.length===1&&_curTLog.results.length===beforeGuard);
+ok('ガード文言=タイム種目/フィットネス',__alerts.some(function(a){return a.indexOf('タイム種目')>=0&&a.indexOf('フィットネス')>=0;}));
+__alerts.length=0;
+document.getElementById('tr-add-ex').value='1km';
+addTrainingEx();
+ok('1kmもガード',__alerts.length===1&&_curTLog.results.length===beforeGuard);
+__alerts.length=0;
+document.getElementById('tr-add-ex').value='ブロンコテスト';
+addTrainingEx();
+ok('ブロンコ含む名もガード',__alerts.length===1&&_curTLog.results.length===beforeGuard);
+__alerts.length=0;
+
 print('--- 種目追加: mergeTexlistFromLog（addedByPlayerのみ・重複排除） ---');
 __store['texlist']=JSON.stringify(['スクワット']);
 mergeTexlistFromLog({results:[{exName:'ベンチプレス',addedByPlayer:true},{exName:'スクワット',addedByPlayer:false},{exName:'  懸垂  ',addedByPlayer:true}]});

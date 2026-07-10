@@ -7,10 +7,28 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-09（**🆕新プラン(ブロンコ/プロフィール移設/グループ/自主トレ) 全9フェーズ実装＋全36テスト回帰＋敵対的レビュー＝完了。`c84e355`でpush済み（origin/main同期・未pushコミット0）。次は実利用フィードバック待ち。**）
+- 日時: 2026-07-10（**🆕仕上げプラン(ブロンコ測定会の締切・記録なし反映・PP日跨ぎ・自主トレ・ランキング・専用閾値・整合性) 全10フェーズ実装＋全36テスト回帰完了。⏳コミット/push待ち（ユーザーの明示承認要・未コミット状態）。直前の新プラン(ブロンコ他4機能)は`c84e355`/`c3c751c`でpush済み・origin/main同期。**）
 - 更新者: Claude
 
-## 🟢 新プラン（ブロンコ他4機能）＝実装・push完了（`c84e355`）
+## 🟢 仕上げプラン（ブロンコ測定会 総仕上げ）＝全10フェーズ実装完了・push待ち（2026-07-10）
+
+- **プラン: `/Users/nakayamarinnin/.claude/plans/structured-fluttering-walrus.md`。全10フェーズを1機能ずつ実装→各フェーズでjsc模擬実行→回帰まで完了。⏳未コミット＝ユーザー承認後にコミット/push。**
+  - **実装済み全10フェーズ**:
+    1. `STD_DEFAULT.broncoRanks`導入＋`getStdCfg`マージ＋`getBroncoRankInfo`を専用閾値参照へ（player/staff/coach md5同期・挙動不変＝初期値は現ranksと同値）。player broncoRankCardのレール／staff phBroncoBoardHtml凡例もbroncoRanksへ。
+    2. staff基準設定に「ブロンコ ランク閾値」カード（`std-brrank-<i>`）＋`doSaveStd`で0.3〜2範囲＋昇順検証して`cfg.broncoRanks`保存。
+    3. staff選手詳細`renderStdSummaryHTML`をグリッド3→4枠（BIG3＋ブロンコバッジ）＋下部に懸垂/クリーンのベスト値1行。
+    4. `getBest`にbronco>0ガード（3ファイルmd5同期）＋player T.rankingの測定会フィルタ初期値を`'all'`（最新測定会固定を廃止）。
+    5. staff `msessStatus(s)`新設で一覧V.msess⇔詳細goMSessDetailの判定一本化（件数不一致バグ解消・done/skip/missedをD.p重複なく分割）＋測定会詳細に「入力を締め切る/締切を解除」ボタン（`closed:true,closedAt`付与/削除・svSafeUpdate）＋一覧/詳細に「締切済」バッジ。新規`dev/test_msess_close.js`。
+    6. `getCurrentMSess`を`!closed && startDate<=today && (endDate>=today || today<=endDate+14日)`の猶予14日版へ（player/staff md5一致・trainerは理由コメント付きで現状維持）＋msessId自動付与統一（player doBronco / staff doAddPhys/doBulkPhys/markPhSkip）＋staff goEditPhysに`eph-msess` select挿入（デッドコードだったmsessOpts活性化）。
+    7. player T.homeの個人アラート＋チーム未入力一覧を「昨日のカレンダー基準」から「未締切セッション基準」へ置換（`msessStatus`をplayerにも追加＝staffとmd5同期）。**記録なし(phskip)が反映され未入力表示が消える**バグ修正。文言はブロンコ/フィジカルを型で出し分け。新規`dev/test_msess_alert.js`。
+    8. `ppNext`/`ppNextWeightDay`の日跨ぎ対応（当日の`by:'auto'`確定は表示上まだ当日実施タイプを凍結・翌日反転／手動flipは即時）。player/staff/trainer md5同期。
+    9. player `selfTimedKm`にNFKC正規化＋含み判定フォールバック（ブロンコ/bronco→1.2・1k/1km/1000m→1.0・完全一致テーブルは温存）＋sf-typeに`onchange`追加＋`addTrainingEx`冒頭ガード（タイム種目はウエイトに追加させずフィットネスへ誘導）。
+    10. 全体回帰＋デプロイ準備。
+  - **検証結果（全て合格）**: ①全4サイト構文ロードOK ②**全36テスト各対象サイトでPASS**（既存34＋新規2 test_msess_close/test_msess_alert）③md5同期照合OK（STD_DEFAULT/getStdCfg/getBroncoRankInfo/getBest[3ファイル]・getCurrentMSess/msessStatus[player/staff]・ppNext/ppNextWeightDay[3ファイル]・broncoFmt[4ファイル]）④`new Chart`追加ゼロ⑤差分=player/staff/coach/trainer＋dev/テスト。
+  - **⏳残タスク（ユーザー承認後）**: git add/commit/push（player/staff/coach/trainer + dev/ + HANDOFF）。反映後ブラウザCmd+Shift+Rで確認。
+  - **📝任意の追い込み候補（未実施・プラン範囲外）**: player/staff/trainer の`ppCardHtml`の`metaTxt`（前回:表記）は、当日auto確定日に「前回: <当日タイプ>（自動確定）」と当日の日付を出す＝主バッジ「今日は◯◯の日」と併記でやや冗長（機能上の破綻はない）。気になれば3ファイル同期で微調整可（表示位置依存ロジックで要注意）。
+
+## 🟢 直前プラン（ブロンコ他4機能）＝実装・push完了（`c84e355`）
 
 - **承認済みプラン: `/Users/nakayamarinnin/.claude/plans/resilient-puzzling-stallman.md`＋`...-agent-ae375c0522ce4f4d8.md`。全9フェーズを1機能ずつ実装→各フェーズでjsc模擬実行→全件回帰まで完了。**
   - **内容4件（全て実装済み）**: A=ブロンコのポジション別目標ランク制／B=マイページのプロフィール（身長＋時間帯アンケート）を設定サブ画面`showProfileSettings()`へ移設／C=ウエイトグループ表示強化（player: `myGroupCardHtml`リッチ化＋`showAllGroups()`全班一覧 / staff: V.tgroup先頭に`tgSavedCardHtml()`保存済み編成カード）／D=自主トレfitnessに「ブロンコ」「1K（1,000m走）」を分:秒タイム(`timeSec`)入力で追加。

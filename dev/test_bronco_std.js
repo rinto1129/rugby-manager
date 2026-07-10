@@ -112,5 +112,53 @@ D.std=[];
 var g3=getBroncoRankInfo(1);
 eq('std解除でgoldに戻る',g3.rank&&g3.rank.k,'gold');
 
+print('--- bronco:0 は無効値として除外（getBest >0 ガード） ---');
+D.std=[];
+D.p.push({id:9,name:'PR ゼロのみ',position:'PR'});
+D.ph.push({id:19,pid:9,date:'2026-06-20',bronco:0}); // 0のみ→未測定扱い
+var z=getBroncoRankInfo(9);
+eq('bronco:0のみ→best=null',z.best,null);
+eq('bronco:0のみ→rank=null',z.rank,null);
+eq('bronco:0のみ→next=bronze',z.next&&z.next.k,'bronze');
+D.p.push({id:10,name:'PR ゼロ混在',position:'PR'});
+D.ph.push({id:20,pid:10,date:'2026-06-19',bronco:0});   // 無効
+D.ph.push({id:21,pid:10,date:'2026-06-20',bronco:305}); // 有効
+var zm=getBroncoRankInfo(10);
+eq('0混在→best=305（0はmin誤検出せず除外）',zm.best,305);
+
+print('--- broncoRanks: デフォルトは ranks と同値5件（挙動不変） ---');
+D.std=[];
+var cfgD=getStdCfg();
+eq('broncoRanks 件数=5',cfgD.broncoRanks.length,5);
+eq('broncoRanks[2]=gold',cfgD.broncoRanks[2].k,'gold');
+eq('broncoRanks gold pct=1.00',cfgD.broncoRanks[2].pct,1.00);
+
+print('--- broncoRanks: 専用閾値で判定（BIG3 ranks とは独立） ---');
+D.std=[{broncoRanks:[
+  {k:'bronze',label:'ブロンズ',pct:0.70,color:'#E8A05C'},
+  {k:'silver',label:'シルバー',pct:0.90,color:'#C9D4E4'},
+  {k:'gold',label:'ゴールド',pct:1.05,color:'#FFD24A'},
+  {k:'platinum',label:'プラチナ',pct:1.15,color:'#6FE3E1'},
+  {k:'diamond',label:'ダイヤ',pct:1.25,color:'#C084FC'}
+]}];
+var cfgB=getStdCfg();
+eq('専用 broncoRanks gold pct=1.05',cfgB.broncoRanks[2].pct,1.05);
+eq('BIG3 ranks gold pct=1.00 据置',cfgB.ranks[2].pct,1.00);
+var bb=getBroncoRankInfo(1); // best=310 ratio=310/310=1.0 → 専用閾値gold(1.05)未満→silver
+eq('専用閾値 310→rank=silver',bb.rank&&bb.rank.k,'silver');
+eq('専用閾値 310→next=gold',bb.next&&bb.next.k,'gold');
+D.std=[];
+var bb2=getBroncoRankInfo(1); // 閾値解除→従来gold
+eq('broncoRanks解除→rank=gold',bb2.rank&&bb2.rank.k,'gold');
+
+print('--- broncoRanks: 空配列は ranks へフォールバック（従来同一） ---');
+D.std=[{broncoRanks:[]}];
+var cfgE=getStdCfg();
+eq('空broncoRanks→ranksへフォールバックで5件',cfgE.broncoRanks.length,5);
+eq('空→gold pct=1.00',cfgE.broncoRanks[2].pct,1.00);
+var bb3=getBroncoRankInfo(1);
+eq('空broncoRanks→従来gold',bb3.rank&&bb3.rank.k,'gold');
+D.std=[];
+
 print(__fail===0?'ALL TESTS PASSED':'FAILED: '+__fail+' test(s)');
 if(__fail>0)throw new Error('bronco std tests failed');

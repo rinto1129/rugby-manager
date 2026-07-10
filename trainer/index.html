@@ -901,11 +901,16 @@ function fmt(d){return d?d.replace(/-/g,'/'):'−';}
 // ===== ウエイトPUSH/PULL交互管理（pp）＝チーム全員共通・グローバル1列 =====
 function ppNext(){
   var a=Array.isArray(D.pp)?D.pp:[]; if(!a.length)return null;
-  var t=a[a.length-1]&&a[a.length-1].type; return(t==='push'||t==='pull')?t:null;
+  var last=a[a.length-1]; var t=last&&last.type; if(t!=='push'&&t!=='pull')return null;
+  // 当日の自動確定(by:auto)は表示上まだ当日実施タイプを見せ、翌日から反転（日跨ぎ対応）。手動flipは即時反映。
+  if(last.by==='auto'&&last.date===todayStr())return t==='push'?'pull':'push';
+  return t;
 }
 function ppNextWeightDay(){
   var t=todayStr();
-  var doneToday=Array.isArray(D.pp)&&D.pp.length>=2&&D.pp[D.pp.length-1].date===t;
+  var last=(Array.isArray(D.pp)&&D.pp.length>=2)?D.pp[D.pp.length-1]:null;
+  // 当日実施済み判定は手動flip(by!=='auto')のみ。当日の自動確定は表示上まだ当日を次のウエイト日として見せる。
+  var doneToday=!!last&&last.date===t&&last.by!=='auto';
   var ds=(D.cal||[]).filter(function(e){return e&&e.type==='weight'&&typeof e.date==='string'&&(doneToday?e.date>t:e.date>=t);}).map(function(e){return e.date;});
   if(!ds.length)return null; ds.sort();
   return{date:ds[0],isToday:ds[0]===t};
@@ -978,6 +983,8 @@ function ppStart(type){
   },function(){if(curTab==='home')T.home();});
 }
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
+// 注: player/staff の getCurrentMSess は「締切除外＋終了後14日の猶予窓」版に更新済み。
+// trainer はリハビリログの当日判定用途のみで記録の自動紐付けをしないため、期間中のみの単純版を意図的に維持する。
 function getCurrentMSess(){var today=todayStr();return(D.msess||[]).find(function(s){return s.startDate<=today&&s.endDate>=today;})||null;}
 function numStepHTML(id,min,max,oninput){
   var dec='<button type="button" onclick="numStep(&quot;'+id+'&quot;,-1,'+min+','+max+')" style="padding:8px 14px;border:none;background:var(--bg-secondary);font-size:16px;cursor:pointer">−</button>';
