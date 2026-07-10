@@ -186,5 +186,35 @@ drain();
 eqn('キャンセルでストア不変',JSON.parse(__store['std']).length,1);
 __confirmAnswer=true;
 
+print('--- バッジ点数: 描画プリフィル＋保存反映 ---');
+D.std=[];var hb=renderStd();
+ok('バッジ点数カード描画',has(hb,'バッジ点数（選手ランキング'));
+eqn('gold到達プリフィル=3',String(document.getElementById('std-bpt-rank-2').value),'3');
+eqn('BIG3クラブ プリフィル=10',String(document.getElementById('std-bpt-club').value),'10');
+eqn('皆勤賞 プリフィル=3',String(document.getElementById('std-bpt-allyear').value),'3');
+setVal('std-bpt-top1','8');setVal('std-bpt-rank-2','7');
+__store['std']=JSON.stringify([]);__confirmAnswer=true;__alerts.length=0;
+doSaveStd(mkEl());drain();
+ok('保存: badgePts.top1=8',D.std.length===1&&!!D.std[0].badgePts&&D.std[0].badgePts.top1===8);
+eqn('保存: badgePts.rank.gold=7',D.std[0].badgePts.rank.gold,7);
+eqn('保存: 未変更club=10維持',D.std[0].badgePts.club,10);
+
+print('--- バッジ点数: 範囲外(150)は保存ブロック ---');
+D.std=[];renderStd();setVal('std-bpt-top1','150');
+__store['std']=JSON.stringify([{sentinel:1}]);__confirmAnswer=true;__alerts.length=0;
+doSaveStd(mkEl());drain();
+ok('150は範囲外でalert発火',__alerts.length>0);
+ok('範囲外では保存されない(ストア不変)',JSON.parse(__store['std']).length===1&&JSON.parse(__store['std'])[0].sentinel===1);
+
+print('--- getStdCfg: badgePts 部分マージ（キー単位フォールバック） ---');
+D.std=[{badgePts:{top1:9,rank:{gold:7}}}];
+var mc=getStdCfg();
+eqn('top1=保存9',mc.badgePts.top1,9);
+eqn('rank.gold=保存7',mc.badgePts.rank.gold,7);
+eqn('rank.bronze=既定1',mc.badgePts.rank.bronze,1);
+eqn('pb=既定1',mc.badgePts.pb,1);
+eqn('club=既定10',mc.badgePts.club,10);
+D.std=[];
+
 print(__fail===0?'ALL STD-STAFF TESTS PASSED':'FAILED: '+__fail+' test(s)');
 if(__fail>0)throw new Error('std-staff tests failed');

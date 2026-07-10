@@ -7,8 +7,47 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-10（**✅仕上げプラン(ブロンコ測定会の締切・記録なし反映・PP日跨ぎ・自主トレ・ランキング・専用閾値・整合性) 全10フェーズ実装＋全36テスト回帰完了→`8aa323e`でpush済み・origin/main同期。直前の新プラン(ブロンコ他4機能)は`c84e355`/`c3c751c`でpush済み。ユーザーはブラウザ Cmd+Shift+R で本番反映を確認。**）
+- 日時: 2026-07-10（**✅新プラン「最新ランク制＋バッジシステム＋測定会編集＋UI仕上げ」全11フェーズ実装完了＋敵対的レビュー＋修正まで完了・ユーザー指示でpush。前回の仕上げプラン全10フェーズは`8aa323e`。**）
 - 更新者: Claude
+
+## 🟢 新プラン「最新ランク制＋バッジシステム」＝全11フェーズ実装完了・push（プラン: `/Users/nakayamarinnin/.claude/plans/composed-stirring-river.md`）
+
+- **実装済み全11フェーズ**:
+  1. **ランク最新値化**: `getLatest(pid,f)`新設（date降順→**inputAt(ISO文字列)降順**→id降順。※inputAtは`toISOString()`文字列なので`localeCompare`。数値減算はNaNで不発だったのをレビューで修正）。`getLiftRankInfo`/`getBroncoRankInfo`は最新記録でランク算出＋`bestRM`/`bestSec`（自己ベスト）を返す。Best併記UI＝player(myPhysCardHtml/mystatusレール/broncoRankCardHtml)・staff(renderStdSummaryHTML)・coach(renderStdBadgesCoach)、latest≠best時のみ小表示。3ファイルmd5同期。
+  2. **測定会編集＋mtype正式化**: `msessType(s)`4段フォールバック(mtype>fromCalType>名前>phys)・`msessStatus`のisBronco脱名前依存・`getCurrentMSess(typeOpt)`・player doBroncoのみ`getCurrentMSess('bronco')`（player/staff同期）。staff作成フォーム種別select＋doAddMSess mtype保存＋`doEditMSess`＋goMSessDetail編集フォーム＋カレンダー自動作成mtype。
+  3. **badgePts定数＋基準設定UI**: `STD_DEFAULT.badgePts`(3ファイル)＋`getStdCfg`キー単位マージ。staff基準設定にバッジ点数カード＋doSaveStd 0〜99検証。
+  4. **computeAllBadgesエンジン**(player/staff md5同期): `phInMSess`共通化・`getWeightInfoAt`(当時体重)・確定測定会(closed or 猶予14日超過)のみ・7系統(ランク到達/種目1位/ポジ別1位/伸び率MVP/自己ベスト更新/BIG3クラブFW600・BK550/皆勤賞)。`{byPid,totalPts,sessions}`・キーはString(pid)。
+  5. **playerマイデータ獲得バッジ**: `renderMyBadgesHtml`(①考察直後・合計Ptヒーロー ネオン/グロー＋測定会別コレクション・`window._mdBadgeOpen`折りたたみ)。`badgeColor`/`toggleMdBadge`。
+  6. **playerランキング「バッジPt」**: RANK_EVENTSに`src:'badge'`種目・isBadge分岐(通算固定・測定会/期間セレクタ非表示・表彰台流用)。
+  7. **playerホーム控えめハイライト**: `myBadgeHomeHtml`(合計Pt>0のみ・直近確定会バッジ2-3個・タップでマイデータ)。
+  8. **staff選手詳細バッジ一覧**: `renderBadgeListStaff`(darkenForLight)。
+  9. **ホーム未入力チップ圧縮**: 名前一覧→「『○○』ブロンコ/フィジカル未入力 あとN名」1行チップ。試合日チェック・個人アラートは不変。
+  10. **週間ボリューム横スクロール**: `md-wvol-scroll`(overflow-x:auto)＋各列`flex:1 0 26px`＋描画後scrollLeftで右端(最新週)。
+  11. **総仕上げ**: 全ファイルjsc・md5照合・Chart追加ゼロ・全回帰。
+- **敵対的レビュー（4次元・レビュー→反証検証）→確定4件対応**:
+  - #1(coach「チーム最速」が最新値表示)＝**修正**(bestSecで自己ベスト判定)。#4(getLatestのinputAt数値減算がNaNで不発)＝**修正**(文字列localeCompare)。
+  - #2(ブロンコ達成ボードの達成判定が最新)/#3(getWeakLift弱点判定が最新)＝**ユーザー判断でベスト基準へ差し戻し**(staff/coachボードは`getBroncoRankInfo(pid,getBest(pid,'bronco'))`、getWeakLiftは`inf.bestRM/inf.goldTarget`＝3ファイル同期)。**ランク表示(マイステータス/ランキング/選手詳細のランクバッジ)は最新のまま＝仕様通り。過去の栄光はバッジが恒久記録。**
+- **検証（全合格）**: ①全4サイトjscロードOK ②md5同期＝3ファイル(getLatest/getLiftRankInfo/getBroncoRankInfo/getStdCfg/getWeakLift/STD_DEFAULT)・player/staff(msessType/msessStatus/phInMSess/getCurrentMSess/getWeightInfoAt/computeAllBadges/badgeColor)全一致(coachはbadgeColor/computeAllBadges非存在＝意図通り) ③`new Chart`追加ゼロ(HEAD比 全ファイル不変) ④**全テスト回帰ゼロ**(ベースライン比・全intended cell緑)。
+- **新テスト**: `test_latest_rank`/`test_msess_edit`/`test_badges`/`test_badge_ui_player`/`test_badge_ui_staff`。拡張: `test_std_staff`(badgePts)・`test_ranking`(バッジPt)・`test_msess_alert`(あとN名)・`test_mydata`(週間ボリューム横スクロール)・`test_bronco_board_staff`(達成ボード自己ベスト基準)。
+- ユーザーはブラウザCmd+Shift+Rで本番反映を確認。次の変更でもgit pushはユーザー明示指示待ち（メモリ`feedback_autonomy`）。
+
+<details><summary>（旧）実装前メモ＝プラン概要</summary>
+
+- **全11フェーズを1機能ずつ実装→各フェーズでjsc模擬実行→回帰、の慣行で進める。**
+- **内容6本柱（すべてユーザーと質問攻め13問で確定済み・プランの「ユーザー確定仕様」節が正）**:
+  1. **ランク判定を「全期間ベスト」→「種目ごとの最新記録」へ**（`getLatest`新設・getLiftRankInfo/getBroncoRankInfoの基準変更・最新値主役＋Best小さく併記・3ファイルmd5同期。timeSecOpt経路とgetBest/getBestBIG3/クラブ/insights/getAlloScoreは不変）
+  2. **バッジシステム完全新規（derived自動算出・Firestore新キー無し）**: 対象=確定測定会のみ(closed or 猶予14日超過)。7系統=ランク到達(全ランク,1〜5点)/種目1位・全体(7カテゴリ,5点)/FW・BK別1位(3点,全体1位と重複時は出さない)/伸び率MVP(BIG3合計率orブロンコ短縮率,前回同種別確定回比,各1名,5点)/自己ベスト更新(種目ごと1点,初回対象外)/BIG3クラブ **FW600kg/BK550kg**(10点,ベスト基準一度きり,既存400/450/500表示は現状維持)/皆勤賞(年ごと,記録orスキップ申告でOK=無断未入力のみNG,3点)。**ランク到達バッジの体重=当時の体重**(`getWeightInfoAt`新設)。点数は`STD_DEFAULT.badgePts`+staff基準設定で編集可。
+  3. **測定会の編集機能**: staff詳細で名前/開始日/終了日/種別を編集(`doEditMSess`・svSafeUpdate)。**種別`mtype`('bronco'|'phys')正式化**=`msessType(s)`4段フォールバック(mtype>fromCalType>名前ブロンコ含み>phys)でmsessStatusのisBronco名前依存の罠を根絶。作成フォーム＋カレンダー自動作成にもmtype付与。doBroncoのみ`getCurrentMSess('bronco')`。
+  4. **バッジ表示**: playerマイデータ①考察直後に新セクション(ネオン/グロー・測定会別コレクション)／playerランキング新種目「バッジPt」(通算固定・表彰台流用)／playerホーム控えめハイライト／staff選手詳細(darkenForLight)。**coachは対象外**(Best併記のみ)。
+  5. **playerホーム未入力簡素化**: 測定会の名前一覧カード(1848-1854)を「『○○』ブロンコ未入力 あとN名」1行チップへ。試合日一覧・個人アラートは触らない。
+  6. **週間ボリューム横スクロール**(マイデータ5468-5474): overflow-x:autoラッパ+各列`flex:1 0 26px`+描画後scrollLeftで右端(最新週)へ。
+- **フェーズ順**: P1=ランク最新値化(3ファイル) → P2=測定会編集+mtype → P3=badgePts定数+基準設定UI → P4=computeAllBadgesエンジン(player/staff同期・`phInMSess`共通化) → P5=マイデータバッジ → P6=ランキングバッジPt → P7=ホームハイライト → P8=staff選手詳細 → P9=未入力チップ → P10=週間ボリューム → P11=総仕上げ(全テスト+md5照合+括弧+push)。
+- **md5同期対象**: 3ファイル=`getLatest`/`getLiftRankInfo`/`getBroncoRankInfo`/`STD_DEFAULT`/`getStdCfg`。player/staff=`msessType`/`msessStatus`/`phInMSess`/`getCurrentMSess`/`getWeightInfoAt`/`computeAllBadges`+付随定数。
+- **新テスト**: `dev/test_latest_rank.js`/`test_msess_edit.js`/`test_badges.js`/`test_badge_ui_player.js`/`test_badge_ui_staff.js`＋既存更新(test_msess_alert/test_mydata/test_ranking/test_std_staff/rank系フィクスチャ確認)。
+- **要注意（プランのリスク節が正）**: 初回記録はPB対象外／体重は当時基準／getAlloScoreはベスト基準のまま(非対称は意図的)／バッジlabelは測定会名を含むためescapeHtml必須／FW/BK配列はplayerランキング3080-3081と同値を定数化／プランの行番号は`8aa323e`基準=着手時にアンカー文字列で再特定。
+- push はユーザー明示指示待ち（メモリ`feedback_autonomy`）。プレビューは本番Firestore接続＝読み取り専用検証のみ。
+
+</details>
 
 ## 🟢 仕上げプラン（ブロンコ測定会 総仕上げ）＝全10フェーズ実装完了・push済み（`8aa323e`・2026-07-10）
 

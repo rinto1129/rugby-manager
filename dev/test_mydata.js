@@ -161,6 +161,8 @@ ok('①考察セクション',has(m,'あなたへの考察'));
 ok('②コンディションセクション+canvas',has(m,'コンディション')&&has(m,'md-cond-chart'));
 ok('③体組成セクション+canvas',has(m,'体組成')&&has(m,'md-bc-chart'));
 ok('④トレーニングセクション+週間ボリューム',has(m,'トレーニング')&&has(m,'週間ボリューム'));
+ok('④週間ボリューム横スクロールラッパ',has(m,'id="md-wvol-scroll"')&&has(m,'overflow-x:auto'));
+ok('④週間ボリューム各列flex:1 0 26px',has(m,'flex:1 0 26px'));
 ok('④出席率タイル',has(m,'出席率'));
 ok('④種目別セレクタ+canvas',has(m,'selectMdEx')&&has(m,'md-tex-chart'));
 ok('⑤フィジカルセクション+canvas',has(m,'フィジカル')&&has(m,'md-ph-chart'));

@@ -108,5 +108,31 @@ ok('全期間ボタンが既定でアクティブ(btn-p)',has(r7,'btn btn-sm btn
 ok('測定会s1ボタンは既定で非アクティブ',!has(r7,'btn btn-sm btn-p" onclick="rankSSessIdx(0)"'));
 D.msess=[];
 
+print('--- バッジPtランキング（通算固定・測定会/期間セレクタなし・表彰台流用） ---');
+todayStr=function(){return'2026-12-31';}; // 6月の測定会を確定化
+D.msess=[{id:'BS',name:'第1回MAX測定',mtype:'phys',startDate:'2026-06-15',endDate:'2026-06-16'}];
+D.ph=D.ph.concat([
+  {id:31,pid:1,date:'2026-06-15',msessId:'BS',squat:180,bench:120,deadlift:210},
+  {id:32,pid:2,date:'2026-06-15',msessId:'BS',squat:150,bench:100,deadlift:180},
+  {id:33,pid:3,date:'2026-06-15',msessId:'BS',squat:140,bench:90,deadlift:160,bronco:280} // LO gold290→ゴールド(体重不要)
+]);
+window._rkFO=false;
+rankSF('badgePts');
+var rbp=document.getElementById('main').innerHTML;
+ok('バッジPt: 表彰台描画',has(rbp,'rkp-podium'));
+ok('バッジPt: 見出しに「通算」',has(rbp,'通算'));
+ok('バッジPt: pt単位',has(rbp,'pt'));
+ok('バッジPt: ピルがアクティブ(btn-p)',has(rbp,'btn-p'));
+ok('バッジPt: 両選手が並ぶ',has(rbp,'軽量選手')&&has(rbp,'重量選手'));
+rankToggleFilters();
+var rbp2=document.getElementById('main').innerHTML;
+ok('バッジPt: 絞り込みを開いても測定会セレクタ非表示',!has(rbp2,'>測定会</div>'));
+ok('バッジPt: グループ絞り込みは出る',has(rbp2,'グループ'));
+rankToggleFilters();
+rankSF('squat');
+var rback=document.getElementById('main').innerHTML;
+ok('SQに戻ると測定会セレクタ復活',has(rback,'>測定会</div>')||!window._rkFO);
+D.msess=[];
+
 print(__fail===0?'ALL RANKING TESTS PASSED':'FAILED: '+__fail+' test(s)');
 if(__fail>0)throw new Error('ranking tests failed');

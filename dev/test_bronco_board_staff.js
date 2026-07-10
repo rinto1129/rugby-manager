@@ -56,5 +56,17 @@ var h4=document.getElementById('main-ct').innerHTML;
 ok('達成0/測定済0/全3',has(h4,'>0</b> / 測定済 0 / 全 3名'));
 ok('全員未測定表示',has(h4,'未測定'));
 
+print('--- 達成ボードは自己ベスト基準（過去ゴールド→今遅い選手も達成にカウント・最新値化の影響を受けない） ---');
+D.p=[{id:1,name:'退化PR',position:'PR'}]; // gold310
+D.ph=[
+  {id:20,pid:1,date:'2026-01-01',bronco:290}, // 自己ベスト=290<310 → ゴールド達成
+  {id:21,pid:1,date:'2026-07-01',bronco:350}  // 最新=350 → 単独なら未達
+];
+window._phBroncoOpen=true;
+V.physical();
+var h5=document.getElementById('main-ct').innerHTML;
+ok('退化選手も自己ベストでゴールド達成にカウント',has(h5,'>1</b> / 測定済 1 / 全 1名'));
+ok('達成ボードは自己ベスト時間4分50秒を表示',has(h5,'4分50秒'));
+
 print(__fail===0?'ALL BRONCO-BOARD TESTS PASSED':'FAILED: '+__fail+' test(s)');
 if(__fail>0)throw new Error('bronco board staff tests failed');

@@ -255,6 +255,14 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 @keyframes gpsshimmer{to{transform:translateX(240%)}}
 /* ===== マイデータ⑥GPS（9-C）：ヒーローカード＋スピードライン装飾＋チーム内順位チップ ===== */
 .gps-hero{position:relative;overflow:hidden;border-radius:var(--radius-lg);background:linear-gradient(118deg,var(--maroon-d) 0%,var(--maroon) 50%,#c1121f 82%,#F5821F 130%);color:var(--pale);padding:15px 17px 16px;margin-bottom:10px;box-shadow:var(--shadow-md)}
+/* 獲得バッジ（マイデータ・ネオン/グロー） */
+.badge-hero{position:relative;overflow:hidden;border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:12px;background:linear-gradient(135deg,#2a0810,#5a0f2a 55%,#7a1233);border:1px solid rgba(255,140,165,.28);box-shadow:0 6px 24px rgba(150,20,55,.4),inset 0 0 34px rgba(255,100,140,.12);color:#fff}
+.badge-hero-label{font-size:10px;font-weight:800;letter-spacing:.1em;color:rgba(255,205,218,.85)}
+.badge-hero-num{font-family:var(--font-num);font-style:italic;font-weight:900;font-size:42px;line-height:1;background:linear-gradient(90deg,#ffd24a,#ff9ab8,#ffd24a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 12px rgba(255,160,190,.5))}
+.badge-hero-unit{font-size:15px;font-weight:800;-webkit-text-fill-color:rgba(255,220,160,.92);margin-left:3px}
+.badge-hero-sub{font-size:11px;color:rgba(255,222,232,.72);margin-top:3px}
+.badge-wrap{display:flex;flex-wrap:wrap;gap:6px}
+.badge-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 10px;border-radius:99px;color:var(--text-primary);border:1px solid transparent;line-height:1.3}
 .gps-hero>*{position:relative;z-index:1}
 .gps-hero .spd-lines{position:absolute;inset:0;z-index:0;pointer-events:none;background:repeating-linear-gradient(114deg,transparent 0 22px,rgba(255,255,255,.055) 22px 24px);-webkit-mask-image:linear-gradient(100deg,transparent,#000 60%);mask-image:linear-gradient(100deg,transparent,#000 60%)}
 .gps-hero-top{display:flex;align-items:center;gap:8px;margin-bottom:12px}
@@ -471,6 +479,7 @@ var STD_DEFAULT={
     {k:'diamond',label:'ダイヤ',pct:1.20,color:'#C084FC'}
   ],
   allo:{sq:0.33,bp:0.45,dl:0.33},
+  badgePts:{rank:{bronze:1,silver:2,gold:3,platinum:4,diamond:5},top1:5,posTop1:3,mvp:5,pb:1,club:10,allYear:3},
   rx:{
     sq:[{name:'フロントスクワット',sets:3,reps:6,rir:2},{name:'ブルガリアンスクワット',sets:3,reps:8,rir:2},{name:'レッグプレス',sets:3,reps:10,rir:2}],
     bp:[{name:'ナローベンチプレス',sets:3,reps:6,rir:2},{name:'ダンベルプレス',sets:3,reps:8,rir:2},{name:'ディップス',sets:3,reps:8,rir:2}],
@@ -481,7 +490,7 @@ var STD_DEFAULT={
 function getStdCfg(){
   var saved=(D.std&&D.std[0])||null;
   if(!saved)return STD_DEFAULT;
-  var cfg={pos:{},ranks:(saved.ranks&&saved.ranks.length?saved.ranks:STD_DEFAULT.ranks),broncoRanks:(saved.broncoRanks&&saved.broncoRanks.length?saved.broncoRanks:STD_DEFAULT.broncoRanks),allo:saved.allo||STD_DEFAULT.allo,rx:saved.rx||STD_DEFAULT.rx};
+  var cfg={pos:{},ranks:(saved.ranks&&saved.ranks.length?saved.ranks:STD_DEFAULT.ranks),broncoRanks:(saved.broncoRanks&&saved.broncoRanks.length?saved.broncoRanks:STD_DEFAULT.broncoRanks),allo:saved.allo||STD_DEFAULT.allo,rx:saved.rx||STD_DEFAULT.rx,badgePts:(function(){var d=STD_DEFAULT.badgePts,s=saved.badgePts||{},m={rank:{}};Object.keys(d.rank).forEach(function(k){m.rank[k]=(s.rank&&s.rank[k]!=null&&s.rank[k]!=='')?s.rank[k]:d.rank[k];});['top1','posTop1','mvp','pb','club','allYear'].forEach(function(k){m[k]=(s[k]!=null&&s[k]!=='')?s[k]:d[k];});return m;})()};
   Object.keys(STD_DEFAULT.pos).forEach(function(pk){
     var d=STD_DEFAULT.pos[pk],s=(saved.pos||{})[pk]||{},m={};
     Object.keys(d).forEach(function(f){m[f]=(s[f]!=null&&s[f]!==''?s[f]:d[f]);});
@@ -509,7 +518,27 @@ function getCurrentWeightInfo(pid){
   if(pw>0)return{w:pw,src:'選手登録の体重',live:false};
   return null;
 }
-// 種目ランク判定。ratio=1RM÷(ゴールド倍率×体重)。ranks昇順でratio以上の最上位が現ランク。
+// 指定日時点の体重情報（バッジのランク到達時体重用）。dateStr以前30日の平均→それ以前の直近実測→登録体重。
+function getWeightInfoAt(pid,dateStr){
+  var since=toDateStr(new Date(new Date(dateStr).getTime()-29*86400000));
+  var recs=[];
+  (D.f||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date&&r.date<=dateStr)recs.push({date:r.date,w:w});});
+  (D.bc||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date&&r.date<=dateStr)recs.push({date:r.date,w:w});});
+  var recent=recs.filter(function(x){return x.date>=since;});
+  if(recent.length){
+    var avg=recent.reduce(function(s,x){return s+x.w;},0)/recent.length;
+    return{w:Math.round(avg*10)/10,src:'当時30日平均・'+recent.length+'回',live:true};
+  }
+  if(recs.length){
+    recs.sort(function(a,b){return(b.date||'').localeCompare(a.date||'');});
+    return{w:recs[0].w,src:fmt(recs[0].date)+'の実測',live:false};
+  }
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  var pw=p?parseFloat(p.weight):NaN;
+  if(pw>0)return{w:pw,src:'選手登録の体重',live:false};
+  return null;
+}
+// 種目ランク判定。oneRM=最新記録(getLatest)でランク算出・bestRMに自己ベスト併記。ratio=最新1RM÷(ゴールド倍率×体重)。ranks昇順でratio以上の最上位が現ランク。
 function getLiftRankInfo(pid,liftK){
   var p=D.p.find(function(x){return idEq(x.id,pid);});
   if(!p||!p.position)return null;
@@ -518,7 +547,8 @@ function getLiftRankInfo(pid,liftK){
   var wInfo=getCurrentWeightInfo(pid);
   if(!wInfo)return{noWeight:true,lift:liftK};
   var lift=STD_LIFTS.find(function(l){return l.k===liftK;});
-  var oneRM=getBest(pid,lift.ph);
+  var oneRM=getLatest(pid,lift.ph);
+  var bestRM=getBest(pid,lift.ph);
   var goldTarget=posStd[liftK]*wInfo.w;
   var ratio=oneRM?oneRM/goldTarget:0;
   var ranks=cfg.ranks.slice().sort(function(a,b){return a.pct-b.pct;});
@@ -529,7 +559,7 @@ function getLiftRankInfo(pid,liftK){
   }
   return{
     lift:liftK,label:lift.label,short:lift.short,
-    oneRM:oneRM,weight:wInfo.w,weightSrc:wInfo.src,mult:posStd[liftK],
+    oneRM:oneRM,bestRM:bestRM,weight:wInfo.w,weightSrc:wInfo.src,mult:posStd[liftK],
     goldTarget:Math.round(goldTarget*10)/10,
     ratio:ratio,
     relBW:oneRM?Math.round(oneRM/wInfo.w*100)/100:null,
@@ -539,14 +569,15 @@ function getLiftRankInfo(pid,liftK){
   };
 }
 // ブロンコランク判定。ratio=ゴールド基準秒÷ベストタイム秒（速いほど高い）。ranks閾値はBIG3と共通。
-// timeSecOpt指定時はその値で判定（ランキングの測定会フィルタ用）。省略時は getBest(pid,'bronco')。
+// timeSecOpt指定時はその値で判定（ランキングの測定会フィルタ用）。省略時は getLatest(pid,'bronco')＝最新記録。bestSecに自己ベスト併記。
 function getBroncoRankInfo(pid,timeSecOpt){
   var p=D.p.find(function(x){return idEq(x.id,pid);});
   if(!p||!p.position)return null;
   var cfg=getStdCfg(),posStd=cfg.pos[p.position];
   if(!posStd||!posStd.bronco)return null;
   var goldSec=posStd.bronco;
-  var best=(timeSecOpt!=null)?timeSecOpt:getBest(pid,'bronco');
+  var best=(timeSecOpt!=null)?timeSecOpt:getLatest(pid,'bronco');
+  var bestSec=getBest(pid,'bronco');
   var ratio=best?goldSec/best:0;
   var ranks=(cfg.broncoRanks&&cfg.broncoRanks.length?cfg.broncoRanks:cfg.ranks).slice().sort(function(a,b){return a.pct-b.pct;});
   var cur=null,next=null;
@@ -555,7 +586,7 @@ function getBroncoRankInfo(pid,timeSecOpt){
     else if(!next)next=ranks[i];
   }
   var nextTargetSec=next?Math.floor(goldSec/next.pct):null; // このタイム以下で次ランク
-  return{goldSec:goldSec,best:best,ratio:ratio,rank:cur,next:next,
+  return{goldSec:goldSec,best:best,bestSec:bestSec,ratio:ratio,rank:cur,next:next,
     nextTargetSec:nextTargetSec,
     nextNeedSec:(next&&best)?Math.max(0,best-nextTargetSec):null,
     achieved:!!(best&&ratio>=1)};
@@ -608,7 +639,8 @@ function getWeakLift(pid){
   var infos=[];
   STD_LIFTS.forEach(function(l){
     var inf=getLiftRankInfo(pid,l.k);
-    if(inf&&inf.oneRM)infos.push(inf);
+    // 弱点判定・処方箋は自己ベスト基準（最新値化の影響を受けない＝アロメトリック/クラブと同じ扱い）
+    if(inf&&inf.bestRM){inf.ratio=(inf.goldTarget>0)?inf.bestRM/inf.goldTarget:0;infos.push(inf);}
   });
   if(infos.length<2)return null;
   infos.sort(function(a,b){return a.ratio-b.ratio;});
@@ -1024,10 +1056,12 @@ function fmt(d){return d?d.replace(/-/g,'/'):'-';}
 function avH(p,sz){var i=p.id%AVC.length,ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';return p.photo?'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background-image:url('+p.photo+')"></div>':'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background:'+AVC[i][0]+';color:'+AVC[i][1]+';font-size:'+Math.round(sz*.35)+'px">'+escapeHtml(ini)+'</div>';}
 function rc(v){return v<=3?'var(--green)':v<=6?'var(--amber)':'var(--red)';}
 function sc(v){return v>=7?'var(--green)':v>=5?'var(--amber)':'var(--red)';}
-function getCurrentMSess(){
+// typeOpt('bronco'|'phys')指定時はその種別のみ対象（省略時は全種別＝従来挙動）。
+function getCurrentMSess(typeOpt){
   var today=todayStr();
   var cands=(D.msess||[]).filter(function(s){
     if(s.closed||!s.startDate||!s.endDate)return false;
+    if(typeOpt&&msessType(s)!==typeOpt)return false;
     if(s.startDate>today)return false;
     var graceEnd=toDateStr(new Date(new Date(s.endDate).getTime()+14*86400000));
     return today<=graceEnd;
@@ -1043,13 +1077,22 @@ function getCurrentMSess(){
 // 測定会の参加状況を一元判定（staff V.msess/goMSessDetail と同一基準・md5同期）。
 // done: ph記録が (msessId一致) または (msessId無し && 期間内日付)。ブロンコ系は bronco!=null のみ入力済み。
 // skip: phskip が同基準。done/skip/missed は D.p を重複なく分割（doneを最優先、skipはdone除外）。
-// ブロンコ系判定: fromCalType==='bronco_measure' または 名前に「ブロンコ」を含む。
+// 測定会への記録帰属判定（msessStatus と computeAllBadges で共通化・帰属ドリフト防止）。
+function phInMSess(r,s){
+  if(idEq(r.msessId,s.id))return true;
+  return (r.msessId==null||r.msessId==='')&&r.date>=s.startDate&&r.date<=s.endDate;
+}
+// ブロンコ系判定は msessType(s)==='bronco'（mtype>fromCalType>名前 の順にフォールバック）。
+// 測定会の種別（'bronco'|'phys'）。mtype > fromCalType==='bronco_measure' > 名前「ブロンコ」含み > 'phys' の4段フォールバック。
+function msessType(s){
+  if(s&&(s.mtype==='bronco'||s.mtype==='phys'))return s.mtype;
+  if(s&&s.fromCalType==='bronco_measure')return'bronco';
+  if(s&&String(s.name||'').indexOf('ブロンコ')>=0)return'bronco';
+  return'phys';
+}
 function msessStatus(s){
-  var isBronco=(s.fromCalType==='bronco_measure')||(String(s.name||'').indexOf('ブロンコ')>=0);
-  function inSess(r){
-    if(idEq(r.msessId,s.id))return true;
-    return (r.msessId==null||r.msessId==='')&&r.date>=s.startDate&&r.date<=s.endDate;
-  }
+  var isBronco=msessType(s)==='bronco';
+  function inSess(r){return phInMSess(r,s);}
   var recs=(D.ph||[]).filter(function(r){return inSess(r)&&(!isBronco||r.bronco!=null);});
   var donePids=[...new Set(recs.map(function(r){return r.pid;}))];
   var isDone=function(pid){return donePids.some(function(d){return idEq(d,pid);});};
@@ -1063,6 +1106,144 @@ function msessStatus(s){
   return{isBronco:isBronco,recs:recs,skips:skips,donePids:donePids,skippedPids:skippedPids,missedPids:missedPids};
 }
 
+// ===== バッジ自動算出エンジン（derived・Firestore保存なし。player/staff md5同期） =====
+// 確定測定会(closed or 猶予14日超過)のみ対象。1画面の描画につき1回だけ呼び結果を引き回す。byPid/totalPtsのキーは String(pid)。
+// 返り値: {byPid:{pid:[badge]}, totalPts:{pid:n}, sessions:[確定測定会昇順]}
+// badge={type:'rank'|'top1'|'posTop1'|'mvp'|'pb'|'club'|'allYear', sessId,sessName,cat,rankK,label,pts,year,date}
+function computeAllBadges(){
+  var today=todayStr();
+  var cfg=getStdCfg();
+  var BPTS=cfg.badgePts;
+  var FW=['PR','HO','LO','FL','No.8'],BK=['SH','SO','CTB','WTB','FB'];
+  var LIFTS=[{k:'sq',ph:'squat',label:'SQ'},{k:'bp',ph:'bench',label:'BP'},{k:'dl',ph:'deadlift',label:'DL'}];
+  var CATS=[{k:'squat',label:'SQ',min:false},{k:'bench',label:'BP',min:false},{k:'deadlift',label:'DL',min:false},{k:'chinning',label:'懸垂',min:false},{k:'clean',label:'クリーン',min:false},{k:'bronco',label:'ブロンコ',min:true},{k:'big3',label:'BIG3合計',min:false}];
+  var byPid={},totalPts={};
+  function add(pid,b){var k=String(pid);(byPid[k]=byPid[k]||[]).push(b);totalPts[k]=(totalPts[k]||0)+b.pts;}
+  var posMap={};(D.p||[]).forEach(function(p){posMap[String(p.id)]=p.position;});
+  function grpOf(pos){return FW.indexOf(pos)>=0?'FW':(BK.indexOf(pos)>=0?'BK':null);}
+  var phByPid={};(D.ph||[]).forEach(function(r){var k=String(r.pid);(phByPid[k]=phByPid[k]||[]).push(r);});
+
+  // 確定測定会（昇順）
+  var sessions=(D.msess||[]).filter(function(s){
+    if(!s.startDate||!s.endDate)return false;
+    if(s.closed)return true;
+    var g=toDateStr(new Date(new Date(s.endDate).getTime()+14*86400000));
+    return g<today;
+  }).slice().sort(function(a,b){return (a.startDate||'').localeCompare(b.startDate||'')||(a.endDate||'').localeCompare(b.endDate||'');});
+
+  // D.ph全走査1回で 確定会×pid の種目集約（種目max・broncoは>0のmin）
+  var aggBySess={},stBySess={};
+  sessions.forEach(function(s){aggBySess[s.id]={};stBySess[s.id]=msessStatus(s);});
+  (D.ph||[]).forEach(function(r){
+    for(var si=0;si<sessions.length;si++){
+      var s=sessions[si];if(!phInMSess(r,s))continue;
+      var m=aggBySess[s.id],k=String(r.pid),a=m[k]||(m[k]={});
+      ['squat','bench','deadlift','chinning','clean'].forEach(function(f){if(r[f]!=null&&(a[f]==null||r[f]>a[f]))a[f]=r[f];});
+      if(r.bronco!=null&&r.bronco>0&&(a.bronco==null||r.bronco<a.bronco))a.bronco=r.bronco;
+    }
+  });
+
+  var ranksAsc=cfg.ranks.slice().sort(function(a,b){return a.pct-b.pct;});
+  var brRanksAsc=(cfg.broncoRanks&&cfg.broncoRanks.length?cfg.broncoRanks:cfg.ranks).slice().sort(function(a,b){return a.pct-b.pct;});
+  function rankFor(ranks,ratio){var cur=null;for(var i=0;i<ranks.length;i++){if(ratio>=ranks[i].pct)cur=ranks[i];}return cur;}
+
+  // ---- セッションごと: ランク到達 / 種目1位(全体) / ポジ別1位 ----
+  sessions.forEach(function(s){
+    var year=(s.startDate||'').slice(0,4);
+    var agg=aggBySess[s.id],pids=Object.keys(agg);
+    var big3Map={};pids.forEach(function(k){var a=agg[k];if(a.squat!=null&&a.bench!=null&&a.deadlift!=null)big3Map[k]=a.squat+a.bench+a.deadlift;});
+
+    pids.forEach(function(k){
+      var pos=posMap[k];if(!pos)return;
+      var posStd=cfg.pos[pos];if(!posStd)return;
+      var a=agg[k],wInfo=getWeightInfoAt(k,s.endDate);
+      LIFTS.forEach(function(l){
+        if(a[l.ph]==null||!posStd[l.k]||!wInfo)return;
+        var rk=rankFor(ranksAsc,a[l.ph]/(posStd[l.k]*wInfo.w));
+        if(rk)add(k,{type:'rank',sessId:s.id,sessName:s.name,cat:l.ph,rankK:rk.k,label:rk.label+'到達（'+l.label+'）',pts:(BPTS.rank&&BPTS.rank[rk.k])||0,year:year,date:s.endDate,weight:wInfo.w});
+      });
+      if(a.bronco!=null&&posStd.bronco){
+        var brk=rankFor(brRanksAsc,posStd.bronco/a.bronco);
+        if(brk)add(k,{type:'rank',sessId:s.id,sessName:s.name,cat:'bronco',rankK:brk.k,label:brk.label+'到達（ブロンコ）',pts:(BPTS.rank&&BPTS.rank[brk.k])||0,year:year,date:s.endDate});
+      }
+    });
+
+    CATS.forEach(function(c){
+      function valOf(k){return c.k==='big3'?(big3Map[k]!=null?big3Map[k]:null):(agg[k][c.k]!=null?agg[k][c.k]:null);}
+      var entries=pids.map(function(k){return{k:k,v:valOf(k)};}).filter(function(e){return e.v!=null;});
+      if(!entries.length)return;
+      function bestOf(list){var b=null;list.forEach(function(e){if(b==null||(c.min?e.v<b:e.v>b))b=e.v;});return b;}
+      var oBest=bestOf(entries),oWin={};
+      entries.forEach(function(e){if(e.v===oBest){oWin[e.k]=1;add(e.k,{type:'top1',sessId:s.id,sessName:s.name,cat:c.k,label:'種目1位 '+c.label,pts:BPTS.top1||0,year:year,date:s.endDate});}});
+      ['FW','BK'].forEach(function(g){
+        var sub=entries.filter(function(e){return grpOf(posMap[e.k])===g;});
+        if(!sub.length)return;
+        var sBest=bestOf(sub);
+        sub.forEach(function(e){if(e.v===sBest&&!oWin[e.k])add(e.k,{type:'posTop1',sessId:s.id,sessName:s.name,cat:c.k,label:'ポジ別1位 '+c.label+'（'+g+'）',pts:BPTS.posTop1||0,year:year,date:s.endDate});});
+      });
+    });
+  });
+
+  // ---- 伸び率MVP（mtype別prevチェーン・改善者のみ・同率両者） ----
+  ['phys','bronco'].forEach(function(mt){
+    var chain=sessions.filter(function(s){return msessType(s)===mt;});
+    var prevVal={};
+    chain.forEach(function(s){
+      var agg=aggBySess[s.id],pids=Object.keys(agg),curVal={};
+      pids.forEach(function(k){var a=agg[k];if(mt==='phys'){if(a.squat!=null&&a.bench!=null&&a.deadlift!=null)curVal[k]=a.squat+a.bench+a.deadlift;}else{if(a.bronco!=null)curVal[k]=a.bronco;}});
+      var best=null,winners=[];
+      Object.keys(curVal).forEach(function(k){
+        var cur=curVal[k],prev=prevVal[k];
+        if(!(prev>0)||!(cur>0))return;
+        var imp=(mt==='phys')?(cur/prev-1):((prev-cur)/prev);
+        if(imp<=0)return;
+        if(best==null||imp>best+1e-9){best=imp;winners=[k];}
+        else if(Math.abs(imp-best)<=1e-9)winners.push(k);
+      });
+      if(best!=null){var year=(s.startDate||'').slice(0,4);winners.forEach(function(k){add(k,{type:'mvp',sessId:s.id,sessName:s.name,cat:mt,label:'伸び率MVP（'+(mt==='phys'?'BIG3 +':'ブロンコ -')+(Math.round(best*1000)/10)+'%）',pts:BPTS.mvp||0,year:year,date:s.endDate});});}
+      Object.keys(curVal).forEach(function(k){prevVal[k]=curVal[k];});
+    });
+  });
+
+  // ---- 自己ベスト更新（PB・6種目・初回対象外・セッション開始日前の過去プール比較） ----
+  var PBF=[{k:'squat',label:'SQ',min:false},{k:'bench',label:'BP',min:false},{k:'deadlift',label:'DL',min:false},{k:'chinning',label:'懸垂',min:false},{k:'clean',label:'クリーン',min:false},{k:'bronco',label:'ブロンコ',min:true}];
+  sessions.forEach(function(s){
+    var agg=aggBySess[s.id],year=(s.startDate||'').slice(0,4);
+    Object.keys(agg).forEach(function(k){
+      var a=agg[k],recs=phByPid[k]||[];
+      PBF.forEach(function(f){
+        var cur=a[f.k];if(cur==null)return;if(f.k==='bronco'&&!(cur>0))return;
+        var prior=[];recs.forEach(function(r){if(r[f.k]!=null&&(f.k!=='bronco'||r[f.k]>0)&&r.date<s.startDate)prior.push(r[f.k]);});
+        if(!prior.length)return;
+        var pb=f.min?Math.min.apply(null,prior):Math.max.apply(null,prior);
+        if(f.min?(cur<pb):(cur>pb))add(k,{type:'pb',sessId:s.id,sessName:s.name,cat:f.k,label:'自己ベスト更新（'+f.label+'）',pts:BPTS.pb||0,year:year,date:s.endDate});
+      });
+    });
+  });
+
+  // ---- BIG3クラブ FW600/BK550（ベスト基準・一度きり・測定会非依存） ----
+  (D.p||[]).forEach(function(p){
+    var bb=getBestBIG3(p.id);if(bb==null)return;
+    var g=grpOf(p.position);if(!g)return;
+    var th=g==='FW'?600:550;
+    if(bb>=th)add(p.id,{type:'club',sessId:null,sessName:null,cat:'club',label:'BIG3クラブ '+g+' '+th+'kg',pts:BPTS.club||0,year:null,date:null});
+  });
+
+  // ---- 皆勤賞（年ごと・その年の全確定会でdone or skip＝無断未入力のみNG） ----
+  var years={};sessions.forEach(function(s){var y=(s.startDate||'').slice(0,4);(years[y]=years[y]||[]).push(s);});
+  Object.keys(years).forEach(function(y){
+    var ys=years[y];
+    (D.p||[]).forEach(function(p){
+      var allPresent=ys.every(function(s){var st=stBySess[s.id];return st.donePids.some(function(d){return idEq(d,p.id);})||st.skippedPids.some(function(sk){return idEq(sk,p.id);});});
+      if(allPresent)add(p.id,{type:'allYear',sessId:null,sessName:y+'年',cat:'allYear',label:'皆勤賞 '+y+'年',pts:BPTS.allYear||0,year:y,date:y+'-12-31'});
+    });
+  });
+
+  return{byPid:byPid,totalPts:totalPts,sessions:sessions};
+}
+
+// 種目の最新記録（ランク判定用）。date降順→inputAt降順→id降順で先頭。bronco>0ガードはgetBestと同一。
+function getLatest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;rs.sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d)return d;var ia=String(b.inputAt||'').localeCompare(String(a.inputAt||''));if(ia)return ia;return String(b.id||'').localeCompare(String(a.id||''));});return rs[0][f];}
 function getBest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
 function getBestBIG3(pid){var sq=getBest(pid,'squat')||0;var bp=getBest(pid,'bench')||0;var dl=getBest(pid,'deadlift')||0;return (sq||bp||dl)?(sq+bp+dl):null;}
 function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
@@ -1345,7 +1526,8 @@ function broncoRankCardHtml(binf,cfg){
     h+='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">'+
       '<span class="num" style="font-size:clamp(26px,7vw,36px)">'+broncoFmt(binf.best)+'</span>'+
       '<span class="bd" style="background:'+col+';color:var(--ink);font-weight:800">'+(binf.rank?escapeHtml(binf.rank.label):'ランク外')+'</span></div>'+
-      '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">ゴールド基準 '+broncoFmt(binf.goldSec)+'</div>';
+      '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">ゴールド基準 '+broncoFmt(binf.goldSec)+'</div>'+
+      (binf.bestSec!=null&&binf.bestSec!==binf.best?'<div style="font-size:10px;color:var(--text-tertiary);margin-top:1px">自己ベスト '+broncoFmt(binf.bestSec)+'</div>':'');
     h+=rankProgressBarHtml({oneRM:binf.best,ratio:binf.ratio},{ranks:(cfg.broncoRanks&&cfg.broncoRanks.length?cfg.broncoRanks:cfg.ranks)});
     h+='<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary)"><span>達成率 '+Math.round(binf.ratio*100)+'%</span><span>ポジション別基準</span></div>';
     if(binf.next){
@@ -1396,6 +1578,7 @@ function myPhysCardHtml(){
     h+='<div style="text-align:center">'+
       '<div class="rkb" style="background:'+col+';color:var(--ink);box-shadow:var(--shadow-sm)">'+l.short+(isWeak?'<span style="position:absolute;top:-8px;right:-8px;display:flex;background:var(--bg-primary);border-radius:50%;padding:2px;box-shadow:var(--shadow-sm)">'+ic('i-target',12,'var(--maroon-vivid)')+'</span>':'')+'</div>'+
       '<div style="font-size:15px;font-weight:800">'+inf.oneRM+'<span style="font-size:9px;font-weight:600;color:var(--text-secondary)">kg</span></div>'+
+      (inf.bestRM!=null&&inf.bestRM!==inf.oneRM?'<div style="font-size:9px;color:var(--text-tertiary);line-height:1.1">Best '+inf.bestRM+'</div>':'')+
       '<div style="font-size:10px;font-weight:700;color:'+darkenForLight(col)+';margin-top:1px">'+(rk?escapeHtml(rk.label):'ランク外')+'</div>'+
       '<div style="font-size:9px;color:var(--text-secondary);margin-top:1px">'+nextTxt+'</div></div>';
   });
@@ -1806,6 +1989,7 @@ home:function(){
     h+='</div>';
   }
   if(me)h+=myPhysCardHtml();
+  if(me)h+=myBadgeHomeHtml();
   // ppカードはタップでトレーニング画面へ直行（従来はタップしても何も起きなかった）
   var ppCardH=ppCardHtml(false);
   if(ppCardH)h+='<div onclick="go(\'training\')" style="cursor:pointer">'+ppCardH+'</div>';
@@ -1846,11 +2030,12 @@ home:function(){
   // チーム系: 昨日の未入力者一覧（試合日チェック・フィジカル・ブロンコ）
   if(matchMissedAll.length){h+='<div class="card rv" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--red);display:flex;align-items:center;gap:6px">'+ic('i-ball',15)+' 試合日チェック未入力 <span style="font-size:12px;font-weight:400">'+matchMissedAll.length+'名</span></div>'+matchMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';}
   // 測定会ごとの未入力者一覧（未締切セッション・記録なし申告済みは除外＝staffの記録なしが反映される）
+  // 名前一覧を廃止し「あとN名」の1行チップに圧縮（試合日チェック未入力・個人アラートは従来通り）
   openMSessStatus.forEach(function(o){
-    var missed=o.st.missedPids.map(function(pid){return D.p.find(function(x){return idEq(x.id,pid);});}).filter(Boolean);
-    if(!missed.length)return;
+    var n=o.st.missedPids.length;
+    if(!n)return;
     var isBr=o.st.isBronco;
-    h+='<div class="card rv" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--amber);display:flex;align-items:center;gap:6px">'+ic(isBr?'i-run':'i-chart',15)+' 『'+escapeHtml(o.s.name)+'』'+(isBr?'ブロンコ':'フィジカル')+'未入力 <span style="font-size:12px;font-weight:400">'+missed.length+'名</span></div>'+missed.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';
+    h+='<div class="alert-card alert-warn rv" style="margin-bottom:8px;display:flex;align-items:center;gap:7px"><span style="display:flex">'+ic(isBr?'i-run':'i-chart',15)+'</span><div style="flex:1;font-size:12px">『'+escapeHtml(o.s.name)+'』'+(isBr?'ブロンコ':'フィジカル')+'未入力 <b>あと'+n+'名</b></div></div>';
   });
   // ランキングは専用ページへ（ホームからはリンクのみ）
   h+='<div class="card card-click rv" onclick="go(\'ranking\')" style="margin-bottom:12px;display:flex;align-items:center;gap:10px">'+ic('i-trophy',20,'var(--gold-deep)')+'<div style="flex:1"><div style="font-weight:800;font-size:14px">ランキング</div><div style="font-size:11px;color:var(--text-secondary)">BIG3・スクワット・ブロンコなどの順位を見る</div></div>'+ic('i-chevron-r',16,'var(--text-tertiary)')+'</div>';
@@ -1910,7 +2095,8 @@ mystatus:function(){
       h+='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">'+
         '<span class="num" style="font-size:clamp(32px,8.5vw,42px)">'+inf.oneRM+'<span class="unit">kg</span></span>'+
         '<span class="bd" style="background:'+col+';color:var(--ink);font-weight:800">'+(inf.rank?escapeHtml(inf.rank.label):'ランク外')+'</span></div>'+
-        '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">ゴールド基準 '+inf.goldTarget+'kg（体重×'+inf.mult+'）</div>';
+        '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">ゴールド基準 '+inf.goldTarget+'kg（体重×'+inf.mult+'）</div>'+
+        (inf.bestRM!=null&&inf.bestRM!==inf.oneRM?'<div style="font-size:10px;color:var(--text-tertiary);margin-top:1px">自己ベスト '+inf.bestRM+'kg</div>':'');
       h+=rankProgressBarHtml(inf,cfg);
       h+='<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-secondary)"><span>達成率 '+Math.round(inf.ratio*100)+'%</span><span>体重比 '+inf.relBW+'倍</span></div>';
       if(inf.next){
@@ -2572,7 +2758,7 @@ function doBronco(btnEl){
   if(!br)return alert('タイムを入力してください');
   if(!guardSubmit(btnEl,'記録中…'))return; // 二重送信ガード
   var date=document.getElementById('br-date').value;
-  var curSess=getCurrentMSess();
+  var curSess=getCurrentMSess('bronco'); // ブロンコ回のみ対象（フィジカル回同時開催時の誤紐づけ防止）
   var newRec={id:newId(),pid:myPid,date:date,squat:null,bench:null,deadlift:null,bronco:br,msessId:curSess?curSess.id:null};
   svSafeSeq([{k:'ph',rec:newRec}],function(){
     var pBR=getBest(myPid,'bronco');
@@ -3100,7 +3286,9 @@ T.ranking=function(){
     {field:'msTkl',label:'タックル',full:'タックル数',unit:'',better:'max',src:'ms'},
     {field:'msTklPct',label:'タックル成功率',full:'タックル成功率（3本以上）',unit:'%',better:'max',src:'ms',fmt:function(v){return v.toFixed(1)+' %';}},
     {field:'msCarry',label:'キャリー',full:'キャリー数',unit:'',better:'max',src:'ms'},
-    {field:'msLb',label:'ラインブレイク',full:'ラインブレイク',unit:'',better:'max',src:'ms'}
+    {field:'msLb',label:'ラインブレイク',full:'ラインブレイク',unit:'',better:'max',src:'ms'},
+    // 獲得バッジ ポイント（通算固定・測定会/GPS/期間セレクタなし。computeAllBadges由来）
+    {field:'badgePts',label:'バッジPt',full:'獲得バッジ ポイント（通算）',unit:'pt',better:'max',src:'badge'}
   ];
   var ALLO_FIELD={};STD_LIFTS.forEach(function(l){ALLO_FIELD[l.ph]=l.k;});
   // 測定会フィルター：最新の測定会をデフォルトに
@@ -3144,6 +3332,8 @@ T.ranking=function(){
     var isGps=curEv.src==='gs'; // GPS種目=測定会でなくGPSセッション/期間累計を参照
     var isMs=curEv.src==='ms';  // 試合スタッツ種目=試合セッション/期間累計を参照
     var isSess=isGps||isMs;     // セッション/期間セレクタを使う種目（GPS/試合スタッツ共通）
+    var isBadge=curEv.src==='badge'; // バッジPt=通算固定（測定会/セッション非依存）
+    var badgeTot=isBadge?computeAllBadges().totalPts:null;
     var isBroncoEv=(curField==='bronco'); // ブロンコ種目=ポジション別目標ランクの色バッジを添える
     // 現在種目のセッション文脈（GPS or 試合スタッツ）を解決
     var sessSorted=isMs?sortedMs:sortedGps;
@@ -3152,6 +3342,7 @@ T.ranking=function(){
     var players=filterPlayers();
     // 測定会フィルター対応のベスト計算
     function getSessVal(pid,field){
+      if(isBadge){var bv=badgeTot?(badgeTot[String(pid)]||0):0;return bv>0?bv:null;} // バッジPt=通算（0はランキング対象外）
       if(isSess){var gv=sessValMap?sessValMap[pid]:null;return gv==null?null:gv;} // GPS/試合スタッツは集計マップから
       var rs=D.ph.filter(function(x){
         if(x.pid!==pid)return false;
@@ -3164,6 +3355,7 @@ T.ranking=function(){
     }
     // 前回測定会の値を取得
     function getPrevSessVal(pid,field){
+      if(isBadge)return null; // バッジPtは通算＝前回差なし
       if(isSess)return null; // GPS/試合スタッツ種目は前回差を表示しない
       if(curSessId==='all')return null;
       var idx=sortedSess.findIndex(function(s){return s.id===curSessId;});
@@ -3179,7 +3371,7 @@ T.ranking=function(){
     var curSessObj=sortedSess.find(function(s){return s.id===curSessId;});
     var curSessLabel=curSessId==='all'?'全期間':(curSessObj?curSessObj.name:'全期間');
     var sessSelLabel=sessCur==='r30'?'直近30日累計':sessCur==='r90'?'直近90日累計':(function(){var s=sessSorted.find(function(x){return idEq(x.id,sessCur);});return s?(s.label||fmt(s.date)):'—';})();
-    var headLabel=isSess?sessSelLabel:curSessLabel;
+    var headLabel=isBadge?'通算':(isSess?sessSelLabel:curSessLabel);
     var h='<button class="btn-back" onclick="go(\'home\')">'+ic('i-back',14)+' ホーム</button><div class="kicker" style="margin-top:8px">TEAM RANKING</div><div style="font-size:18px;font-weight:900;margin:0 0 4px;display:flex;align-items:center;gap:8px">'+ic('i-trophy',20,'var(--gold-deep)')+'ランキング</div><div style="font-size:11px;color:var(--text-secondary);margin:0 0 12px">'+escapeHtml(curEv.full)+'・'+escapeHtml(headLabel)+'</div>';
     // 種目選択（主要操作＝最上部・常時表示）
     h+='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">種目</div>'+
@@ -3209,8 +3401,8 @@ T.ranking=function(){
       ic(fo?'i-chevron-u':'i-chevron-d',16,'var(--text-tertiary)')+
     '</div>';
     if(fo){
-      // 測定会セレクター（GPS/試合スタッツ種目のときは上部のセッション/期間チップを使うので非表示）
-      if(!isSess){
+      // 測定会セレクター（GPS/試合スタッツ/バッジPt種目のときは非表示）
+      if(!isSess&&!isBadge){
       h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">測定会</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
       '<button class="btn btn-sm'+(curSessId==='all'?' btn-p':'')+'" onclick="rankSSess(0)">全期間</button>'+
@@ -5252,6 +5444,65 @@ function showSelfFitnessResult(log){
   showSub(h);
 }
 
+// バッジの表示色（rank=ランク色 / その他=種別固定色）。player/coachはダーク前提でそのまま使用。
+function badgeColor(b,rankColor){
+  if(b.type==='rank')return rankColor[b.rankK]||'#E8A05C';
+  return{top1:'#FFD24A',posTop1:'#6FE3E1',mvp:'#C084FC',pb:'#5FA8FF',club:'#FF7A9C',allYear:'#3DF0A4'}[b.type]||'#C9D4E4';
+}
+// マイデータ「獲得バッジ」セクション。computeAllBadgesを1回呼びmyPid分を測定会別に表示。
+// 折りたたみ状態は window._mdBadgeOpen（onSnapshot再描画耐性）。ラベルは測定会名を含むためescapeHtml必須。
+function renderMyBadgesHtml(){
+  if(!myPid)return'';
+  var hd='<div style="font-size:14px;font-weight:800;margin:22px 0 10px;display:flex;align-items:center;gap:7px">'+ic('i-medal',17,'var(--maroon)')+'獲得バッジ</div>';
+  var all=computeAllBadges();
+  var mine=all.byPid[String(myPid)]||[];
+  var total=all.totalPts[String(myPid)]||0;
+  if(!mine.length){
+    return hd+'<div class="card" style="text-align:center;padding:18px"><div style="font-size:13px;font-weight:700;margin-bottom:4px">まだバッジがありません</div><div style="font-size:12px;color:var(--text-secondary);line-height:1.6">確定した測定会でランク到達・種目1位・自己ベスト更新などを達成するとバッジが付きます。</div></div>';
+  }
+  var cfg=getStdCfg();var rankColor={};cfg.ranks.forEach(function(r){rankColor[r.k]=r.color;});
+  if(!window._mdBadgeOpen)window._mdBadgeOpen={};
+  function chip(b){
+    var col=badgeColor(b,rankColor);
+    return '<span class="badge-chip" style="border-color:'+col+'55;box-shadow:0 0 10px '+col+'40;background:'+col+'18">'+escapeHtml(b.label)+'<b style="color:'+col+';font-size:10px">+'+b.pts+'</b></span>';
+  }
+  var h=hd;
+  h+='<div class="badge-hero rv"><div class="badge-hero-label">合計バッジポイント</div><div><span class="badge-hero-num">'+total+'</span><span class="badge-hero-unit">pt</span></div><div class="badge-hero-sub">'+mine.length+'個のバッジ・'+all.sessions.length+'回の確定測定会</div></div>';
+  var bySess={},order=[],special=[];
+  mine.forEach(function(b){if(b.sessId){if(!bySess[b.sessId]){bySess[b.sessId]=[];order.push(b.sessId);}bySess[b.sessId].push(b);}else special.push(b);});
+  order.sort(function(a,b){return (bySess[b][0].date||'').localeCompare(bySess[a][0].date||'');});
+  function group(key,title,dt,list){
+    var pts=list.reduce(function(s,b){return s+b.pts;},0);
+    var open=window._mdBadgeOpen[key]!==false;
+    return '<div class="card" style="margin-bottom:8px;padding:10px 12px">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onclick="toggleMdBadge(\''+key+'\')">'+
+      '<div style="font-weight:700;font-size:13px">'+escapeHtml(title)+(dt?' <span style="font-size:10px;color:var(--text-tertiary);font-weight:600">'+fmt(dt)+'</span>':'')+'</div>'+
+      '<div style="display:flex;align-items:center;gap:6px"><span class="bd bd-b" style="font-size:10px">'+list.length+'個・'+pts+'pt</span><span style="font-size:11px;color:var(--text-secondary)">'+(open?'▲':'▼')+'</span></div></div>'+
+      (open?'<div class="badge-wrap" style="margin-top:8px">'+list.map(chip).join('')+'</div>':'')+
+      '</div>';
+  }
+  order.forEach(function(sid){var list=bySess[sid];h+=group(sid,list[0].sessName||'測定会',list[0].date,list);});
+  if(special.length)h+=group('__special','特別バッジ','',special);
+  return h;
+}
+function toggleMdBadge(key){if(!window._mdBadgeOpen)window._mdBadgeOpen={};window._mdBadgeOpen[key]=(window._mdBadgeOpen[key]===false);if(curTab==='mydata'&&!subView)T.mydata();}
+// ホームの控えめバッジハイライト（合計Pt>0のみ・直近確定会のバッジ2-3個・タップでマイデータ）。0件は非表示。
+function myBadgeHomeHtml(){
+  if(!myPid)return'';
+  var all=computeAllBadges();
+  var mine=all.byPid[String(myPid)]||[];
+  var total=all.totalPts[String(myPid)]||0;
+  if(!mine.length||total<=0)return'';
+  var recent=null;
+  for(var i=all.sessions.length-1;i>=0;i--){var sid=all.sessions[i].id;var got=mine.filter(function(b){return b.sessId===sid;});if(got.length){recent={name:all.sessions[i].name,badges:got};break;}}
+  var cfg=getStdCfg();var rankColor={};cfg.ranks.forEach(function(r){rankColor[r.k]=r.color;});
+  var chips=recent?recent.badges.slice(0,3).map(function(b){var col=badgeColor(b,rankColor);return '<span class="badge-chip" style="border-color:'+col+'55;box-shadow:0 0 8px '+col+'33;background:'+col+'18;font-size:10px;padding:3px 8px">'+escapeHtml(b.label)+'</span>';}).join(''):'';
+  return '<div class="card card-click" onclick="go(\'mydata\')" style="margin-bottom:14px;display:flex;align-items:center;gap:11px;background:linear-gradient(135deg,rgba(90,15,42,.14),rgba(255,90,130,.05));border:1px solid rgba(255,140,165,.25)">'+
+    ic('i-medal',22,'var(--gold-deep)')+
+    '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800">獲得バッジ <span style="color:var(--maroon)">'+total+'pt</span></div>'+
+    (chips?'<div class="badge-wrap" style="margin-top:5px">'+chips+'</div>':'<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">'+mine.length+'個のバッジを獲得</div>')+
+    '</div><span style="font-size:11px;font-weight:700;color:var(--accent);white-space:nowrap">詳しく →</span></div>';
+}
 // ===== マイデータ（Phase 5）: 期間別の推移＋自動考察。読み取り専用。 =====
 // n日前の日付文字列（player未定義のため新設。coachのagoStrと同義）。
 function agoStr(n){return toDateStr(new Date(Date.now()-n*86400000));}
@@ -5409,6 +5660,9 @@ T.mydata=function(){
   if(ins.length)h+=ins.map(insHtml).join('');
   else h+='<div class="card"><div style="font-size:12px;color:var(--text-secondary);line-height:1.6">記録が増えると、ここに自動で気づき・アドバイスが表示されます。まずはコンディションやトレーニングを記録してみよう。</div></div>';
 
+  // ①' 獲得バッジ
+  h+=renderMyBadgesHtml();
+
   // ② コンディション
   h+=secHead('コンディション','i-heart');
   var fMap={};fRecs.forEach(function(r){fMap[r.date]=r;});
@@ -5465,13 +5719,13 @@ T.mydata=function(){
   if(weeks.every(function(x){return !x.vol;})){
     h+='<div style="font-size:12px;color:var(--text-secondary)">この期間のトレーニング記録がまだありません。実施記録をつけると週ごとに積み上がります。</div>';
   }else{
-    h+='<div style="display:flex;align-items:flex-end;gap:5px;height:100px;padding:0 2px">'+weeks.map(function(x){
+    h+='<div id="md-wvol-scroll" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><div style="display:flex;align-items:flex-end;gap:5px;height:100px;padding:0 2px;width:max-content;min-width:100%">'+weeks.map(function(x){
       var bh=Math.round(x.vol/maxV*70);
-      return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;height:100%">'+
+      return '<div style="flex:1 0 26px;min-width:26px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;height:100%">'+
         '<span style="font-size:8px;color:var(--text-secondary);white-space:nowrap">'+(x.vol?(x.vol>=1000?(Math.round(x.vol/100)/10)+'t':x.vol):'')+'</span>'+
         '<div style="width:100%;max-width:26px;height:'+Math.max(bh,x.vol?4:2)+'px;border-radius:4px 4px 2px 2px;background:linear-gradient(180deg,var(--maroon-vivid),var(--maroon));'+(x.vol?'':'opacity:.15')+'"></div>'+
         '<span style="font-size:8px;color:var(--text-tertiary);white-space:nowrap">'+x.label+'</span></div>';
-    }).join('')+'</div>';
+    }).join('')+'</div></div>';
   }
   h+='</div>';
   // 種目別推移（セレクタ）
@@ -5610,6 +5864,7 @@ T.mydata=function(){
 
   h+='<div style="height:20px"></div>';
   $m().innerHTML=h;
+  var _wv=document.getElementById('md-wvol-scroll');if(_wv)_wv.scrollLeft=_wv.scrollWidth; // 週間ボリュームは右端（最新週）を初期表示
 
   // GPS gr_行データが未ロードなら読み込み→まだマイデータ画面ならフル再描画（キャッシュ済みで収束＝ループ無し。非同期ガード規約=loadTlogArchと同型）
   if(_gpsPend)gpsLoadMany(_gpsPend,function(){if(curTab==='mydata'&&!subView)T.mydata();});

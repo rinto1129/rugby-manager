@@ -317,6 +317,8 @@ function loadTlogArch(cb){
   });
 }
 function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
+// 種目の最新記録（ランク判定用）。date降順→inputAt降順→id降順で先頭。bronco>0ガードはgetBestと同一。
+function getLatest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;rs.sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d)return d;var ia=String(b.inputAt||'').localeCompare(String(a.inputAt||''));if(ia)return ia;return String(b.id||'').localeCompare(String(a.id||''));});return rs[0][f];}
 function getBest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
 function getBestBIG3(pid){var sq=getBest(pid,'squat')||0;var bp=getBest(pid,'bench')||0;var dl=getBest(pid,'deadlift')||0;return(sq||bp||dl)?(sq+bp+dl):null;}
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
@@ -352,6 +354,7 @@ var STD_DEFAULT={
     {k:'diamond',label:'ダイヤ',pct:1.20,color:'#C084FC'}
   ],
   allo:{sq:0.33,bp:0.45,dl:0.33},
+  badgePts:{rank:{bronze:1,silver:2,gold:3,platinum:4,diamond:5},top1:5,posTop1:3,mvp:5,pb:1,club:10,allYear:3},
   rx:{
     sq:[{name:'フロントスクワット',sets:3,reps:6,rir:2},{name:'ブルガリアンスクワット',sets:3,reps:8,rir:2},{name:'レッグプレス',sets:3,reps:10,rir:2}],
     bp:[{name:'ナローベンチプレス',sets:3,reps:6,rir:2},{name:'ダンベルプレス',sets:3,reps:8,rir:2},{name:'ディップス',sets:3,reps:8,rir:2}],
@@ -362,7 +365,7 @@ var STD_DEFAULT={
 function getStdCfg(){
   var saved=(D.std&&D.std[0])||null;
   if(!saved)return STD_DEFAULT;
-  var cfg={pos:{},ranks:(saved.ranks&&saved.ranks.length?saved.ranks:STD_DEFAULT.ranks),broncoRanks:(saved.broncoRanks&&saved.broncoRanks.length?saved.broncoRanks:STD_DEFAULT.broncoRanks),allo:saved.allo||STD_DEFAULT.allo,rx:saved.rx||STD_DEFAULT.rx};
+  var cfg={pos:{},ranks:(saved.ranks&&saved.ranks.length?saved.ranks:STD_DEFAULT.ranks),broncoRanks:(saved.broncoRanks&&saved.broncoRanks.length?saved.broncoRanks:STD_DEFAULT.broncoRanks),allo:saved.allo||STD_DEFAULT.allo,rx:saved.rx||STD_DEFAULT.rx,badgePts:(function(){var d=STD_DEFAULT.badgePts,s=saved.badgePts||{},m={rank:{}};Object.keys(d.rank).forEach(function(k){m.rank[k]=(s.rank&&s.rank[k]!=null&&s.rank[k]!=='')?s.rank[k]:d.rank[k];});['top1','posTop1','mvp','pb','club','allYear'].forEach(function(k){m[k]=(s[k]!=null&&s[k]!=='')?s[k]:d[k];});return m;})()};
   Object.keys(STD_DEFAULT.pos).forEach(function(pk){
     var d=STD_DEFAULT.pos[pk],s=(saved.pos||{})[pk]||{},m={};
     Object.keys(d).forEach(function(f){m[f]=(s[f]!=null&&s[f]!==''?s[f]:d[f]);});
@@ -390,7 +393,7 @@ function getCurrentWeightInfo(pid){
   if(pw>0)return{w:pw,src:'選手登録の体重',live:false};
   return null;
 }
-// 種目ランク判定。ratio=1RM÷(ゴールド倍率×体重)。ranks昇順でratio以上の最上位が現ランク。
+// 種目ランク判定。oneRM=最新記録(getLatest)でランク算出・bestRMに自己ベスト併記。ratio=最新1RM÷(ゴールド倍率×体重)。ranks昇順でratio以上の最上位が現ランク。
 function getLiftRankInfo(pid,liftK){
   var p=D.p.find(function(x){return idEq(x.id,pid);});
   if(!p||!p.position)return null;
@@ -399,7 +402,8 @@ function getLiftRankInfo(pid,liftK){
   var wInfo=getCurrentWeightInfo(pid);
   if(!wInfo)return{noWeight:true,lift:liftK};
   var lift=STD_LIFTS.find(function(l){return l.k===liftK;});
-  var oneRM=getBest(pid,lift.ph);
+  var oneRM=getLatest(pid,lift.ph);
+  var bestRM=getBest(pid,lift.ph);
   var goldTarget=posStd[liftK]*wInfo.w;
   var ratio=oneRM?oneRM/goldTarget:0;
   var ranks=cfg.ranks.slice().sort(function(a,b){return a.pct-b.pct;});
@@ -410,7 +414,7 @@ function getLiftRankInfo(pid,liftK){
   }
   return{
     lift:liftK,label:lift.label,short:lift.short,
-    oneRM:oneRM,weight:wInfo.w,weightSrc:wInfo.src,mult:posStd[liftK],
+    oneRM:oneRM,bestRM:bestRM,weight:wInfo.w,weightSrc:wInfo.src,mult:posStd[liftK],
     goldTarget:Math.round(goldTarget*10)/10,
     ratio:ratio,
     relBW:oneRM?Math.round(oneRM/wInfo.w*100)/100:null,
@@ -420,14 +424,15 @@ function getLiftRankInfo(pid,liftK){
   };
 }
 // ブロンコランク判定。ratio=ゴールド基準秒÷ベストタイム秒（速いほど高い）。ranks閾値はBIG3と共通。
-// timeSecOpt指定時はその値で判定（ランキングの測定会フィルタ用）。省略時は getBest(pid,'bronco')。
+// timeSecOpt指定時はその値で判定（ランキングの測定会フィルタ用）。省略時は getLatest(pid,'bronco')＝最新記録。bestSecに自己ベスト併記。
 function getBroncoRankInfo(pid,timeSecOpt){
   var p=D.p.find(function(x){return idEq(x.id,pid);});
   if(!p||!p.position)return null;
   var cfg=getStdCfg(),posStd=cfg.pos[p.position];
   if(!posStd||!posStd.bronco)return null;
   var goldSec=posStd.bronco;
-  var best=(timeSecOpt!=null)?timeSecOpt:getBest(pid,'bronco');
+  var best=(timeSecOpt!=null)?timeSecOpt:getLatest(pid,'bronco');
+  var bestSec=getBest(pid,'bronco');
   var ratio=best?goldSec/best:0;
   var ranks=(cfg.broncoRanks&&cfg.broncoRanks.length?cfg.broncoRanks:cfg.ranks).slice().sort(function(a,b){return a.pct-b.pct;});
   var cur=null,next=null;
@@ -436,7 +441,7 @@ function getBroncoRankInfo(pid,timeSecOpt){
     else if(!next)next=ranks[i];
   }
   var nextTargetSec=next?Math.floor(goldSec/next.pct):null; // このタイム以下で次ランク
-  return{goldSec:goldSec,best:best,ratio:ratio,rank:cur,next:next,
+  return{goldSec:goldSec,best:best,bestSec:bestSec,ratio:ratio,rank:cur,next:next,
     nextTargetSec:nextTargetSec,
     nextNeedSec:(next&&best)?Math.max(0,best-nextTargetSec):null,
     achieved:!!(best&&ratio>=1)};
@@ -489,7 +494,8 @@ function getWeakLift(pid){
   var infos=[];
   STD_LIFTS.forEach(function(l){
     var inf=getLiftRankInfo(pid,l.k);
-    if(inf&&inf.oneRM)infos.push(inf);
+    // 弱点判定・処方箋は自己ベスト基準（最新値化の影響を受けない＝アロメトリック/クラブと同じ扱い）
+    if(inf&&inf.bestRM){inf.ratio=(inf.goldTarget>0)?inf.bestRM/inf.goldTarget:0;infos.push(inf);}
   });
   if(infos.length<2)return null;
   infos.sort(function(a,b){return a.ratio-b.ratio;});
@@ -1617,9 +1623,10 @@ function renderPhysicalView(){
     var members=D.p.filter(function(p){return p.position===ps;});
     var m=0,n=0;
     members.forEach(function(p){
-      var bi=getBroncoRankInfo(p.id);
+      var bi=getBroncoRankInfo(p.id,getBest(p.id,'bronco')); // 達成ボードは自己ベスト基準（達成・最速・達成率は career-best で判定）
       if(bi&&bi.best!=null){m++;brMeasured++;if(bi.achieved){n++;brAchieved++;}
-        if(!brFastest||bi.best<brFastest.best)brFastest={p:p,best:bi.best};}
+        // 「チーム最速」は自己ベスト(bestSec=getBest)で判定＝最新値化の影響を受けない
+        if(bi.bestSec!=null&&(!brFastest||bi.bestSec<brFastest.best))brFastest={p:p,best:bi.bestSec};}
     });
     return{ps:ps,goldSec:goldSec,measured:m,achieved:n,members:members.length};
   });
@@ -1844,7 +1851,7 @@ function renderStdBadgesCoach(pid){
     if(!inf||inf.noWeight||!inf.oneRM)return'<div style="background:var(--bg-elev);border-radius:10px;padding:10px;text-align:center"><div style="font-size:15px;font-weight:800;color:var(--txt-3)">-</div><div style="font-size:10px;color:var(--txt-2);margin-top:2px">'+l.short+(inf&&inf.noWeight?' (体重なし)':'')+'</div></div>';
     var rankLabel=inf.rank?inf.rank.label:'未到達';
     var rankColor=inf.rank?inf.rank.color:'var(--txt-3)';
-    return'<div style="background:var(--bg-elev);border-radius:10px;padding:10px;text-align:center"><div style="font-size:15px;font-weight:800;color:'+rankColor+'">'+rankLabel+(isWeak?' 🎯':'')+'</div><div style="font-size:10px;color:var(--txt-2);margin-top:2px">'+l.short+' '+inf.oneRM+'kg</div></div>';
+    return'<div style="background:var(--bg-elev);border-radius:10px;padding:10px;text-align:center"><div style="font-size:15px;font-weight:800;color:'+rankColor+'">'+rankLabel+(isWeak?' 🎯':'')+'</div><div style="font-size:10px;color:var(--txt-2);margin-top:2px">'+l.short+' '+inf.oneRM+'kg'+(inf.bestRM!=null&&inf.bestRM!==inf.oneRM?' <span style="color:var(--txt-3)">(Best '+inf.bestRM+')</span>':'')+'</div></div>';
   }).join('');
   var band=getWeightBandInfo(pid);
   var bandHtml='';
