@@ -7,12 +7,12 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-10（**🆕仕上げプラン(ブロンコ測定会の締切・記録なし反映・PP日跨ぎ・自主トレ・ランキング・専用閾値・整合性) 全10フェーズ実装＋全36テスト回帰完了。⏳コミット/push待ち（ユーザーの明示承認要・未コミット状態）。直前の新プラン(ブロンコ他4機能)は`c84e355`/`c3c751c`でpush済み・origin/main同期。**）
+- 日時: 2026-07-10（**✅仕上げプラン(ブロンコ測定会の締切・記録なし反映・PP日跨ぎ・自主トレ・ランキング・専用閾値・整合性) 全10フェーズ実装＋全36テスト回帰完了→`8aa323e`でpush済み・origin/main同期。直前の新プラン(ブロンコ他4機能)は`c84e355`/`c3c751c`でpush済み。ユーザーはブラウザ Cmd+Shift+R で本番反映を確認。**）
 - 更新者: Claude
 
-## 🟢 仕上げプラン（ブロンコ測定会 総仕上げ）＝全10フェーズ実装完了・push待ち（2026-07-10）
+## 🟢 仕上げプラン（ブロンコ測定会 総仕上げ）＝全10フェーズ実装完了・push済み（`8aa323e`・2026-07-10）
 
-- **プラン: `/Users/nakayamarinnin/.claude/plans/structured-fluttering-walrus.md`。全10フェーズを1機能ずつ実装→各フェーズでjsc模擬実行→回帰まで完了。⏳未コミット＝ユーザー承認後にコミット/push。**
+- **プラン: `/Users/nakayamarinnin/.claude/plans/structured-fluttering-walrus.md`。全10フェーズを1機能ずつ実装→各フェーズでjsc模擬実行→回帰まで完了。✅`8aa323e`でpush済み・origin/main同期（未pushコミット0）。**
   - **実装済み全10フェーズ**:
     1. `STD_DEFAULT.broncoRanks`導入＋`getStdCfg`マージ＋`getBroncoRankInfo`を専用閾値参照へ（player/staff/coach md5同期・挙動不変＝初期値は現ranksと同値）。player broncoRankCardのレール／staff phBroncoBoardHtml凡例もbroncoRanksへ。
     2. staff基準設定に「ブロンコ ランク閾値」カード（`std-brrank-<i>`）＋`doSaveStd`で0.3〜2範囲＋昇順検証して`cfg.broncoRanks`保存。
@@ -25,7 +25,7 @@
     9. player `selfTimedKm`にNFKC正規化＋含み判定フォールバック（ブロンコ/bronco→1.2・1k/1km/1000m→1.0・完全一致テーブルは温存）＋sf-typeに`onchange`追加＋`addTrainingEx`冒頭ガード（タイム種目はウエイトに追加させずフィットネスへ誘導）。
     10. 全体回帰＋デプロイ準備。
   - **検証結果（全て合格）**: ①全4サイト構文ロードOK ②**全36テスト各対象サイトでPASS**（既存34＋新規2 test_msess_close/test_msess_alert）③md5同期照合OK（STD_DEFAULT/getStdCfg/getBroncoRankInfo/getBest[3ファイル]・getCurrentMSess/msessStatus[player/staff]・ppNext/ppNextWeightDay[3ファイル]・broncoFmt[4ファイル]）④`new Chart`追加ゼロ⑤差分=player/staff/coach/trainer＋dev/テスト。
-  - **⏳残タスク（ユーザー承認後）**: git add/commit/push（player/staff/coach/trainer + dev/ + HANDOFF）。反映後ブラウザCmd+Shift+Rで確認。
+  - **✅残タスク完了**: git add/commit/push（player/staff/coach/trainer + dev/ + HANDOFF）＝`8aa323e`でpush済み。ユーザーはブラウザCmd+Shift+Rで本番反映を確認。
   - **📝任意の追い込み候補（未実施・プラン範囲外）**: player/staff/trainer の`ppCardHtml`の`metaTxt`（前回:表記）は、当日auto確定日に「前回: <当日タイプ>（自動確定）」と当日の日付を出す＝主バッジ「今日は◯◯の日」と併記でやや冗長（機能上の破綻はない）。気になれば3ファイル同期で微調整可（表示位置依存ロジックで要注意）。
 
 ## 🟢 直前プラン（ブロンコ他4機能）＝実装・push完了（`c84e355`）
