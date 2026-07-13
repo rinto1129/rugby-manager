@@ -7,9 +7,10 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-13（**🔴v2プラン進行中: P0・P1完了/push済み。次=P2（tlog編集+rebuildE1rmFrom+CRUD雛形v2＝最重要ペイン）**。旧プランtingly-munching-auroraは廃止済み）
+- 日時: 2026-07-13（**🔴v2プラン進行中: P0・P1・P2a完了/push済み。次=P2b（staff代理編集＝共有関数移植＋アーカイブdoc対応）**。旧プランtingly-munching-auroraは廃止済み）
 - 更新者: Claude
-- **次セッションの最初の一手**: `dev/audit/PLAN_zesty-fluttering-kitten.md` のP2節を読む → player showTrainingHistory(4909付近)から着手。検証は `python3 dev/run_tests.py` と `python3 dev/sync_check.py`
+- **次セッションの最初の一手**: `dev/audit/PLAN_zesty-fluttering-kitten.md` のP2b節を読む → staff `renderTrainTab`(4075)/`trSessDetail`(4263)に代理編集/削除UIを差込。**staffに無い共有ヘルパー（computeTlogVolumes/bestE1rmPerBase/rebuildE1rmFrom/getCompareVolume/newId/isFilled/guardSubmit/toast-Undo拡張）をplayerから移植しidentical登録**。所在特定=`date>=今日-15→'tlog' / 未満→tlaKey(pid,tlaHalf(date))`、アーカイブ編集後は`_tlogArch`更新＋`_tlaCache=null`。検証は `python3 dev/run_tests.py` と `python3 dev/sync_check.py`
+- **P2a完了メモ（player・push済み）**: `computeTlogVolumes`/`bestE1rmPerBase`抽出→finishTraining/編集/rebuild同一経路化。`rebuildE1rmFrom(pid,fromDate)`=誤高値による抑圧e1rmをリプレイ再生成（**日付ごと1レコード=max集約**で同日タイ退行も根治）。`toast(msg,actionLabel,actionFn)`拡張＋`.toast-undo`。showTrainingHistory各行→`showTlogDetail`→`showEditTlog`/`delTlog`（confirm不使用・削除=即実行+5秒Undo・直近D.tlogのみ編集可）。**敵対的検証(ワークフロー)で判明した4必須修正を反映**: ①getCompareVolumeをid/ts引数化(編集時_curTLog=null対策) ②fromDate=min(旧,新) ③notFoundガード＋移送済み行はボタン非表示 ④in-place更新(ts/kind/menuId温存)+slimTlogRec。新テスト`dev/test_tlog_edit.js`39本PASS。
 - ⚠️ **プロジェクトパスが移動**: `/Users/nakayamarinnin/Documents/個人開発プロジェクト/rugby-manager`（旧 Documents/rugby-manager は消滅）。**パスに日本語を含むためjscに絶対パスを渡せない** → dev/run_tests.py がcwd固定で回避。
 
 ## 🔴 アクティブプラン: 全面見直し＋デザイン再構築 v2（ハイブリッド順序）
@@ -24,7 +25,8 @@
 |---|---|---|
 | P0 | 基線記録＋検証基盤新設＋文書訂正 | ✅ push済み `2b008a4`（基線47実行全PASS） |
 | P1 | 整合性バグ修正＋chartUpdate安全化（+ppCardHtml trainer同期） | ✅ push済み `65886da`（coach死にコード削除/getBest・getLatest idEq化/escapeHtml5箇所/trainerにic+SVGシンボル移植しppCardHtml正典同期/chartUpdate新設・生saveChart8箇所を操作単位化/test_chart_safe.js両サイトPASS。※trainerのsaveSOAP/delSOAPは既に操作単位化済みだった=rom-rom P0-bの成果） |
-| P2 | tlog編集/削除＋rebuildE1rmFrom（リプレイ方式）＋CRUD雛形v2（Undoトースト） | ⬜ |
+| P2a | player: tlog編集/削除＋rebuildE1rmFrom（リプレイ方式）＋CRUD雛形v2（Undoトースト） | ✅ push済み（test_tlog_edit 39本PASS/回帰50/50/sync OK。敵対的検証GO-WITH-FIXES反映） |
+| P2b | staff: tlog代理編集（tla_も可）＋共有関数移植（identical登録） | ⬜ 次はここ |
 | P3 | デザイン基盤前倒し（ダークトークン+コンポーネント+meta/PWA+グラデ集約+一次ダーク化）4push | ⬜ |
 | P4 | リハビリ役割分担フレーム（緩やか分担・roleGate・trainer確定ボタン撤去） | ⬜ |
 | P5 | player CRUD残り（怪我/rlog/痛み/wc/md/bc/tape/PIN） | ⬜ |
