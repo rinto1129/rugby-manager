@@ -7,8 +7,9 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-13（**🔴新プランv2承認済み・P0実装中**。旧プランtingly-munching-auroraは徹底レビューの末に廃止→v2へ全面差し替え）
+- 日時: 2026-07-13（**🔴v2プラン進行中: P0・P1完了/push済み。次=P2（tlog編集+rebuildE1rmFrom+CRUD雛形v2＝最重要ペイン）**。旧プランtingly-munching-auroraは廃止済み）
 - 更新者: Claude
+- **次セッションの最初の一手**: `dev/audit/PLAN_zesty-fluttering-kitten.md` のP2節を読む → player showTrainingHistory(4909付近)から着手。検証は `python3 dev/run_tests.py` と `python3 dev/sync_check.py`
 - ⚠️ **プロジェクトパスが移動**: `/Users/nakayamarinnin/Documents/個人開発プロジェクト/rugby-manager`（旧 Documents/rugby-manager は消滅）。**パスに日本語を含むためjscに絶対パスを渡せない** → dev/run_tests.py がcwd固定で回避。
 
 ## 🔴 アクティブプラン: 全面見直し＋デザイン再構築 v2（ハイブリッド順序）
@@ -22,7 +23,7 @@
 | # | 内容 | 状態 |
 |---|---|---|
 | P0 | 基線記録＋検証基盤新設＋文書訂正 | ✅ push済み `2b008a4`（基線47実行全PASS） |
-| P1 | 整合性バグ修正＋chartUpdate安全化（+ppCardHtml trainer同期） | 🔶 実装完了・push待ち（coach死にコード削除/getBest・getLatestidEq化/escapeHtml5箇所/trainerにic+SVGシンボル移植しppCardHtml正典同期/chartUpdate新設・生saveChart呼び出し8箇所を操作単位化/test_chart_safe.js両サイトPASS。※trainerのsaveSOAP/delSOAPは既に操作単位化済みだった=rom-rom P0-bの成果） |
+| P1 | 整合性バグ修正＋chartUpdate安全化（+ppCardHtml trainer同期） | ✅ push済み `65886da`（coach死にコード削除/getBest・getLatest idEq化/escapeHtml5箇所/trainerにic+SVGシンボル移植しppCardHtml正典同期/chartUpdate新設・生saveChart8箇所を操作単位化/test_chart_safe.js両サイトPASS。※trainerのsaveSOAP/delSOAPは既に操作単位化済みだった=rom-rom P0-bの成果） |
 | P2 | tlog編集/削除＋rebuildE1rmFrom（リプレイ方式）＋CRUD雛形v2（Undoトースト） | ⬜ |
 | P3 | デザイン基盤前倒し（ダークトークン+コンポーネント+meta/PWA+グラデ集約+一次ダーク化）4push | ⬜ |
 | P4 | リハビリ役割分担フレーム（緩やか分担・roleGate・trainer確定ボタン撤去） | ⬜ |
