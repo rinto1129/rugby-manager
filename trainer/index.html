@@ -15,7 +15,11 @@
   --text-primary:#EAF0F8;--text-secondary:#9FB0C8;--text-tertiary:#6E7F9C;
   --border-secondary:rgba(255,255,255,0.18);--border-tertiary:rgba(255,255,255,0.10);
   --shadow-sm:0 1px 3px rgba(0,0,0,.25);--shadow-md:0 6px 20px rgba(0,0,0,.35);
-  --font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif;--radius:10px;--radius-lg:14px}
+  --font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif;--radius:10px;--radius-lg:14px;
+  /* ブランドトークン（共通コンポーネントppCardHtml等が参照。値はP3ダーク統一時に再調整） */
+  --maroon:#8d0000;--maroon-vivid:#c1121f;--pull:#C2410C;--font-num:'Overpass',system-ui,sans-serif}
+.ic{display:inline-block;vertical-align:-.14em;flex-shrink:0}
+.flag{display:inline-block;transform:skewX(-12deg);font-family:var(--font-num);font-style:italic;font-weight:800;letter-spacing:.05em;padding:2px 8px;border-radius:3px;font-size:10px}
 body{font-family:var(--font-sans);background:var(--bg-app);color:var(--text-primary);min-height:100vh;padding-bottom:80px;-webkit-font-smoothing:antialiased}
 .header{background:linear-gradient(180deg,var(--navy),var(--navy-2));border-bottom:1px solid var(--border-tertiary);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
 .header-title{font-size:15px;font-weight:700;color:#fff}
@@ -98,6 +102,15 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 </style>
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+<defs>
+<symbol id="i-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.8l4.8 4.8L19.5 6.5"/></g></symbol>
+<symbol id="i-undo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 13.5L4 9l4.5-4.5M4 9h10.5a5.75 5.75 0 0 1 0 11.5H10"/></g></symbol>
+<symbol id="i-dumbbell" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></g></symbol>
+<symbol id="i-push" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V8M8 12l4-4 4 4M5 20h14"/></g></symbol>
+<symbol id="i-pull" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M8 12l4 4 4-4M5 4h14"/></g></symbol>
+</defs>
+</svg>
 
 <!-- ログイン画面 -->
 <div id="login-screen">
@@ -599,6 +612,16 @@ function saveChartMetrics(injId,metrics,mmtTargets,meta,onDone){
     return latest;
   },onDone);
 }
+// === CHART-UPDATE (staff/trainer同期) ===
+// 操作単位のchart更新: server-latestの対象injIdレコードにfnを適用して保存する（無ければ_chartIdxが雛形を作る）。
+// ローカルchを組み立てて saveChart(ch) で丸ごと置換するのは禁止（同一injId内で他端末のevals/soaps等を巻き戻す）。
+function chartUpdate(injId,fn,onDone){
+  return svSafeUpdate('chart',function(latest){
+    var i=_chartIdx(latest,injId);
+    fn(latest[i]);
+    return latest;
+  },onDone);
+}
 
 // RTP（Return To Play）練習参加レベル
 var RTP_LEVELS=[
@@ -667,12 +690,12 @@ function setRtpLevel(iid,level){
   var lv=RTP_LEVELS.find(function(x){return x.k===level;});
   // 練習参加レベルは選手・スタッフ全員に共有される臨床判断のため、確認＋実施者記録を必須にする
   if(!confirm('練習参加レベルを「'+(lv?lv.label:level)+'」に変更しますか？\n選手・スタッフ全員に共有されます。'))return;
-  var ch=getChart(iid);
-  ch.rtpLevel=level;
-  ch.rtpLevelDate=todayStr();
-  ch.rtpLevelBy=myTrainer?myTrainer.name:'';
-  saveChart(ch);
-  renderChartTab();
+  var by=myTrainer?myTrainer.name:'';
+  chartUpdate(iid,function(ch){
+    ch.rtpLevel=level;
+    ch.rtpLevelDate=todayStr();
+    ch.rtpLevelBy=by;
+  },function(){renderChartTab();});
 }
 
 
@@ -920,40 +943,41 @@ function ppDateLabel(ds){
   var W=['日','月','火','水','木','金','土'];
   return(d.getMonth()+1)+'/'+d.getDate()+'('+W[d.getDay()]+')';
 }
+function ic(n,s,c){s=s||16;return'<svg class="ic" width="'+s+'" height="'+s+'" aria-hidden="true"'+(c?' style="color:'+c+'"':'')+'><use href="#'+n+'" xlink:href="#'+n+'"></use></svg>';}
 function ppCardHtml(showCtrl){
   var next=ppNext();
   if(next===null){
     if(!showCtrl)return '';
     return '<div class="card" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem">'+
-      '<div style="font-size:13px;font-weight:700;margin-bottom:10px">🏋️ ウエイト PUSH/PULL 初期設定</div>'+
+      '<div style="font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px">'+ic('i-dumbbell',16,'var(--maroon)')+' ウエイト PUSH/PULL 初期設定</div>'+
       '<div style="display:flex;gap:10px">'+
-      '<button class="btn" style="flex:1;background:var(--blue-bg);color:var(--blue);font-weight:700" onclick="ppStart(\'push\')">🟦 PUSHから開始</button>'+
-      '<button class="btn" style="flex:1;background:var(--red-bg);color:var(--red);font-weight:700" onclick="ppStart(\'pull\')">🟥 PULLから開始</button>'+
+      '<button class="btn" style="flex:1;background:var(--blue-bg);color:var(--blue);font-weight:700" onclick="ppStart(\'push\')">'+ic('i-push',14)+' PUSHから開始</button>'+
+      '<button class="btn" style="flex:1;background:rgba(194,65,12,.10);color:var(--pull);font-weight:700" onclick="ppStart(\'pull\')">'+ic('i-pull',14)+' PULLから開始</button>'+
       '</div></div>';
   }
   var isPush=next==='push';
-  var color=isPush?'var(--blue)':'var(--red)';
-  var bg=isPush?'var(--blue-bg)':'var(--red-bg)';
-  var label=isPush?'🟦 PUSH':'🟥 PULL';
+  var color=isPush?'var(--blue)':'var(--pull)'; // ブランドのmaroonとは分離: PUSH=--blue / PULL=--pull（危険の--redとも別）
+  var bg=isPush?'var(--blue-bg)':'rgba(194,65,12,.10)';
   var wd=ppNextWeightDay();
   var wdTxt=wd?'・'+ppDateLabel(wd.date):'';
   var lastRec=D.pp[D.pp.length-1];
   var byLabel=lastRec.by==='trainer'?'トレーナー':lastRec.by==='auto'?'自動確定':'スタッフ';
-  var metaTxt='最終操作: '+fmt(lastRec.date)+' ('+byLabel+')';
+  // 先頭1件=ppStartの開始記録。2件目以降の末尾は必ずflip記録＝「直前に実施済みになった側」はlastRec.typeの逆
+  var metaTxt=D.pp.length>1?'前回: '+(lastRec.type==='push'?'PULL':'PUSH')+' '+ppDateLabel(lastRec.date)+'（'+byLabel+'）':'開始: '+ppDateLabel(lastRec.date)+'（'+byLabel+'）';
   var todayStrong=(wd&&wd.isToday)?'<div style="font-size:12px;font-weight:700;color:'+color+';margin-bottom:4px">今日は'+(isPush?'PUSH':'PULL')+'の日！</div>':'';
-  var borderStyle=(wd&&wd.isToday)?'border:2px solid '+color+';box-shadow:0 0 16px '+bg:'';
+  var borderStyle=(wd&&wd.isToday)?'border:2px solid '+color+';':'';
   var ctrlHtml='';
   if(showCtrl){
     ctrlHtml='<div style="display:flex;gap:8px;margin-top:10px">'+
-      '<button class="btn" style="flex:1;font-size:12px" onclick="ppFlip(\''+next+'\')">✅ '+(isPush?'PUSH':'PULL')+'実施済み → '+(isPush?'PULL':'PUSH')+'へ</button>'+
-      '<button class="btn" style="font-size:12px" onclick="ppUndo()">↩ 1つ戻す</button>'+
+      '<button class="btn" style="flex:1;font-size:12px" onclick="ppFlip(\''+next+'\')">'+ic('i-check',13)+' '+(isPush?'PUSH':'PULL')+'実施済み → '+(isPush?'PULL':'PUSH')+'へ</button>'+
+      '<button class="btn" style="font-size:12px" onclick="ppUndo()">'+ic('i-undo',13)+' 1つ戻す</button>'+
       '</div>';
   }
   return '<div class="card" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem;background:linear-gradient(135deg,'+bg+',transparent 70%);'+borderStyle+'">'+
     todayStrong+
-    '<div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:4px">🏋️ 次のウエイト'+wdTxt+'</div>'+
-    '<div style="font-size:24px;font-weight:800;color:'+color+'">'+label+'</div>'+
-    '<div style="font-size:11px;color:var(--text-secondary);margin-top:6px">'+metaTxt+'</div>'+
+    '<div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:6px;display:flex;align-items:center;gap:5px">'+ic('i-dumbbell',13)+' 次のウエイト'+wdTxt+'</div>'+
+    '<div><span class="flag" style="background:'+color+';color:#fff;font-size:22px;padding:5px 16px 5px 12px">'+ic('i-'+(isPush?'push':'pull'),20)+' '+(isPush?'PUSH':'PULL')+'</span></div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-top:8px">'+metaTxt+'</div>'+
     ctrlHtml+
     '</div>';
 }
@@ -1406,7 +1430,7 @@ rehab:function(){
     '<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">本日のメニュー</div>'+
     (tomorrowCats.length?'<div style="display:flex;flex-wrap:wrap;gap:4px">'+tomorrowCats.map(function(c){return'<span style="background:'+RCAT_BG[c]+';color:'+RCAT_COLOR[c]+';padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600">'+c+'</span>';}).join('')+'</div>':'<div style="font-size:12px;color:var(--text-secondary)">未設定</div>')+
     '</div>'+
-    (lastLog?'<div style="font-size:11px;color:var(--text-secondary);border-top:0.5px solid var(--border-tertiary);padding-top:6px;margin-top:4px">前回: '+fmt(lastLog.date)+(lastLog.preCheck&&lastLog.preCheck.pain!=null?' / 痛み:'+lastLog.preCheck.pain+'/10':'')+(lastLog.comment?' / '+lastLog.comment.slice(0,20)+'...':'')+'</div>':'')+
+    (lastLog?'<div style="font-size:11px;color:var(--text-secondary);border-top:0.5px solid var(--border-tertiary);padding-top:6px;margin-top:4px">前回: '+fmt(lastLog.date)+(lastLog.preCheck&&lastLog.preCheck.pain!=null?' / 痛み:'+lastLog.preCheck.pain+'/10':'')+(lastLog.comment?' / '+escapeHtml(lastLog.comment.slice(0,20))+'...':'')+'</div>':'')+
     '</div>';
   });
   h+='</div>';
@@ -1815,15 +1839,18 @@ function renderChartDiagnosis(iid){
   return h;
 }
 function saveChartDiagnosis(iid){
-  var ch=getChart(iid);
   var g=function(id){var e=document.getElementById(id);return e?e.value:'';};
-  ch.injDetail.mechanism=g('cd-mech');ch.injDetail.scene=g('cd-scene');ch.injDetail.tissue=g('cd-tissue');ch.injDetail.severity=g('cd-sev');ch.injDetail.situation=g('cd-situation');ch.injDetail.firstaid=g('cd-firstaid');
-  ch.medical.visitDate=g('cd-visitdate');ch.medical.hospital=g('cd-hospital');ch.medical.doctor=g('cd-doctor');ch.medical.diagnosis=g('cd-diagnosis');
-  ch.medical.imgTypes=Array.prototype.slice.call(document.querySelectorAll('.cd-imgtype:checked')).map(function(e){return e.value;});
-  ch.medical.imgFindings=g('cd-imgfind');ch.medical.treatment=g('cd-treatment');
-  ch.medical.surgery=document.getElementById('cd-surgery')?document.getElementById('cd-surgery').checked:false;
-  ch.medical.surgeryDate=g('cd-surgdate');ch.medical.surgeryName=g('cd-surgname');
-  saveChart(ch);alert('保存しました');
+  // フォーム値を先に収集し、server-latestへは対象フィールドのみマージ（evals/soaps等を巻き戻さない）
+  var det={mechanism:g('cd-mech'),scene:g('cd-scene'),tissue:g('cd-tissue'),severity:g('cd-sev'),situation:g('cd-situation'),firstaid:g('cd-firstaid')};
+  var med={visitDate:g('cd-visitdate'),hospital:g('cd-hospital'),doctor:g('cd-doctor'),diagnosis:g('cd-diagnosis'),
+    imgTypes:Array.prototype.slice.call(document.querySelectorAll('.cd-imgtype:checked')).map(function(e){return e.value;}),
+    imgFindings:g('cd-imgfind'),treatment:g('cd-treatment'),
+    surgery:document.getElementById('cd-surgery')?document.getElementById('cd-surgery').checked:false,
+    surgeryDate:g('cd-surgdate'),surgeryName:g('cd-surgname')};
+  chartUpdate(iid,function(ch){
+    ch.injDetail=Object.assign(ch.injDetail||{},det);
+    ch.medical=Object.assign(ch.medical||{},med);
+  },function(){alert('保存しました');});
 }
 
 // ===== 評価タブ（部位連動） =====
@@ -2396,10 +2423,11 @@ function changeStage(iid,delta){
   chartTab('return');
 }
 function toggleReturnCriteria(iid,el){
-  var ch=getChart(iid);
-  if(!ch.returnCriteria)ch.returnCriteria={};
-  ch.returnCriteria[el.dataset.k]=el.checked;
-  saveChart(ch);
+  var k=el.dataset.k,v=el.checked;
+  chartUpdate(iid,function(ch){
+    if(!ch.returnCriteria)ch.returnCriteria={};
+    ch.returnCriteria[k]=v;
+  });
 }
 function unresolveInj(iid){
   var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return;

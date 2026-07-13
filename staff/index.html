@@ -1371,8 +1371,8 @@ function avH(p,sz){var i=p.id%AVC.length,ini=p.name?p.name.split(/\s+/).map(func
 function fmt(d){return d?d.replace(/-/g,'/'):'-';}
 function pSt(pid){var a=D.i.find(function(x){return x.pid===pid&&!x.resolved;});if(!a)return'ok';var rh=D.r.find(function(x){return x.injId===a.id;});return(rh&&rh.stage>0)?'rehab':'inj';}
 // 種目の最新記録（ランク判定用）。date降順→inputAt降順→id降順で先頭。bronco>0ガードはgetBestと同一。
-function getLatest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;rs.sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d)return d;var ia=String(b.inputAt||'').localeCompare(String(a.inputAt||''));if(ia)return ia;return String(b.id||'').localeCompare(String(a.id||''));});return rs[0][f];}
-function getBest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
+function getLatest(pid,f){var rs=D.ph.filter(function(x){return idEq(x.pid,pid)&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;rs.sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d)return d;var ia=String(b.inputAt||'').localeCompare(String(a.inputAt||''));if(ia)return ia;return String(b.id||'').localeCompare(String(a.id||''));});return rs[0][f];}
+function getBest(pid,f){var rs=D.ph.filter(function(x){return idEq(x.pid,pid)&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
 function getBestBIG3(pid){var sq=getBest(pid,'squat')||0;var bp=getBest(pid,'bench')||0;var dl=getBest(pid,'deadlift')||0;return(sq||bp||dl)?(sq+bp+dl):null;}
 function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
@@ -1760,7 +1760,7 @@ dash:function(){
   $m().innerHTML+=teamRecordsH;
   // Announcements section with calendar link
   $m().innerHTML+='<div style="margin-top:1.25rem"><div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.75rem">'+ic('i-megaphone',15,'var(--maroon)')+'お知らせ投稿（選手サイトに表示）</div>'+
-  (thisWeekEvents.length?'<div style="margin-bottom:.75rem"><div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-secondary);margin-bottom:6px">'+ic('i-calendar',13)+'今週のカレンダー（クリックでお知らせに反映）</div>'+thisWeekEvents.map(function(ev){return'<div class="alert-card alert-info" style="cursor:pointer;justify-content:space-between" onclick="fillAnnounceFromEvent(\''+escAnn(ev.date)+'\',\''+escAnn(ev.title)+'\',\''+escAnn(ev.detail||'')+'\')">'+'<span><strong>'+fmt(ev.date)+'</strong> '+ev.title+(ev.detail?' — '+ev.detail:'')+'</span><span style="font-size:11px;opacity:.7">クリックで反映</span></div>';}).join('')+'</div>':'')+
+  (thisWeekEvents.length?'<div style="margin-bottom:.75rem"><div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-secondary);margin-bottom:6px">'+ic('i-calendar',13)+'今週のカレンダー（クリックでお知らせに反映）</div>'+thisWeekEvents.map(function(ev){return'<div class="alert-card alert-info" style="cursor:pointer;justify-content:space-between" onclick="fillAnnounceFromEvent(\''+escAnn(ev.date)+'\',\''+escAnn(ev.title)+'\',\''+escAnn(ev.detail||'')+'\')">'+'<span><strong>'+fmt(ev.date)+'</strong> '+escapeHtml(ev.title)+(ev.detail?' — '+escapeHtml(ev.detail):'')+'</span><span style="font-size:11px;opacity:.7">クリックで反映</span></div>';}).join('')+'</div>':'')+
   '<div class="form-box" style="margin-bottom:.75rem"><div class="fl" style="margin-bottom:10px"><label>宛先</label><select class="ipt" id="ann-target" style="width:auto"><option value="">全体へ</option>'+D.p.map(function(p){return'<option value="'+p.id+'">個人: '+escapeHtml(p.name)+'</option>';}).join('')+'</select></div><textarea class="ipt" id="ann-text" placeholder="今週の予定やお知らせを入力..." style="min-height:80px"></textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-p" onclick="postAnnounce()">投稿する</button><button class="btn" onclick="postAnnounceFromCalendar()">'+ic('i-calendar',13)+' 今週の予定をまとめて投稿</button></div></div>'+
   (D.ann.length?D.ann.sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,8).map(function(a){var tgt=a.targetPid?D.p.find(function(x){return x.id===a.targetPid;}):null;var readCount=(a.readBy||[]).length;var totalTarget=a.targetPid?1:D.p.length;return'<div class="notice-item"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">'+fmt(a.date)+(tgt?' <span class="bd bd-b">個人: '+escapeHtml(tgt.name)+'</span>':' <span class="bd bd-p">全体</span>')+' <span style="color:var(--green)">既読'+readCount+'/'+totalTarget+'</span></div><div style="font-size:13px;white-space:pre-wrap">'+escapeHtml(a.text)+'</div></div><button class="btn btn-sm btn-d" onclick="delAnnounce('+a.id+')">削除</button></div></div>';}).join(''):'<div class="no" style="padding:1rem">お知らせはまだありません</div>')+'</div>';
 },
@@ -2460,6 +2460,16 @@ function saveChartMetrics(injId,metrics,mmtTargets,meta,onDone){
     return latest;
   },onDone);
 }
+// === CHART-UPDATE (staff/trainer同期) ===
+// 操作単位のchart更新: server-latestの対象injIdレコードにfnを適用して保存する（無ければ_chartIdxが雛形を作る）。
+// ローカルchを組み立てて saveChart(ch) で丸ごと置換するのは禁止（同一injId内で他端末のevals/soaps等を巻き戻す）。
+function chartUpdate(injId,fn,onDone){
+  return svSafeUpdate('chart',function(latest){
+    var i=_chartIdx(latest,injId);
+    fn(latest[i]);
+    return latest;
+  },onDone);
+}
 // 受傷機転の選択肢
 var INJ_MECHANISM=['コンタクト（タックル）','コンタクト（被タックル）','コンタクト（ラック/モール）','コンタクト（スクラム）','コンタクト（その他）','非コンタクト（ランニング）','非コンタクト（ステップ/方向転換）','非コンタクト（ジャンプ着地）','非コンタクト（キック）','オーバーユース（使い過ぎ）','不明'];
 // 受傷場面
@@ -2635,8 +2645,8 @@ function renderChartTimeline(iid){
       '<div class="tl-dot">'+(IC[ev.type]||'')+'</div>'+
       '<div class="tl-card" style="'+futureStyle+'">'+
         '<div class="tl-date">'+fmt(ev.date)+(ev._future?' ・ 予定':'')+'</div>'+
-        '<div class="tl-title">'+ev.title+'</div>'+
-        (ev.desc?'<div class="tl-desc">'+ev.desc+'</div>':'')+
+        '<div class="tl-title">'+escapeHtml(ev.title)+'</div>'+
+        (ev.desc?'<div class="tl-desc">'+escapeHtml(ev.desc)+'</div>':'')+
       '</div>'+
     '</div>';
   });
@@ -2742,15 +2752,18 @@ function renderChartDiagnosis(iid){
   return h;
 }
 function saveChartDiagnosis(iid){
-  var ch=getChart(iid);
   var g=function(id){var e=document.getElementById(id);return e?e.value:'';};
-  ch.injDetail.mechanism=g('cd-mech');ch.injDetail.scene=g('cd-scene');ch.injDetail.tissue=g('cd-tissue');ch.injDetail.severity=g('cd-sev');ch.injDetail.situation=g('cd-situation');ch.injDetail.firstaid=g('cd-firstaid');
-  ch.medical.visitDate=g('cd-visitdate');ch.medical.hospital=g('cd-hospital');ch.medical.doctor=g('cd-doctor');ch.medical.diagnosis=g('cd-diagnosis');
-  ch.medical.imgTypes=Array.prototype.slice.call(document.querySelectorAll('.cd-imgtype:checked')).map(function(e){return e.value;});
-  ch.medical.imgFindings=g('cd-imgfind');ch.medical.treatment=g('cd-treatment');
-  ch.medical.surgery=document.getElementById('cd-surgery')?document.getElementById('cd-surgery').checked:false;
-  ch.medical.surgeryDate=g('cd-surgdate');ch.medical.surgeryName=g('cd-surgname');
-  saveChart(ch);toast('保存しました');
+  // フォーム値を先に収集し、server-latestへは対象フィールドのみマージ（evals/soaps等を巻き戻さない）
+  var det={mechanism:g('cd-mech'),scene:g('cd-scene'),tissue:g('cd-tissue'),severity:g('cd-sev'),situation:g('cd-situation'),firstaid:g('cd-firstaid')};
+  var med={visitDate:g('cd-visitdate'),hospital:g('cd-hospital'),doctor:g('cd-doctor'),diagnosis:g('cd-diagnosis'),
+    imgTypes:Array.prototype.slice.call(document.querySelectorAll('.cd-imgtype:checked')).map(function(e){return e.value;}),
+    imgFindings:g('cd-imgfind'),treatment:g('cd-treatment'),
+    surgery:document.getElementById('cd-surgery')?document.getElementById('cd-surgery').checked:false,
+    surgeryDate:g('cd-surgdate'),surgeryName:g('cd-surgname')};
+  chartUpdate(iid,function(ch){
+    ch.injDetail=Object.assign(ch.injDetail||{},det);
+    ch.medical=Object.assign(ch.medical||{},med);
+  },function(){toast('保存しました');});
 }
 
 // ===== 評価タブ（部位連動） =====
@@ -3493,25 +3506,24 @@ function showSOAPForm(iid,soapId){
   if(body)body.innerHTML=h;
 }
 function saveSOAP(iid,soapId){
-  var ch=getChart(iid);
   var g=function(id){var e=document.getElementById(id);return e?e.value:'';};
   var data={date:g('sp-date')||todayStr(),s:g('sp-s'),o:g('sp-o'),a:g('sp-a'),p:g('sp-p'),menu:g('sp-menu'),author:g('sp-author'),inputAt:new Date().toISOString()};
-  if(soapId){
-    var sp=ch.soaps.find(function(x){return idEq(x.id,soapId);});
-    if(sp)Object.assign(sp,data);
-  }else{
-    data.id=Date.now()+'_'+Math.floor(Math.random()*1000);
-    ch.soaps.push(data);
-  }
-  saveChart(ch);
-  chartTab('soap');
+  if(!soapId)data.id=Date.now()+'_'+Math.floor(Math.random()*1000);
+  chartUpdate(iid,function(ch){
+    if(!ch.soaps)ch.soaps=[];
+    if(soapId){
+      var sp=ch.soaps.find(function(x){return idEq(x.id,soapId);});
+      if(sp)Object.assign(sp,data);
+    }else{
+      ch.soaps.push(data);
+    }
+  },function(){chartTab('soap');});
 }
 function delSOAP(iid,soapId){
   if(!confirm('この記録を削除しますか？'))return;
-  var ch=getChart(iid);
-  ch.soaps=ch.soaps.filter(function(x){return!idEq(x.id,soapId);});
-  saveChart(ch);
-  chartTab('soap');
+  chartUpdate(iid,function(ch){
+    ch.soaps=(ch.soaps||[]).filter(function(x){return!idEq(x.id,soapId);});
+  },function(){chartTab('soap');});
 }
 
 // ===== 復帰タブ =====
@@ -3584,16 +3596,16 @@ function changeStage(iid,delta){
   chartTab('return');
 }
 function toggleReturnCriteria(iid,el){
-  var ch=getChart(iid);
-  if(!ch.returnCriteria)ch.returnCriteria={};
-  ch.returnCriteria[el.dataset.k]=el.checked;
-  saveChart(ch);
+  var k=el.dataset.k,v=el.checked;
+  chartUpdate(iid,function(ch){
+    if(!ch.returnCriteria)ch.returnCriteria={};
+    ch.returnCriteria[k]=v;
+  });
 }
 function setRtpLevel(iid,level){
-  var ch=getChart(iid);
-  ch.rtpLevel=level;
-  saveChart(ch);
-  renderChartTab();
+  chartUpdate(iid,function(ch){
+    ch.rtpLevel=level;
+  },function(){renderChartTab();});
 }
 function unresolveInj(iid){
   var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return;
@@ -6338,7 +6350,7 @@ V.msess=function(){
     var unique=st.donePids,skipped=st.skippedPids.length,missed=st.missedPids.length;
     return'<div class="card card-click" style="margin-bottom:8px" onclick="goMSessDetail(\''+s.id+'\')">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
-    '<div style="font-weight:600;font-size:15px">'+s.name+(s.autoCreated?' <span class="bd" style="background:var(--blue-bg);color:var(--blue);font-size:9px">'+ic('i-calendar',10)+' カレンダー連動</span>':'')+'</div>'+
+    '<div style="font-weight:600;font-size:15px">'+escapeHtml(s.name)+(s.autoCreated?' <span class="bd" style="background:var(--blue-bg);color:var(--blue);font-size:9px">'+ic('i-calendar',10)+' カレンダー連動</span>':'')+'</div>'+
     '<div style="display:flex;gap:4px;align-items:center">'+(s.closed?'<span class="bd" style="background:var(--text-tertiary);color:#fff;font-size:9px">締切済</span>':'')+'<span class="bd '+(isActive?'bd-b':isPast?'bd-g':'bd-a')+'">'+(isActive?'進行中':isPast?'完了':'予定')+'</span></div></div>'+
     '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">'+fmt(s.startDate)+' 〜 '+fmt(s.endDate)+'</div>'+
     '<div style="display:flex;gap:10px;font-size:12px">'+

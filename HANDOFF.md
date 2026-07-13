@@ -21,8 +21,8 @@
 
 | # | 内容 | 状態 |
 |---|---|---|
-| P0 | 基線記録＋検証基盤新設＋文書訂正 | 🔶 実装中（基線47実行全PASS済み・ツール3点新設済み・文書訂正済み。**push待ち**） |
-| P1 | 整合性バグ修正＋chartUpdate安全化（+ppCardHtml trainer同期） | ⬜ |
+| P0 | 基線記録＋検証基盤新設＋文書訂正 | ✅ push済み `2b008a4`（基線47実行全PASS） |
+| P1 | 整合性バグ修正＋chartUpdate安全化（+ppCardHtml trainer同期） | 🔶 実装完了・push待ち（coach死にコード削除/getBest・getLatestidEq化/escapeHtml5箇所/trainerにic+SVGシンボル移植しppCardHtml正典同期/chartUpdate新設・生saveChart呼び出し8箇所を操作単位化/test_chart_safe.js両サイトPASS。※trainerのsaveSOAP/delSOAPは既に操作単位化済みだった=rom-rom P0-bの成果） |
 | P2 | tlog編集/削除＋rebuildE1rmFrom（リプレイ方式）＋CRUD雛形v2（Undoトースト） | ⬜ |
 | P3 | デザイン基盤前倒し（ダークトークン+コンポーネント+meta/PWA+グラデ集約+一次ダーク化）4push | ⬜ |
 | P4 | リハビリ役割分担フレーム（緩やか分担・roleGate・trainer確定ボタン撤去） | ⬜ |

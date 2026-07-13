@@ -162,19 +162,53 @@
     "trainer"
    ],
    "kind": "function"
-  }
- },
- "variant": {
+  },
   "ppCardHtml": {
-   "files": {
-    "player": "e391cc4b2477",
-    "staff": "e391cc4b2477",
-    "trainer": "f5ba146a7e7e"
-   },
-   "kind": "function",
-   "_todo": "P1aでtrainerをplayer/staff版(ic()SVG版)に同期しidenticalへ昇格。trainer側にic/i-push/i-pull/i-dumbbell/i-check/i-undoシンボルの移植が必要"
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
+  },
+  "ic": {
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
+  },
+  "chartUpdate": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
+  },
+  "_chartIdx": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
+  },
+  "saveChartMetrics": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
+  },
+  "saveChart": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
   }
  },
+ "variant": {},
  "chart_counts": {
   "player": 14,
   "staff": 12,

@@ -1243,8 +1243,8 @@ function computeAllBadges(){
 }
 
 // 種目の最新記録（ランク判定用）。date降順→inputAt降順→id降順で先頭。bronco>0ガードはgetBestと同一。
-function getLatest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;rs.sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d)return d;var ia=String(b.inputAt||'').localeCompare(String(a.inputAt||''));if(ia)return ia;return String(b.id||'').localeCompare(String(a.id||''));});return rs[0][f];}
-function getBest(pid,f){var rs=D.ph.filter(function(x){return x.pid===pid&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
+function getLatest(pid,f){var rs=D.ph.filter(function(x){return idEq(x.pid,pid)&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;rs.sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d)return d;var ia=String(b.inputAt||'').localeCompare(String(a.inputAt||''));if(ia)return ia;return String(b.id||'').localeCompare(String(a.id||''));});return rs[0][f];}
+function getBest(pid,f){var rs=D.ph.filter(function(x){return idEq(x.pid,pid)&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
 function getBestBIG3(pid){var sq=getBest(pid,'squat')||0;var bp=getBest(pid,'bench')||0;var dl=getBest(pid,'deadlift')||0;return (sq||bp||dl)?(sq+bp+dl):null;}
 function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
@@ -2213,7 +2213,7 @@ mypage:function(){
   var unreadInjNotif=D.i.filter(function(x){return idEq(x.pid,myPid)&&x.notifyPlayer&&(x.source==='player'||x.source==='match');}).length;
   var totalUnread=unreadAnns+unreadInjNotif;
   var myTapeRsvs=(D.tape||[]).filter(function(t){return t.pid===myPid;}).filter(function(t){return t.date>=todayStr();}).sort(function(a,b){return a.date.localeCompare(b.date);}).slice(0,3);
-  var h='<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">'+avH(p,50)+'<div style="flex:1"><div style="font-size:17px;font-weight:600">'+p.name+(totalUnread?' <span style="display:inline-block;background:var(--red);color:#fff;font-size:11px;padding:2px 8px;border-radius:99px;vertical-align:middle;margin-left:6px">'+ic('i-bell',10)+' '+totalUnread+'</span>':'')+'</div><div style="color:var(--text-secondary);font-size:12px">'+p.position+' / '+p.year+'年'+(p.note?' / '+p.note:'')+'</div></div></div>';
+  var h='<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">'+avH(p,50)+'<div style="flex:1"><div style="font-size:17px;font-weight:600">'+escapeHtml(p.name)+(totalUnread?' <span style="display:inline-block;background:var(--red);color:#fff;font-size:11px;padding:2px 8px;border-radius:99px;vertical-align:middle;margin-left:6px">'+ic('i-bell',10)+' '+totalUnread+'</span>':'')+'</div><div style="color:var(--text-secondary);font-size:12px">'+escapeHtml(p.position)+' / '+p.year+'年'+(p.note?' / '+escapeHtml(p.note):'')+'</div></div></div>';
   // プロフィール（身長・ウエイト時間帯）は設定サブ画面へ移設。マイページは導線のみ（Phase B）。
   var wg=(p.wg&&typeof p.wg==='object')?p.wg:{};
   var _htTxt=(p.height!=null&&p.height!=='')?escapeHtml(String(p.height))+'cm':'<span style="color:var(--red);font-weight:700">未設定</span>';
