@@ -1,0 +1,124 @@
+{
+ "findings": [
+  {
+   "title": "【朝コンディション】過去日（昨日分）の記録・修正の導線が事実上隠れている",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ],
+   "detail": "T.condition(2439)の日付欄cf-date(2446)は既定=今日。ホーム『今日やること』(todayTodoHtml 1608, go('condition'))もマイページグリッド(2307)も今日既定でconditionを開くため、昨日分を入れるには毎回date入力欄を手動で過去日へ変更する必要があり『過去日を追加』という明示的な入口/ヒントが無い。過去日の修正はさらに分かりにくい: 過去記録リスト(2459-2466, 直近15件)は各行に修正/削除ボタンが無い純閲覧。修正/削除ボタンはマイページの『当日の最新1件カード』(2308 showEditCondition/delCondition)にしか出ない。過去日を直す唯一の実質ルートは『conditionでその過去日を再入力→doCondition(2661)の同日重複検知(2667-2671)がconfirmで修正画面へ誘導』という副作用頼みで、ユーザーは“同じ日を再入力すると編集になる”と気づけない。改善案: 過去記録リストの各行に修正/削除ボタンを付ける、または『過去日を記録/修正』専用ボタンを設置。"
+  },
+  {
+   "title": "【朝コンディション】毎日の主タスクなのに到達2タップ＋任意項目が多く縦長、体重は2箇所入力",
+   "severity": "low",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ],
+   "detail": "下部ナビ(374-377)は home/training/mydata/mypage の4タブのみでコンディションが無い。最短はホームの『今日やること』1項目タップ(1623)→condition。マイページ経由だと mypage→グリッド(2307)→condition で2タップ。フォーム(2445-2457)はRPE/睡眠/TR時間の必須3項目に加え体重/気分/ストレス/筋肉痛/部位/メモの任意6項目が常時展開で縦に長い。体重はcondition(cf-weight 2450)でも体組成(doBCInput 3846)でも入力でき、選手はどちらを使うべきか不明瞭(getCurrentWeightInfo系がf/bc両参照)。改善案: 任意項目を折りたたみ既定にし主3項目を最短化、体重入力の正典を一本化(または相互リンク明示)。"
+  },
+  {
+   "title": "【トレーニング】実施完了後にtlogを編集/削除する手段が選手側に皆無（打ち間違いが恒久的にボリューム・推定1RMへ残る）",
+   "severity": "high",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ],
+   "detail": "finishTraining(4754)はtlogを保存し、直後のshowTrainingResult(4854)は表示専用、showTrainingHistory(4909)の記録一覧(4944 logs.slice(0,20))も各行に編集/削除が無い純閲覧。実施中はupdTSet等で自由に直せるが、いったん『トレーニングを記録』した後はセット重量/回数/RIRの誤入力も誤完了もスキップ判定も一切訂正不能。誤値はtotalVolume・種目別ボリューム・getE1RMTrend(4985)・自動算出の推定1RM(4815-4829)に混入し続け、マイデータ/ランキングの分析を歪める。スタッフ側にもtlog編集UIが無い(棚卸し済み)ため“誰も直せない”。ユーザーの『修正・削除がもう少し欲しい』の核心の一つ。改善案: 履歴一覧の各セッションに編集/削除を追加(推定1RM再計算も連動)。"
+  },
+  {
+   "title": "【トレーニング】出欠確認ゲートで実施まで毎回+1タップ、『今日のプログラム』と『配布メニュー』が二重表示",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ],
+   "detail": "導線: training(ナビ1)→開始する/カード(1)→startTraining(4037)の『今日はトレーニングしますか？』で『トレーニングする』(1)→beginTrainingExec→実施、と実施入力に到達するまで最低3タップで、毎回“する/休む”画面を1枚挟む。さらにT.training(3939)は本日weight日だと『今日のプログラム』カード(3947-3962 getSlotMenu)を出す一方、直後の『配布されたメニュー』一覧(4002-4011 getMyMenus)にも同じスロットメニューが含まれ、同一メニューが画面内に二重表示されうる。推定1RMカード(3977-3987)・グループカード(3966 myGroupCardHtml)はホーム/マイページとも重複。良い点: 下書きの二層復元(saveTDraft 4078/beginTrainingExec 4131/promptResumeTDraft)と種目スキップ+理由・種目自由追加(addTrainingEx)による代替は充実。改善案: 出欠ゲートを実施画面内の1トグルへ統合、今日のプログラムは一覧から除外して重複解消。"
+  },
+  {
+   "title": "【怪我をした日】選手が自分の怪我報告(i)を編集・削除・取り消しできない（承認前pendingでも自己取消不可）",
+   "severity": "high",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ],
+   "detail": "showInjuryReport(3861)/doInjuryReport(3874)でi+rを新規作成できるが、T.injury(2489)の治療中カード(2524-2551)にはリハビリログ/週次チェック/コメントのボタンのみで、怪我レコード自体の編集・削除・取消が無い。部位/左右/種類/受傷機転の打ち間違い、軽快しての取消、誤報告の撤回はすべてスタッフ任せで、承認待ち(pendingInj 2569 approved==null)ですら選手が自分で消せない。試合日フォーム由来の受傷(doMatch 3799)も同様に自己訂正不能。ユーザー要望の核心。改善案: source==='player'かつ未承認(approved==null)の報告に限り選手の編集/取消を許可。"
+  },
+  {
+   "title": "【怪我をした日】リハビリログ(rlog)は書けるが選手側で一切表示されず、修正・削除も不可（投げっぱなし）",
+   "severity": "high",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ],
+   "detail": "showRehabForm(3729)→doRehab(3730)がrlogを保存するが、player/index.html内にrlogを読み出して選手に見せる描画が存在しない(T.injury・showMyChartいずれもrlog非表示)。選手は自分の過去リハビリ実施記録を振り返れず、当然修正/削除もできない。さらにrehabフォーム自身が『痛みは「カルテを見る・痛みを記録」から記録してください』(3729)と注記するほど“実施内容=rlog”と“痛み=chart評価”の入口が分離し、どちらに何を書くか迷う。改善案: injuryタブにrlog履歴の一覧表示＋自分の記録の修正/削除を追加し、痛み記録との導線を統合。"
+  },
+  {
+   "title": "【怪我をした日】自己入力の痛み記録(chart.evals bySelf)を後から修正・削除できず、誤値がグラフに残り続ける",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ],
+   "detail": "showMyChart(3628)→showPainSelfForm(3693)→savePainSelf(3707)は4種の痛みスライダー(安静/動作/夜間/圧痛)+メモをchart.evalsにpush(3717 bySelf:true)するが、追記専用で選手側に修正/削除UdIが無い。入力ミスの痛み値がdrawMyPainChart(3680)の痛み推移グラフや『最新の評価』(3671-3676)に恒久残存。毎回スライダー4本操作＋到達も『カルテを見る』の一段深い場所(mypage/injuryカード内)で、毎日タスクにしては手数・発見性ともに難。改善案: 自己入力evalに当日中の修正/削除を許可し、痛み記録の入口をカルテ外にも1タップで用意。"
+  },
+  {
+   "title": "【怪我をした日】自分の怪我状況・リハビリ・復帰見込みの表示が4箇所に分散、本日メニューは重複",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ],
+   "detail": "離脱中の情報が (1)ホームのRTPカード(1955-1967 showMyChart)、(2)マイページ『現在の怪我・リハビリ』カード(2281-2303 段階バー+カルテを見る)、(3)T.injury(2489)のフル表示(段階/復帰ブロンコ目標2498/本日メニュー2508/週次チェック/コメント/既往歴)、(4)カルテshowMyChart(RTPレベル/ピッチ図rtpPitchHtml/痛み推移/SOAP/最新評価) に散る。特に『本日のリハビリメニュー』はマイページ(2295-2298)とinjuryタブ(2514-2519)の両方に出て重複。復帰見込みも復帰予定(カルテ3643/injury2529)と復帰ブロンコ目標(2498)に分かれる。改善案: 怪我の“ホーム=概況/カルテ=詳細”に役割を寄せ、本日メニューの二重掲出を解消。"
+  },
+  {
+   "title": "【怪我をした日】新規の怪我報告・試合日チェックの入口が下部ナビにもホームtodoにも無く発見しづらい",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ],
+   "detail": "怪我・違和感を伝える(showInjuryReport)への到達は mypage→グリッド『怪我・リハビリ』(2316)→injuryタブ→『痛み・違和感を伝える』(2573) で報告ボタンまで最低2タップ。下部ナビ(374-377)に怪我が無く、ホームの『今日やること』(todayTodoHtml 1608)は既存怪我の週次チェック(1636-1639)しか出さないため“痛めた瞬間に素早く報告”しづらい。試合日チェック(T.match 2576)も同様にナビ非搭載で、mypageグリッド(2318)か、昨日試合かつ選抜済みの時だけ出るtodoアラート(1621,1625)経由でしか辿れず、試合翌日に見つけにくい。改善案: ホームに常設の『痛みを報告』クイックアクション、試合翌日は全対象者にmatchアラートを出す。"
+  },
+  {
+   "title": "【測定会の日】記録後に結果確認画面が無くマイページへ戻るだけ、トレーニングのFULL TIME演出に比べ達成感が弱い",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ],
+   "detail": "doPhys(3576)/doBronco(2756)は保存後 go('mypage')＋自己ベスト時のみpbFlash(3594/2767)で、専用の結果サマリ画面が無い。一方トレーニングは記録後にshowTrainingResult(4854)で総ボリューム『FULL TIME』ヒーロー＋種目別前回比＋推定1RM更新まで見せる作り込みがあり、測定会という“月次の一大イベント”の方が達成演出が薄い逆転。新ランクや順位変動、BIG3 CLUB到達(mystatus 2058-2069)も即時には示されず、確認にはmystatus/rankingへ手動遷移が必要。改善案: 測定記録後に“今のランク/前回比/クラブ到達/ブロンコ達成”を1枚で見せる結果シートを追加。"
+  },
+  {
+   "title": "【測定会の日】ブロンコ/フィジカルの入力口が複数あり導線が重複（ブロンコは3経路）",
+   "severity": "low",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ],
+   "detail": "ブロンコ入力口が showPhysForm(2697 統合フォーム内のブロンコ欄)・showBroncoForm(2730 physicalから)・showBroncoFormDirect(2743 マイページ直接) の3つ存在し重複。フィジカルもホームの測定会未入力アラート(1976 go('physical'))とマイページグリッド(2314)から入れる。良い点: 1レコードにSQ/BP/DL/チンニング/クリーン/ブロンコが同居し、physicalタブ履歴(2478)からshowEditPhysRec(2968)/delPhysRec(3033)でフルCRUD可能なのはconditon/bcより充実。ただし1種目の打ち間違いでも同レコード全体を編集する必要。改善案: ブロンコ入口を1つに統合。"
+  },
+  {
+   "title": "同じ数値が複数画面に散在（フィジカルベスト5箇所・推定1RM3箇所・最新コンディション2箇所）でどこが正典か不明",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ],
+   "detail": "フィジカルベスト(SQ/BP/DL/ブロンコ)は ホームmyPhysCardHtml(1991)・マイページ『フィジカルベスト』(2326-2335)・physical画面上部(2475)・mystatus(2044-)・mydata(5741-) の5箇所で重複。推定1RMは マイページ(2337-2342)・training(3977-3987)・mydata(getMyInsights 5548) の3箇所。最新コンディション/体組成は マイページ(2345-2364)とmydata(5666-5697)で重複。分析系もmydata(T.mydata 5624)とmystatus(2044)で役割が重なり、選手はどちらを見るべきか判断しにくい。改善案: マイページは“入力ハブ+通知”に絞り、数値の閲覧はmydata/mystatusのどちらか一方へ集約。"
+  },
+  {
+   "title": "【体組成】同日重複チェックが無く二重記録され得る／編集・削除は当日カードのみで過去分を直せない",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ],
+   "detail": "doBCInput(3846)は体重必須チェックとguardSubmitのみで、doCondition(2667)/doPhys(3582)にある同日重複検知が無いため、同じ日に体組成を複数回記録できてしまう。修正/削除(showEditBC 2928/delBC 3021)はマイページの『本日の対象かつ入力済み』カード(2311)からしか出ず、体組成の履歴一覧・過去分編集の導線がmydata側にも無い(mydataは体組成をグラフ表示のみ 5680-5697)。異常値にmydataで気づいてもその場で直せない。改善案: doBCInputに同日重複検知を追加、体組成の履歴一覧＋過去分の修正/削除を用意。"
+  },
+  {
+   "title": "【空き時間の楽しさ】ゲーミフィケーションは厚いが、ランキングが下部ナビに無い/バッジ3箇所/mydata×mystatus重複で回遊が散らかる",
+   "severity": "low",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ],
+   "detail": "楽しさの素材は充実: 自動考察getMyInsights(5525 二人称・BIG3順位/伸び/再発/出席率など)、バッジrenderMyBadgesHtml(5454)/バッジpt、ランク・BIG3 CLUB(mystatus 2056-)、PB全画面フラッシュ、ROAD TO RETURNピッチ図。ただし回遊性に難: ランキングは下部ナビに無く、ホームのランキングカード(2041 go('ranking'))経由の1タップ迂回が必要。バッジは ホームmyBadgeHomeHtml(5490)・mydata(5664)・(関連してmystatus) と複数箇所。mydataの分析とmystatusのBIG3ランク詳細が対象重複。改善案: バッジ/ランク/ランキングを『マイデータ』配下に集約し、ナビからの一貫した“見る”動線を用意。"
+  },
+  {
+   "title": "【ホーム提案】個人ダッシュボードにチーム全体向け情報が混在し過積載、優先度が伝わりにくい",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ],
+   "detail": "T.home(1898)は ヒーロー→今日やること→RTP→測定会個人アラート→お知らせ→myPhysCard→バッジ→pp→グループ→今週予定→(チーム)昨日の試合日チェック未入力者一覧(2031)→測定会あとN名(2034-2039)→ランキング と極端に縦長。特に『試合日チェック未入力◯名』『測定会あと◯名』はチーム全体向けで、個人の朝の行動には不要な情報が個人ダッシュボードへ混在。提案(ホームに置くべきもの): (1)ヒーロー＋『今日やること』を最上部固定で最優先(毎日タスク=コンディション/トレーニング/怪我中なら週次チェック)、(2)離脱中はRTPカード、(3)個人宛お知らせ・怪我承認結果、(4)『痛みを報告』『試合日チェック』のクイックアクション常設。逆にホームから外す/畳む: チーム全体の未入力者一覧・測定会残数(スタッフ向け)、myPhysCard/バッジ/ランキングはmydataへ寄せて“見る”は下段or別タブに。これで朝の主タスクへの到達タップと情報ノイズを同時に削減できる。"
+  }
+ ]
+}

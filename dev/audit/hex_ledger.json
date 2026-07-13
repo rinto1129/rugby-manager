@@ -1,0 +1,3734 @@
+{
+ "player": {
+  "hex_unique": 83,
+  "hex_total": 214,
+  "rgba_unique": 86,
+  "rgba_total": 114,
+  "gradients": 28,
+  "hex": {
+   "#fff": {
+    "count": 34,
+    "lines": [
+     22,
+     36,
+     39,
+     64,
+     83
+    ],
+    "category": "surface"
+   },
+   "#6e5a5c": {
+    "count": 24,
+    "lines": [
+     23,
+     381,
+     2487,
+     2487,
+     2487
+    ],
+    "category": "chartjs"
+   },
+   "#046c48": {
+    "count": 12,
+    "lines": [
+     21,
+     393,
+     2468,
+     2485,
+     4981
+    ],
+    "category": "status"
+   },
+   "#c1121f": {
+    "count": 11,
+    "lines": [
+     14,
+     257,
+     2468,
+     5880,
+     5880
+    ],
+    "category": "brand"
+   },
+   "#8d0000": {
+    "count": 10,
+    "lines": [
+     14,
+     20,
+     4968,
+     4968,
+     5921
+    ],
+    "category": "brand"
+   },
+   "#1d4ed8": {
+    "count": 8,
+    "lines": [
+     21,
+     393,
+     2468,
+     2484,
+     3687
+    ],
+    "category": "status"
+   },
+   "#6d52d6": {
+    "count": 8,
+    "lines": [
+     21,
+     393,
+     2468,
+     3687,
+     5882
+    ],
+    "category": "status"
+   },
+   "#b45309": {
+    "count": 7,
+    "lines": [
+     2486,
+     5910,
+     5933,
+     5933,
+     5933
+    ],
+    "category": "chartjs"
+   },
+   "#ffd24a": {
+    "count": 5,
+    "lines": [
+     261,
+     261,
+     470,
+     477,
+     5450
+    ],
+    "category": "unknown"
+   },
+   "#8a7578": {
+    "count": 4,
+    "lines": [
+     23,
+     1521,
+     1575,
+     2089
+    ],
+    "category": "unknown"
+   },
+   "#c2410c": {
+    "count": 3,
+    "lines": [
+     18,
+     393,
+     5912
+    ],
+    "category": "status"
+   },
+   "#b91c1c": {
+    "count": 3,
+    "lines": [
+     21,
+     393,
+     3687
+    ],
+    "category": "status"
+   },
+   "#e8a05c": {
+    "count": 3,
+    "lines": [
+     468,
+     475,
+     5449
+    ],
+    "category": "unknown"
+   },
+   "#c9d4e4": {
+    "count": 3,
+    "lines": [
+     469,
+     476,
+     5450
+    ],
+    "category": "unknown"
+   },
+   "#6fe3e1": {
+    "count": 3,
+    "lines": [
+     471,
+     478,
+     5450
+    ],
+    "category": "unknown"
+   },
+   "#c084fc": {
+    "count": 3,
+    "lines": [
+     472,
+     479,
+     5450
+    ],
+    "category": "unknown"
+   },
+   "#f5e9e9": {
+    "count": 2,
+    "lines": [
+     15,
+     2487
+    ],
+    "category": "chartjs"
+   },
+   "#2a0a0c": {
+    "count": 2,
+    "lines": [
+     15,
+     19
+    ],
+    "category": "unknown"
+   },
+   "#f5821f": {
+    "count": 2,
+    "lines": [
+     250,
+     257
+    ],
+    "category": "unknown"
+   },
+   "#000": {
+    "count": 2,
+    "lines": [
+     267,
+     267
+    ],
+    "category": "unknown"
+   },
+   "#0891b2": {
+    "count": 2,
+    "lines": [
+     386,
+     2421
+    ],
+    "category": "status"
+   },
+   "#a16207": {
+    "count": 2,
+    "lines": [
+     393,
+     3687
+    ],
+    "category": "status"
+   },
+   "#4f0004": {
+    "count": 1,
+    "lines": [
+     14
+    ],
+    "category": "brand"
+   },
+   "#bd6d6d": {
+    "count": 1,
+    "lines": [
+     15
+    ],
+    "category": "unknown"
+   },
+   "#deb6b6": {
+    "count": 1,
+    "lines": [
+     15
+    ],
+    "category": "unknown"
+   },
+   "#c9a227": {
+    "count": 1,
+    "lines": [
+     16
+    ],
+    "category": "brand"
+   },
+   "#f2c43d": {
+    "count": 1,
+    "lines": [
+     16
+    ],
+    "category": "brand"
+   },
+   "#8f6f14": {
+    "count": 1,
+    "lines": [
+     16
+    ],
+    "category": "unknown"
+   },
+   "#8c97a6": {
+    "count": 1,
+    "lines": [
+     17
+    ],
+    "category": "unknown"
+   },
+   "#a9713c": {
+    "count": 1,
+    "lines": [
+     17
+    ],
+    "category": "unknown"
+   },
+   "#3d0f11": {
+    "count": 1,
+    "lines": [
+     19
+    ],
+    "category": "unknown"
+   },
+   "#571416": {
+    "count": 1,
+    "lines": [
+     19
+    ],
+    "category": "unknown"
+   },
+   "#6b0000": {
+    "count": 1,
+    "lines": [
+     20
+    ],
+    "category": "unknown"
+   },
+   "#e8eefc": {
+    "count": 1,
+    "lines": [
+     21
+    ],
+    "category": "unknown"
+   },
+   "#e3f5ee": {
+    "count": 1,
+    "lines": [
+     21
+    ],
+    "category": "unknown"
+   },
+   "#fcebeb": {
+    "count": 1,
+    "lines": [
+     21
+    ],
+    "category": "unknown"
+   },
+   "#92400e": {
+    "count": 1,
+    "lines": [
+     21
+    ],
+    "category": "unknown"
+   },
+   "#fbf0dd": {
+    "count": 1,
+    "lines": [
+     21
+    ],
+    "category": "unknown"
+   },
+   "#eeeafb": {
+    "count": 1,
+    "lines": [
+     21
+    ],
+    "category": "unknown"
+   },
+   "#f8f2f2": {
+    "count": 1,
+    "lines": [
+     22
+    ],
+    "category": "unknown"
+   },
+   "#f1e7e7": {
+    "count": 1,
+    "lines": [
+     22
+    ],
+    "category": "unknown"
+   },
+   "#f7f4f3": {
+    "count": 1,
+    "lines": [
+     22
+    ],
+    "category": "surface"
+   },
+   "#231416": {
+    "count": 1,
+    "lines": [
+     23
+    ],
+    "category": "unknown"
+   },
+   "#f87171": {
+    "count": 1,
+    "lines": [
+     70
+    ],
+    "category": "status"
+   },
+   "#fffdf6": {
+    "count": 1,
+    "lines": [
+     145
+    ],
+    "category": "surface"
+   },
+   "#f5cbcb": {
+    "count": 1,
+    "lines": [
+     156
+    ],
+    "category": "unknown"
+   },
+   "#b9c2ce": {
+    "count": 1,
+    "lines": [
+     236
+    ],
+    "category": "unknown"
+   },
+   "#c79067": {
+    "count": 1,
+    "lines": [
+     237
+    ],
+    "category": "unknown"
+   },
+   "#2a0810": {
+    "count": 1,
+    "lines": [
+     259
+    ],
+    "category": "brand"
+   },
+   "#5a0f2a": {
+    "count": 1,
+    "lines": [
+     259
+    ],
+    "category": "unknown"
+   },
+   "#7a1233": {
+    "count": 1,
+    "lines": [
+     259
+    ],
+    "category": "brand"
+   },
+   "#ff9ab8": {
+    "count": 1,
+    "lines": [
+     261
+    ],
+    "category": "unknown"
+   },
+   "#059669": {
+    "count": 1,
+    "lines": [
+     386
+    ],
+    "category": "status"
+   },
+   "#e0f2fe": {
+    "count": 1,
+    "lines": [
+     387
+    ],
+    "category": "status"
+   },
+   "#d1fae5": {
+    "count": 1,
+    "lines": [
+     387
+    ],
+    "category": "status"
+   },
+   "#b5d4f4": {
+    "count": 1,
+    "lines": [
+     913
+    ],
+    "category": "unknown"
+   },
+   "#0c447c": {
+    "count": 1,
+    "lines": [
+     913
+    ],
+    "category": "unknown"
+   },
+   "#9fe1cb": {
+    "count": 1,
+    "lines": [
+     913
+    ],
+    "category": "unknown"
+   },
+   "#085041": {
+    "count": 1,
+    "lines": [
+     913
+    ],
+    "category": "unknown"
+   },
+   "#f5c4b3": {
+    "count": 1,
+    "lines": [
+     913
+    ],
+    "category": "unknown"
+   },
+   "#712b13": {
+    "count": 1,
+    "lines": [
+     913
+    ],
+    "category": "unknown"
+   },
+   "#fac775": {
+    "count": 1,
+    "lines": [
+     913
+    ],
+    "category": "unknown"
+   },
+   "#633806": {
+    "count": 1,
+    "lines": [
+     913
+    ],
+    "category": "unknown"
+   },
+   "#f4c0d1": {
+    "count": 1,
+    "lines": [
+     913
+    ],
+    "category": "unknown"
+   },
+   "#72243e": {
+    "count": 1,
+    "lines": [
+     913
+    ],
+    "category": "unknown"
+   },
+   "#c0dd97": {
+    "count": 1,
+    "lines": [
+     913
+    ],
+    "category": "unknown"
+   },
+   "#27500a": {
+    "count": 1,
+    "lines": [
+     913
+    ],
+    "category": "unknown"
+   },
+   "#cecbf6": {
+    "count": 1,
+    "lines": [
+     913
+    ],
+    "category": "unknown"
+   },
+   "#3c3489": {
+    "count": 1,
+    "lines": [
+     913
+    ],
+    "category": "unknown"
+   },
+   "#185fa5": {
+    "count": 1,
+    "lines": [
+     2780
+    ],
+    "category": "unknown"
+   },
+   "#1d9e75": {
+    "count": 1,
+    "lines": [
+     2781
+    ],
+    "category": "unknown"
+   },
+   "#d85a30": {
+    "count": 1,
+    "lines": [
+     2782
+    ],
+    "category": "unknown"
+   },
+   "#534ab7": {
+    "count": 1,
+    "lines": [
+     2783
+    ],
+    "category": "unknown"
+   },
+   "#854f0b": {
+    "count": 1,
+    "lines": [
+     2784
+    ],
+    "category": "unknown"
+   },
+   "#a32d2d": {
+    "count": 1,
+    "lines": [
+     2785
+    ],
+    "category": "unknown"
+   },
+   "#edf7f1": {
+    "count": 1,
+    "lines": [
+     3609
+    ],
+    "category": "unknown"
+   },
+   "#e3f2e9": {
+    "count": 1,
+    "lines": [
+     3609
+    ],
+    "category": "unknown"
+   },
+   "#cbdfd3": {
+    "count": 1,
+    "lines": [
+     3615
+    ],
+    "category": "unknown"
+   },
+   "#ffd7dd": {
+    "count": 1,
+    "lines": [
+     5134
+    ],
+    "category": "unknown"
+   },
+   "#5b0f1f": {
+    "count": 1,
+    "lines": [
+     5136
+    ],
+    "category": "unknown"
+   },
+   "#5fa8ff": {
+    "count": 1,
+    "lines": [
+     5450
+    ],
+    "category": "unknown"
+   },
+   "#ff7a9c": {
+    "count": 1,
+    "lines": [
+     5450
+    ],
+    "category": "unknown"
+   },
+   "#3df0a4": {
+    "count": 1,
+    "lines": [
+     5450
+    ],
+    "category": "unknown"
+   }
+  },
+  "rgba": {
+   "rgba(60,10,12,0.08)": {
+    "count": 10,
+    "lines": [
+     2487,
+     4968,
+     4981,
+     5620,
+     5883
+    ]
+   },
+   "rgba(42,10,12,0.96)": {
+    "count": 8,
+    "lines": [
+     2487,
+     4968,
+     4981,
+     5620,
+     5913
+    ]
+   },
+   "rgba(60,10,12,.08)": {
+    "count": 3,
+    "lines": [
+     24,
+     381,
+     381
+    ]
+   },
+   "rgba(194,65,12,.10)": {
+    "count": 3,
+    "lines": [
+     1414,
+     1419,
+     3952
+    ]
+   },
+   "rgba(4,108,72,0)": {
+    "count": 3,
+    "lines": [
+     2485,
+     4979,
+     5618
+    ]
+   },
+   "rgba(141,0,0,.22)": {
+    "count": 2,
+    "lines": [
+     20,
+     247
+    ]
+   },
+   "rgba(141,0,0,.10)": {
+    "count": 2,
+    "lines": [
+     25,
+     115
+    ]
+   },
+   "rgba(141,0,0,.14)": {
+    "count": 2,
+    "lines": [
+     98,
+     4281
+    ]
+   },
+   "rgba(141,0,0,0)": {
+    "count": 2,
+    "lines": [
+     98,
+     4966
+    ]
+   },
+   "rgba(4,108,72,.18)": {
+    "count": 2,
+    "lines": [
+     2170,
+     2170
+    ]
+   },
+   "rgba(4,108,72,0.22)": {
+    "count": 2,
+    "lines": [
+     4979,
+     5618
+    ]
+   },
+   "rgba(60,10,12,.16)": {
+    "count": 1,
+    "lines": [
+     24
+    ]
+   },
+   "rgba(141,0,0,.06)": {
+    "count": 1,
+    "lines": [
+     25
+    ]
+   },
+   "rgba(35,20,22,.05)": {
+    "count": 1,
+    "lines": [
+     25
+    ]
+   },
+   "rgba(245,233,233,.08)": {
+    "count": 1,
+    "lines": [
+     65
+    ]
+   },
+   "rgba(245,233,233,.55)": {
+    "count": 1,
+    "lines": [
+     66
+    ]
+   },
+   "rgba(189,109,109,.14)": {
+    "count": 1,
+    "lines": [
+     104
+    ]
+   },
+   "rgba(141,0,0,.07)": {
+    "count": 1,
+    "lines": [
+     105
+    ]
+   },
+   "rgba(255,255,255,.16)": {
+    "count": 1,
+    "lines": [
+     114
+    ]
+   },
+   "rgba(35,20,22,.07)": {
+    "count": 1,
+    "lines": [
+     145
+    ]
+   },
+   "rgba(222,182,182,.55)": {
+    "count": 1,
+    "lines": [
+     148
+    ]
+   },
+   "rgba(35,20,22,.06)": {
+    "count": 1,
+    "lines": [
+     148
+    ]
+   },
+   "rgba(141,0,0,.18)": {
+    "count": 1,
+    "lines": [
+     194
+    ]
+   },
+   "rgba(242,196,61,.25)": {
+    "count": 1,
+    "lines": [
+     194
+    ]
+   },
+   "rgba(4,108,72,.25)": {
+    "count": 1,
+    "lines": [
+     199
+    ]
+   },
+   "rgba(193,18,31,.18)": {
+    "count": 1,
+    "lines": [
+     201
+    ]
+   },
+   "rgba(141,0,0,.38)": {
+    "count": 1,
+    "lines": [
+     212
+    ]
+   },
+   "rgba(193,18,31,.12)": {
+    "count": 1,
+    "lines": [
+     212
+    ]
+   },
+   "rgba(201,162,39,.42)": {
+    "count": 1,
+    "lines": [
+     222
+    ]
+   },
+   "rgba(242,196,61,.32)": {
+    "count": 1,
+    "lines": [
+     222
+    ]
+   },
+   "rgba(140,151,166,.34)": {
+    "count": 1,
+    "lines": [
+     223
+    ]
+   },
+   "rgba(169,113,60,.30)": {
+    "count": 1,
+    "lines": [
+     224
+    ]
+   },
+   "rgba(143,111,20,.45)": {
+    "count": 1,
+    "lines": [
+     225
+    ]
+   },
+   "rgba(0,0,0,.2)": {
+    "count": 1,
+    "lines": [
+     226
+    ]
+   },
+   "rgba(255,255,255,.30)": {
+    "count": 1,
+    "lines": [
+     238
+    ]
+   },
+   "rgba(255,255,255,0)": {
+    "count": 1,
+    "lines": [
+     238
+    ]
+   },
+   "rgba(255,255,255,.95)": {
+    "count": 1,
+    "lines": [
+     239
+    ]
+   },
+   "rgba(0,0,0,.22)": {
+    "count": 1,
+    "lines": [
+     239
+    ]
+   },
+   "rgba(141,0,0,.24)": {
+    "count": 1,
+    "lines": [
+     241
+    ]
+   },
+   "rgba(193,18,31,.20)": {
+    "count": 1,
+    "lines": [
+     249
+    ]
+   },
+   "rgba(245,130,31,.13)": {
+    "count": 1,
+    "lines": [
+     249
+    ]
+   },
+   "rgba(245,130,31,0)": {
+    "count": 1,
+    "lines": [
+     249
+    ]
+   },
+   "rgba(255,255,255,.55)": {
+    "count": 1,
+    "lines": [
+     251
+    ]
+   },
+   "rgba(255,140,165,.28)": {
+    "count": 1,
+    "lines": [
+     259
+    ]
+   },
+   "rgba(150,20,55,.4)": {
+    "count": 1,
+    "lines": [
+     259
+    ]
+   },
+   "rgba(255,100,140,.12)": {
+    "count": 1,
+    "lines": [
+     259
+    ]
+   },
+   "rgba(255,205,218,.85)": {
+    "count": 1,
+    "lines": [
+     260
+    ]
+   },
+   "rgba(255,160,190,.5)": {
+    "count": 1,
+    "lines": [
+     261
+    ]
+   },
+   "rgba(255,220,160,.92)": {
+    "count": 1,
+    "lines": [
+     262
+    ]
+   },
+   "rgba(255,222,232,.72)": {
+    "count": 1,
+    "lines": [
+     263
+    ]
+   },
+   "rgba(255,255,255,.055)": {
+    "count": 1,
+    "lines": [
+     267
+    ]
+   },
+   "rgba(255,255,255,.18)": {
+    "count": 1,
+    "lines": [
+     269
+    ]
+   },
+   "rgba(255,255,255,.2)": {
+    "count": 1,
+    "lines": [
+     275
+    ]
+   },
+   "rgba(4,108,72,.42)": {
+    "count": 1,
+    "lines": [
+     2170
+    ]
+   },
+   "rgba(29,78,216,0.20)": {
+    "count": 1,
+    "lines": [
+     2484
+    ]
+   },
+   "rgba(29,78,216,0)": {
+    "count": 1,
+    "lines": [
+     2484
+    ]
+   },
+   "rgba(4,108,72,0.20)": {
+    "count": 1,
+    "lines": [
+     2485
+    ]
+   },
+   "rgba(180,83,9,0.20)": {
+    "count": 1,
+    "lines": [
+     2486
+    ]
+   },
+   "rgba(180,83,9,0)": {
+    "count": 1,
+    "lines": [
+     2486
+    ]
+   },
+   "rgba(255,255,255,0.1)": {
+    "count": 1,
+    "lines": [
+     2487
+    ]
+   },
+   "rgba(4,108,72,.5)": {
+    "count": 1,
+    "lines": [
+     3612
+    ]
+   },
+   "rgba(4,108,72,.38)": {
+    "count": 1,
+    "lines": [
+     3612
+    ]
+   },
+   "rgba(4,108,72,.2)": {
+    "count": 1,
+    "lines": [
+     3612
+    ]
+   },
+   "rgba(141,0,0,0.22)": {
+    "count": 1,
+    "lines": [
+     4966
+    ]
+   },
+   "rgba(59,130,246,.25)": {
+    "count": 1,
+    "lines": [
+     5123
+    ]
+   },
+   "rgba(168,85,247,.25)": {
+    "count": 1,
+    "lines": [
+     5123
+    ]
+   },
+   "rgba(59,130,246,.55)": {
+    "count": 1,
+    "lines": [
+     5123
+    ]
+   },
+   "rgba(168,85,247,.55)": {
+    "count": 1,
+    "lines": [
+     5123
+    ]
+   },
+   "rgba(0,0,0,.35)": {
+    "count": 1,
+    "lines": [
+     5128
+    ]
+   },
+   "rgba(255,255,255,.82)": {
+    "count": 1,
+    "lines": [
+     5134
+    ]
+   },
+   "rgba(139,26,45,.55)": {
+    "count": 1,
+    "lines": [
+     5136
+    ]
+   },
+   "rgba(139,26,45,.75)": {
+    "count": 1,
+    "lines": [
+     5136
+    ]
+   },
+   "rgba(255,255,255,.72)": {
+    "count": 1,
+    "lines": [
+     5138
+    ]
+   },
+   "rgba(255,255,255,.9)": {
+    "count": 1,
+    "lines": [
+     5145
+    ]
+   },
+   "rgba(90,15,42,.14)": {
+    "count": 1,
+    "lines": [
+     5500
+    ]
+   },
+   "rgba(255,90,130,.05)": {
+    "count": 1,
+    "lines": [
+     5500
+    ]
+   },
+   "rgba(255,140,165,.25)": {
+    "count": 1,
+    "lines": [
+     5500
+    ]
+   },
+   "rgba(0,0,0,0)": {
+    "count": 1,
+    "lines": [
+     5905
+    ]
+   },
+   "rgba(29,78,216,0.18)": {
+    "count": 1,
+    "lines": [
+     5908
+    ]
+   },
+   "rgba(4,108,72,0.18)": {
+    "count": 1,
+    "lines": [
+     5909
+    ]
+   },
+   "rgba(180,83,9,0.18)": {
+    "count": 1,
+    "lines": [
+     5910
+    ]
+   },
+   "rgba(109,82,214,0.18)": {
+    "count": 1,
+    "lines": [
+     5911
+    ]
+   },
+   "rgba(194,65,12,0.18)": {
+    "count": 1,
+    "lines": [
+     5912
+    ]
+   },
+   "rgba(193,18,31,0.42)": {
+    "count": 1,
+    "lines": [
+     5929
+    ]
+   },
+   "rgba(245,130,31,0.06)": {
+    "count": 1,
+    "lines": [
+     5929
+    ]
+   },
+   "rgba(193,18,31,0.55)": {
+    "count": 1,
+    "lines": [
+     5932
+    ]
+   }
+  },
+  "gradient_defs": [
+   {
+    "line": 98,
+    "def": "linear-gradient(90deg,rgba(141,0,0,.14),rgba(141,0,0,0))"
+   },
+   {
+    "line": 104,
+    "def": "radial-gradient(circle,rgba(189,109,109,.14),transparent 65%)"
+   },
+   {
+    "line": 105,
+    "def": "radial-gradient(circle,rgba(141,0,0,.07),transparent 65%)"
+   },
+   {
+    "line": 138,
+    "def": "linear-gradient(120deg,var(--maroon-d) 0%,var(--maroon) 62%,var(--maroon-vivid) 100%)"
+   },
+   {
+    "line": 212,
+    "def": "linear-gradient(135deg,rgba(141,0,0,.38),rgba(193,18,31,.12))"
+   },
+   {
+    "line": 235,
+    "def": "linear-gradient(180deg,var(--gold-hot),var(--gold) 52%,var(--gold-deep))"
+   },
+   {
+    "line": 236,
+    "def": "linear-gradient(180deg,#B9C2CE,var(--silver))"
+   },
+   {
+    "line": 237,
+    "def": "linear-gradient(180deg,#C79067,var(--bronze))"
+   },
+   {
+    "line": 238,
+    "def": "linear-gradient(180deg,rgba(255,255,255,.30),rgba(255,255,255,0) 60%)"
+   },
+   {
+    "line": 241,
+    "def": "linear-gradient(100deg,var(--maroon),var(--maroon-vivid))"
+   },
+   {
+    "line": 247,
+    "def": "linear-gradient(100deg,var(--maroon),var(--maroon-vivid))"
+   },
+   {
+    "line": 249,
+    "def": "linear-gradient(90deg,rgba(193,18,31,.20),rgba(245,130,31,.13) 58%,rgba(245,130,31,0))"
+   },
+   {
+    "line": 250,
+    "def": "linear-gradient(92deg,var(--maroon),#F5821F)"
+   },
+   {
+    "line": 251,
+    "def": "linear-gradient(100deg,transparent 22%,rgba(255,255,255,.55) 50%,transparent 78%)"
+   },
+   {
+    "line": 257,
+    "def": "linear-gradient(118deg,var(--maroon-d) 0%,var(--maroon) 50%,#c1121f 82%,#F5821F 130%)"
+   },
+   {
+    "line": 259,
+    "def": "linear-gradient(135deg,#2a0810,#5a0f2a 55%,#7a1233)"
+   },
+   {
+    "line": 261,
+    "def": "linear-gradient(90deg,#ffd24a,#ff9ab8,#ffd24a)"
+   },
+   {
+    "line": 267,
+    "def": "linear-gradient(114deg,transparent 0 22px,rgba(255,255,255,.055) 22px 24px)"
+   },
+   {
+    "line": 267,
+    "def": "linear-gradient(100deg,transparent,#000 60%)"
+   },
+   {
+    "line": 267,
+    "def": "linear-gradient(100deg,transparent,#000 60%)"
+   },
+   {
+    "line": 1516,
+    "def": "linear-gradient(90deg,var(--rose),var(--maroon),var(--maroon-vivid))"
+   },
+   {
+    "line": 2145,
+    "def": "linear-gradient(180deg,var(--maroon-vivid),var(--maroon))"
+   },
+   {
+    "line": 2170,
+    "def": "linear-gradient(90deg,rgba(4,108,72,.18),rgba(4,108,72,.42),rgba(4,108,72,.18))"
+   },
+   {
+    "line": 3609,
+    "def": "linear-gradient(180deg,#EDF7F1,#E3F2E9)"
+   },
+   {
+    "line": 4264,
+    "def": "linear-gradient(135deg,var(--bg-primary),var(--bg-secondary))"
+   },
+   {
+    "line": 5136,
+    "def": "linear-gradient(135deg,var(--maroon),#5b0f1f 62%)"
+   },
+   {
+    "line": 5500,
+    "def": "linear-gradient(135deg,rgba(90,15,42,.14),rgba(255,90,130,.05))"
+   },
+   {
+    "line": 5726,
+    "def": "linear-gradient(180deg,var(--maroon-vivid),var(--maroon))"
+   }
+  ]
+ },
+ "staff": {
+  "hex_unique": 83,
+  "hex_total": 216,
+  "rgba_unique": 52,
+  "rgba_total": 63,
+  "gradients": 18,
+  "hex": {
+   "#fff": {
+    "count": 44,
+    "lines": [
+     23,
+     37,
+     45,
+     65,
+     70
+    ],
+    "category": "surface"
+   },
+   "#1d4ed8": {
+    "count": 10,
+    "lines": [
+     22,
+     2324,
+     3432,
+     3442,
+     3526
+    ],
+    "category": "status"
+   },
+   "#046c48": {
+    "count": 10,
+    "lines": [
+     22,
+     2324,
+     3442,
+     3528,
+     3822
+    ],
+    "category": "status"
+   },
+   "#6d52d6": {
+    "count": 9,
+    "lines": [
+     22,
+     2324,
+     2332,
+     3432,
+     3442
+    ],
+    "category": "status"
+   },
+   "#8d0000": {
+    "count": 8,
+    "lines": [
+     15,
+     21,
+     2324,
+     2326,
+     4225
+    ],
+    "category": "brand"
+   },
+   "#0891b2": {
+    "count": 8,
+    "lines": [
+     484,
+     1966,
+     1967,
+     2150,
+     2151
+    ],
+    "category": "status"
+   },
+   "#3b82f6": {
+    "count": 8,
+    "lines": [
+     2542,
+     2622,
+     2630,
+     3161,
+     3162
+    ],
+    "category": "status"
+   },
+   "#b91c1c": {
+    "count": 5,
+    "lines": [
+     22,
+     3432,
+     3442,
+     3523,
+     7597
+    ],
+    "category": "status"
+   },
+   "#b45309": {
+    "count": 5,
+    "lines": [
+     2324,
+     3432,
+     3442,
+     3823,
+     4053
+    ],
+    "category": "chartjs"
+   },
+   "#c1121f": {
+    "count": 4,
+    "lines": [
+     15,
+     3793,
+     4055,
+     4509
+    ],
+    "category": "brand"
+   },
+   "#6e5a5c": {
+    "count": 4,
+    "lines": [
+     24,
+     356,
+     3841,
+     3842
+    ],
+    "category": "chartjs"
+   },
+   "#059669": {
+    "count": 4,
+    "lines": [
+     484,
+     2151,
+     2161,
+     2623
+    ],
+    "category": "status"
+   },
+   "#8a7578": {
+    "count": 3,
+    "lines": [
+     24,
+     3863,
+     4238
+    ],
+    "category": "chartjs"
+   },
+   "#a9b8ce": {
+    "count": 3,
+    "lines": [
+     69,
+     72,
+     2487
+    ],
+    "category": "unknown"
+   },
+   "#e8a05c": {
+    "count": 3,
+    "lines": [
+     605,
+     612,
+     827
+    ],
+    "category": "unknown"
+   },
+   "#c9d4e4": {
+    "count": 3,
+    "lines": [
+     606,
+     613,
+     828
+    ],
+    "category": "unknown"
+   },
+   "#ffd24a": {
+    "count": 3,
+    "lines": [
+     607,
+     614,
+     828
+    ],
+    "category": "unknown"
+   },
+   "#6fe3e1": {
+    "count": 3,
+    "lines": [
+     608,
+     615,
+     828
+    ],
+    "category": "unknown"
+   },
+   "#c084fc": {
+    "count": 3,
+    "lines": [
+     609,
+     616,
+     828
+    ],
+    "category": "unknown"
+   },
+   "#10b981": {
+    "count": 3,
+    "lines": [
+     2542,
+     2566,
+     2623
+    ],
+    "category": "unknown"
+   },
+   "#f59e0b": {
+    "count": 3,
+    "lines": [
+     2542,
+     2566,
+     2624
+    ],
+    "category": "unknown"
+   },
+   "#a78bfa": {
+    "count": 3,
+    "lines": [
+     3161,
+     3470,
+     3487
+    ],
+    "category": "status"
+   },
+   "#2a0a0c": {
+    "count": 2,
+    "lines": [
+     16,
+     20
+    ],
+    "category": "unknown"
+   },
+   "#c2410c": {
+    "count": 2,
+    "lines": [
+     19,
+     3524
+    ],
+    "category": "status"
+   },
+   "#ef4444": {
+    "count": 2,
+    "lines": [
+     2542,
+     2566
+    ],
+    "category": "unknown"
+   },
+   "#0e9f6e": {
+    "count": 2,
+    "lines": [
+     3468,
+     3485
+    ],
+    "category": "status"
+   },
+   "#fbbf24": {
+    "count": 2,
+    "lines": [
+     3469,
+     3486
+    ],
+    "category": "status"
+   },
+   "#8fc3af": {
+    "count": 2,
+    "lines": [
+     4230,
+     4231
+    ],
+    "category": "chartjs"
+   },
+   "#4f0004": {
+    "count": 1,
+    "lines": [
+     15
+    ],
+    "category": "brand"
+   },
+   "#bd6d6d": {
+    "count": 1,
+    "lines": [
+     16
+    ],
+    "category": "unknown"
+   },
+   "#deb6b6": {
+    "count": 1,
+    "lines": [
+     16
+    ],
+    "category": "unknown"
+   },
+   "#f5e9e9": {
+    "count": 1,
+    "lines": [
+     16
+    ],
+    "category": "unknown"
+   },
+   "#c9a227": {
+    "count": 1,
+    "lines": [
+     17
+    ],
+    "category": "brand"
+   },
+   "#f2c43d": {
+    "count": 1,
+    "lines": [
+     17
+    ],
+    "category": "brand"
+   },
+   "#8f6f14": {
+    "count": 1,
+    "lines": [
+     17
+    ],
+    "category": "unknown"
+   },
+   "#8c97a6": {
+    "count": 1,
+    "lines": [
+     18
+    ],
+    "category": "unknown"
+   },
+   "#a9713c": {
+    "count": 1,
+    "lines": [
+     18
+    ],
+    "category": "unknown"
+   },
+   "#3d0f11": {
+    "count": 1,
+    "lines": [
+     20
+    ],
+    "category": "unknown"
+   },
+   "#571416": {
+    "count": 1,
+    "lines": [
+     20
+    ],
+    "category": "unknown"
+   },
+   "#4a1113": {
+    "count": 1,
+    "lines": [
+     20
+    ],
+    "category": "unknown"
+   },
+   "#6b0000": {
+    "count": 1,
+    "lines": [
+     21
+    ],
+    "category": "unknown"
+   },
+   "#e8eefc": {
+    "count": 1,
+    "lines": [
+     22
+    ],
+    "category": "unknown"
+   },
+   "#e3f5ee": {
+    "count": 1,
+    "lines": [
+     22
+    ],
+    "category": "unknown"
+   },
+   "#fcebeb": {
+    "count": 1,
+    "lines": [
+     22
+    ],
+    "category": "unknown"
+   },
+   "#92400e": {
+    "count": 1,
+    "lines": [
+     22
+    ],
+    "category": "unknown"
+   },
+   "#fbf0dd": {
+    "count": 1,
+    "lines": [
+     22
+    ],
+    "category": "unknown"
+   },
+   "#eeeafb": {
+    "count": 1,
+    "lines": [
+     22
+    ],
+    "category": "unknown"
+   },
+   "#f8f2f2": {
+    "count": 1,
+    "lines": [
+     23
+    ],
+    "category": "unknown"
+   },
+   "#f1e7e7": {
+    "count": 1,
+    "lines": [
+     23
+    ],
+    "category": "unknown"
+   },
+   "#f7f4f3": {
+    "count": 1,
+    "lines": [
+     23
+    ],
+    "category": "surface"
+   },
+   "#231416": {
+    "count": 1,
+    "lines": [
+     24
+    ],
+    "category": "unknown"
+   },
+   "#fffdf6": {
+    "count": 1,
+    "lines": [
+     186
+    ],
+    "category": "surface"
+   },
+   "#e0f2fe": {
+    "count": 1,
+    "lines": [
+     485
+    ],
+    "category": "status"
+   },
+   "#d1fae5": {
+    "count": 1,
+    "lines": [
+     485
+    ],
+    "category": "status"
+   },
+   "#5fa8ff": {
+    "count": 1,
+    "lines": [
+     828
+    ],
+    "category": "unknown"
+   },
+   "#ff7a9c": {
+    "count": 1,
+    "lines": [
+     828
+    ],
+    "category": "unknown"
+   },
+   "#3df0a4": {
+    "count": 1,
+    "lines": [
+     828
+    ],
+    "category": "unknown"
+   },
+   "#b5d4f4": {
+    "count": 1,
+    "lines": [
+     1098
+    ],
+    "category": "unknown"
+   },
+   "#0c447c": {
+    "count": 1,
+    "lines": [
+     1098
+    ],
+    "category": "unknown"
+   },
+   "#9fe1cb": {
+    "count": 1,
+    "lines": [
+     1098
+    ],
+    "category": "unknown"
+   },
+   "#085041": {
+    "count": 1,
+    "lines": [
+     1098
+    ],
+    "category": "unknown"
+   },
+   "#f5c4b3": {
+    "count": 1,
+    "lines": [
+     1098
+    ],
+    "category": "unknown"
+   },
+   "#712b13": {
+    "count": 1,
+    "lines": [
+     1098
+    ],
+    "category": "unknown"
+   },
+   "#fac775": {
+    "count": 1,
+    "lines": [
+     1098
+    ],
+    "category": "unknown"
+   },
+   "#633806": {
+    "count": 1,
+    "lines": [
+     1098
+    ],
+    "category": "unknown"
+   },
+   "#f4c0d1": {
+    "count": 1,
+    "lines": [
+     1098
+    ],
+    "category": "unknown"
+   },
+   "#72243e": {
+    "count": 1,
+    "lines": [
+     1098
+    ],
+    "category": "unknown"
+   },
+   "#c0dd97": {
+    "count": 1,
+    "lines": [
+     1098
+    ],
+    "category": "unknown"
+   },
+   "#27500a": {
+    "count": 1,
+    "lines": [
+     1098
+    ],
+    "category": "unknown"
+   },
+   "#cecbf6": {
+    "count": 1,
+    "lines": [
+     1098
+    ],
+    "category": "unknown"
+   },
+   "#3c3489": {
+    "count": 1,
+    "lines": [
+     1098
+    ],
+    "category": "unknown"
+   },
+   "#be185d": {
+    "count": 1,
+    "lines": [
+     2324
+    ],
+    "category": "unknown"
+   },
+   "#9a3412": {
+    "count": 1,
+    "lines": [
+     2324
+    ],
+    "category": "unknown"
+   },
+   "#0f766e": {
+    "count": 1,
+    "lines": [
+     2324
+    ],
+    "category": "unknown"
+   },
+   "#4338ca": {
+    "count": 1,
+    "lines": [
+     2324
+    ],
+    "category": "unknown"
+   },
+   "#dc2b2b": {
+    "count": 1,
+    "lines": [
+     2330
+    ],
+    "category": "chartjs"
+   },
+   "#8b5cf6": {
+    "count": 1,
+    "lines": [
+     2542
+    ],
+    "category": "status"
+   },
+   "#06b6d4": {
+    "count": 1,
+    "lines": [
+     2542
+    ],
+    "category": "unknown"
+   },
+   "#ec4899": {
+    "count": 1,
+    "lines": [
+     2542
+    ],
+    "category": "unknown"
+   },
+   "#2563eb": {
+    "count": 1,
+    "lines": [
+     2622
+    ],
+    "category": "unknown"
+   },
+   "#d97706": {
+    "count": 1,
+    "lines": [
+     2624
+    ],
+    "category": "unknown"
+   },
+   "#a16207": {
+    "count": 1,
+    "lines": [
+     3525
+    ],
+    "category": "status"
+   },
+   "#e3d5d5": {
+    "count": 1,
+    "lines": [
+     3834
+    ],
+    "category": "unknown"
+   }
+  },
+  "rgba": {
+   "rgba(60,10,12,.08)": {
+    "count": 3,
+    "lines": [
+     25,
+     356,
+     356
+    ]
+   },
+   "rgba(59,130,246,.6)": {
+    "count": 3,
+    "lines": [
+     85,
+     2543,
+     2631
+    ]
+   },
+   "rgba(0,0,0,.15)": {
+    "count": 3,
+    "lines": [
+     7703,
+     7709,
+     7716
+    ]
+   },
+   "rgba(141,0,0,.10)": {
+    "count": 2,
+    "lines": [
+     26,
+     161
+    ]
+   },
+   "rgba(141,0,0,.14)": {
+    "count": 2,
+    "lines": [
+     26,
+     106
+    ]
+   },
+   "rgba(109,82,214,0.08)": {
+    "count": 2,
+    "lines": [
+     3793,
+     4055
+    ]
+   },
+   "rgba(141,0,0,0.08)": {
+    "count": 2,
+    "lines": [
+     4225,
+     4234
+    ]
+   },
+   "rgba(194,65,12,.10)": {
+    "count": 2,
+    "lines": [
+     4439,
+     4444
+    ]
+   },
+   "rgba(141,0,0,.22)": {
+    "count": 1,
+    "lines": [
+     21
+    ]
+   },
+   "rgba(60,10,12,.16)": {
+    "count": 1,
+    "lines": [
+     25
+    ]
+   },
+   "rgba(141,0,0,.06)": {
+    "count": 1,
+    "lines": [
+     26
+    ]
+   },
+   "rgba(35,20,22,.05)": {
+    "count": 1,
+    "lines": [
+     26
+    ]
+   },
+   "rgba(42,10,12,.32)": {
+    "count": 1,
+    "lines": [
+     31
+    ]
+   },
+   "rgba(245,233,233,.10)": {
+    "count": 1,
+    "lines": [
+     32
+    ]
+   },
+   "rgba(245,233,233,.03)": {
+    "count": 1,
+    "lines": [
+     32
+    ]
+   },
+   "rgba(193,18,31,.14)": {
+    "count": 1,
+    "lines": [
+     38
+    ]
+   },
+   "rgba(255,255,255,.2)": {
+    "count": 1,
+    "lines": [
+     66
+    ]
+   },
+   "rgba(255,255,255,.12)": {
+    "count": 1,
+    "lines": [
+     73
+    ]
+   },
+   "rgba(255,255,255,.06)": {
+    "count": 1,
+    "lines": [
+     83
+    ]
+   },
+   "rgba(0,0,0,.25)": {
+    "count": 1,
+    "lines": [
+     88
+    ]
+   },
+   "rgba(141,0,0,0)": {
+    "count": 1,
+    "lines": [
+     106
+    ]
+   },
+   "rgba(141,0,0,.38)": {
+    "count": 1,
+    "lines": [
+     108
+    ]
+   },
+   "rgba(193,18,31,.12)": {
+    "count": 1,
+    "lines": [
+     108
+    ]
+   },
+   "rgba(255,255,255,.16)": {
+    "count": 1,
+    "lines": [
+     160
+    ]
+   },
+   "rgba(35,20,22,.07)": {
+    "count": 1,
+    "lines": [
+     186
+    ]
+   },
+   "rgba(222,182,182,.55)": {
+    "count": 1,
+    "lines": [
+     189
+    ]
+   },
+   "rgba(35,20,22,.06)": {
+    "count": 1,
+    "lines": [
+     189
+    ]
+   },
+   "rgba(255,255,255,.5)": {
+    "count": 1,
+    "lines": [
+     226
+    ]
+   },
+   "rgba(201,162,39,.32)": {
+    "count": 1,
+    "lines": [
+     1757
+    ]
+   },
+   "rgba(201,162,39,.22)": {
+    "count": 1,
+    "lines": [
+     2091
+    ]
+   },
+   "rgba(220,43,43,.1)": {
+    "count": 1,
+    "lines": [
+     2330
+    ]
+   },
+   "rgba(239,68,68,.6)": {
+    "count": 1,
+    "lines": [
+     2543
+    ]
+   },
+   "rgba(139,92,246,.6)": {
+    "count": 1,
+    "lines": [
+     2543
+    ]
+   },
+   "rgba(16,185,129,.6)": {
+    "count": 1,
+    "lines": [
+     2543
+    ]
+   },
+   "rgba(245,158,11,.6)": {
+    "count": 1,
+    "lines": [
+     2543
+    ]
+   },
+   "rgba(6,182,212,.6)": {
+    "count": 1,
+    "lines": [
+     2543
+    ]
+   },
+   "rgba(236,72,153,.6)": {
+    "count": 1,
+    "lines": [
+     2543
+    ]
+   },
+   "rgba(59,130,246,.3)": {
+    "count": 1,
+    "lines": [
+     2622
+    ]
+   },
+   "rgba(16,185,129,.3)": {
+    "count": 1,
+    "lines": [
+     2623
+    ]
+   },
+   "rgba(245,158,11,.3)": {
+    "count": 1,
+    "lines": [
+     2624
+    ]
+   },
+   "rgba(29,78,216,0.16)": {
+    "count": 1,
+    "lines": [
+     3821
+    ]
+   },
+   "rgba(29,78,216,0)": {
+    "count": 1,
+    "lines": [
+     3821
+    ]
+   },
+   "rgba(4,108,72,0.16)": {
+    "count": 1,
+    "lines": [
+     3822
+    ]
+   },
+   "rgba(4,108,72,0)": {
+    "count": 1,
+    "lines": [
+     3822
+    ]
+   },
+   "rgba(180,83,9,0.16)": {
+    "count": 1,
+    "lines": [
+     3823
+    ]
+   },
+   "rgba(180,83,9,0)": {
+    "count": 1,
+    "lines": [
+     3823
+    ]
+   },
+   "rgba(109,82,214,0.10)": {
+    "count": 1,
+    "lines": [
+     3824
+    ]
+   },
+   "rgba(109,82,214,0)": {
+    "count": 1,
+    "lines": [
+     3824
+    ]
+   },
+   "rgba(42,10,12,0.96)": {
+    "count": 1,
+    "lines": [
+     3832
+    ]
+   },
+   "rgba(255,255,255,0.1)": {
+    "count": 1,
+    "lines": [
+     3836
+    ]
+   },
+   "rgba(60,10,12,0.08)": {
+    "count": 1,
+    "lines": [
+     3841
+    ]
+   },
+   "rgba(239,68,68,.12)": {
+    "count": 1,
+    "lines": [
+     7597
+    ]
+   }
+  },
+  "gradient_defs": [
+   {
+    "line": 31,
+    "def": "linear-gradient(180deg,var(--navy-2) 0%,var(--navy) 100%)"
+   },
+   {
+    "line": 38,
+    "def": "linear-gradient(90deg,var(--navy-3),var(--navy-2))"
+   },
+   {
+    "line": 39,
+    "def": "linear-gradient(90deg,var(--maroon-vivid) 0,var(--maroon-vivid) 4px,var(--gold-hot) 4px,var(--gold-hot) 6px)"
+   },
+   {
+    "line": 65,
+    "def": "linear-gradient(135deg,var(--navy),var(--navy-2))"
+   },
+   {
+    "line": 74,
+    "def": "linear-gradient(135deg,var(--navy),var(--navy-2))"
+   },
+   {
+    "line": 83,
+    "def": "linear-gradient(180deg,var(--tl-color,var(--accent)),rgba(255,255,255,.06))"
+   },
+   {
+    "line": 87,
+    "def": "linear-gradient(135deg,var(--bg-primary),var(--bg-secondary))"
+   },
+   {
+    "line": 106,
+    "def": "linear-gradient(90deg,rgba(141,0,0,.14),rgba(141,0,0,0))"
+   },
+   {
+    "line": 108,
+    "def": "linear-gradient(135deg,rgba(141,0,0,.38),rgba(193,18,31,.12))"
+   },
+   {
+    "line": 206,
+    "def": "linear-gradient(135deg,var(--maroon),var(--maroon-vivid))"
+   },
+   {
+    "line": 211,
+    "def": "linear-gradient(90deg,var(--maroon),var(--maroon-vivid))"
+   },
+   {
+    "line": 226,
+    "def": "linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent)"
+   },
+   {
+    "line": 1600,
+    "def": "linear-gradient(to right, var(--red-bg), transparent)"
+   },
+   {
+    "line": 1607,
+    "def": "linear-gradient(to right, var(--amber-bg), transparent)"
+   },
+   {
+    "line": 1746,
+    "def": "linear-gradient(135deg,var(--navy-2),var(--navy) 72%)"
+   },
+   {
+    "line": 2622,
+    "def": "linear-gradient(135deg,#3B82F6,#2563EB)"
+   },
+   {
+    "line": 2623,
+    "def": "linear-gradient(135deg,#10B981,#059669)"
+   },
+   {
+    "line": 2624,
+    "def": "linear-gradient(135deg,#F59E0B,#D97706)"
+   }
+  ]
+ },
+ "trainer": {
+  "hex_unique": 44,
+  "hex_total": 100,
+  "rgba_unique": 25,
+  "rgba_total": 30,
+  "gradients": 7,
+  "hex": {
+   "#fff": {
+    "count": 14,
+    "lines": [
+     21,
+     31,
+     76,
+     84,
+     93
+    ],
+    "category": "surface"
+   },
+   "#3b82f6": {
+    "count": 13,
+    "lines": [
+     12,
+     13,
+     608,
+     1603,
+     1688
+    ],
+    "category": "status"
+   },
+   "#fbbf24": {
+    "count": 6,
+    "lines": [
+     13,
+     607,
+     2220,
+     2230,
+     2257
+    ],
+    "category": "status"
+   },
+   "#a78bfa": {
+    "count": 6,
+    "lines": [
+     13,
+     2220,
+     2230,
+     2258,
+     2278
+    ],
+    "category": "status"
+   },
+   "#0e9f6e": {
+    "count": 4,
+    "lines": [
+     610,
+     2230,
+     2256,
+     2274
+    ],
+    "category": "status"
+   },
+   "#0f1b2d": {
+    "count": 3,
+    "lines": [
+     11,
+     14,
+     72
+    ],
+    "category": "unknown"
+   },
+   "#1e3251": {
+    "count": 3,
+    "lines": [
+     11,
+     14,
+     72
+    ],
+    "category": "unknown"
+   },
+   "#0891b2": {
+    "count": 3,
+    "lines": [
+     147,
+     1285,
+     2230
+    ],
+    "category": "status"
+   },
+   "#dc2b2b": {
+    "count": 3,
+    "lines": [
+     605,
+     2220,
+     2230
+    ],
+    "category": "status"
+   },
+   "#10b981": {
+    "count": 3,
+    "lines": [
+     1603,
+     1632,
+     1689
+    ],
+    "category": "unknown"
+   },
+   "#f59e0b": {
+    "count": 3,
+    "lines": [
+     1603,
+     1632,
+     1690
+    ],
+    "category": "unknown"
+   },
+   "#16263e": {
+    "count": 2,
+    "lines": [
+     11,
+     14
+    ],
+    "category": "unknown"
+   },
+   "#2563eb": {
+    "count": 2,
+    "lines": [
+     12,
+     1688
+    ],
+    "category": "unknown"
+   },
+   "#9fb0c8": {
+    "count": 2,
+    "lines": [
+     15,
+     136
+    ],
+    "category": "chartjs"
+   },
+   "#059669": {
+    "count": 2,
+    "lines": [
+     147,
+     1689
+    ],
+    "category": "status"
+   },
+   "#8b5cf6": {
+    "count": 2,
+    "lines": [
+     609,
+     1603
+    ],
+    "category": "status"
+   },
+   "#ef4444": {
+    "count": 2,
+    "lines": [
+     1603,
+     1632
+    ],
+    "category": "unknown"
+   },
+   "#34d399": {
+    "count": 1,
+    "lines": [
+     13
+    ],
+    "category": "status"
+   },
+   "#f87171": {
+    "count": 1,
+    "lines": [
+     13
+    ],
+    "category": "status"
+   },
+   "#24395c": {
+    "count": 1,
+    "lines": [
+     14
+    ],
+    "category": "unknown"
+   },
+   "#eaf0f8": {
+    "count": 1,
+    "lines": [
+     15
+    ],
+    "category": "unknown"
+   },
+   "#6e7f9c": {
+    "count": 1,
+    "lines": [
+     15
+    ],
+    "category": "unknown"
+   },
+   "#b5d4f4": {
+    "count": 1,
+    "lines": [
+     143
+    ],
+    "category": "unknown"
+   },
+   "#0c447c": {
+    "count": 1,
+    "lines": [
+     143
+    ],
+    "category": "unknown"
+   },
+   "#9fe1cb": {
+    "count": 1,
+    "lines": [
+     143
+    ],
+    "category": "unknown"
+   },
+   "#085041": {
+    "count": 1,
+    "lines": [
+     143
+    ],
+    "category": "unknown"
+   },
+   "#f5c4b3": {
+    "count": 1,
+    "lines": [
+     143
+    ],
+    "category": "unknown"
+   },
+   "#712b13": {
+    "count": 1,
+    "lines": [
+     143
+    ],
+    "category": "unknown"
+   },
+   "#fac775": {
+    "count": 1,
+    "lines": [
+     143
+    ],
+    "category": "unknown"
+   },
+   "#633806": {
+    "count": 1,
+    "lines": [
+     143
+    ],
+    "category": "unknown"
+   },
+   "#f4c0d1": {
+    "count": 1,
+    "lines": [
+     143
+    ],
+    "category": "unknown"
+   },
+   "#72243e": {
+    "count": 1,
+    "lines": [
+     143
+    ],
+    "category": "unknown"
+   },
+   "#c0dd97": {
+    "count": 1,
+    "lines": [
+     143
+    ],
+    "category": "unknown"
+   },
+   "#27500a": {
+    "count": 1,
+    "lines": [
+     143
+    ],
+    "category": "unknown"
+   },
+   "#cecbf6": {
+    "count": 1,
+    "lines": [
+     143
+    ],
+    "category": "unknown"
+   },
+   "#3c3489": {
+    "count": 1,
+    "lines": [
+     143
+    ],
+    "category": "unknown"
+   },
+   "#e0f2fe": {
+    "count": 1,
+    "lines": [
+     148
+    ],
+    "category": "status"
+   },
+   "#d1fae5": {
+    "count": 1,
+    "lines": [
+     148
+    ],
+    "category": "status"
+   },
+   "#f97316": {
+    "count": 1,
+    "lines": [
+     606
+    ],
+    "category": "status"
+   },
+   "#06b6d4": {
+    "count": 1,
+    "lines": [
+     1603
+    ],
+    "category": "unknown"
+   },
+   "#ec4899": {
+    "count": 1,
+    "lines": [
+     1603
+    ],
+    "category": "unknown"
+   },
+   "#64748b": {
+    "count": 1,
+    "lines": [
+     1603
+    ],
+    "category": "unknown"
+   },
+   "#d97706": {
+    "count": 1,
+    "lines": [
+     1690
+    ],
+    "category": "unknown"
+   },
+   "#a9b8ce": {
+    "count": 1,
+    "lines": [
+     2473
+    ],
+    "category": "unknown"
+   }
+  },
+  "rgba": {
+   "rgba(59,130,246,.6)": {
+    "count": 3,
+    "lines": [
+     83,
+     1604,
+     1697
+    ]
+   },
+   "rgba(255,255,255,0.10)": {
+    "count": 2,
+    "lines": [
+     16,
+     136
+    ]
+   },
+   "rgba(0,0,0,.25)": {
+    "count": 2,
+    "lines": [
+     17,
+     86
+    ]
+   },
+   "rgba(255,255,255,0.12)": {
+    "count": 2,
+    "lines": [
+     2009,
+     2053
+    ]
+   },
+   "rgba(59,130,246,.35)": {
+    "count": 1,
+    "lines": [
+     12
+    ]
+   },
+   "rgba(59,130,246,.16)": {
+    "count": 1,
+    "lines": [
+     13
+    ]
+   },
+   "rgba(52,211,153,.16)": {
+    "count": 1,
+    "lines": [
+     13
+    ]
+   },
+   "rgba(248,113,113,.16)": {
+    "count": 1,
+    "lines": [
+     13
+    ]
+   },
+   "rgba(251,191,36,.16)": {
+    "count": 1,
+    "lines": [
+     13
+    ]
+   },
+   "rgba(167,139,250,.16)": {
+    "count": 1,
+    "lines": [
+     13
+    ]
+   },
+   "rgba(255,255,255,0.18)": {
+    "count": 1,
+    "lines": [
+     16
+    ]
+   },
+   "rgba(0,0,0,.35)": {
+    "count": 1,
+    "lines": [
+     17
+    ]
+   },
+   "rgba(255,255,255,.06)": {
+    "count": 1,
+    "lines": [
+     81
+    ]
+   },
+   "rgba(255,255,255,0.08)": {
+    "count": 1,
+    "lines": [
+     136
+    ]
+   },
+   "rgba(239,68,68,.6)": {
+    "count": 1,
+    "lines": [
+     1604
+    ]
+   },
+   "rgba(139,92,246,.6)": {
+    "count": 1,
+    "lines": [
+     1604
+    ]
+   },
+   "rgba(16,185,129,.6)": {
+    "count": 1,
+    "lines": [
+     1604
+    ]
+   },
+   "rgba(245,158,11,.6)": {
+    "count": 1,
+    "lines": [
+     1604
+    ]
+   },
+   "rgba(6,182,212,.6)": {
+    "count": 1,
+    "lines": [
+     1604
+    ]
+   },
+   "rgba(236,72,153,.6)": {
+    "count": 1,
+    "lines": [
+     1604
+    ]
+   },
+   "rgba(100,116,139,.6)": {
+    "count": 1,
+    "lines": [
+     1604
+    ]
+   },
+   "rgba(59,130,246,.3)": {
+    "count": 1,
+    "lines": [
+     1688
+    ]
+   },
+   "rgba(16,185,129,.3)": {
+    "count": 1,
+    "lines": [
+     1689
+    ]
+   },
+   "rgba(245,158,11,.3)": {
+    "count": 1,
+    "lines": [
+     1690
+    ]
+   },
+   "rgba(255,255,255,0.25)": {
+    "count": 1,
+    "lines": [
+     2053
+    ]
+   }
+  },
+  "gradient_defs": [
+   {
+    "line": 20,
+    "def": "linear-gradient(180deg,var(--navy),var(--navy-2))"
+   },
+   {
+    "line": 72,
+    "def": "linear-gradient(135deg,#0F1B2D,#1E3251)"
+   },
+   {
+    "line": 81,
+    "def": "linear-gradient(180deg,var(--tl-color,var(--accent)),rgba(255,255,255,.06))"
+   },
+   {
+    "line": 85,
+    "def": "linear-gradient(135deg,var(--bg-primary),var(--bg-secondary))"
+   },
+   {
+    "line": 1688,
+    "def": "linear-gradient(135deg,#3B82F6,#2563EB)"
+   },
+   {
+    "line": 1689,
+    "def": "linear-gradient(135deg,#10B981,#059669)"
+   },
+   {
+    "line": 1690,
+    "def": "linear-gradient(135deg,#F59E0B,#D97706)"
+   }
+  ]
+ },
+ "coach": {
+  "hex_unique": 38,
+  "hex_total": 89,
+  "rgba_unique": 40,
+  "rgba_total": 57,
+  "gradients": 17,
+  "hex": {
+   "#9daec7": {
+    "count": 10,
+    "lines": [
+     20,
+     1400,
+     1708,
+     1708,
+     1708
+    ],
+    "category": "chartjs"
+   },
+   "#3df0a4": {
+    "count": 7,
+    "lines": [
+     14,
+     19,
+     1399,
+     1638,
+     1645
+    ],
+    "category": "chartjs"
+   },
+   "#4d9fff": {
+    "count": 7,
+    "lines": [
+     1362,
+     1362,
+     1365,
+     1367,
+     1368
+    ],
+    "category": "chartjs"
+   },
+   "#ffc069": {
+    "count": 6,
+    "lines": [
+     16,
+     1399,
+     1811,
+     1811,
+     1813
+    ],
+    "category": "chartjs"
+   },
+   "#5fa8ff": {
+    "count": 5,
+    "lines": [
+     15,
+     1399,
+     1636,
+     1706,
+     1956
+    ],
+    "category": "chartjs"
+   },
+   "#c7a4ff": {
+    "count": 5,
+    "lines": [
+     18,
+     1399,
+     1812,
+     1812,
+     1813
+    ],
+    "category": "chartjs"
+   },
+   "#35e89c": {
+    "count": 3,
+    "lines": [
+     40,
+     50,
+     1428
+    ],
+    "category": "unknown"
+   },
+   "#1fa2ff": {
+    "count": 3,
+    "lines": [
+     40,
+     50,
+     1428
+    ],
+    "category": "unknown"
+   },
+   "#93a4bc": {
+    "count": 3,
+    "lines": [
+     1377,
+     1379,
+     1379
+    ],
+    "category": "chartjs"
+   },
+   "#0d1520": {
+    "count": 3,
+    "lines": [
+     1811,
+     1812,
+     1953
+    ],
+    "category": "chartjs"
+   },
+   "#ff7b7b": {
+    "count": 2,
+    "lines": [
+     17,
+     1399
+    ],
+    "category": "unknown"
+   },
+   "#000": {
+    "count": 2,
+    "lines": [
+     46,
+     46
+    ],
+    "category": "unknown"
+   },
+   "#e8a05c": {
+    "count": 2,
+    "lines": [
+     343,
+     350
+    ],
+    "category": "unknown"
+   },
+   "#c9d4e4": {
+    "count": 2,
+    "lines": [
+     344,
+     351
+    ],
+    "category": "unknown"
+   },
+   "#ffd24a": {
+    "count": 2,
+    "lines": [
+     345,
+     352
+    ],
+    "category": "unknown"
+   },
+   "#6fe3e1": {
+    "count": 2,
+    "lines": [
+     346,
+     353
+    ],
+    "category": "unknown"
+   },
+   "#c084fc": {
+    "count": 2,
+    "lines": [
+     347,
+     354
+    ],
+    "category": "unknown"
+   },
+   "#16243a": {
+    "count": 2,
+    "lines": [
+     1362,
+     1371
+    ],
+    "category": "chartjs"
+   },
+   "#ffc24a": {
+    "count": 2,
+    "lines": [
+     1637,
+     1645
+    ],
+    "category": "unknown"
+   },
+   "#050a12": {
+    "count": 1,
+    "lines": [
+     9
+    ],
+    "category": "unknown"
+   },
+   "#14b87d": {
+    "count": 1,
+    "lines": [
+     14
+    ],
+    "category": "unknown"
+   },
+   "#f1f6ff": {
+    "count": 1,
+    "lines": [
+     20
+    ],
+    "category": "unknown"
+   },
+   "#6f82a0": {
+    "count": 1,
+    "lines": [
+     20
+    ],
+    "category": "unknown"
+   },
+   "#04140c": {
+    "count": 1,
+    "lines": [
+     50
+    ],
+    "category": "unknown"
+   },
+   "#6ec3ff": {
+    "count": 1,
+    "lines": [
+     55
+    ],
+    "category": "unknown"
+   },
+   "#e0f2fe": {
+    "count": 1,
+    "lines": [
+     241
+    ],
+    "category": "status"
+   },
+   "#d1fae5": {
+    "count": 1,
+    "lines": [
+     241
+    ],
+    "category": "status"
+   },
+   "#0891b2": {
+    "count": 1,
+    "lines": [
+     242
+    ],
+    "category": "status"
+   },
+   "#059669": {
+    "count": 1,
+    "lines": [
+     242
+    ],
+    "category": "status"
+   },
+   "#dc2b2b": {
+    "count": 1,
+    "lines": [
+     246
+    ],
+    "category": "status"
+   },
+   "#f97316": {
+    "count": 1,
+    "lines": [
+     247
+    ],
+    "category": "status"
+   },
+   "#fbbf24": {
+    "count": 1,
+    "lines": [
+     248
+    ],
+    "category": "status"
+   },
+   "#3b82f6": {
+    "count": 1,
+    "lines": [
+     249
+    ],
+    "category": "status"
+   },
+   "#8b5cf6": {
+    "count": 1,
+    "lines": [
+     250
+    ],
+    "category": "status"
+   },
+   "#0e9f6e": {
+    "count": 1,
+    "lines": [
+     251
+    ],
+    "category": "status"
+   },
+   "#0a1019": {
+    "count": 1,
+    "lines": [
+     1255
+    ],
+    "category": "unknown"
+   },
+   "#5e708a": {
+    "count": 1,
+    "lines": [
+     1375
+    ],
+    "category": "chartjs"
+   },
+   "#ffa45c": {
+    "count": 1,
+    "lines": [
+     1399
+    ],
+    "category": "unknown"
+   }
+  },
+  "rgba": {
+   "rgba(255,255,255,.06)": {
+    "count": 7,
+    "lines": [
+     76,
+     124,
+     131,
+     1377,
+     1708
+    ]
+   },
+   "rgba(255,255,255,.015)": {
+    "count": 3,
+    "lines": [
+     83,
+     131,
+     134
+    ]
+   },
+   "rgba(255,192,105,.12)": {
+    "count": 3,
+    "lines": [
+     134,
+     134,
+     1811
+    ]
+   },
+   "rgba(5,10,18,.95)": {
+    "count": 3,
+    "lines": [
+     1708,
+     1813,
+     1959
+    ]
+   },
+   "rgba(255,255,255,.055)": {
+    "count": 2,
+    "lines": [
+     11,
+     64
+    ]
+   },
+   "rgba(61,240,164,.1)": {
+    "count": 2,
+    "lines": [
+     43,
+     1877
+    ]
+   },
+   "rgba(255,255,255,.02)": {
+    "count": 2,
+    "lines": [
+     76,
+     1877
+    ]
+   },
+   "rgba(255,255,255,.07)": {
+    "count": 2,
+    "lines": [
+     103,
+     127
+    ]
+   },
+   "rgba(77,159,255,.15)": {
+    "count": 2,
+    "lines": [
+     1362,
+     1371
+    ]
+   },
+   "rgba(255,255,255,.04)": {
+    "count": 1,
+    "lines": [
+     10
+    ]
+   },
+   "rgba(255,255,255,.09)": {
+    "count": 1,
+    "lines": [
+     12
+    ]
+   },
+   "rgba(255,255,255,.08)": {
+    "count": 1,
+    "lines": [
+     13
+    ]
+   },
+   "rgba(255,255,255,.16)": {
+    "count": 1,
+    "lines": [
+     13
+    ]
+   },
+   "rgba(61,240,164,.28)": {
+    "count": 1,
+    "lines": [
+     14
+    ]
+   },
+   "rgba(95,168,255,.15)": {
+    "count": 1,
+    "lines": [
+     15
+    ]
+   },
+   "rgba(255,192,105,.15)": {
+    "count": 1,
+    "lines": [
+     16
+    ]
+   },
+   "rgba(255,123,123,.15)": {
+    "count": 1,
+    "lines": [
+     17
+    ]
+   },
+   "rgba(199,164,255,.15)": {
+    "count": 1,
+    "lines": [
+     18
+    ]
+   },
+   "rgba(61,240,164,.14)": {
+    "count": 1,
+    "lines": [
+     19
+    ]
+   },
+   "rgba(0,0,0,.45)": {
+    "count": 1,
+    "lines": [
+     22
+    ]
+   },
+   "rgba(20,184,125,.17)": {
+    "count": 1,
+    "lines": [
+     31
+    ]
+   },
+   "rgba(95,168,255,.11)": {
+    "count": 1,
+    "lines": [
+     32
+    ]
+   },
+   "rgba(199,164,255,.09)": {
+    "count": 1,
+    "lines": [
+     33
+    ]
+   },
+   "rgba(5,10,18,.72)": {
+    "count": 1,
+    "lines": [
+     38
+    ]
+   },
+   "rgba(61,240,164,.32)": {
+    "count": 1,
+    "lines": [
+     43
+    ]
+   },
+   "rgba(5,10,18,.94)": {
+    "count": 1,
+    "lines": [
+     45
+    ]
+   },
+   "rgba(5,10,18,0)": {
+    "count": 1,
+    "lines": [
+     45
+    ]
+   },
+   "rgba(255,255,255,.03)": {
+    "count": 1,
+    "lines": [
+     48
+    ]
+   },
+   "rgba(255,255,255,.018)": {
+    "count": 1,
+    "lines": [
+     64
+    ]
+   },
+   "rgba(255,255,255,.05)": {
+    "count": 1,
+    "lines": [
+     83
+    ]
+   },
+   "rgba(255,255,255,.045)": {
+    "count": 1,
+    "lines": [
+     125
+    ]
+   },
+   "rgba(255,192,105,.4)": {
+    "count": 1,
+    "lines": [
+     134
+    ]
+   },
+   "rgba(77,159,255,.45)": {
+    "count": 1,
+    "lines": [
+     1367
+    ]
+   },
+   "rgba(10,16,25,.95)": {
+    "count": 1,
+    "lines": [
+     1379
+    ]
+   },
+   "rgba('+r+','+g+','+b+','+a+')": {
+    "count": 1,
+    "lines": [
+     1395
+    ]
+   },
+   "rgba(61,240,164,.22)": {
+    "count": 1,
+    "lines": [
+     1877
+    ]
+   },
+   "rgba(0,0,0,0)": {
+    "count": 1,
+    "lines": [
+     1953
+    ]
+   },
+   "rgba(95,168,255,.2)": {
+    "count": 1,
+    "lines": [
+     1956
+    ]
+   },
+   "rgba(61,240,164,.2)": {
+    "count": 1,
+    "lines": [
+     1957
+    ]
+   },
+   "rgba(255,192,105,.2)": {
+    "count": 1,
+    "lines": [
+     1958
+    ]
+   }
+  },
+  "gradient_defs": [
+   {
+    "line": 31,
+    "def": "radial-gradient(circle,rgba(20,184,125,.17),transparent 64%)"
+   },
+   {
+    "line": 32,
+    "def": "radial-gradient(circle,rgba(95,168,255,.11),transparent 64%)"
+   },
+   {
+    "line": 33,
+    "def": "radial-gradient(circle,rgba(199,164,255,.09),transparent 64%)"
+   },
+   {
+    "line": 40,
+    "def": "linear-gradient(135deg,#35E89C,#1FA2FF)"
+   },
+   {
+    "line": 45,
+    "def": "linear-gradient(180deg,rgba(5,10,18,.94) 68%,rgba(5,10,18,0))"
+   },
+   {
+    "line": 46,
+    "def": "linear-gradient(90deg,#000 calc(100% - 32px),transparent)"
+   },
+   {
+    "line": 46,
+    "def": "linear-gradient(90deg,#000 calc(100% - 32px),transparent)"
+   },
+   {
+    "line": 50,
+    "def": "linear-gradient(135deg,#35E89C,#1FA2FF)"
+   },
+   {
+    "line": 55,
+    "def": "linear-gradient(90deg,var(--accent),#6EC3FF)"
+   },
+   {
+    "line": 64,
+    "def": "linear-gradient(165deg,rgba(255,255,255,.055),rgba(255,255,255,.018))"
+   },
+   {
+    "line": 76,
+    "def": "linear-gradient(165deg,rgba(255,255,255,.06),rgba(255,255,255,.02))"
+   },
+   {
+    "line": 83,
+    "def": "linear-gradient(165deg,rgba(255,255,255,.05),rgba(255,255,255,.015))"
+   },
+   {
+    "line": 128,
+    "def": "linear-gradient(90deg,var(--accent-2),var(--accent))"
+   },
+   {
+    "line": 131,
+    "def": "linear-gradient(175deg,rgba(255,255,255,.06),rgba(255,255,255,.015))"
+   },
+   {
+    "line": 134,
+    "def": "linear-gradient(175deg,rgba(255,192,105,.12),rgba(255,255,255,.015))"
+   },
+   {
+    "line": 1645,
+    "def": "linear-gradient(90deg,#FFC24A,#3DF0A4)"
+   },
+   {
+    "line": 1877,
+    "def": "linear-gradient(150deg,rgba(61,240,164,.1),rgba(255,255,255,.02))"
+   }
+  ]
+ },
+ "landing": {
+  "hex_unique": 15,
+  "hex_total": 15,
+  "rgba_unique": 7,
+  "rgba_total": 12,
+  "gradients": 6,
+  "hex": {
+   "#8d0000": {
+    "count": 1,
+    "lines": [
+     12
+    ],
+    "category": "brand"
+   },
+   "#4f0004": {
+    "count": 1,
+    "lines": [
+     12
+    ],
+    "category": "brand"
+   },
+   "#c1121f": {
+    "count": 1,
+    "lines": [
+     12
+    ],
+    "category": "brand"
+   },
+   "#bd6d6d": {
+    "count": 1,
+    "lines": [
+     13
+    ],
+    "category": "unknown"
+   },
+   "#deb6b6": {
+    "count": 1,
+    "lines": [
+     13
+    ],
+    "category": "unknown"
+   },
+   "#f5e9e9": {
+    "count": 1,
+    "lines": [
+     13
+    ],
+    "category": "unknown"
+   },
+   "#2a0a0c": {
+    "count": 1,
+    "lines": [
+     13
+    ],
+    "category": "unknown"
+   },
+   "#c9a227": {
+    "count": 1,
+    "lines": [
+     14
+    ],
+    "category": "brand"
+   },
+   "#f2c43d": {
+    "count": 1,
+    "lines": [
+     14
+    ],
+    "category": "brand"
+   },
+   "#8f6f14": {
+    "count": 1,
+    "lines": [
+     14
+    ],
+    "category": "unknown"
+   },
+   "#f7f4f3": {
+    "count": 1,
+    "lines": [
+     15
+    ],
+    "category": "surface"
+   },
+   "#fff": {
+    "count": 1,
+    "lines": [
+     15
+    ],
+    "category": "surface"
+   },
+   "#231416": {
+    "count": 1,
+    "lines": [
+     16
+    ],
+    "category": "unknown"
+   },
+   "#6e5a5c": {
+    "count": 1,
+    "lines": [
+     16
+    ],
+    "category": "unknown"
+   },
+   "#8a7578": {
+    "count": 1,
+    "lines": [
+     16
+    ],
+    "category": "unknown"
+   }
+  },
+  "rgba": {
+   "rgba(255,255,255,.85)": {
+    "count": 4,
+    "lines": [
+     37,
+     37,
+     38,
+     38
+    ]
+   },
+   "rgba(255,255,255,.9)": {
+    "count": 2,
+    "lines": [
+     36,
+     36
+    ]
+   },
+   "rgba(255,255,255,.8)": {
+    "count": 2,
+    "lines": [
+     39,
+     40
+    ]
+   },
+   "rgba(60,10,12,.08)": {
+    "count": 1,
+    "lines": [
+     17
+    ]
+   },
+   "rgba(141,0,0,.10)": {
+    "count": 1,
+    "lines": [
+     18
+    ]
+   },
+   "rgba(255,255,255,.14)": {
+    "count": 1,
+    "lines": [
+     45
+    ]
+   },
+   "rgba(141,0,0,.16)": {
+    "count": 1,
+    "lines": [
+     59
+    ]
+   }
+  },
+  "gradient_defs": [
+   {
+    "line": 30,
+    "def": "radial-gradient(120% 140% at 50% -10%,var(--maroon-vivid) 0%,var(--maroon) 45%,var(--maroon-d) 72%)"
+   },
+   {
+    "line": 36,
+    "def": "linear-gradient(90deg,rgba(255,255,255,.9),rgba(255,255,255,.9))"
+   },
+   {
+    "line": 37,
+    "def": "linear-gradient(90deg,rgba(255,255,255,.85),rgba(255,255,255,.85))"
+   },
+   {
+    "line": 38,
+    "def": "linear-gradient(90deg,rgba(255,255,255,.85),rgba(255,255,255,.85))"
+   },
+   {
+    "line": 39,
+    "def": "linear-gradient(0deg,rgba(255,255,255,.8) 0 7px,transparent 7px 15px)"
+   },
+   {
+    "line": 40,
+    "def": "linear-gradient(0deg,rgba(255,255,255,.8) 0 7px,transparent 7px 15px)"
+   }
+  ]
+ }
+}

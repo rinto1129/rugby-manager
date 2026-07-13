@@ -1,0 +1,1779 @@
+[
+ {
+  "site": "福岡大学ラグビー部 選手管理システム — 選手用サイト（/player/index.html・約6157行の単一HTMLファイル。Firebase Firestore `appdata` コレクションに短キーごとのJSON文字列を保存し、onSnapshotで全端末リアルタイム同期。下部4タブ（ホーム/トレーニング/マイデータ/マイページ）を軸に、go(tab)で切替、showSub()でフォーム系サブ画面を重ねる構成）",
+  "designNotes": [
+   "テーマ色: メインは白カード（--bg-primary:#fff）＋クリーム地（--bg-app:#F7F4F3）の明るい配色に、えんじ色（--maroon:#8d0000 / --maroon-vivid:#c1121f）とゴールド（--gold-hot:#F2C43D）をアクセントにした大学ラグビー部然としたブランド。※タスク説明の『ダークテーマ』は実態と異なる。暗いのは下部ナビ(.nav-bottom)とヒーロー/ローディングのみで、全体は明るいライトテーマ。ダークモード(prefers-color-scheme)対応はなし。",
+   "ラグビーモチーフは豊富: (1)rtpPitchHtml=リハビリ7段階をラグビーピッチのゴール〜22〜10〜ハーフウェイ7本線で表現し、ボールアイコンがトライ（=完全復帰）へ進む進捗図。(2)ghost-num=背番号を透かし文字で大きく背景配置(POS_NUM)。(3)kicker=イタリック大文字の英字ラベル(TODAY: PUSH DAY / RETURN TO PLAY / THIS WEEK 等)。(4)roleBadgeHtml=STARTING XV/FINISHER の英字併記。(5)i-ball(楕円球)アイコン多用、MD-1/MATCH DAY のマッチデーカウントダウンチップ。(6)tex-noise=ヒーローにノイズ質感。",
+   "アニメーションは実装済みで凝っている: rv/rv-armed=IntersectionObserverによる要素の順次フェードイン(reveal)、subin=サブ画面スライドイン、barfill/standgrow=バー・順位スタンドの伸長、ldswing=ローディングのボール振り子、urgflash/urgstripe=緊急アラート点滅、chkdraw/strikex=チェック描画・打消し線、rtpulse/rt-flash=レストタイマー、pb-flash=自己ベスト更新の全画面フラッシュ、vol-beat=ボリューム更新の鼓動、rtp-dotのanimation-delayによるドット段階表示。prefers-reduced-motion配慮あり。",
+   "BIG3/ブロンコにゲーミフィケーション: ブロンズ〜ダイヤの5段階ランク(色付き)、400/450/500 CLUB、バッジ(computeAllBadges)とバッジポイント通算、FOCUS(弱点種目)タグ、推定1RM自動算出など、選手のモチベーション設計が厚い。"
+  ],
+  "globalIssues": [
+   "情報の重複表示が多い: フィジカルベスト(SQ/BP/DL/ブロンコ)は『ホームのマイフィジカルカード』『マイページのフィジカルベスト』『フィジカル測定画面上部』『マイフィジカル詳細』『マイデータ』の5箇所で重複。推定1RMも『マイページ』『トレーニング』『マイデータ』の3箇所。最新コンディション/体組成も『マイページ』と『マイデータ』で重複。どこが正典か不明瞭。",
+   "『入力・記録』の導線がマイページのグリッド(コンディション/体組成/フィジカル/怪我/試合/テーピング/欠席)に集約される一方、トレーニングは独立タブ、コンディションはホームの『今日やること』からも入れるなど、入力起点が分散。毎日の主タスク(コンディション/トレーニング)と月次タスク(フィジカル測定)と例外タスク(怪我/欠席)が同じ粒度で並び優先度が伝わりにくい。",
+   "ナビは4タブ(ホーム/トレーニング/マイデータ/マイページ)だが、実際の画面(condition/physical/injury/match/tape/ranking/mystatus/help)は全てマイページかホーム経由のサブ遷移。頻用のコンディション・怪我・試合日チェックが下部ナビに無く、マイページ→グリッド→目的画面と最低2タップ必要。",
+   "『マイデータ』と『マイフィジカル詳細(mystatus)』と『マイページ下部の統計』が役割重複。分析系がマイデータ/マイフィジカル詳細に二分され、どちらに何があるか分かりにくい。",
+   "選手が『書けるが読めない』データがある: リハビリログ(rlog)は doRehab で保存するが、選手側では一切表示されない(trainer/coachのみ閲覧)。選手は自分の過去リハビリ記録を振り返れない。",
+   "日付入力の起点が今日固定で、過去日の記録追加時に毎回date入力欄を操作する必要がある一方、コンディション/フィジカルは同日重複チェックがあり、修正導線(showEdit)へ誘導されるが、過去日の抜け漏れ入力はやや発見しづらい。",
+   "全データが単一 appdata ドキュメント配列(JSON文字列)で、全選手分の p/i/f/ph 等を各端末が丸ごと購読。tlogのみアーカイブ(tla_)分割があるが、データ増に伴う購読コスト・描画コストが将来的な懸念。"
+  ],
+  "screens": [
+   {
+    "name": "選手選択・ログイン（showPlayerSelect / selectPlayer / showPINSetup / showPINEntry / showAutoLoginConfirm）",
+    "purpose": "名前検索で自分を選び、PIN(任意)で本人確認してログイン。前回ログインは確認画面経由で自動復元",
+    "actions": [
+     "名前検索(oninput)",
+     "選手カードをタップして選択",
+     "PIN 4桁の設定/入力",
+     "自動ログイン確認(このまま/別の人)",
+     "ログアウト(logout)"
+    ],
+    "dataKeys": [
+     "p:read",
+     "(localStorage rm_my_pid / PIN)"
+    ],
+    "crudGaps": [
+     "PINの変更・リセットUIが選手側に見当たらない(設定後に忘れた場合の導線が不明)"
+    ],
+    "usabilityIssues": [
+     "ログインは名前選択のみで、なりすまし防止はPIN任意頼み",
+     "選手数が多いと検索必須でスクロールが長い"
+    ]
+   },
+   {
+    "name": "ホーム（T.home）",
+    "purpose": "自分専用ダッシュボード。ヒーロー→今日やること→RTP→お知らせ→マイフィジカル/バッジ→今週予定→ランキング導線",
+    "actions": [
+     "ヒーロー(TODAY:○○ DAY)タップでトレーニングへ",
+     "通知ベルでマイページへ",
+     "今日やること各項目タップで該当入力へ",
+     "RTPカードでカルテへ",
+     "お知らせ折りたたみ開閉(homeAnnToggle)",
+     "今週予定折りたたみ(homeWeekToggle)",
+     "未入力測定会アラートでフィジカルへ",
+     "ランキングカードでランキングへ"
+    ],
+    "dataKeys": [
+     "p:read",
+     "f:read",
+     "i:read",
+     "ann:read/write(readByは他画面)",
+     "cal:read",
+     "offday:read",
+     "matchsel:read",
+     "md:read",
+     "msess:read",
+     "ph:read",
+     "bc:read",
+     "tgroup:read",
+     "tmenu:read(pp経由)"
+    ],
+    "crudGaps": [
+     "ホーム自体は表示専用。編集はリンク先に委譲"
+    ],
+    "usabilityIssues": [
+     "1画面に情報が非常に多く縦に長い(ヒーロー/todo/RTP/お知らせ/マイフィジカル/バッジ/pp/グループ/今週/未入力者/ランキング)",
+     "『昨日の試合日チェック未入力者一覧』『測定会あとN名』などチーム全体向け情報が個人ダッシュボードに混在し、選手個人には不要な場合がある"
+    ]
+   },
+   {
+    "name": "マイページ（T.mypage）",
+    "purpose": "プロフィール導線＋入力・記録グリッドのハブ＋各種通知・怪我状況・ベスト値まとめ",
+    "actions": [
+     "プロフィール設定へ(showProfileSettings)",
+     "テーピング予約管理へ",
+     "お知らせ既読化(自動)",
+     "怪我承認/却下通知の確認(markInjNotifRead)",
+     "カルテを見る(showMyChart)",
+     "入力グリッド8種(コンディション/体組成/フィジカル/怪我/試合/テーピング/欠席)へ",
+     "コンディション『修正』『削除』",
+     "体組成『修正』『削除』",
+     "欠席『取り消す』",
+     "使い方ガイドへ"
+    ],
+    "dataKeys": [
+     "p:read",
+     "f:read/delete",
+     "bc:read/delete",
+     "ph:read",
+     "i:read",
+     "ann:read/write(readBy)",
+     "a:read/delete",
+     "tape:read",
+     "e1rm:read",
+     "md:read",
+     "offday:read"
+    ],
+    "crudGaps": [
+     "コンディション・体組成はここから修正/削除できるが、当日分の最新1件のみボタンが出る(過去日の修正はcondition/physical画面の履歴からのみ)",
+     "欠席は当日分のみ取り消し可、過去や種別変更(編集)は不可"
+    ],
+    "usabilityIssues": [
+     "フィジカルベスト・体組成・最新コンディションがホームやマイデータと重複表示",
+     "入力グリッドが8枠あり毎日使うもの(コンディション)と稀なもの(怪我報告)が同格に並ぶ",
+     "当日入力済みかどうかで各カードのボタン(修正/削除)が出たり消えたりして一貫性が弱い"
+    ]
+   },
+   {
+    "name": "コンディション入力（T.condition / doCondition / showEditCondition / delCondition）",
+    "purpose": "毎日のRPE・睡眠・TR時間・体重(任意)・気分/ストレス/筋肉痛/部位・メモを記録",
+    "actions": [
+     "numStepで各値を入力",
+     "気分/ストレス/筋肉痛の5段階絵文字タップ",
+     "筋肉痛部位チップ選択",
+     "記録する(doCondition)",
+     "過去記録一覧表示(直近15件)",
+     "折れ線グラフ表示",
+     "(修正はshowEditCondition・削除はdelCondition)"
+    ],
+    "dataKeys": [
+     "f:read/write/update/delete"
+    ],
+    "crudGaps": [
+     "同日重複時は新規不可で修正画面へ誘導する良設計。ただし過去記録一覧の各行に修正/削除ボタンが無く、この画面からは個別レコードを直接編集/削除できない(修正/削除ボタンはマイページの当日カード側にしか無い)"
+    ],
+    "usabilityIssues": [
+     "過去記録リストは閲覧専用で、間違えた過去日を直すには一旦マイページに戻る必要があり導線が分断",
+     "任意項目(気分/ストレス/筋肉痛/部位/体重/メモ)が多く、毎日入力すると項目が長い"
+    ]
+   },
+   {
+    "name": "フィジカル測定（T.physical / showPhysForm / doPhys / showBroncoForm / showEditPhysRec / delPhysRec / markPhysSkip）",
+    "purpose": "SQ/BP/DL/チンニング/クリーンのMAXとブロンコタイムを記録。測定会期間中は自動紐づけ",
+    "actions": [
+     "記録を入力する(統合フォーム)",
+     "各種目MAX入力／ブロンコ分秒入力",
+     "本日は測定なし申告(markPhysSkip)/取消(cancelPhysSkip)",
+     "記録する(doPhys/doBronco)",
+     "履歴各行を『修正』『削除』",
+     "種目別グラフ切替(switchPhysGraph)"
+    ],
+    "dataKeys": [
+     "ph:read/write/update/delete",
+     "phskip:read/write/delete",
+     "msess:read(getCurrentMSess)"
+    ],
+    "crudGaps": [
+     "修正/削除は揃っており比較的充実。ただし1レコードにSQ/BP/DL/チンニング/クリーン/ブロンコが同居するため、1種目だけ間違えても他種目と同じレコードを編集する必要がある"
+    ],
+    "usabilityIssues": [
+     "フィジカルベストがこの画面上部・マイページ・ホーム・マイデータと重複",
+     "ブロンコの入力口がshowPhysForm/showBroncoForm/showBroncoFormDirectと複数あり導線が重複"
+    ]
+   },
+   {
+    "name": "体組成記録（showBCForm / doBCInput / showEditBC / doEditBC / delBC）",
+    "purpose": "体重・体脂肪率・筋量を記録(pickup対象日にマイページで強調)",
+    "actions": [
+     "測定日/体重/体脂肪/筋量入力",
+     "記録する(doBCInput)",
+     "修正(showEditBC)",
+     "削除(delBC)"
+    ],
+    "dataKeys": [
+     "bc:read/write/update/delete"
+    ],
+    "crudGaps": [
+     "修正/削除はマイページの当日カードからのみ。体組成の履歴一覧・過去分の編集導線がマイデータ側にもなく、当日以外の修正がしづらい"
+    ],
+    "usabilityIssues": [
+     "同日重複防止チェックが無く(doBCInputはguardSubmitのみ)、同じ日に複数回記録され得る",
+     "体重はコンディション入力でも別途入力でき(2箇所入力)、どちらを使うべきか不明瞭"
+    ]
+   },
+   {
+    "name": "怪我・リハビリ（T.injury / showInjuryReport / doInjuryReport / showRehabForm / doRehab / showWeekCheck / doWeekCheck / delWeekCheck）",
+    "purpose": "痛み報告→スタッフ承認→リハビリ段階・本日メニュー確認→リハビリログ・週次チェック提出",
+    "actions": [
+     "痛み・違和感を伝える(新規報告)",
+     "リハビリログを記録(showRehabForm)",
+     "週次怪我チェック提出/削除",
+     "コメント投稿(showInjCommentDialog/postInjComment/delInjComment)",
+     "カルテを見る(showMyChart)",
+     "既往歴の折りたたみ(togglePastInj)",
+     "復帰ブロンコ目標タイム表示"
+    ],
+    "dataKeys": [
+     "i:read/write(新規のみ)",
+     "r:read/write(新規のみ)",
+     "rlog:write",
+     "wc:read/write/delete",
+     "rplan:read",
+     "rtpl:read",
+     "injcomm:read/write/delete(自分)",
+     "chart:read"
+    ],
+    "crudGaps": [
+     "【重大】選手が出した怪我報告(i)は選手自身で編集・削除できない。誤報告・部位/種類の間違い・軽快しての取消は全てスタッフ任せ(承認前pendingでも自己取消不可)",
+     "【重大】リハビリログ(rlog)は書けるが選手側で一覧表示されず、修正/削除もできない(投げっぱなし)",
+     "週次チェック(wc)は削除できるが編集(修正)は不可"
+    ],
+    "usabilityIssues": [
+     "怪我報告フォームの項目が多く(受傷日/左右/部位/種類/受傷機転/痛み/来週参加可否/メモ)、小さな違和感でも入力負担が大きい",
+     "本日のリハビリメニューが『マイページ』『怪我タブ』の両方に出て重複",
+     "リハビリログと痛み記録が別導線(リハビリログは実施内容、痛みはカルテから)で分かりにくいと注記があるほど分離している"
+    ]
+   },
+   {
+    "name": "電子カルテ・痛み記録（showMyChart / drawMyPainChart / showPainSelfForm / savePainSelf）",
+    "purpose": "受傷経過・RTP参加レベル・ピッチ進捗図・痛み推移グラフ・トレーナーのSOAP記録を閲覧し、今日の痛みを自己記録",
+    "actions": [
+     "今日の痛みを記録する(4種の痛みをスライダー0-10＋メモ)",
+     "記録する(savePainSelf)",
+     "痛み推移グラフ・RTPピッチ図の閲覧"
+    ],
+    "dataKeys": [
+     "i:read",
+     "chart:read/write(evals push)",
+     "r:read"
+    ],
+    "crudGaps": [
+     "自己入力した痛み記録(chart.evals, bySelf)を後から修正・削除する手段が選手側に無い。入力ミスの痛み値がグラフに残り続ける"
+    ],
+    "usabilityIssues": [
+     "痛み4種(安静時/動作時/夜間/圧痛)を毎回スライダー操作で、日々の記録としてはやや手数が多い",
+     "痛み記録の入口が『カルテを見る』の中に一段深く、毎日の記録タスクにしては到達に手数がかかる"
+    ]
+   },
+   {
+    "name": "試合日コンディションチェック（T.match / showMatchForm / doMatch / showMatchDetail / delMatchDay）",
+    "purpose": "試合の出場区分・前後疲労度・怪我/足攣りの有無を記録",
+    "actions": [
+     "試合日チェックを入力(showMatchForm)",
+     "記録する(doMatch)",
+     "過去記録の詳細表示(showMatchDetail)",
+     "削除(delMatchDay)"
+    ],
+    "dataKeys": [
+     "md:read/write/delete",
+     "cal:read"
+    ],
+    "crudGaps": [
+     "試合日チェック(md)は削除できるが編集(修正)機能が無い。出場区分や疲労度を間違えたら削除して入れ直すしかない"
+    ],
+    "usabilityIssues": [
+     "試合日チェックが下部ナビに無く、マイページ→グリッド→試合、またはホーム/todoのアラート経由でしか辿れず、試合翌日に見つけにくい"
+    ]
+   },
+   {
+    "name": "トレーニング一覧（T.training）",
+    "purpose": "今日のPUSH/PULLプログラム・配布メニュー・おすすめフィットネス・自主トレ・履歴への起点",
+    "actions": [
+     "今日のプログラムを開始(startTraining)",
+     "配布メニュー各カードから開始",
+     "おすすめプログラムを『これをやる』(startFitProgram)",
+     "自主トレを記録(showSelfTrainingMenu)",
+     "トレーニング履歴・グラフへ(showTrainingHistory)",
+     "できない種目の申告『設定』(showDisabledExForm)"
+    ],
+    "dataKeys": [
+     "tmenu:read",
+     "tlog:read(実施済判定)",
+     "cal:read",
+     "e1rm:read",
+     "p:read(disabledEx)",
+     "tgroup:read"
+    ],
+    "crudGaps": [
+     "メニュー自体はスタッフ配布で選手は編集不可(仕様通り)"
+    ],
+    "usabilityIssues": [
+     "推定1RM・グループカードがホームやマイページと重複表示",
+     "『今日のプログラム』カードと配布メニュー一覧に同じメニューが二重に出ることがある(本日weight日かつ同メニュー)"
+    ]
+   },
+   {
+    "name": "トレーニング実施（beginTrainingExec / renderTrainingExec / 各setステッパ / レストタイマー / finishTraining / showTrainingResult）",
+    "purpose": "出欠確認→セット毎に重量/回数/RIRを記録、前回比較・弱点強調・レストタイマー・推定1RM自動更新",
+    "actions": [
+     "トレーニングする/今日は休む(出欠)",
+     "各セットの重量±・回数±・RIR±入力(ステッパ)",
+     "セット追加(addTSet)",
+     "種目スキップ＋理由(toggleSkip/setSkipReason)",
+     "比較モード切替(setTrCompare)",
+     "レストタイマー開始/リセット/±(toggleRestTimer 他)",
+     "記録を完了(finishTraining)",
+     "下書き自動保存(ローカル＋クラウドtdraft)/再開(resumeTDraft)"
+    ],
+    "dataKeys": [
+     "tmenu:read",
+     "tlog:write",
+     "tdraft:read/write(クラウド下書き)",
+     "texlist:read/write(種目履歴merge)",
+     "e1rm:read/write(自動算出)",
+     "p:read(disabledEx)",
+     "(localStorage 下書き)"
+    ],
+    "crudGaps": [
+     "【重大】完了したトレーニング記録(tlog)を後から編集・削除する機能が選手側に全く無い。セット値の打ち間違いや誤完了を修正できず、履歴・総ボリューム・推定1RMに残り続ける",
+     "スキップした種目の事後訂正も不可"
+    ],
+    "usabilityIssues": [
+     "セット毎に重量/回数/RIRをステッパで入力し、種目・セット数が多いとタップ数が非常に多い",
+     "出欠確認(トレーニングする?)が毎回1画面挟まり、実施までに1タップ余分"
+    ]
+   },
+   {
+    "name": "トレーニング履歴・グラフ（showTrainingHistory / drawTrainingCharts / getE1RMTrend）",
+    "purpose": "総ボリューム推移・種目別ボリューム・推定1RMの伸び・記録一覧を閲覧",
+    "actions": [
+     "種目別グラフの種目切替(selectTrHistEx)",
+     "記録一覧(直近20件)閲覧"
+    ],
+    "dataKeys": [
+     "tlog:read",
+     "tla_:read(アーカイブ)",
+     "tmenu:read",
+     "e1rm:read(getE1RMTrend算出)"
+    ],
+    "crudGaps": [
+     "一覧の各記録から編集/削除ができない(閲覧のみ)。誤った記録を消せない"
+    ],
+    "usabilityIssues": [
+     "記録一覧が直近20件固定で、それ以前の個別記録を辿る手段が乏しい"
+    ]
+   },
+   {
+    "name": "自主トレ記録（showSelfTrainingMenu / startSelfWeight / addTrainingEx / showSelfFitnessForm / saveSelfFitness）",
+    "purpose": "配布メニュー以外のウエイト/フィットネスを自分で種目追加して記録",
+    "actions": [
+     "自主トレ(ウエイト)開始",
+     "種目を検索/追加(addTrainingEx・texlist履歴補完)",
+     "フィットネス記録(種類/時間/距離/RPE)",
+     "保存(saveSelfFitness / finishTraining)"
+    ],
+    "dataKeys": [
+     "tlog:write(kind:self/fitness)",
+     "texlist:read/write",
+     "tdraft:read/write"
+    ],
+    "crudGaps": [
+     "自主トレ記録も完了後の編集/削除不可(tlog共通)"
+    ],
+    "usabilityIssues": [
+     "種目名の自由入力で表記ゆれが起きやすく、履歴グラフの種目集約が分散し得る"
+    ]
+   },
+   {
+    "name": "マイデータ（T.mydata / getMyInsights / 各チャート）",
+    "purpose": "期間別(30/90/全)の自動考察・獲得バッジ・コンディション/体組成/フィジカル/GPS/試合スタッツの推移分析",
+    "actions": [
+     "期間切替(setMdRange)",
+     "バッジ折りたたみ(toggleMdBadge)",
+     "種目別チャート切替(selectMdEx)",
+     "各種グラフ閲覧"
+    ],
+    "dataKeys": [
+     "p:read",
+     "f:read",
+     "bc:read",
+     "ph:read",
+     "tlog:read",
+     "tla_:read",
+     "gs/gr_:read(GPS)",
+     "ms/msr_:read(試合スタッツ)",
+     "e1rm:read",
+     "std:read"
+    ],
+    "crudGaps": [
+     "分析専用で編集は無い(仕様通り)。ただし元データ(体組成/フィジカル)の修正導線がこの画面には無く、ここで異常値に気づいても直接直せない"
+    ],
+    "usabilityIssues": [
+     "マイフィジカル詳細(mystatus)と分析対象が重複し、どちらを見るべきか不明瞭",
+     "コンディション・体組成・フィジカルの最新値がマイページとも重複"
+    ]
+   },
+   {
+    "name": "マイフィジカル詳細（T.mystatus / myPhysCardHtml / BIG3・ランク・弱点・推奨体重帯）",
+    "purpose": "ポジション別基準に対するBIG3ランク・ブロンコランク・BIG3 CLUB・弱点種目・推奨体重帯/FFMIを表示",
+    "actions": [
+     "ホームのマイフィジカルカードからタップ遷移",
+     "3種目ランクカードの横スクロール閲覧",
+     "体重未登録時に体組成記録CTA"
+    ],
+    "dataKeys": [
+     "p:read",
+     "ph:read",
+     "bc:read",
+     "f:read(体重)",
+     "std:read"
+    ],
+    "crudGaps": [
+     "表示専用。体重/身長が無いとランク不能だが、修正導線は他画面依存"
+    ],
+    "usabilityIssues": [
+     "マイデータと役割が重複",
+     "ポジション/身長/体重が揃わないと大半が非表示になり、初期状態では価値が伝わりにくい"
+    ]
+   },
+   {
+    "name": "テーピング予約（T.tape / showTapeBookForm / updateTapeSlots / doTapeBook / cancelTapeRsv）",
+    "purpose": "スタッフが出した枠から担当者・部位・時間を選び予約(部位数×5分で連続枠を自動探索)",
+    "actions": [
+     "予約可能日を選択",
+     "担当者選択(selectTapeStaff)",
+     "部位を複数選択(toggleTapePart)",
+     "時間枠選択(selectTapeSlot)",
+     "予約を確定(doTapeBook)",
+     "予約をキャンセル(cancelTapeRsv)"
+    ],
+    "dataKeys": [
+     "tape:read/write/delete",
+     "tapeslot:read"
+    ],
+    "crudGaps": [
+     "予約の『変更』が無く、部位/時間を直すにはキャンセル→再予約が必要(同日1件制約あり)",
+     "予約時のメモ(tapeNote)入力UIが選手側に無い"
+    ],
+    "usabilityIssues": [
+     "担当者→部位→時間の3段階選択で、空き枠が無いと最初からやり直し",
+     "同日1予約制約のため、追加部位を後から足せずキャンセル再取得になる"
+    ]
+   },
+   {
+    "name": "欠席・遅刻申告（showAbsenceForm / doPlayerAbsence / cancelAbsence）",
+    "purpose": "欠席/遅刻/早退/部分参加の種別と理由を申告しスタッフへ即通知",
+    "actions": [
+     "日付/種別/理由を入力",
+     "申告する(doPlayerAbsence)",
+     "本日分を取り消す(cancelAbsence)"
+    ],
+    "dataKeys": [
+     "a:read/write/delete"
+    ],
+    "crudGaps": [
+     "取り消し(当日)は可だが編集不可。種別や理由の誤りは取消→再申告が必要",
+     "過去日や翌日以降の申告を後から取り消す導線が弱い(cancelAbsenceは当日固定)"
+    ],
+    "usabilityIssues": [
+     "マイページのグリッド1枠からのみ到達で、頻度の割に浅い階層にない"
+    ]
+   },
+   {
+    "name": "プロフィール設定 / できない種目申告（showProfileSettings / saveMyHeight / saveMyWg / showDisabledExForm / saveDisabledEx）",
+    "purpose": "身長登録・ウエイト時間帯アンケート(5限曜日/遠距離/希望)・怪我等でできない種目の申告",
+    "actions": [
+     "身長を保存(saveMyHeight)",
+     "5限曜日/遠距離/時間帯希望を保存(saveMyWg)",
+     "できない種目を追加/削除/編集して保存(saveDisabledEx)"
+    ],
+    "dataKeys": [
+     "p:read/update(height/wg/disabledEx)"
+    ],
+    "crudGaps": [
+     "名前・ポジション・学年など基本プロフィールは選手側で編集不可(スタッフ管理・仕様通り)"
+    ],
+    "usabilityIssues": [
+     "体重はプロフィールに無く『体組成測定で自動記録』と分離しており、身長はここ・体重は別画面と入力場所が分かれる",
+     "できない種目申告がトレーニングタブの奥にあり発見しづらい"
+    ]
+   },
+   {
+    "name": "使い方ガイド（T.help）",
+    "purpose": "毎日やること・試合日・怪我中・MAX測定・欠席・テーピング・入力訂正の使い方を静的に説明",
+    "actions": [
+     "マイページ末尾のボタンから開く",
+     "閲覧のみ"
+    ],
+    "dataKeys": [],
+    "crudGaps": [
+     "静的テキストのみ"
+    ],
+    "usabilityIssues": [
+     "マイページ最下部からのみ到達で、初回オンボーディングとして提示されない"
+    ]
+   }
+  ]
+ },
+ {
+  "site": "福岡大学ラグビー部 選手管理システム — スタッフ用サイト（staff/index.html・約7846行・単一HTML/CSS/JS一体・ライトテーマ「FUKUDAI RED」。管理者=凛人が使用。Firebase Firestore（appdata/{短キー}に data=JSON文字列で1ドキュメント1配列保存、onSnapshotでリアルタイム同期、svSafeUpdate/svRec/svDelはトランザクション）。左サイドバー22項目のSPA、nav(pg)→V[pg]()描画、pushView/popViewでサブ画面スタック。tlogは容量対策でtla_/tlog分割アーカイブ、gps/msスタッツはgr_/msr_別ドキュメント。",
+  "screens": [
+   {
+    "name": "ダッシュボード（V.dash）",
+    "purpose": "朝の全体確認ハブ。緊急/注意/情報の3層アラート、本日の提出状況、今日の予定、お知らせ投稿、チーム記録、PUSH/PULL管理を1画面に集約。",
+    "actions": [
+     "ステータスタイル4枚（登録数/正常/怪我中/本日提出率リング）クリックで各画面へ遷移",
+     "PUSH/PULL: 実施済み→反転(ppFlip)、1つ戻す(ppUndo)、初期設定(ppStart)",
+     "新着怪我: 怪我人に追加(approveInjury)/却下(rejectInjury)/詳細(goInjuryDetail)",
+     "リハビリ遅延・目標日近い・連続欠席・復帰予定の各アラートをタップで詳細へ",
+     "注意層の折りたたみ開閉(dashWarnToggle)",
+     "未提出/滞留選手チップ→選手詳細",
+     "お知らせ投稿(postAnnounce)、宛先=全体/個人選択、今週の予定をまとめて投稿(postAnnounceFromCalendar)、カレンダーイベントからお知らせ反映(fillAnnounceFromEvent)、お知らせ削除(delAnnounce)",
+     "学年更新ボタン(checkYearUpdate/doYearUpdate)"
+    ],
+    "dataKeys": [
+     "p: read",
+     "i: read/write(approve/reject)",
+     "f: read",
+     "a: read",
+     "r: read",
+     "rplan: read",
+     "md: read",
+     "matchsel: read",
+     "msess: read",
+     "bc: read",
+     "cal: read",
+     "tape/tapeslot: read",
+     "ann: read/write",
+     "offday: read",
+     "pp: read/write",
+     "ph: read"
+    ],
+    "crudGaps": [
+     "お知らせ(ann)は投稿・削除のみ。投稿後の本文編集ができない（誤字修正は削除→再投稿）",
+     "新着怪我の却下理由はpromptのみで後から見返し・編集不可"
+    ],
+    "usabilityIssues": [
+     "1画面が非常に縦長（アラート3層＋提出状況＋今日の予定＋滞留＋3カード＋体組成＋試合未入力＋チーム記録＋お知らせ）でスクロール量が多く、朝の確認で目的情報を探しにくい",
+     "お知らせ投稿がダッシュボード最下部にあり、投稿のたびに大量スクロールが必要",
+     "学年更新ボタンがトップバーにあるが年1回しか使わず常時表示は導線ノイズ",
+     "PUSH/PULL管理カードがダッシュボードとトレーニング画面の両方に出て重複感"
+    ]
+   },
+   {
+    "name": "選手一覧（V.players）",
+    "purpose": "全選手をカードグリッド表示、検索・ポジ/学年/状態フィルタ・並び替え、状態サマリー。",
+    "actions": [
+     "選手カードタップ→選手詳細(goPlayerDetail)",
+     "名前検索・ポジション/学年/ステータスフィルタ・並び替え(名前/学年/ポジ/状態)",
+     "状態サマリータイル(全/正常/リハビリ/怪我)クリックでフィルタ",
+     "トップバー「+ 選手追加」(goAddPlayer→doAddPlayer)"
+    ],
+    "dataKeys": [
+     "p: read/write(追加)",
+     "i: read(状態判定)",
+     "r: read(リハビリ判定)"
+    ],
+    "crudGaps": [
+     "一覧からの直接削除・一括操作なし（削除は各選手詳細の基本情報タブからのみ）",
+     "卒業フラグ付き選手の一括削除手段がなく手動で1人ずつ"
+    ],
+    "usabilityIssues": [
+     "PIN未設定バッジがカードに出るが、そこから直接PIN対応する導線はなく詳細画面へ入る必要がある"
+    ]
+   },
+   {
+    "name": "選手詳細（goPlayerDetail・6タブ）",
+    "purpose": "1選手の全情報。基本情報/フィジカル/怪我リハビリ/疲労度/出欠提出/トレーニングの6タブ。",
+    "actions": [
+     "基本情報タブ: 氏名・ポジ・学年・生年月日・身長体重・出身校・特記編集して保存(doSavePlayer)、写真アップロード(handlePhoto)、既往歴表示、BIG3ランク/体重帯サマリー、獲得バッジ一覧、削除(doDelPlayer=関連全データ連鎖削除)、PINリセット(resetPlayerPIN)",
+     "フィジカルタブ: 推移グラフ＋記録一覧(読み取りのみ)",
+     "怪我リハビリタブ: 怪我カード→リハビリ詳細(goRPlanDetail)",
+     "疲労度タブ: RPE/睡眠/sRPEグラフ＋履歴(読み取りのみ)",
+     "出欠提出タブ: 出席欠席サマリー、直近14日提出ヒートマップ、最近の入力記録(提出日時)、欠席履歴",
+     "トレーニングタブ: 種目推移グラフ(トップ重量/推定1RM/ボリューム切替)、セッション履歴展開(renderTrainTab)"
+    ],
+    "dataKeys": [
+     "p: read/write",
+     "i: read",
+     "r: read",
+     "ph: read",
+     "f: read",
+     "a: read",
+     "bc: read",
+     "md: read",
+     "rplan/rlog: read",
+     "tlog(+アーカイブ): read",
+     "chart: read(バッジ)",
+     "std: read(ランク)"
+    ],
+    "crudGaps": [
+     "フィジカルタブ・疲労度タブは選手詳細内では閲覧専用で、そのタブから記録の編集・削除ができず、別画面(フィジカル/疲労度管理)へ移動が必要",
+     "トレーニングセッション記録(tlog)は選手詳細でも一覧のみで、スタッフが誤入力を修正・削除する手段が全サイトに存在しない",
+     "出欠履歴の個々の欠席理由をこの画面から修正できない"
+    ],
+    "usabilityIssues": [
+     "写真変更後に「保存」を押さないと消える仕様で、警告バナーを出すほど直感に反する（写真だけ即保存されない）",
+     "1画面6タブ＋各タブ内に複数form-boxで情報密度が高い",
+     "怪我・リハビリの編集操作はここではなく怪我カルテ/リハビリ詳細へ深く潜る必要がある"
+    ]
+   },
+   {
+    "name": "怪我管理（V.injury）",
+    "purpose": "治療中/回復済みの怪我一覧、選手フィルタ、確認待ち新着怪我の案内。",
+    "actions": [
+     "怪我カードタップ→カルテ(goInjuryDetail)",
+     "選手フィルタ",
+     "回復済みリスト折りたたみ(toggleResolvedInj)",
+     "トップバー「+ 怪我登録」(goAddInjury→doAddInjury)"
+    ],
+    "dataKeys": [
+     "i: read",
+     "p: read",
+     "r: read"
+    ],
+    "crudGaps": [
+     "承認/却下は一覧ではできずダッシュボードに誘導されるため、怪我管理画面単独では新着処理が完結しない"
+    ],
+    "usabilityIssues": [
+     "新着怪我の承認導線がダッシュボードにしかなく、怪我管理→ダッシュボードの往復が発生",
+     "一覧カードから直接「回復済み」「受診済み」にできず、いちいちカルテを開く必要がある"
+    ]
+   },
+   {
+    "name": "怪我カルテ（goInjuryDetail・7タブ）",
+    "purpose": "電子カルテ。概要/経過(タイムライン)/受傷診断/評価/SOAP/復帰/コメントの7タブで臨床記録を一元管理。",
+    "actions": [
+     "受傷診断: 受傷機転/場面/組織/重症度/病院/診断/画像/手術等を入力保存(saveChartDiagnosis)",
+     "評価: 部位連動の痛み/ROM/MMT/周径/整形テスト/特記症状を新規記録・編集・削除(showEvalForm/saveEval/delEval)、怪我種別テンプレから追跡指標生成(applyInjTemplate)、指標手動追加/削除(addCustomMetric/delMetric)、脳震盪トグル",
+     "SOAP: 記録追加・編集・削除(showSOAPForm/saveSOAP/delSOAP)",
+     "復帰: RTPレベル変更(setRtpLevel)、リハビリ段階を進む/戻す(changeStage)、復帰判定チェックリスト、予定日変更(goEditInjury)",
+     "コメント: スタッフ/選手/専門学生3者共有コメント投稿・削除(postInjComment/delInjComment)",
+     "怪我編集(goEditInjury)、受診済み(markVisited)、回復済み(resolveInj)、削除(deleteInjury=リハビリ連鎖削除)"
+    ],
+    "dataKeys": [
+     "i: read/write",
+     "chart: read/write",
+     "r: read/write",
+     "injcomm: read/write",
+     "p: read"
+    ],
+    "crudGaps": [
+     "追跡指標の実測値はカルテ側UIに一部未実装（ev-romH/fit等のUIは後フェーズ扱いでコード上空）",
+     "タイムライン(経過)は各種記録から自動生成される読み取り専用で、イベント個別の編集はできない"
+    ],
+    "usabilityIssues": [
+     "7タブ＋各タブが縦長フォームで臨床入力の負荷が高い",
+     "受傷情報が「怪我編集(goEditInjury)」と「受傷・診断カルテ(saveChartDiagnosis)」の2箇所に分かれ、部位/種類/受傷日は編集フォーム側、機転/診断はカルテ側と入力場所が分断",
+     "評価タブとリハビリ実施記録(goRPlanDetail)が別画面で、痛み・可動域はカルテ評価タブ、実施内容はリハビリ詳細と入力先が2分され迷いやすい"
+    ]
+   },
+   {
+    "name": "リハビリ管理（V.rehab・2タブ）",
+    "purpose": "選手プログラム一覧とテンプレ一覧。治療中選手のプログラム状況を俯瞰。",
+    "actions": [
+     "選手プログラムカード→リハビリ詳細(goRPlanDetail)",
+     "タブ切替(rehabTabSwitch)",
+     "完了済み折りたたみ(toggleResolvedRehab)",
+     "テンプレ作成(goAddRTpl)、テンプレ詳細(goRTplDetail)"
+    ],
+    "dataKeys": [
+     "i: read",
+     "rplan: read",
+     "rlog: read",
+     "rtpl: read",
+     "trainers: read",
+     "r: read",
+     "p: read"
+    ],
+    "crudGaps": [],
+    "usabilityIssues": [
+     "リハビリの実操作は全てgoRPlanDetail配下に潜り、一覧からは進捗確認しかできない"
+    ]
+   },
+   {
+    "name": "リハビリ詳細（goRPlanDetail）",
+    "purpose": "1選手のリハビリ段階タイムライン・プログラム設定・実施記録入力・履歴。",
+    "actions": [
+     "段階を進む/戻す(advRehabStage/prevRehabStage)",
+     "テンプレから設定/変更(goSetRPlan)・カスタム(goSetRPlanCustom)",
+     "今日の実施記録入力(実施日/実施者/種目チェック/セット回数/コメント→doSaveRehabLogStaff)",
+     "カスタム種目追加(addCustomRehabItem)",
+     "記録履歴の編集(goEditRehabLogStaff)・削除(delRehabLogStaff)",
+     "次回メニュー種別設定(goSetNextMenu)",
+     "テンプレとして保存(goSaveAsTemplate)"
+    ],
+    "dataKeys": [
+     "i: read",
+     "rplan: read/write",
+     "rlog: read/write",
+     "r: read/write(段階)",
+     "rtpl: read",
+     "trainers: read",
+     "p: read"
+    ],
+    "crudGaps": [
+     "「次回メニュー(tomorrowCats)」は設定できるが個別に取り消す明確なUIが弱い"
+    ],
+    "usabilityIssues": [
+     "実施記録入力とカルテ評価入力が別画面のため、リハビリ1回につき2画面(リハビリ詳細＋カルテ評価)を往復させられる",
+     "段階の目標日設定がprompt(手打ちYYYY-MM-DD)依存で入力が煩雑(advStage/setStageTargetDate)"
+    ]
+   },
+   {
+    "name": "トレーニング（V.training・2タブ）",
+    "purpose": "チーム定期メニュー(PUSH/PULLスロット)・通常メニュー・フィットネスプログラムの作成管理と実施状況。",
+    "actions": [
+     "メニュー作成(goAddTMenu)・スロット作成(goAddTMenuSlot)・詳細(goTMenuDetail)・編集(goEditTMenu)・削除(delTMenu)",
+     "種目追加/削除/更新(addTMenuEx/delTMenuEx/updTMenuEx)",
+     "フィットネスプログラム作成(goAddFitProg)・詳細(goFitProgDetail)・編集(goEditFitProg)",
+     "タブ切替(trTabSwitch)、実施状況(renderTrainingStatus)"
+    ],
+    "dataKeys": [
+     "tmenu: read/write",
+     "texlist: read/write(種目名履歴)",
+     "tlog(+アーカイブ): read(実施状況)",
+     "p: read",
+     "e1rm: read"
+    ],
+    "crudGaps": [
+     "選手が実施したトレーニングログ(tlog)自体をスタッフが修正・削除する画面がなく、誤記録の訂正手段が全く無い"
+    ],
+    "usabilityIssues": [
+     "PUSH/PULLの「次はどっち」管理がダッシュボードのppカードとトレーニング画面で二重管理気味"
+    ]
+   },
+   {
+    "name": "グループ分け（V.tgroup）",
+    "purpose": "選手の申告(5限/遠方/希望)を基に午前午後へ自動振分、BIG3強度で3人組を生成。",
+    "actions": [
+     "振分モード(午前午後/分割なし)切替(tgSetMode)",
+     "申告一覧折りたたみ・代理入力(goEditWg→doSaveWg)",
+     "除外選手のトグル・追加(tgToggleExclude)",
+     "自動編成(tgGenerate)・リセット(tgResetState)",
+     "チップ2タップで入替(tgChipTap)、対象外を班へ追加(tgAddUnscored)",
+     "編成保存(tgSave)"
+    ],
+    "dataKeys": [
+     "p: read/write(wg申告)",
+     "i: read(怪我除外)",
+     "ph: read(BIG3強度)",
+     "tgroup: read/write"
+    ],
+    "crudGaps": [],
+    "usabilityIssues": [
+     "申告の代理入力(goEditWg)は選手ごとに1人ずつ開いて保存する必要があり、未回答が多いと手間"
+    ]
+   },
+   {
+    "name": "ケガ分析（injstats）",
+    "purpose": "累計/治療中件数、部位別・種類別・月別・受傷機転のグラフ、多発(再発)選手アラート。",
+    "actions": [
+     "治療中選手テーブル→カルテ(goInjuryDetail)",
+     "多発選手→選手詳細(goPlayerDetail)",
+     "各種グラフ表示(読み取りのみ)"
+    ],
+    "dataKeys": [
+     "i: read",
+     "chart: read(機転/評価)",
+     "p: read"
+    ],
+    "crudGaps": [],
+    "usabilityIssues": [
+     "受傷機転グラフはカルテ入力が前提で、入力が乏しいと空表示になり分析価値が出にくい"
+    ]
+   },
+   {
+    "name": "復帰テスト（V.rtest・2タブ）",
+    "purpose": "怪我人ごとの復帰テスト進捗とテンプレ管理。患部テスト＋ブロンコで復帰承認。",
+    "actions": [
+     "選手カード→復帰テスト詳細(goRTestDetail)",
+     "テンプレ作成(goAddRTestTpl)・詳細(goRTestTplDetail)・削除(delRTestTpl)",
+     "患部テスト項目追加(addRTestPhysItem)",
+     "テンプレ割当(setRTestTpl)、ブロンコ目標設定(saveBroncoTarget)"
+    ],
+    "dataKeys": [
+     "rtest_tpl: read/write",
+     "rtest: read/write",
+     "i: read/write(承認/目標)",
+     "ph: read(ブロンコ)",
+     "p: read"
+    ],
+    "crudGaps": [
+     "復帰テストテンプレ(rtest_tpl)は作成・削除のみで編集不可（項目を1つ直すにも作り直し）",
+     "トレーナー(trainers)同様、作成後の名称/項目編集ができない"
+    ],
+    "usabilityIssues": [
+     "復帰の可否がカルテの復帰判定チェックリストと復帰テスト(rtest)の2系統に分散"
+    ]
+   },
+   {
+    "name": "テーピング予約（V.tape）",
+    "purpose": "担当者別テーピング枠の設定・予約状況表示・引き継ぎ記録。",
+    "actions": [
+     "枠設定(goAddTapeSlot→doAddTapeSlot、担当者行追加addTapeStaffRow)",
+     "日別詳細(goTapeDayDetail)、テーピング記録メモ保存(saveTapeNote)",
+     "日の枠を全削除(delTapeDay)",
+     "担当者フィルタ",
+     "引き継ぎ記録一覧(showTapeRecList)、選手別記録(showPlayerTapeRecs)、記録作成/編集(showTapeRecForm→saveTapeRec)・削除(delTapeRec)"
+    ],
+    "dataKeys": [
+     "tapeslot: read/write",
+     "tape: read/write(予約は選手が作成、tapeNoteはスタッフ)",
+     "taperec: read/write",
+     "p: read"
+    ],
+    "crudGaps": [
+     "予約(tape)自体はスタッフ側でキャンセル/変更するUIがなく、tapeNote(記録)しか書けない（予約の取消は選手依存）",
+     "個別の枠(tapeslot)1つだけの削除ができず、日単位の全削除のみ"
+    ],
+    "usabilityIssues": [
+     "枠作成が担当者×時間帯の分単位ループで生成され、設定項目が多くやや複雑",
+     "テーピング『予約枠』と『引き継ぎ記録』が同画面に混在し概念が分かりにくい"
+    ]
+   },
+   {
+    "name": "疲労度管理（V.fatigue）",
+    "purpose": "選手の毎日のコンディション(RPE/睡眠/sRPE)をチーム表・個人グラフで確認。",
+    "actions": [
+     "選手/チーム全体フィルタ",
+     "個人選択でグラフ＋履歴表示",
+     "記録削除(delFatigueStaff)",
+     "トップバー「+ コンディション入力」(goAddFatigue)",
+     "行タップで選手詳細"
+    ],
+    "dataKeys": [
+     "f: read/write(追加/削除)",
+     "p: read"
+    ],
+    "crudGaps": [
+     "コンディション記録(f)は追加と削除のみで【編集ができない】。選手が入力ミスした値をスタッフが直せず、削除→再入力しかない（ユーザー要望の核心）"
+    ],
+    "usabilityIssues": [
+     "チーム表では最新1件しか出ず、過去の値修正には個人を選んで一覧から削除する必要がある"
+    ]
+   },
+   {
+    "name": "欠席管理（V.absence）",
+    "purpose": "今月の欠席状況バー・アラート・セッション記録一覧。",
+    "actions": [
+     "セッションカード→詳細(goSessionDetail)、そこで削除(delSession)",
+     "選手名タップで選手詳細",
+     "トップバー「+ 欠席記録」(goRecordAbsence→doRecordAbsence、チェックボックス＋理由)"
+    ],
+    "dataKeys": [
+     "a: read/write(追加/削除)",
+     "p: read"
+    ],
+    "crudGaps": [
+     "欠席セッション(a)はセッション単位の削除のみで【編集不可】。日付/名称/欠席者/理由を後から修正できず、間違えたら削除して作り直し",
+     "個々の選手の出欠を後からトグルする手段がない"
+    ],
+    "usabilityIssues": [
+     "欠席記録は毎回全選手リストからチェックする方式で、練習ごとに手作業",
+     "選手申告の欠席と手動記録が同じセッションに混在し、申告分の扱いが分かりにくい"
+    ]
+   },
+   {
+    "name": "フィジカル記録（V.physical）",
+    "purpose": "BIG3/懸垂/クリーン/ブロンコの測定記録一覧・個人推移グラフ・伸長アラート・ブロンコ達成ボード。",
+    "actions": [
+     "選手フィルタ、個人グラフ",
+     "記録編集(goEditPhys→doEditPhys)・削除(doDelPhys)",
+     "「測定なしを設定」(goMarkPhSkip)",
+     "ブロンコ達成ボード開閉(phBroncoToggle)",
+     "トップバー「+ 記録追加」(goAddPhys)・「一括入力」(goBulkPhys)"
+    ],
+    "dataKeys": [
+     "ph: read/write",
+     "phskip: read/write",
+     "msess: read(紐付け)",
+     "std: read(基準)",
+     "p: read"
+    ],
+    "crudGaps": [],
+    "usabilityIssues": [
+     "記録が編集・削除・一括入力すべて揃っているが、測定会紐付けは編集フォームでのみ設定でき、一括入力/通常追加時と設定場所が異なる",
+     "一覧が最大40件でそれ以上は表示されず古い記録の編集導線が弱い"
+    ]
+   },
+   {
+    "name": "測定会管理（V.msess）",
+    "purpose": "測定会(期間)の作成・参加状況集計(入力済/測定なし/未入力)・締切・バッジ集計基盤。",
+    "actions": [
+     "測定会作成(goAddMSess)、詳細(goMSessDetail)",
+     "未入力選手へ記録入力(goAddPhysForSess)・測定なし設定(markSkipForSess)",
+     "測定会編集(doEditMSess=名前/期間/種別)",
+     "締切/解除(closeMSess/reopenMSess)、削除(delMSess)"
+    ],
+    "dataKeys": [
+     "msess: read/write",
+     "ph: read/write(代理入力)",
+     "phskip: read/write",
+     "p: read",
+     "std: read(バッジ)"
+    ],
+    "crudGaps": [
+     "「測定なし(phskip)」設定後に理由を修正・取消するUIが弱い"
+    ],
+    "usabilityIssues": [
+     "フィジカル記録・測定会・体組成が別画面で、測定期間中の入力状況が複数画面に散らばる"
+    ]
+   },
+   {
+    "name": "体組成（V.bodycomp）",
+    "purpose": "体重/体脂肪/筋量の記録一覧・個人推移・本日の測定対象ローテーション(5名)管理。",
+    "actions": [
+     "選手フィルタ、個人グラフ",
+     "本日を測定オフ日に切替(toggleOffDay)",
+     "記録削除(delBCStaff)",
+     "トップバー「+ 体組成記録」(goAddBC→doAddBC)"
+    ],
+    "dataKeys": [
+     "bc: read/write(追加/削除)",
+     "offday: read/write",
+     "p: read"
+    ],
+    "crudGaps": [
+     "体組成記録(bc)は追加と削除のみで【編集不可】。誤入力の値を直せず削除→再入力が必要"
+    ],
+    "usabilityIssues": [
+     "「本日の測定対象5名」ローテーションが自動抽選で、意図した選手を測りたい時に融通が利きにくい"
+    ]
+   },
+   {
+    "name": "試合日レポート（V.matchview・2タブ）",
+    "purpose": "選手が提出する試合日チェックと週次怪我チェックの閲覧。日付別集計・怪我/足攣り把握。",
+    "actions": [
+     "日付カード→試合日詳細(goMatchDateDetail)→個人詳細(goMatchDetail)",
+     "試合日記録削除(delMatchDayStaff)",
+     "週次怪我チェック削除(delWCStaff)",
+     "タブ切替(mvTab)"
+    ],
+    "dataKeys": [
+     "md: read/delete",
+     "wc: read/delete",
+     "p: read"
+    ],
+    "crudGaps": [
+     "試合日チェック(md)・週次怪我チェック(wc)ともスタッフは削除のみで編集不可(選手提出データ)。スタッフ側で新規作成もできず、閲覧＋削除に限定"
+    ],
+    "usabilityIssues": [
+     "選手提出前提のため、スタッフが代理入力・訂正する手段が一切ない"
+    ]
+   },
+   {
+    "name": "GPS・スタッツ（V.gps）",
+    "purpose": "GPS走行データ・試合スタッツをExcel/貼付TSVから取込む3ステップウィザード、名前照合、保存。",
+    "actions": [
+     "取込タイプ切替(GPS/試合スタッツ)",
+     "Excelドロップ/選択・シート選択・TSV貼付解析(gpsFile/gpsUseSheet/gpsParseTSV/gpsParseMstatTSV)",
+     "選手照合(自動/要確認/除外、gpsSetMatch)",
+     "保存(gpsDoSave→gpsCommit/mstatCommit)",
+     "セッション詳細(gpsDetail/msDetail)・削除(gpsDelConfirm/msDelConfirm)",
+     "リセット(gpsReset)"
+    ],
+    "dataKeys": [
+     "gs: read/write(索引)",
+     "gr_<id>: read/write(行データ)",
+     "ms: read/write",
+     "msr_<id>: read/write",
+     "gmap: read/write(名前学習辞書)",
+     "p: read"
+    ],
+    "crudGaps": [
+     "取込済みセッションは削除と閲覧のみで、個々の行(選手の数値)を後から編集する手段がない（間違いは再取込）",
+     "名前照合の学習辞書(gmap)を手動で修正・確認する画面がない"
+    ],
+    "usabilityIssues": [
+     "列レイアウトが固定プリセット依存で、元Excelの列がずれると検出できず原因が分かりにくい"
+    ]
+   },
+   {
+    "name": "ランキング（V.rank）",
+    "purpose": "SQ/BP/DL/懸垂/クリーン/ブロンコ/BIG3/体重あたりBIG3の表彰台＋バー付きランキング。",
+    "actions": [
+     "指標/学年/ポジションフィルタ",
+     "選手行タップ→選手詳細",
+     "表彰台・前回比チップ表示(読み取りのみ)"
+    ],
+    "dataKeys": [
+     "ph: read",
+     "p: read"
+    ],
+    "crudGaps": [],
+    "usabilityIssues": [
+     "データは表示のみ。値の修正はフィジカル記録画面へ移動が必要"
+    ]
+   },
+   {
+    "name": "トレーナー管理（V.trainer）",
+    "purpose": "専門学生/トレーナーの登録と怪我人への担当割り振り。",
+    "actions": [
+     "トレーナー追加(goAddTrainer→doAddTrainer)",
+     "担当割り振り(assignTrainer)",
+     "PINリセット(resetTrainerPIN)",
+     "削除(delTrainer=割当も解除)"
+    ],
+    "dataKeys": [
+     "trainers: read/write",
+     "i: read/write(trainerId)",
+     "p: read"
+    ],
+    "crudGaps": [
+     "トレーナー(trainers)は追加・削除・PINリセットのみで【名前編集ができない】。改名は削除→再登録が必要"
+    ],
+    "usabilityIssues": [
+     "トレーナー一覧と担当割り振りが縦に並び、選手が多いと割り振りセクションが長い"
+    ]
+   },
+   {
+    "name": "基準設定（V.standards）",
+    "purpose": "BIG3ランク倍率・推奨体重帯FFMI/体脂肪・ブロンコ基準・ランク閾値・バッジ点数・アロメトリック指数・処方箋をチーム共通で設定。",
+    "actions": [
+     "ポジション別基準テーブル入力",
+     "ランク/ブロンコランク閾値・バッジ点数・補正指数・処方箋を編集",
+     "保存(doSaveStd=バリデーション付き)",
+     "初期値に戻す(doResetStd)"
+    ],
+    "dataKeys": [
+     "std: read/write(単一要素配列[cfg])"
+    ],
+    "crudGaps": [],
+    "usabilityIssues": [
+     "入力項目が極めて多い巨大フォーム(ポジ10×7列＋ブロンコ＋ランク×2＋バッジ＋処方箋)で、一度に全部を保存する方式のため部分修正でも全体検証が走り心理的負荷が高い"
+    ]
+   },
+   {
+    "name": "カレンダー（V.calendar）",
+    "purpose": "月間グリッドで練習/試合/オフ/ウエイト/測定イベントを可視化、日クリックで追加。",
+    "actions": [
+     "月移動(calNavMonth)",
+     "日クリック→イベント一覧＋追加(calDayClick→doAddCalEventForDate)",
+     "イベント追加(goAddCalEvent→doAddCalEvent、測定系は測定会自動作成)",
+     "イベント削除(delCalEvent)",
+     "試合日に出場選手選定(goSelectMatchMembers→saveMatchSel)",
+     "一括インポート(goImportCal→renderCalImportPreview)"
+    ],
+    "dataKeys": [
+     "cal: read/write(追加/削除)",
+     "msess: read/write(自動作成)",
+     "matchsel: read/write(出場選手)",
+     "p: read"
+    ],
+    "crudGaps": [
+     "カレンダーイベント(cal)は追加・削除のみで【編集不可】。日付/種別/タイトル/詳細を直すには削除して作り直し"
+    ],
+    "usabilityIssues": [
+     "イベント修正ができないため、時間変更等でも消して再作成が必要",
+     "出場メンバー選定がカレンダーの試合イベント経由で、試合日レポート画面とメンバー起点が分かれる"
+    ]
+   },
+   {
+    "name": "CSV出力（V.export）",
+    "purpose": "選手/怪我/フィジカル/体組成/疲労度/欠席/試合日のCSV書き出しと全データJSONバックアップ。",
+    "actions": [
+     "各種CSVエクスポート(exportCSV)",
+     "全データJSONバックアップ(exportAllJSON)"
+    ],
+    "dataKeys": [
+     "p/i/ph/bc/f/a/md: read"
+    ],
+    "crudGaps": [],
+    "usabilityIssues": [
+     "書き出しのみ。インポート復元はカレンダー用の限定インポートしかなくJSONからの復元導線はない"
+    ]
+   },
+   {
+    "name": "使い方ガイド（V.help）",
+    "purpose": "スタッフ向け操作ガイド（朝のルーチン・怪我/リハビリ/測定会/試合/カレンダー/年度更新等）。",
+    "actions": [
+     "読み取り専用の静的説明カード"
+    ],
+    "dataKeys": [
+     "（なし・静的）"
+    ],
+    "crudGaps": [],
+    "usabilityIssues": [
+     "ガイドに『各記録の修正・削除ボタンから訂正可能』と書かれているが、実際にはコンディション/体組成/欠席/試合日/カレンダーなど編集不可の記録種別が多く、記載と実装が食い違っている"
+    ]
+   }
+  ],
+  "globalIssues": [
+   "編集(Update)機能の欠落が全体に散在: コンディション(f)・体組成(bc)・欠席(a)・カレンダー(cal)・お知らせ(ann)・トレーナー名(trainers)・復帰テストテンプレ(rtest_tpl)・GPS/試合スタッツ行・トレーニングログ(tlog)が『削除して作り直し』しかできず、ユーザーの『修正・削除・編集がもう少し欲しい』という不満に直結",
+   "記録種別ごとにCRUDの粒度がバラバラ: フィジカル(ph)/怪我(i)/カルテ評価/SOAP/リハビリログ(rlog)/メニュー(tmenu)は編集可だが、日々入力される軽量記録ほど編集不可という逆転がある",
+   "同じ情報の入力・確認が複数画面に分散: 怪我の受傷情報が『怪我編集』と『カルテ受傷診断』の2箇所、リハビリが『実施記録(リハビリ詳細)』と『評価(カルテ)』の2箇所、フィジカル値が『フィジカル記録』『測定会』『ランキング』『選手詳細』に重複表示され、1つの作業で複数画面を往復させられる",
+   "新着怪我の承認導線がダッシュボード限定で、怪我管理画面から承認できず往復が発生",
+   "サイドバー22項目とダッシュボードの縦長さから、目的の機能・情報を見つけるまでのスクロール/タップ数が多い（情報過多）",
+   "prompt()による手入力(段階目標日・測定なし理由・却下理由など)が複数箇所に残り、日付形式ミスや後からの参照性の悪さを生む",
+   "選手提出前提のデータ(試合日md・週次怪我wc)はスタッフが代理入力/修正できず閲覧＋削除のみ、運用の柔軟性が低い",
+   "使い方ガイドの記載(『各記録は修正・削除できる』)と実装(多くが編集不可)が乖離しており、誤解を招く",
+   "卒業選手のフラグ付与のみで一括削除の仕組みがなく、名簿整理が手作業"
+  ],
+  "designNotes": [
+   "テーマ色: FUKUDAI RED（ライトテーマ）。maroon(#8d0000)/maroon-vivid(#c1121f)/maroon-d(#4f0004)を主軸、アクセントにgold(#C9A227/#F2C43D)、状態色は blue/green/red/amber/purple。サイドバーはnavy系グラデ+goldストライプのアクティブ表示。フォントはOverpass(斜体数字)＋Zen Kaku Gothic New。",
+   "アニメーション有: ローディングのラグビーボール振り子(ldswing)、ページ初回訪問のリビール(rv-armed/IntersectionObserver・先頭8要素stagger)、カウントアップ(data-cu)、提出率リングゲージのdraw(ring-go)、折りたたみ(clp・220ms)、トースト(右上)、GPS取込ウィザードの装飾モーション(gx-shimmer/gx-pop/gx-check-draw/gx-card-in)。すべてprefers-reduced-motionで無効化するガード付き。Chart.jsグラフにも初回700ms/再描画0のアニメ制御(_chAnim)。",
+   "ラグビーモチーフ: i-ball(ラグビーボール)アイコンをローディング/ロゴ/GPS/試合系に使用、i-whistle/i-cone/i-medal/i-trophy等の競技アイコン群。ただしラグビーコート型の進捗表示のような『フィールドを模したビジュアル』は不採用で、リハビリ段階はstage-line(ドット＋コネクタ)、復帰はプログレスバー、ランキングは表彰台(podium)様式。掲示板風お知らせ(マスキングテープ::before＋微回転)、クラブレコードの銘板風パネル、FIXTURES/CLUB RECORDS等のキッカー英字ラベルでスポーツクラブ感を演出。"
+  ]
+ },
+ {
+  "site": "trainer/index.html — 専門学生トレーナー用サイト。ログイン（トレーナー選択＋4桁PIN、前回ログインは確認画面で自動復元）後、下部ナビ3タブ（ホーム/テーピング/リハビリ）を基点に、テーピング枠管理・テーピング記録引き継ぎ・リハビリ記録・電子カルテ（7サブタブ）・復帰テストへ遷移する単一HTML/JS/CSS一体型SPA。Firestore appdataコレクションの短キーをsvSafeUpdate等のトランザクションで読み書き。tmenu/tlog/texlist/e1rmは負荷対策で購読対象外。",
+  "screens": [
+   {
+    "name": "ログイン/PIN (showLogin, selectTrainer, showPINSetup/doSetupPIN, showPINEntry, login, showAutoLoginConfirmT/confirmAutoLoginT/rejectAutoLoginT, logout)",
+    "purpose": "トレーナー本人を選び4桁PINで認証。初回はPIN設定。前回ログインはlocalStorage(rm_my_trainer_id)から確認画面付きで自動復元（PIN再入力なし）。",
+    "actions": [
+     "トレーナー名ボタンで選択",
+     "PIN(4桁)設定・再入力",
+     "PIN入力してログイン（Enter対応）",
+     "「はい私です」自動ログイン確認 / 「違うトレーナーで入る」",
+     "ログアウト（確認あり）"
+    ],
+    "dataKeys": [
+     "trainers:read（一覧・PIN照合）",
+     "trainers:write（初回PIN保存 doSetupPIN）"
+    ],
+    "crudGaps": [
+     "PIN変更・リセット機能がない（一度設定したPINを本人が変えられない、忘れたら詰む）",
+     "トレーナー自身の追加/削除/改名はできない（INIT_TRAINERSかstaff依存）",
+     "PINはFirestoreに平文保存でハッシュ化なし"
+    ],
+    "usabilityIssues": [
+     "自動ログイン確認画面はPINを一切求めないため、端末を共有すると他人が本人になりすませる",
+     "PIN間違い時の救済（お問い合わせ導線）がない"
+    ]
+   },
+   {
+    "name": "ホーム (T.home)",
+    "purpose": "今日の起点ダッシュボード。PUSH/PULL次回、今日の担当テーピング枠と予約選手、復帰テスト状況、担当リハビリ選手をTo-Doバッジ優先度順に一覧。",
+    "actions": [
+     "ガイドを開く",
+     "PUSH/PULL 実施済み→反転(ppFlip)・1つ戻す(ppUndo)・初期設定(ppStart)",
+     "テーピング枠へ移動",
+     "リハビリ選手カードをタップ→goRehabPlayer",
+     "To-Doバッジをタップ→trBadgeGo（カルテ/メニュー/復帰テスト/リハビリへ分岐）"
+    ],
+    "dataKeys": [
+     "pp:read/write（次回PUSH/PULL・flip/undo/start）",
+     "cal:read（次のweight日）",
+     "tapeslot:read（自分の当日枠）",
+     "tape:read（当日予約）",
+     "p:read",
+     "i:read（治療中怪我）",
+     "r:read（段階）",
+     "rplan:read（本日メニュー）",
+     "rlog:read（最終記録日）",
+     "rtest:read（復帰テスト有無）",
+     "chart:read（trTodoBadge：脳震盪/評価空き判定）",
+     "injcomm:read（レッドフラグ検知）"
+    ],
+    "crudGaps": [
+     "ホームからは各記録の作成/編集/削除はできず閲覧＋遷移のみ",
+     "PUSH/PULLはundoが1手のみで任意履歴の編集不可"
+    ],
+    "usabilityIssues": [
+     "「担当リハビリ選手」がリハビリタブの一覧とほぼ同一内容で重複表示（同じ選手を2画面で見る）",
+     "実際には全治療中選手が『担当』として出る（担当外もOK仕様）ので『担当』表現が実態と乖離",
+     "To-Doバッジのタップ領域とカード本体タップの遷移先が別（誤タップしやすい）",
+     "PUSH/PULLカードがトレーナー業務と関係が薄いのにホーム最上部を占有"
+    ]
+   },
+   {
+    "name": "使い方ガイド (T.help)",
+    "purpose": "各画面の操作説明を静的カードで提示。",
+    "actions": [
+     "ホームに戻る"
+    ],
+    "dataKeys": [],
+    "crudGaps": [
+     "-（静的テキストのみ）"
+    ],
+    "usabilityIssues": [
+     "『記録ミス→スタッフに依頼して修正』とガイド自身が編集不可を認めており、修正機能の欠如を運用でカバーしている状態"
+    ]
+   },
+   {
+    "name": "テーピング管理 (T.tape)",
+    "purpose": "自分の担当枠（過去4週間〜来週）を日別に表示し、枠ごとの予約状況・予約選手を確認。枠の新規作成とテーピング記録一覧への入口。",
+    "actions": [
+     "今日/来週の枠を設定(showTapeSetupForm)",
+     "テーピング記録（引き継ぎ）を見る(showTapeRecList)",
+     "その日の自分の枠を全削除(delMyTapeDay・未来日のみ)",
+     "予約選手の『記録』ボタン→showPlayerTapeRecs"
+    ],
+    "dataKeys": [
+     "tapeslot:read",
+     "tape:read",
+     "p:read"
+    ],
+    "crudGaps": [
+     "枠の個別編集ができない（時間・定員・種別を作り直すしかない）",
+     "枠の個別削除ができず『その日の自分の枠を全削除』のみ",
+     "過去日の枠は削除ボタンすら出ない（誤登録の過去枠を消せない）",
+     "テーピング予約(tape)自体はトレーナーが代理作成/キャンセルできない（選手専用・閲覧のみ）"
+    ],
+    "usabilityIssues": [
+     "枠作成は一括生成のみで、1枠だけ足す/減らす微調整ができない",
+     "予約選手の順序変更・別枠への振替ができない",
+     "『記録』への導線がtapeタブ/枠内ボタン/記録一覧の3経路あり重複"
+    ]
+   },
+   {
+    "name": "テーピング枠作成 (showTapeSetupForm, doTapeSetup)",
+    "purpose": "日付・種別(練習前/試合前)・開始終了時間・1枠分数・定員から枠を機械的に一括生成。",
+    "actions": [
+     "日付/種別/開始/終了/間隔(分)/定員を入力",
+     "枠を作成",
+     "キャンセル"
+    ],
+    "dataKeys": [
+     "tapeslot:write（新規枠concat）"
+    ],
+    "crudGaps": [
+     "生成後の枠を編集する画面がない（間違えたら全削除して作り直し）"
+    ],
+    "usabilityIssues": [
+     "終了>開始のバリデーションのみで、既存枠との時間重複チェックがなく二重に枠が並びうる"
+    ]
+   },
+   {
+    "name": "テーピング記録・引き継ぎ (showTapeRecList, filterTapeRecList, showPlayerTapeRecs, renderTapeRecCard, showTapeRecForm, saveTapeRec, delTapeRec)",
+    "purpose": "『前回どう巻いたか』を選手別に蓄積し担当が変わっても引き継げる。使用テープ・巻き方手順・注意点・参考動画URL・記録者を保存。",
+    "actions": [
+     "選手名検索",
+     "選手を選び履歴表示",
+     "新しい記録を追加（選手/日付/左右/部位/テープ種類複数/巻き方/注意点/動画URL/記録者）",
+     "記録を編集(showTapeRecForm)",
+     "記録を削除(delTapeRec)",
+     "参考動画リンクを開く"
+    ],
+    "dataKeys": [
+     "taperec:read/write",
+     "p:read"
+    ],
+    "crudGaps": [
+     "ここは唯一フルCRUD（作成/編集/削除）が揃っている記録種別"
+    ],
+    "usabilityIssues": [
+     "同一選手の同一部位で毎回新規カードが増え、テンプレ複製や『前回をコピーして微修正』ができない",
+     "記録者フィールドが自由入力で、ログイン中トレーナー名が既定に入るが手打ち変更可能（表記ゆれ）"
+    ]
+   },
+   {
+    "name": "リハビリ管理一覧 (T.rehab, filterRehabList)",
+    "purpose": "治療中の全怪我を選手カードで一覧。段階・本日メニュー・統括担当・前回記録を表示。新規ケガ登録の入口。",
+    "actions": [
+     "新しいケガを登録(trShowAddInjury)",
+     "選手名・部位で検索",
+     "カードタップ→goRehabPlayer"
+    ],
+    "dataKeys": [
+     "i:read",
+     "p:read",
+     "rplan:read",
+     "r:read",
+     "rlog:read",
+     "trainers:read（統括名）"
+    ],
+    "crudGaps": [
+     "一覧からは怪我の編集/削除/回復済み化ができない（カルテ経由、かつ削除/回復はstaff限定）"
+    ],
+    "usabilityIssues": [
+     "ホームの担当リハビリ選手と情報が重複",
+     "『治療中の全選手』が出るため人数が多いと検索前提になる"
+    ]
+   },
+   {
+    "name": "新しいケガ登録 (trShowAddInjury, trDoAddInjury)",
+    "purpose": "選手・左右・部位・種類・受傷日・復帰予定・メモから怪我(i)とリハビリ(r,stage0)を同時作成。source:'trainer',approved:true。",
+    "actions": [
+     "選手選択",
+     "左右/部位/種類（その他は詳細欄）/受傷日/復帰予定/メモ入力",
+     "登録する（i＋rをsvSafeSeqで順次保存→カルテを開く）"
+    ],
+    "dataKeys": [
+     "p:read",
+     "i:write",
+     "r:write"
+    ],
+    "crudGaps": [
+     "登録直後の取り消し（登録をなかったことにする）はトレーナー単独では不可（削除がstaff限定）",
+     "受傷機転・診断など詳細は登録後カルテからの二度手間入力"
+    ],
+    "usabilityIssues": [
+     "部位/種類の『その他』詳細が別トグル欄で入力ステップが増える",
+     "登録すると自動でリハビリ開始され、誤登録の巻き戻しが効かない"
+    ]
+   },
+   {
+    "name": "リハビリ選手詳細 (goRehabPlayer)",
+    "purpose": "1選手の当日リハビリ実施ハブ。段階タイムライン→今日の変化チェック(安全ゲート)→前回記録→クイック評価/実施前チェック→今日の実施記録→履歴→3者コメントを1画面に縦積み。",
+    "actions": [
+     "電子カルテを開く",
+     "今日の変化チェック(はい/いいえ)→該当時スタッフへ連絡(escalateChgChk)",
+     "クイック評価入力・保存(saveQuickEval)／脳震盪時は実施前チェック(togglePreCheck,addROMItem,addStrengthItem)",
+     "種目チェック・セット/回数/コメント入力",
+     "リハビリ終了・保存(doSaveRehabLogTrainer)",
+     "種目を追加(addCustomRehabItemT)",
+     "復帰テストを実施(goRTestRecord)",
+     "コメント投稿(postInjComment)"
+    ],
+    "dataKeys": [
+     "i:read",
+     "p:read",
+     "r:read",
+     "rplan:read",
+     "rlog:read/write",
+     "rtpl:read",
+     "chart:read/write（クイック評価はevals追記）",
+     "injcomm:read/write",
+     "msess:read（msessId付与）",
+     "cal(間接)"
+    ],
+    "crudGaps": [
+     "リハビリ実施記録(rlog)は作成のみで編集・削除が一切できない（誤記録は残り続ける／ガイドも『スタッフに依頼』）",
+     "実施前チェック(preCheck)は保存後に単独修正できない",
+     "変化チェックのスタッフ連絡(injcomm)は投稿後に取り消し不可（削除は自分の通常コメントのみ）"
+    ],
+    "usabilityIssues": [
+     "1画面が非常に長く（安全ゲート＋前回＋段階＋評価＋記録＋履歴＋コメント）縦スクロール過多",
+     "評価入力が『クイック評価』と『カルテ評価タブのフル評価』の2箇所に存在し、同種データを二重入力しうる",
+     "クイック評価と実施記録が別ボタン保存で、片方保存忘れが起きやすい",
+     "テンプレ無し選手は種目を毎回手入力"
+    ]
+   },
+   {
+    "name": "電子カルテ・概要タブ (openChart, chartTab, renderChartOverview)",
+    "purpose": "受傷からの日数・評価/SOAP件数・基本情報・脳震盪/禁忌警告・再発アラート・最新痛み・既往歴を集約。編集/回復/削除ボタンを設置。",
+    "actions": [
+     "基本情報を編集(goEditInjury)",
+     "回復済みにする(resolveInj→blocked)",
+     "削除(deleteInjury→blocked)",
+     "治療中に戻す(unresolveInj)",
+     "既往歴カードから他の怪我カルテへ"
+    ],
+    "dataKeys": [
+     "i:read",
+     "p:read",
+     "r:read",
+     "chart:read"
+    ],
+    "crudGaps": [
+     "『回復済みにする』『削除』ボタンは押すと『スタッフ画面から』とalertするだけの飾り（トレーナーは実行不可）",
+     "unresolve(治療中に戻す)は実行できるのにresolve(回復済み)はできない非対称",
+     "怪我の完全削除がトレーナー権限にない"
+    ],
+    "usabilityIssues": [
+     "実行できないボタン(回復/削除)が表示され、押して初めて不可と分かる＝空振り操作",
+     "編集はできるが確定操作(回復・削除)だけstaff依存で、権限境界が画面から読み取れない"
+    ]
+   },
+   {
+    "name": "電子カルテ・基本情報編集 (goEditInjury, renderInjuryEditForm, doEditInjuryTrainer)",
+    "purpose": "左右/部位/種類/受傷日/復帰予定/受診状況/受診日/メモを編集。保存で差分をeditLogに記録＋injcommでスタッフへ自動通知。",
+    "actions": [
+     "各フィールド編集",
+     "保存(差分検出→editLog追記＋通知)",
+     "キャンセル"
+    ],
+    "dataKeys": [
+     "i:read/write（editLog）",
+     "injcomm:write（変更通知）"
+    ],
+    "crudGaps": [
+     "editLog（変更履歴）自体は編集・取り消し不可の追記専用",
+     "変更通知コメントは撤回不可"
+    ],
+    "usabilityIssues": [
+     "変更点ゼロで保存すると『変更点なし』alertで戻される（軽微だが空操作）"
+    ]
+   },
+   {
+    "name": "電子カルテ・経過タブ (renderChartTimeline)",
+    "purpose": "受傷/受診/手術/基本情報編集/評価/SOAP/段階移行/RTP/復帰予定/回復を時系列タイムライン表示（受傷からの日数・評価回数の統計ヘッダ付き）。",
+    "actions": [
+     "閲覧のみ"
+    ],
+    "dataKeys": [
+     "i:read",
+     "p:read",
+     "r:read",
+     "chart:read"
+    ],
+    "crudGaps": [
+     "タイムライン上のイベントを直接編集/削除できない（各元データ画面へ行く必要）"
+    ],
+    "usabilityIssues": [
+     "イベントをタップしても該当編集画面へジャンプできず読むだけ"
+    ]
+   },
+   {
+    "name": "電子カルテ・受傷診断タブ (renderChartDiagnosis, saveChartDiagnosis)",
+    "purpose": "受傷機転/場面/組織/重症度/状況/初期対応と、受診日/病院/担当医/診断名/画像検査/所見/治療方針/手術情報を1フォームで保存。",
+    "actions": [
+     "各項目入力",
+     "受傷・診断情報を保存"
+    ],
+    "dataKeys": [
+     "i:read",
+     "chart:read/write（injDetail,medical）"
+    ],
+    "crudGaps": [
+     "個別項目の削除概念がなく、空にして上書きするしかない",
+     "saveChartDiagnosisは素のsaveChart（ch全体上書き）で、他端末の同時編集をロストアップデートしうる（コメントでも警告済み）"
+    ],
+    "usabilityIssues": [
+     "入力項目が非常に多い長大フォームを1画面で埋める必要",
+     "保存が全項目一括で、部分保存や下書きがない"
+    ]
+   },
+   {
+    "name": "電子カルテ・評価タブ (renderChartEval, showEvalForm, saveEval, delEval, drawEvalCharts, 回復ゲージ renderDeficitGauges)",
+    "purpose": "部位連動の詳細評価（痛み/周径/ROM/MMT/整形テスト/特記症状/所見）をウィザード式で記録。痛み・ROM推移グラフ、回復ゲージ（円形リング・LSI・スパークライン）、MMTドットを表示。",
+    "actions": [
+     "新しい評価を記録(showEvalForm・進捗チップ＋アコーディオン)",
+     "評価を編集",
+     "評価を削除(delEval)",
+     "セクション移動(evGoSec)",
+     "前回比ライブ差分表示"
+    ],
+    "dataKeys": [
+     "i:read",
+     "chart:read/write（evals）"
+    ],
+    "crudGaps": [
+     "ここは評価(evals)のフルCRUD可。ただしクイック評価で作った同じevals配列を修正するにはこの深いタブまで来る必要がある"
+    ],
+    "usabilityIssues": [
+     "フル評価とクイック評価(goRehabPlayer)で入力先が同一evalsなのに入口が2つあり、どちらで入れたか混乱",
+     "整形テストの多くが🔒監督下バッジ付きで見習い単独判定不可（ORTHO_SOLO_OKが空＝全部監督下）",
+     "評価編集に到達するまでrehab→選手→カルテ→評価タブ→編集と最大5階層"
+    ]
+   },
+   {
+    "name": "電子カルテ・SOAPタブ (renderChartSOAP, showSOAPForm, saveSOAP, delSOAP, buildSOAPObjectiveDraft, insertSOAPDraft)",
+    "purpose": "S/O/A/P＋実施メニュー＋記録者でのSOAP記録。O欄は直近評価から下書き自動生成を挿入可能。",
+    "actions": [
+     "治療・リハビリを記録",
+     "SOAPを編集",
+     "SOAPを削除",
+     "直近評価からO欄下書きを挿入",
+     "記録者入力"
+    ],
+    "dataKeys": [
+     "i:read",
+     "chart:read/write（soaps）"
+    ],
+    "crudGaps": [
+     "SOAPはフルCRUD可"
+    ],
+    "usabilityIssues": [
+     "記録者が自由入力（ログイン名が自動で入らない）で表記ゆれ・空欄が起きやすい",
+     "SOAPとリハビリログ(rlog)のコメント/メニュー欄が役割重複し、どちらに書くか迷う"
+    ]
+   },
+   {
+    "name": "電子カルテ・復帰タブ (renderChartReturn, setRtpLevel, changeStage, toggleReturnCriteria)",
+    "purpose": "RTP練習参加レベル(6段階)変更、リハビリ段階の進む/戻す、復帰判定チェックリスト(12項目)、復帰目標日確認。",
+    "actions": [
+     "RTPレベル選択(確認＋全員共有)",
+     "段階を進める/戻す(changeStage・確認あり)",
+     "復帰基準チェックのオンオフ",
+     "予定日を変更→goEditInjury"
+    ],
+    "dataKeys": [
+     "i:read",
+     "r:read/write（stage,stageDates,stageBy）",
+     "chart:read/write（rtpLevel,returnCriteria）"
+    ],
+    "crudGaps": [
+     "RTPレベルは履歴を持たず最新値を上書き（過去の変更経緯を後から修正/参照不可）",
+     "段階移行日(stageDates)を手修正できない（進む/戻すの副作用でのみ記録）",
+     "復帰基準チェックの項目自体は固定でカスタム追加削除不可"
+    ],
+    "usabilityIssues": [
+     "RTP変更・段階変更が毎回confirmダイアログで、連続操作が煩雑",
+     "setRtpLevel/toggleReturnCriteriaが素のsaveChart全上書きでロストアップデート懸念"
+    ]
+   },
+   {
+    "name": "電子カルテ・コメントタブ (renderInjComments, renderInjCommentsListOnly, postInjComment, delInjComment, bindInjCommSubmit)",
+    "purpose": "スタッフ/選手/専門学生の3者共有コメント欄。役割バッジ付き。goRehabPlayer下部にも同機能。",
+    "actions": [
+     "コメント投稿(Ctrl/Cmd+Enter対応)",
+     "自分のコメントを削除"
+    ],
+    "dataKeys": [
+     "injcomm:read/write",
+     "p:read"
+    ],
+    "crudGaps": [
+     "コメントの編集ができない（削除して再投稿するしかない）",
+     "削除できるのは『自分の役割かつ自分のauthorId』のみ＝誤爆した他者コメントや基本情報編集の自動通知は消せない"
+    ],
+    "usabilityIssues": [
+     "同じコメント欄がコメントタブとリハビリ詳細下部の2箇所に描画され重複",
+     "投稿は即時反映だが編集不可のため誤字修正が削除→再投稿の手間"
+    ]
+   },
+   {
+    "name": "復帰テスト (goRTestRecord, calcSideDiff, doSaveRTest)",
+    "purpose": "スタッフ設定テンプレに基づく患部テスト（左右差85%基準/動作チェック）とブロンコ(フィットテスト)実測を記録。両方クリアでスタッフ承認待ち。",
+    "actions": [
+     "実施日入力",
+     "健側/患側値入力→左右差自動計算",
+     "動作テストのチェック＋コメント",
+     "ブロンコ分秒入力",
+     "テスト結果を保存"
+    ],
+    "dataKeys": [
+     "i:read（rtestTplId,broncoTarget）",
+     "p:read",
+     "rtest_tpl:read",
+     "rtest:write",
+     "msess(間接)"
+    ],
+    "crudGaps": [
+     "復帰テスト結果(rtest)は作成のみで編集・削除ができない（誤入力が恒久的に残る）",
+     "テストの合否承認(rtestApproved)はトレーナー不可＝staff権限",
+     "テンプレ未設定だと何もできずstaff依頼待ち"
+    ],
+    "usabilityIssues": [
+     "テンプレがない場合は行き止まり（自分でテスト項目を足せない）",
+     "保存後に結果カードを見返して修正する手段がない"
+    ]
+   },
+   {
+    "name": "次回メニュー設定 (goSetNextMenuT, toggleNextMenuCatT, saveNextMenuT) / テンプレ保存 (goSaveAsTemplateT)",
+    "purpose": "リハビリログ保存後に翌日実施カテゴリ(RCATS)を選択保存。カスタム種目実施時はテンプレ化(rtpl)を提案。",
+    "actions": [
+     "カテゴリチップのオンオフ",
+     "保存して完了/スキップ",
+     "テンプレ名を入力して保存(prompt)"
+    ],
+    "dataKeys": [
+     "i:read",
+     "p:read",
+     "rplan:read/write（tomorrowCats,tomorrowDate）",
+     "rtpl:write（テンプレ）"
+    ],
+    "crudGaps": [
+     "作成したテンプレ(rtpl)をトレーナー画面で編集/削除できない",
+     "次回メニューは上書きのみで履歴なし",
+     "テンプレ名変更・種目差し替えは新規作り直しになる"
+    ],
+    "usabilityIssues": [
+     "テンプレ名入力がブラウザのprompt()で、キャンセル/空入力の扱いが分かりにくい",
+     "リハビリ保存→テンプレ確認→次回メニューと連続モーダル/画面遷移が多い"
+    ]
+   }
+  ],
+  "globalIssues": [
+   "記録種別ごとにCRUDの完成度がバラバラ：テーピング記録・評価・SOAPはフルCRUD可だが、リハビリ実施記録(rlog)・復帰テスト(rtest)・実施前チェック(preCheck)は『作成のみ』で編集/削除が皆無。ユーザーが感じている『修正・削除・編集がもう少し欲しい』はこの3種が中心。",
+   "権限境界が画面から読めない：怪我の『回復済みにする』『削除』ボタンは表示されるが押すとstaff依頼alertが出るだけの空振りボタン。一方『治療中に戻す(unresolve)』は実行可という非対称で、何が自分の権限か触ってみないと分からない。",
+   "評価入力の二重動線：同じchart.evalsへ、リハビリ詳細の『クイック評価』とカルテ『評価タブのフル評価』の2経路がある。どちらで入れたか分からず、修正はカルテ深部まで潜る必要（rehab→選手→カルテ→評価タブ→編集で最大5階層）。",
+   "情報の重複表示：ホームの『担当リハビリ選手』とリハビリタブの一覧がほぼ同一。3者コメント欄もカルテ『コメントタブ』とリハビリ詳細下部の2箇所に描画。",
+   "リハビリ詳細(goRehabPlayer)が1画面に安全ゲート＋前回記録＋段階＋評価＋実施記録＋履歴＋コメントを全部縦積みで極端に長く、目的の操作に届くまでスクロールが多い。",
+   "ロストアップデート懸念の残存：saveChartDiagnosis / setRtpLevel / toggleReturnCriteria / changeStage系は素のsaveChart（ch全体上書き）を使い、複数端末同時編集時に他者の変更を巻き戻す設計リスク（コード内コメントでも警告）。saveEval/saveSOAP等は操作単位化済みで対策の粒度が不統一。",
+   "確定操作の取り消し不能：変化チェックのスタッフ緊急連絡・基本情報編集の自動通知・復帰テスト結果・リハビリ記録は投稿/保存後に本人が撤回できず、誤操作の救済がすべて『スタッフに依頼』運用に依存。",
+   "テーピング枠は個別編集/個別削除ができず『その日の自分の枠を全削除』のみ、過去日の枠は削除不可。微修正・過去の誤登録訂正ができない。",
+   "記録者名が複数箇所で自由入力（テーピング記録・SOAP）でログイン中トレーナー名が強制されず、表記ゆれ・空欄が発生しうる。",
+   "自動ログイン確認がPINを一切求めないため、共有端末でのなりすましリスク（セキュリティ×使いやすさのトレードオフが本人保護側に寄っていない）。"
+  ],
+  "designNotes": [
+   "テーマ色：ネイビー基調のダーク単一テーマ。--navy #0F1B2D / --navy-2 #16263E、アクセント青 --accent #3B82F6。役割色 緑#34D399・赤#F87171・アンバー#FBBF24・紫#A78BFA。ライトテーマ切替はなし。",
+   "リハビリカテゴリ(RCATS)ごとに固定色（ケア=青/ROM改善=緑/患部外=アンバー/トレーニング=赤/アジリティ=紫/フィットネス=シアン等）、痛み値・LSI・達成率も閾値で緑/アンバー/赤に色分け。",
+   "アニメーション：控えめ。カード/タイムラインカードのhoverでtranslateX＋影、スパークラインとゲージのネオン発光(drop-shadow/opacity)、評価保存バナーのopacityフェードアウト、評価ウィザードのチップ状態遷移、フォーカス時のaccent-glowリング。派手なモーション演出はなし。",
+   "ラグビーモチーフ：🏉絵文字がヘッダー/ログイン/ローディング/復帰タブ見出し(🏉現在の練習参加レベル)に散在する程度。ラグビーコート型やフィールド型の進捗表示は未使用。",
+   "進捗・可視化の作り込みは別方向で厚い：純SVGのネオン円形プログレスリング(gaugeSVG)、ミニスパークライン(sparklineSVG)、MMT段階ドット(renderMMTDots)、リハビリ段階の丸番号タイムライン、経過タブの縦型タイムライン(tl-*)、Chart.jsの痛み/ROM推移グラフ。いずれも汎用UIでラグビー固有の意匠ではない。",
+   "アイコンは主に絵文字とインラインSVG（ナビ・タイムラインのドット）。フォントはsystem-ui系(-apple-system/Noto Sans JP)。角丸(--radius 10/14px)と半透明ボーダーで統一されたカードUI。"
+  ]
+ },
+ {
+  "site": "coach/index.html — 福岡大学ラグビー部 監督・コーチ用ダッシュボード（完全な閲覧専用サイト。ヘッダーに「閲覧専用」バッジを常時表示し、Firestoreへの書き込み（set/update/add/delete）を一切行わない。全キーを onSnapshot で購読して読むだけ）。タブは6つ＋選手個人レポートのサブ画面。描画は curTab / _detailPid を見て render() が振り分ける単一SPA。",
+  "screens": [
+   {
+    "name": "概況ホーム（renderHomeView / curTab='home'・初期表示）",
+    "purpose": "怪我・コンディション・トレーニングの状態を1画面で俯瞰。RTPレベルを『出場可/練習のみ/不可/判断待ち』の現場言葉に翻訳した稼働率リングと、ポジション別頭数×稼働マトリクスで『土曜の編成』に即答させるトップページ。",
+    "actions": [
+     "タブバーで6タブを切替（goTab、横スクロール可能なピル型タブ）",
+     "稼働率リング/凡例の閲覧（操作なし・表示のみ）",
+     "ポジション別マトリクス閲覧（PR/HOがフル3名未満で赤警告、フル0で黄警告。ただしタップ導線なし＝表示専用）",
+     "KPIタイル4枚閲覧（現在の怪我/7日以内復帰/本日入力/14日トレ記録。数値カウントアップアニメ、タップ不可）",
+     "考察ダイジェスト（insHome）カードをタップして詳細展開（toggleIns、詳細内の選手行タップで個人レポートへ）",
+     "『復帰が近い選手』行タップ→openPlayerで個人レポート",
+     "『コンディション要注意』行タップ→個人レポート"
+    ],
+    "dataKeys": [
+     "p:read",
+     "i:read",
+     "chart:read",
+     "r:read",
+     "f:read",
+     "ph:read",
+     "tlog:read",
+     "tla_<pid>_<half>:read（tlogArchアーカイブ）"
+    ],
+    "crudGaps": [
+     "閲覧専用サイトのため作成・編集・削除機能は一切なし（このサイトの全画面共通の最大のギャップ）",
+     "考察が『120日超・復帰予定未設定の記録の棚卸し推奨』『復帰予定日超過（更新漏れの可能性）』を検出・提示するのに、コーチはその場で怪我レコードの復帰予定更新も解決済み化もできない（staff/trainerサイトへ移動が必要）",
+     "ポジションマトリクスや稼働率の元になるRTPレベル・怪我の resolved を、指摘を見た画面から修正できない"
+    ],
+    "usabilityIssues": [
+     "『復帰が近い選手』が概況ホームと怪我タブの両方に表示（情報重複）",
+     "『コンディション要注意』が概況ホームとコンディションタブの両方に表示（情報重複）",
+     "KPI『現在の怪我』が概況と怪我タブで重複、考察insInjury/insCondition/insTraining/insPhysicalの上位が概況ダイジェストにも出るため各タブと内容が重なる",
+     "ポジションマトリクスの各行はタップできず、赤警告が出てもそのポジションの該当選手一覧へ飛べない（選手一覧タブでポジション絞り込みし直す必要）",
+     "考察カードは『タップで詳細』だが、初見では何がタップ可能か分かりにくい（chevron頼み）"
+    ]
+   },
+   {
+    "name": "怪我・リハビリ（renderInjuryView / 'injury'）",
+    "purpose": "離脱者の現在地（RTPレベル・受傷からの日数・再発フラグ）と復帰予定タイムライン、リハビリ進捗（STG 7段階のプログレスバー）を追跡。",
+    "actions": [
+     "KPI4枚閲覧（現在の怪我人/7日以内復帰/リハビリ・部分参加中/過去30日で復帰）",
+     "考察（insInjury）展開・詳細内選手行タップ",
+     "復帰予定タイムライン行タップ→個人レポート",
+     "怪我人カード（card-hv）タップ→個人レポート",
+     "怪我人はRTPレベル順（rtpOrder）で自動ソート（並べ替え操作はなし）"
+    ],
+    "dataKeys": [
+     "i:read",
+     "chart:read（rtpLevel）",
+     "r:read（rehab stage）",
+     "p:read"
+    ],
+    "crudGaps": [
+     "怪我報告の新規作成・編集・削除ができない（受傷部位/種別/受傷日/復帰予定日/resolvedの修正不可）",
+     "コーチが『復帰予定日を過ぎている（更新漏れ）』『120日超で滞留』と気づいても、復帰予定の再設定・回復済み化ができない",
+     "RTPレベル（出場可否の根幹）を閲覧のみで変更できない",
+     "リハビリステージ（stage）やリハビリ計画・ログ（r/rplan/rlog）の修正不可"
+    ],
+    "usabilityIssues": [
+     "復帰予定タイムラインと怪我人一覧が同一タブ内で復帰予定情報を二度見せる（タイムラインカードと一覧カードのチップ）",
+     "怪我の詳細（カルテ chart、SOAP、可動域評価など）はこの画面には出ず、個人レポートに入ってもcoach側では表示されない（chartはRTPレベル取得にしか使っておらず、怪我の詳細情報が見られない）",
+     "特定選手の怪我を探すのに一覧をスクロールするしかない（部位/選手での絞り込み・検索なし）"
+    ]
+   },
+   {
+    "name": "フィジカル（renderPhysicalView / 'physical'）",
+    "purpose": "BIG3（SQ+BP+DL）ベスト合計を軸にチーム筋力を可視化。ブロンコ目標達成（ポジション別ゴールド基準）、FW/BKポジション別平均のChart.js棒グラフ、BIG3ランキング（表彰台＋リスト）。",
+    "actions": [
+     "KPI3枚閲覧（記録のある選手/BIG3平均/BIG3最高）",
+     "ブロンコ達成KPI3枚＋ポジション別達成率HTMLバー閲覧、チーム最速選手表示",
+     "考察（insPhysical）展開",
+     "ポジション別平均バーチャート閲覧（Chart.js、操作は凡例トグルのみ）",
+     "BIG3ランキング表彰台（pod）タップ→個人レポート",
+     "ランキングリスト行（4〜15位）タップ→個人レポート"
+    ],
+    "dataKeys": [
+     "p:read",
+     "ph:read（squat/bench/deadlift/bronco）",
+     "std:read（基準倍率・ランク定義）",
+     "bc:read（体重・体組成）",
+     "f:read（毎日体重、現在体重算出用）"
+    ],
+    "crudGaps": [
+     "フィジカル測定記録（ph）の追加・修正・削除ができない（測定値の入力ミス修正不可）",
+     "BIG3基準・ランク定義（std）の閲覧のみで、ポジション別倍率やランク閾値をこの画面から調整できない",
+     "測定会（msess）の作成・管理不可",
+     "考察が『90日以上未測定』『一度も測定なし』を挙げても、次回測定日の設定など是正操作はできない"
+    ],
+    "usabilityIssues": [
+     "ブロンコ・BIG3・体重帯・アロメトリックなど指標が多く、コーチが『結局この選手は強いのか』を1目で判断しにくい（数値密度が高い）",
+     "ランキングは上位15名までで、それ以下の選手は表示されない（全選手比較不可）",
+     "個人のフィジカル詳細を見るには一旦ランキング/選手一覧から個人レポートに入る必要があり、種目別の深掘りはさらにその中の種目セレクタ操作が要る（導線が深い）"
+    ]
+   },
+   {
+    "name": "トレーニング（renderTrainingView / 'training'）",
+    "purpose": "実施記録（tlog）の件数・欠席・怪我による欠席・7日総ボリューム(t)をKPI化し、痛み/怪我でできなかった種目アラートと実施記録一覧（新しい順25件）を表示。",
+    "actions": [
+     "KPI4枚閲覧（実施記録14日/欠席14日/怪我による欠席/総ボリューム7日）",
+     "考察（insTraining）展開（週間ボリューム比・欠席率・痛みスキップ偏り）",
+     "『痛み・怪我でできなかった種目』行タップ→個人レポート",
+     "実施記録一覧の各行タップ→個人レポート（欠席/フィットネス/ウエイトで表示分岐）"
+    ],
+    "dataKeys": [
+     "tlog:read（+tlaアーカイブ）",
+     "p:read",
+     "tmenu:read（メニュー名）",
+     "f:read（当日コンディション表示は個人レポート側）"
+    ],
+    "crudGaps": [
+     "トレーニング実施記録（tlog）・記録の欠席理由・セット内容を編集/削除できない（誤記録の訂正不可）",
+     "トレーニングメニュー（tmenu）の作成・編集不可",
+     "自主トレ/フィットネス記録の修正不可",
+     "痛みでのスキップ記録（skipReason）を見ても、その場で怪我登録や是正はできない"
+    ],
+    "usabilityIssues": [
+     "実施記録一覧は直近25件のみで、過去に遡るページングがない（古い記録は個人レポートのセッション履歴でしか辿れない）",
+     "セッションの中身（種目・セット）はこの一覧では見えず、個人レポートに入ってセッション履歴を展開する必要（2〜3タップ）",
+     "『怪我でできなかった種目』アラートと考察の痛みスキップが内容的に重複"
+    ]
+   },
+   {
+    "name": "コンディション（renderConditionView / 'condition'）",
+    "purpose": "疲労(RPE)・睡眠のチーム平均トレンド（14日Chart.js折線・2軸）と要注意選手（睡眠<6h/平均RPE>=8）を提示し、無理のきかない選手を早期発見。",
+    "actions": [
+     "KPI3枚閲覧（本日の入力/要注意/平均睡眠7日）",
+     "考察（insCondition）展開（睡眠トレンド・連続高RPE・入力率）",
+     "14日トレンド折線グラフ閲覧（凡例トグルのみ）",
+     "要注意選手行タップ→個人レポート"
+    ],
+    "dataKeys": [
+     "f:read（rpe/sleep/mood/stress/soreness/weight）",
+     "p:read"
+    ],
+    "crudGaps": [
+     "コンディション記録（f）の作成・編集・削除ができない（入力後の数値修正は選手/staff側でしか不可、コーチは閲覧のみ）",
+     "コーチから選手へ『入力して』と促す機能・通知が無い（考察で『声かけを推奨』と文章で出るだけ）"
+    ],
+    "usabilityIssues": [
+     "要注意選手リストが概況ホームと完全重複",
+     "個々の選手の日別コンディション推移は個人レポートの7日平均ミニ統計しか見られず、この画面のグラフはチーム平均のみ（個人の折線が見られない）",
+     "入力率が低い日でも当日KPIが小さく出るだけで、誰が未入力かは考察カードを展開しないと分からない"
+    ]
+   },
+   {
+    "name": "選手一覧（renderPlayersView / 'players'）",
+    "purpose": "全選手をポジション順にカード表示し、怪我中/健康バッジとBIG3チップを付けて、個人レポートへの入口にする。",
+    "actions": [
+     "ポジション絞り込みセレクト（setPosFilter、全ポジション/PR〜FB）",
+     "選手カード（card-hv、2列グリッド）タップ→個人レポート"
+    ],
+    "dataKeys": [
+     "p:read",
+     "i:read（怪我中判定）",
+     "ph:read（BIG3チップ）"
+    ],
+    "crudGaps": [
+     "選手（p）の登録・編集・削除ができない（名前/ポジション/学年/身長/体重/写真の修正不可）"
+    ],
+    "usabilityIssues": [
+     "選手名での検索窓がなく、大人数だとポジション絞り込み＋スクロールで目的の選手を探す必要（タップ数増）",
+     "並び順はポジション→id降順固定で、名前順・学年順・BIG3順などに切り替えられない",
+     "カードに出る情報がBIG3と健康状態のみで、直近コンディションや測定日など『気になる選手』を一覧から判断する材料が薄い"
+    ]
+   },
+   {
+    "name": "選手個人レポート（renderPlayerReport / _detailPid、openPlayerで遷移するサブ画面）",
+    "purpose": "1選手の全情報を縦スクロール1枚に集約：個人考察・現在の怪我/リハビリ進捗・フィジカルベスト＋BIG3推移グラフ・BIG3基準/体重帯バッジ・種目推移グラフ（種目セレクタ＋指標トグル）・セッション履歴・7日コンディション・過去の怪我歴。",
+    "actions": [
+     "『‹ 一覧へ戻る』ボタン（backFromReport、history.back対応）",
+     "iPhoneエッジスワイプ/ブラウザバックで戻る（popstate対応）",
+     "個人考察カード展開",
+     "種目推移の種目セレクト（setTrExC）・指標トグル（トップセット/推定1RM/ボリューム、setTrMetricC）",
+     "セッション履歴の各行タップで展開（toggleTrSess、全セット・目標差・スキップ理由・当日コンディション表示）",
+     "BIG3推移グラフ・種目推移グラフ閲覧（Chart.js）"
+    ],
+    "dataKeys": [
+     "p:read",
+     "i:read",
+     "chart:read（rtpLevel）",
+     "r:read（stage）",
+     "ph:read",
+     "e1rm:read（推定1RMレポート）",
+     "tlog:read（+tla）",
+     "tmenu:read",
+     "f:read",
+     "bc:read",
+     "std:read"
+    ],
+    "crudGaps": [
+     "この選手のどのレコード（怪我・測定・トレーニング・コンディション・カルテ）も編集/削除/追加できない完全な読み取り専用",
+     "怪我のカルテ詳細（injDetail/medical/evals/soaps/returnCriteria/images）はデータ上は存在するがcoach画面には描画されず、RTPレベル取得にしか使われていない（コーチが復帰基準の達成状況を見られない）",
+     "コーチがこの選手にメモ・コメント（injcomm等）を残す機能がない"
+    ],
+    "usabilityIssues": [
+     "1選手あたりカードが7〜9枚＋グラフ2枚の非常に長い縦スクロール（目的の情報＝例えばコンディションだけ見たい時も下までスクロールが必要）",
+     "戻ると選手一覧の元のスクロール位置・絞り込みは戻るが、複数選手を続けて比較する導線がない（毎回一覧に戻って別カードを探す）",
+     "種目推移・セッション履歴はplayer/staffのヘルパー流用で機能過多気味、コーチが素早く『調子』を掴む用途にはやや重い"
+    ]
+   }
+  ],
+  "globalIssues": [
+   "【最大の構造的ギャップ】coachサイトは設計上100%閲覧専用。全27キー(SK)をonSnapshotで購読するが、set/update/add/deleteは全コードに一切なし。ユーザーが望む『修正・削除・編集機能』はこのサイトには構造的に存在せず、コーチが画面上で異常（復帰予定超過・120日滞留レコード・測定値の誤り等）に気づいても是正はstaff/trainer/playerサイトへ移動しないとできない。考察エンジンが『棚卸し推奨』『再評価を推奨』と促すのに、その場でのアクションボタンが無いのが体験上の最大の摩擦。",
+   "【購読の無駄】D/SKは tape,tapeslot,trainers,rtpl,rplan,rlog,phskip,rtest_tpl,rtest,msess,taperec,texlist,md,wc,ann,offday,cal,matchsel,injcomm 等を全てonSnapshot購読するが、実際に描画で使うのは p,i,r,ph,f,chart,tmenu,tlog(+tla),e1rm,bc,std のみ。未使用キーのリアルタイム購読が読み取りコスト・初期ロードを増やしている。",
+   "【情報の重複表示】『復帰が近い選手』（概況/怪我）、『コンディション要注意』（概況/コンディション）、KPI『現在の怪我』（概況/怪我）、考察上位（概況ダイジェスト＝各カテゴリタブの考察と重複）が複数画面で二重に出る。概況が各タブのサマリを兼ねるため必然だが、同じ行を何度も見せている。",
+   "【導線の深さ】あらゆる詳細確認が『タブ→カード/行タップ→個人レポート（長い縦スクロール）→さらに種目セレクトやセッション展開』の多段。ポジションマトリクスの赤警告からその該当選手へ直接飛べない、コンディション個別推移が個人レポート最下部にしかない等、目的情報までのタップ数が多い。",
+   "【検索・並べ替えの弱さ】選手一覧はポジション絞り込みのみで名前検索なし・並べ替え固定。ランキングは15名まで。特定選手/特定記録に素早く到達する手段が乏しい。",
+   "【カルテ情報の非表示】怪我カルテ（chart.injDetail/medical/evals/soaps/returnCriteria/images）や復帰基準の達成状況はデータとして存在しながらcoach画面には一切描画されず、RTPレベルの取り出しにしか使われていない。監督が復帰可否の根拠を見られない情報設計上の欠落。",
+   "【tlogアーカイブ全取得】起動時に全選手×全半期の tla_ ドキュメントをPromise.allで一括取得（loadTlogArch）。選手数×半期数が増えるほど初期表示前の読み込みが重くなる潜在的スケール問題。"
+  ],
+  "designNotes": [
+   "テーマ色：ダークネイビー背景（--bg-app #050A12）＋ガラス質パネル。アクセントはミントグリーン系（--accent #3DF0A4 / --accent-2 #14B87D、ブランドロゴは#35E89C→#1FA2FFグラデ）。補助色に青#5FA8FF・アンバー#FFC069・赤#FF7B7B・紫#C7A4FF。RTPレベルはRTP_DARKでダーク用に再マッピング。全体に高級感のあるダッシュボード配色。",
+   "アニメーション多数：背景の浮遊オーブ3つ（drift1/drift2キーフレーム、720px以下でorb-3非表示）、スクロールリビール（.rv、IntersectionObserverでフェード＋上方向スライド、段階遅延--d）、数値カウントアップ（countUp、requestAnimationFrame・easeOutCubic）、稼働率リングのstroke-dashoffsetアニメ（1.4s）、プログレスバーのwidthアニメ（1.1s）、考察カードの展開insIn。prefers-reduced-motionとサイレント再描画(_noAnim)時は全アニメ無効化。",
+   "ラグビーモチーフ：🏉絵文字ロゴ（topbar）のみが直接的モチーフ。ラグビー特有の要素として POS配列（PR/HO/LO/FL/No.8/SH/SO/CTB/WTB/FB）でのポジション別頭数×稼働マトリクス、FW/BK分類、スクラム編成を意識したPOS_CRIT_MIN（PR/HO最低3名）警告がある。ただし『ラグビーコート型の進捗表示』のような競技場を模したビジュアルは無し。進捗表示はSVGドーナツ型の稼働率リング、リハビリ進捗は横棒プログレスバー（STG7段階）、ランキングは表彰台（podium 🥇🥈🥉）で表現しており、ラグビーフィールドを図像化した演出は未実装。"
+  ]
+ }
+]

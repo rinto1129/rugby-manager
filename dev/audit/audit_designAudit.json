@@ -1,0 +1,112 @@
+{
+ "findings": [
+  {
+   "title": "4サイトが実質2つ（いや3つ）の別デザイン言語に分裂している — テーマ統一の欠如",
+   "detail": "同一プロダクトでありながら :root のデザイントークンがサイトごとに別物。①ランディング/player/staff は『FUKUDAI RED』= マルーン(#8d0000)基調のライトテーマ、角丸 --radius:12px/--radius-lg:16px、影 rgba(141,0,0,..)、フォントは Overpass(斜体ナンバー)+Zen Kaku Gothic New。②trainer は完全に別物で、ネイビー地(#0F1B2D)のダークテーマ+アクセントが青(#3B82F6)、角丸 10/14px、システムフォントのみ(Overpass/Zen Kaku 未読込)。③coach はさらに別で、ほぼ黒(#050A12)地のグラスモーフィズム(rgba白半透明パネル+backdrop-filter blur)、アクセントがネオン緑〜シアン(#3DF0A4/#14B87D)、角丸 --radius:18px と最も大きく、orb ドリフト背景。結果、player→trainer→coach と回遊するとブランドカラー(赤)・フォント・質感・角丸・影がすべて変わり、同一チームのシステムに見えない。特に『ラグビー部＝マルーン&ゴールド』というブランドが player/staff にしか無く、trainer(青)/coach(緑)には一切継承されていない。再構築時はまずトークン(色・角丸・影・フォント)を1つに統一するのが最優先。",
+   "severity": "high",
+   "files": [
+    "index.html",
+    "player/index.html",
+    "staff/index.html",
+    "trainer/index.html",
+    "coach/index.html"
+   ]
+  },
+  {
+   "title": "デザイントークンが4ファイルにコピペ複製・共通CSSが存在しない（構造的最大の課題）",
+   "detail": "単一HTML×4構成のため共有スタイルシートが無く、:root 変数・.btn/.card/.bd/.av/.mc/.rk-* 等の共通コンポーネントが player と staff でほぼ丸ごと重複定義されている(例: rk-podium, rk-row, rk-bar, tl-* タイムライン, soap-line は staff と trainer に別々に重複)。片方だけ直すと不整合が生じる典型的な二重管理状態。加えて命名が不統一: グリッドが player は .grid2/.grid3、staff/trainer/coach は .g2/.g3/.g4。同じ『アクティブ』が .ac(共通)だが player nav は .nav-btn.ac、staff は .ni.ac、coach は .tab.ac と微妙に別系統。再構築するなら (a)トークンを1本の共通CSS(または CSS 変数の単一ソース)へ切り出し、(b)コンポーネントclassを共通化、(c)命名規約(grid系・状態系)を統一する必要がある。",
+   "severity": "high",
+   "files": [
+    "player/index.html",
+    "staff/index.html",
+    "trainer/index.html",
+    "coach/index.html"
+   ]
+  },
+  {
+   "title": "スタイルの大半がインラインstyle属性にハードコードされ、変数化されていない",
+   "detail": "JS の innerHTML 生成箇所で style= を多用: player 1208箇所 / staff 1698箇所 / trainer 623箇所 / coach 237箇所。さらに生ハードコード hex カラー(#xxxxxx)が player 178 / staff 172 / trainer 86 / coach 87箇所あり、--maroon 等のトークンと二重管理になっている(例: rtpPitchHtml 内の #EDF7F1/#E3F2E9/#CBDFD3、RTP_LEVELS の #B91C1C 等は変数化されていない生値)。この状態では『赤→別ブランドカラーに一括変更』が実質不可能(CSS変数を変えてもインラインの生hexが残る)。スタイリッシュ路線への再構築の前提として、インラインstyleを class + CSS変数へ移す作業が構造的に必須。",
+   "severity": "high",
+   "files": [
+    "player/index.html",
+    "staff/index.html",
+    "trainer/index.html",
+    "coach/index.html"
+   ]
+  },
+  {
+   "title": "『ラグビーコートのような進捗表示』= rtpPitchHtml()（player のカルテ内・復帰進捗ピッチ図）",
+   "detail": "特定完了。関数は player/index.html:3605 function rtpPitchHtml(stage)。ピッチを模した横長ボックス(緑グラデ linear-gradient(180deg,#EDF7F1,#E3F2E9))に、ゴールライン/22m/10m/ハーフウェイの7本の縦ラインをラベル['G','22','10','HW','10','22','G']付きで描画(pos=[3,18.7,34.3,50,65.7,81.3,97]%)。リハビリ7段階を7本線に対応させ、各線下部にドット(.rtp-dot、完了=マルーン/現在=maroon-vivid+.rtp-dot-cur リングパルス/未達=#CBDFD3)、現在段階の位置にラグビーボールアイコン(.rtp-marker、ic('i-ball'))を置き『トライ=完全復帰』とする演出。呼び出しは1箇所のみ = player/index.html:3628 function showMyChart(iid) 内、選手のカルテ画面『ROAD TO RETURN』カード(3653-3657行, rh.stage が存在する時のみ表示)。staff/trainer/coach には同等のピッチ図は無く、それぞれ .stage-line(横並びステッパー)/pbar(直線バー) を使用しており、このラグビーコート進捗は player 専用の作り込み。",
+   "severity": "medium",
+   "files": [
+    "player/index.html"
+   ]
+  },
+  {
+   "title": "ラグビーモチーフの使用箇所は player/staff/landing に集中、trainer/coach にはほぼ皆無",
+   "detail": "モチーフ一覧: (1)ラグビーボール SVG symbol #i-ball(landing・player)。landing のヒーローアイコン、player ヘッダー・ローディング(.ld-ball 揺れ)・rtpPitchHtml のマーカーに使用。(2)ピッチライン背景 .pitch-lines(index.html:34、ハーフウェイ実線+22m+10m破線を repeating-linear-gradient で再現、hero に敷く)。(3)背番号ゴースト .ghost-num(player/staff、ジャージ番号15を巨大アウトライン文字で装飾。landing は '15')。(4)ポディウム/表彰台 .rk-podium・.rkp-stand(金銀銅グラデ)は全サイトに存在するがラグビー固有ではなく汎用ランキング。(5)スキュー旗 .flag(player/staff、斜体フラッグ)。(6)ラグビー1-15番のポジション定数(player:391 コメント)。逆に trainer/coach にはボール・ピッチ・ゴースト番号などラグビー固有装飾が一切なく、汎用ダッシュボード然としている。ブランド演出の density がサイト間で大きく不揃い。",
+   "severity": "medium",
+   "files": [
+    "index.html",
+    "player/index.html",
+    "staff/index.html",
+    "trainer/index.html",
+    "coach/index.html"
+   ]
+  },
+  {
+   "title": "既存アニメーション全リスト（keyframes/transition/スクロール連動/タップフィードバック）",
+   "detail": "【landing】gatein(ゲートカードのstagger入場, nth-childで0.05〜0.35s遅延)。gate:hover translateY(-2px)、:active。【player】keyframes: ldswing(ローディングのボール揺れ)/subin(サブ画面スライドイン)/urgflash+urgstripe(緊急お知らせ1回フラッシュ+左ストライプ伸長)/chkdraw+strikex+fbpop(チェック完了描画+取消線+ポップ)/barfill(ランクバーscaleX伸長)/standgrow(表彰台せり上がり)/rtpulse+rtflash(休憩タイマーのパルス/終了3回フラッシュ)/pbpop(自己ベストPB!ポップ)/volbeat(種目ボリューム超え瞬間演出)/rtpslide+dotpop+rtpring(RTPピッチのマーカースライド/ドット60msstaggerポップ/現在ドット2回リングパルス)/gpsshimmer(GPS1位バーの光沢走査)。reveal系 .rv-armed→.in(スクロール/表示連動フェード+translateY)、トースト .toast.show(下から)、折りたたみ .clp(grid-template-rows 0fr↔1fr 220ms)、card-click:active scale(.98)。【staff】ldswing/sbstripe(サイドバーアクティブ線)/ringdraw(提出率リングゲージ描画)/barfill、gx-*一式(GPS取込ウィザード: gxshim光沢/gxpop/gxglow/gxcheck描画/gxcardin)、stat-tile:hover translateY(-2px)、トースト右上、rv-armed reveal。【trainer】CSS keyframesは実質なし、.nav-btn/.chart-tab の color transition と .tl-card:hover translateX 程度。【coach】drift1/drift2(背景orbの無限ドリフト)/insIn(考察カード展開)/spin(スピナー)/.rv スクロールリビール、.card-hv:hover translateY(-3px)+:active scale(.985)、.pod/.ins-tap タップscale。※全サイト prefers-reduced-motion ガードあり(coach は *{animation:none} で一括停止)。アニメの作り込み量も player>staff>coach>trainer と大きく不均一。",
+   "severity": "low",
+   "files": [
+    "index.html",
+    "player/index.html",
+    "staff/index.html",
+    "trainer/index.html",
+    "coach/index.html"
+   ]
+  },
+  {
+   "title": "ボタン/入力スタイルがサイト間で不統一（フォントサイズ・padding・角丸・hover挙動がバラバラ）",
+   "detail": "共通クラス名 .btn/.btn-p/.btn-d/.btn-s/.ipt を各サイトが個別定義しており値が異なる: player .btn は padding:10px 18px/font-size:14px/幅100%固定、staff は 8px 16px/13px/auto幅、trainer は 8px 16px/13px でhover背景も別、coach は .btn自体を定義せず .tab/.lnk/.pod など独自系。.ipt の font-size も player/trainer は16px(iOSズーム防止)だが staff は13px(モバイルで入力時に自動ズームが発生する懸念)。hover 効果も staff .card:hover は影+border強調、trainer は border色のみ、coach は translateY と統一感なし。ボタンの角丸も 12px系(player/staff/trainer)と coach の pill/独自で割れている。デザインシステム化の際に最も手戻りが出やすい箇所。",
+   "severity": "medium",
+   "files": [
+    "player/index.html",
+    "staff/index.html",
+    "trainer/index.html",
+    "coach/index.html"
+   ]
+  },
+  {
+   "title": "スペーシング単位が rem と px で混在し、リズムが不揃い",
+   "detail": "同一ファイル内で padding が .card:1.25rem、.mc:.75rem のようにrem指定される一方、多くのインライン/コンポーネントが margin-bottom:12px/14px/16px と px 直書きで混在(player の card 群 margin-bottom は 12/14/16px がバラバラ、staff も 1.25rem と 12px/6px が混在)。4/6/8/10/12/14px の刻みに統一されておらず、フォントサイズも 9/9.5/10/10.5/11/11.5/12/12.5/13/13.5/14/15… と 0.5px 刻みの中途半端値(特に coach)が多数。スペーシング/タイポのスケールをトークン化(4px or 8pxグリッド、type scale)すると洗練度が大きく上がる余地。",
+   "severity": "medium",
+   "files": [
+    "player/index.html",
+    "staff/index.html",
+    "trainer/index.html",
+    "coach/index.html"
+   ]
+  },
+  {
+   "title": "モバイルでの見切れ・オーバーフロー懸念箇所",
+   "detail": "(1)staff はPC前提の固定サイドバー(.sb width:236px, .app height:100dvh の2カラム)で、@media(max-width:768px)で幅56pxアイコンのみに畳むが、.ct 内の .g4(minmax155px)やランキングテーブル .rank-tbl(width:100%,white-space制御なしのtd)は狭幅で横スクロール/圧縮が起きやすい。player_hero-stats も640px以下で折返し対応済みだが gap:1.5rem のままで窮屈。(2)横スクロールレール(.rail flex:0 0 78%、.chart-tabs、.gps-chips、.tabs)は scrollbar非表示だが、coach の .tabs のみ右端フェードマスクありで他は無し=スクロール可能なことが視覚的に伝わりにくい。(3)coach は max-width:1080px のPC志向レイアウトで、KPI .kpi-v:33px や .hero-title:26px が 2カラムg2/g4 と組むと 375px幅で数値が詰まりやすい。(4)固定要素の重なり: player は nav-bottom(fixed) + toast(bottom:96px) + rt-bar(sticky) + pb-flash(fixed) が z-index 5/10/11/1200 で層状、セーフエリア env() は考慮済みだが要素が多く小画面で情報過多。全体にPC/モバイルどちら基準かがサイトで割れている(player/trainer=モバイル, staff=PC, coach=中間)。",
+   "severity": "medium",
+   "files": [
+    "player/index.html",
+    "staff/index.html",
+    "coach/index.html"
+   ]
+  },
+  {
+   "title": "古臭さ・妥協が出ている装飾表現（再構築で刷新余地）",
+   "detail": "(1)お知らせの『部室掲示板』演出 .notice-item: クリーム地#FFFDF6 + nth-childで±0.45deg回転 + マスキングテープ(::before 半透明ピンク矩形)。狙いは分かるがスキューモーフィックで、洗練スポーティー路線とは方向性が逆(player/staff両方に重複存在)。(2).flag のskewX斜体タグ、.ghost-num の -webkit-text-stroke アウトライン巨大数字はやや2010年代スポーツアプリ的。(3)絵文字を装飾に使用: player エラー画面の⚠️、coach の .pod-medal/brand-logo/hero em など絵文字・グラデ文字依存。(4)coach のネオングロー(badge-hero の inset glow, text にdrop-shadowグラデ)と player の badge-hero(#2a0810→#7a1233 ネオン)は派手だが他UIと浮いている。(5)グラデーション多用(player だけで hero/gps-hero/badge-hero/rkp-stand/rk-bar 等10種以上の別方向・別配色グラデ)が『統一されたグラデトークン』無しに個別定義され、まとまりを欠く。スタイリッシュ化するなら装飾語彙(回転テープ/スキュー/アウトライン文字/絵文字)を絞り、グラデを1〜2種のトークンに集約するのが有効。",
+   "severity": "low",
+   "files": [
+    "player/index.html",
+    "staff/index.html",
+    "coach/index.html"
+   ]
+  }
+ ]
+}

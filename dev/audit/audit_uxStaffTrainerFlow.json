@@ -1,0 +1,122 @@
+{
+ "findings": [
+  {
+   "title": "リハビリ実施記録(rlog)の編集・削除がサイト間で非対称かつ不完全 — トレーナーは自分の入力を直せない",
+   "detail": "リハビリを実際に記録するトレーナーの goRehabPlayer（trainer 2696-2728行）は記録履歴を表示するだけで編集/削除ボタンが一切ない。一方スタッフの goRPlanDetail（staff 6910-6924行）には編集/削除があるが、その編集 goEditRehabLogStaff/doEditRehabLogStaff（staff 7082-7100行）は日付・実施者・全体コメントしか直せず、どの種目を実施したか（exercises/cats）は修正できない。結果、実施種目の打ち間違いは誰も直せない。改善案: goRehabPlayer の履歴に自分の記録の編集/削除を付与し、編集フォームに種目チェック・セット/回数・cats を含める。ユーザーの『修正・削除がもう少し欲しい』の中核。",
+   "severity": "high",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html"
+   ]
+  },
+  {
+   "title": "スタッフ⇔トレーナーでリハビリ記録・カルテ編集・段階変更が完全重複し『主体』が不在",
+   "detail": "リハビリ実施記録の入力（staff doSaveRehabLogStaff 6952行 / trainer doSaveRehabLogTrainer 3627行）、段階を進む・戻す（staff advRehabStage/prevRehabStage 7025-7038行 / trainer changeStage 2383行）、次回メニュー設定（staff goSetNextMenu 7006行 / trainer goSetNextMenuT 3685行）、電子カルテの評価・SOAP・受傷診断（両サイト同名 saveEval/saveSOAP/saveChartDiagnosis）が両サイトに同一実装で存在する。どちらが正典入力者か画面から読めず、同じ選手に両者が別々に記録・段階操作するとロストアップデートや二重記録の温床になる（saveChartDiagnosis は ch 全体上書き）。改善案: リハビリ日次記録＝トレーナー主体、承認・回復判定＝スタッフ主体、と役割を明示し、他方には読み取り＋依頼導線に寄せる。",
+   "severity": "high",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html"
+   ]
+  },
+  {
+   "title": "トレーナーのカルテ概要に『回復済みにする』『削除』の空振りボタンがあり、権限境界が触るまで分からない",
+   "detail": "trainer renderChartOverview（1772-1776行）は『回復済みにする』『削除』を常に描画するが、その実体 resolveInj/deleteInjury（trainer 427-428行）は alert('スタッフ画面から') を出すだけ。一方『治療中に戻す』unresolveInj（2404行）は実際に書き込めるという非対称で、何が自分の権限か押して初めて分かる。改善案: 実行不可のボタンは非表示にするか disabled+理由ツールチップにし、unresolve も含め確定操作の権限を統一。",
+   "severity": "high",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html"
+   ]
+  },
+  {
+   "title": "復帰テスト結果(rtest)は作成のみで、トレーナーもスタッフも編集・削除できず誤入力が恒久的に残る",
+   "detail": "トレーナーの doSaveRTest（trainer 3564-3602行）は svSafeSeq で新規追加するだけ。スタッフの goRTestDetail（staff 6700-6761行）はテスト結果履歴（6748-6759行）を表示するだけで各結果に編集/削除がなく、できるのは承認・テンプレ設定・ブロンコ目標設定のみ。左右差や動作チェックを入力ミスしても訂正手段がゼロで、誤った合否判定が承認材料として残り続ける。改善案: rtest 履歴に削除（最低限）とトレーナー当日分の編集を追加。",
+   "severity": "high",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html"
+   ]
+  },
+  {
+   "title": "日次の軽量記録ほど編集不可という逆転 — コンディション/体組成/欠席/カレンダー/トレーニングログが『削除して作り直し』のみ",
+   "detail": "疲労度 V.fatigue の delFatigueStaff（staff 1881行, 削除のみ）、体組成 V.bodycomp の delBCStaff（1912行, 削除のみ）、欠席はセッション単位の delSession のみ、カレンダー cal は追加・削除のみ（delCalEvent）、トレーニングログ tlog は renderTrainingStatus（5968-6037行）が閲覧＋選手詳細遷移のみで編集/削除が全サイトに無い。毎日・大量に入る記録ほど1レコード編集ができず、間違えると削除→再入力になる。改善案: f/bc/a/cal に単一レコード編集を追加し、tlog はスタッフ側に最低限の削除を用意。",
+   "severity": "high",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html"
+   ]
+  },
+  {
+   "title": "新着怪我の承認導線がダッシュボード限定で、怪我管理画面から処理が完結しない",
+   "detail": "承認/却下 approveInjury/rejectInjury（staff 7379-7388行）のボタンはダッシュボード dash（1549-1552行）にしか無い。怪我管理 V.injury（1793-1815行）は pending がある場合『→ ダッシュボードで確認』のリンクを出すだけで、その場で承認できない。怪我を見に来た画面から一段戻される。改善案: V.injury の pending バナー内に承認/却下ボタンを直接配置。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html"
+   ]
+  },
+  {
+   "title": "受傷情報の入力先が『怪我編集』と『受傷・診断カルテ』の2画面に分断され、1つの受傷把握に往復が必要",
+   "detail": "部位・左右・種類・受傷日・復帰予定は goEditInjury/doEditInjury（staff 3767-3789行）で編集する一方、受傷機転・場面・組織・重症度・診断名・画像・手術は別タブの renderChartDiagnosis/saveChartDiagnosis（staff 2709-2744行）で入力する。怪我1件の全体像を書く/直すのに2フォームを往復させられ、トレーナー側（trainer 445-520行 doEditInjuryTrainer と 1817行 saveChartDiagnosis）も同構造。改善案: カルテ内で基本情報と受傷詳細を同一タブ/連続ステップに統合。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html"
+   ]
+  },
+  {
+   "title": "当日の未入力者対応が分断 — 一覧はあるが、そこから代理入力できずトレーニング未実施者は一覧化されない",
+   "detail": "コンディション未提出はダッシュボード submissionPanel（staff 1624-1625行）でチップ表示されるが、クリック先は goPlayerDetail のみで、その場から代理入力できない（代理入力は V.fatigue トップバーの goAddFatigue で選手を毎回選び直す設計）。さらにトレーニングは renderTrainingStatus（5968行）が直近30件のログ列挙で、『今日のPUSHを誰がまだやっていないか』の未実施者ロスターが存在しない。改善案: 未提出チップから直接代理入力へ、実施状況タブに当日メニューの実施/未実施マトリクスを追加。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html"
+   ]
+  },
+  {
+   "title": "トレーナーのテーピング枠は個別編集・個別削除ができず、過去枠は削除ボタンすら出ない",
+   "detail": "枠作成 doTapeSetup（trainer 3752-3781行）は開始〜終了を分割生成するだけで、生成後の1枠の時間・定員修正フォームが無い。削除は delMyTapeDay（3783行）による『その日の自分の枠を全削除』のみで、しかも T.tape（1355行）で過去日は削除ボタンを出さない条件（!isPast）。誤登録した過去枠や1枠だけの微調整ができない。改善案: 枠単位の編集/削除と、過去日の誤登録枠を消せる導線を追加。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html"
+   ]
+  },
+  {
+   "title": "使い方ガイドの『各記録は修正・削除できる』という記載が実装と食い違い、業務中に誤解を招く",
+   "detail": "スタッフ help（staff 2005行）は『入力ミス：各記録の「修正」「削除」ボタンから訂正可能』と断言するが、実際はコンディション・体組成・欠席・カレンダー・トレーニングログに修正が無い。トレーナー help（trainer 1323行）も『記録ミス→スタッフに依頼して修正』と、編集不可を運用で吸収している旨を自認。改善案: ガイドを実装の CRUD 実態（編集可/削除のみ/依頼が必要）に合わせて修正、または実装側に編集を追加して整合させる。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html"
+   ]
+  },
+  {
+   "title": "確定操作の一部が prompt() の手入力依存で、日付書式ミスや後からの参照性を損なう",
+   "detail": "リハビリ段階の目標日 editStageDate（staff 2232行）は prompt で YYYY-MM-DD を手打ち、測定会の測定なし理由 markSkipForSess（staff 6521行）、テンプレ名 goSaveAsTemplate（staff 7062行）、怪我却下理由 rejectInjury（staff 7388行付近）も prompt。日付形式の誤入力や、却下理由が後から見返せない問題が生じる。改善案: date input・選択式・保存される入力欄に置き換え。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html"
+   ]
+  },
+  {
+   "title": "『誰が伸びているか』の把握が画面横断で分散し、一覧で追いにくい",
+   "detail": "フィジカルの伸長/低下は renderPhysAlerts（staff 3894行）がフィジカル画面内でのみ前回比アラートを出し、順位は別画面 V.rank（2034行）、チーム最高記録はダッシュボード末尾のクラブレコード（1746行付近）と、成長シグナルが3画面に散る。怪我中・未提出は把握しやすい（ダッシュボード/選手一覧）一方、伸びている選手を一望する集約ビューが無い。改善案: ダッシュボードに『今週の伸び（フィジカル前回比上位）』サマリを集約。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html"
+   ]
+  },
+  {
+   "title": "測定会運営は充実しているが、『測定なし(phskip)』の取消・理由修正のUIが弱い",
+   "detail": "測定会は作成 doAddMSess（staff 6369行）・編集 doEditMSess（6385行）・締切/解除 closeMSess/reopenMSess（6473-6480行）・未入力者への代理入力 goAddPhysForSess（6482行）・削除 delMSess（6528行）と一通り揃い運用は良好。ただし markSkipForSess（6520行）で付けた『測定なし』は goMSessDetail の測定なし一覧（6427-6434行）に表示されるだけで、取り消し・理由修正ボタンが無い。誤って測定なしにすると未入力へ戻せない。改善案: 測定なし行に取消/理由編集を追加。",
+   "severity": "low",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html"
+   ]
+  },
+  {
+   "title": "記録者名が SOAP・テーピング記録で自由入力のため、ログイン中トレーナー名が強制されず表記ゆれが起きる",
+   "detail": "リハビリ実施記録の実施者はスタッフ側 doSaveRehabLogStaff（staff 6954行）でテキスト手入力必須、SOAP の記録者やテーピング記録 saveTapeRec（trainer 1549行）の記録者もログイン名が自動固定されず手打ち変更可能。同一人物が複数表記になり引き継ぎ・集計が分散し得る。改善案: ログイン中の myTrainer.name を既定固定（必要時のみ変更可）にして表記を統一。",
+   "severity": "low",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html"
+   ]
+  }
+ ]
+}

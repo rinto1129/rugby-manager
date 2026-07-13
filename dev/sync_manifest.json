@@ -1,0 +1,185 @@
+{
+ "_comment": "4ファイル同期台帳。identical=正規化後ソースが全対象で一致必須 / variant=ファイル別md5(意図的差分は--updateで確定) / chart_counts=new Chart(基線。運用はdev/sync_check.py。フェーズで同期対象を増やしたらここに追記する",
+ "identical": {
+  "idEq": {
+   "files": [
+    "player",
+    "staff",
+    "trainer",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "toDateStr": {
+   "files": [
+    "player",
+    "staff",
+    "trainer",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "escapeHtml": {
+   "files": [
+    "player",
+    "staff",
+    "trainer",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "big3": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "getLatest": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "getBest": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "STG": {
+   "files": [
+    "player",
+    "staff",
+    "trainer",
+    "coach"
+   ],
+   "kind": "var"
+  },
+  "RPECHART": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "var"
+  },
+  "getPctFromRIR": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "estimateWeight": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "STD_DEFAULT": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "var"
+  },
+  "getStdCfg": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "getLiftRankInfo": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "getBroncoRankInfo": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "getCurrentWeightInfo": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "computeAllBadges": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
+  },
+  "getWeightInfoAt": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
+  },
+  "ppNext": {
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
+  },
+  "ppNextWeightDay": {
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
+  },
+  "ppDateLabel": {
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
+  }
+ },
+ "variant": {
+  "ppCardHtml": {
+   "files": {
+    "player": "e391cc4b2477",
+    "staff": "e391cc4b2477",
+    "trainer": "f5ba146a7e7e"
+   },
+   "kind": "function",
+   "_todo": "P1aでtrainerをplayer/staff版(ic()SVG版)に同期しidenticalへ昇格。trainer側にic/i-push/i-pull/i-dumbbell/i-check/i-undoシンボルの移植が必要"
+  }
+ },
+ "chart_counts": {
+  "player": 14,
+  "staff": 12,
+  "trainer": 2,
+  "coach": 4,
+  "landing": 0
+ }
+}

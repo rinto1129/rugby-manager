@@ -1,0 +1,151 @@
+{
+ "findings": [
+  {
+   "title": "体重が「コンディション」と「体組成」の2フォームで二重入力される（正典が曖昧）",
+   "detail": "player/index.html のコンディション入力フォームに体重欄 cf-weight（2450行付近, doCondition の rec.weight）があり、これとは別に体組成フォーム bc（doBCInput）でも体重を入力する。読み取り側の getCurrentWeightInfo(pid)（502-520行）は D.f と D.bc の両方から体重を集めて『直近30日平均』を算出しており、システム側は2ソースをマージして辻褄を合わせている（band.weightSrc『体重の根拠』表示が1599/2177行に出るのはこの曖昧さの表れ）。staffもbcを書けるため入力口は実質3つ。統合案（高優先）：体重の正典を『体組成(bc)』1本に定める。コンディションの体重欄は残すなら『入力時に自動でbcにも1レコード生成』して二重管理を解消し、体脂肪/筋量が無い簡易bcレコードとして扱う。逆にコンディション側から体重欄を撤去し『体重は体組成で』へ誘導する案も可。",
+   "severity": "high",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html"
+   ]
+  },
+  {
+   "title": "セッションロード(sRPE)の練習時間が手入力で、実トレーニング記録(tlog)と連動していない",
+   "detail": "player/index.html のコンディション入力で『トレーニング時間（分）cf-dur』を手入力し、updSrpe()（2660行）と表示ロジック（2355/2465行）が rpe×duration をセッションロード(AU)として算出している。一方、実際のトレーニングは tlog（beginTrainingExec〜finishTraining）に別途記録される。つまり選手は同じ『今日の練習時間』を、コンディションのdurationと、トレーニング実施の両方で二重に扱っており、sRPEはtlogの実所要時間・実施ボリュームを一切参照しない。連携ギャップ（高優先）：finishTraining 完了時に当日の f レコードへ実施時間/推定durationを反映する、または当日tlogがあればcf-durをプリフィルする。これによりコンディション入力の手間削減と、sRPE精度向上・欠測（トレした日にコンディション未入力でsRPE欠落）の解消が同時に図れる。",
+   "severity": "high",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ]
+  },
+  {
+   "title": "復帰フロー(復帰テスト合格→RTP→怪我クローズ)が自動連携せず、3つの手動操作に分断",
+   "detail": "staff/index.html の approveRTest（6781-6789行）は inj.rtestApproved=true と承認日を立てるだけで、RTPレベル(ch.rtpLevel)を'full'へ進める処理も、怪我の resolved 化も、リハビリ段階(r.stage)の完了化も行わない。復帰テスト全クリア表示（6739-6743行 physPassed&&fitPassed）→承認→RTP変更(setRtpLevel, 3594行)→回復済み化(resolveInj)がすべて別画面・別操作。データ的には『復帰テスト(rtest)』『RTPレベル(chart.rtpLevel)』『怪我の解決(i.resolved)』『リハビリ段階(r.stage)』が繋がっていない。統合案（高優先）：approveRTest 実行時に『RTPをfullにしますか／怪我を回復済みにしますか』を確認して一括反映するオプションを提供し、復帰判定チェックリスト(returnCriteria)の充足状況も同画面に集約する。",
+   "severity": "high",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html"
+   ]
+  },
+  {
+   "title": "怪我情報のサイト間の見え方・編集権限が非対称で、承認フローも不統一",
+   "detail": "同一の怪我(i)がplayer/staff/trainer/coachで別々に扱われる。player は approved:null で報告（3882行, 選手自身は編集/取消不可）、trainer は trDoAddInjury で approved:true・source:'trainer' として承認ゲートを飛ばして即登録（trainer/index.html 2453行）、staff は approveInjury/rejectInjury（staff 7379行付近）でplayer報告のみ承認。つまり『誰が登録したか』で承認要否が変わる不整合がある。coach は getChart を呼ぶが rtpLevel しか読まず、chart.evals/soaps/injDetail/medical/returnCriteria/images（coach 547-556行で初期化）を一切描画しないため、監督は復帰可否の臨床的根拠を見られない。統合案（高優先）：承認要否のルールを登録元で分けず統一（例:全てpending→スタッフ承認、またはtrainer登録も要承認フラグ）し、coachには少なくとも復帰基準(returnCriteria)達成状況とRTPの根拠(最新eval要約)を読み取り表示する。",
+   "severity": "high",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/coach/index.html"
+   ]
+  },
+  {
+   "title": "評価データ(chart.evals)への入力動線が『クイック評価』と『カルテ評価タブ』で二重化",
+   "detail": "trainer/index.html では、リハビリ選手詳細(goRehabPlayer)の saveQuickEval と、カルテ評価タブの showEvalForm/saveEval が、いずれも同じ chart.evals 配列へ追記する（staffのカルテ評価も同配列）。入口が2つあるためどちらで入れたか分からず、修正するにはカルテ深部（rehab→選手→カルテ→評価タブ→編集で最大5階層）まで潜る必要がある。クイック評価で作ったレコードは evals 上フル評価と同型のため、後からフル評価画面で編集はできるが導線が非直感的。統合案（中優先）：クイック評価はフル評価の『簡易モード』として同一フォームの折りたたみに一本化し、保存後は同じ一覧から編集/削除できるようにする。",
+   "severity": "high",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html"
+   ]
+  },
+  {
+   "title": "リハビリの『実施記録(rlog)』と『臨床評価(chart.evals)』が別画面で、1回のリハビリに2画面往復",
+   "detail": "リハビリ1回につき、実施メニュー/セット/回数は rlog（staff doSaveRehabLogStaff / trainer doSaveRehabLogTrainer, goRPlanDetail・goRehabPlayer）に、痛み/ROM/MMT等の評価は chart.evals（カルテ評価タブ）に、それぞれ別画面で入力する。両者は同じ『今日のリハビリ』の記録なのにデータも画面も分離しており、記録漏れ（片方だけ保存）や二度手間を生む。加えて player 側は rlog を doRehab で書けるのに選手画面で一切表示されず(投げっぱなし)、選手は自分の実施履歴を振り返れない。統合案（中優先）：リハビリ実施画面に評価入力セクションを同居させ、1保存で rlog と evals を同時生成（同一msessId/dateで相互参照）する。playerには自分のrlog履歴を読み取り表示する。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ]
+  },
+  {
+   "title": "受傷情報の入力が『怪我編集フォーム』と『カルテ受傷診断タブ』の2箇所に分断",
+   "detail": "1件の怪我について、部位/左右/種類/受傷日/復帰予定は goEditInjury（怪我編集フォーム, staff/trainer）で、受傷機転/場面/組織/重症度/病院/診断/画像/手術等は saveChartDiagnosis（カルテ受傷診断タブ, chart.injDetail/medical）で入力する。同じ受傷イベントの属性が i と chart に割れており、入力者はどちらに何を書くか迷う。さらに trainer/staff の saveChartDiagnosis は素の saveChart（ch全体上書き）で、複数端末同時編集時にロストアップデートの恐れ（コード内コメントでも警告済み, trainer 561行付近）。統合案（中優先）：受傷イベントの属性を1フォームに集約し、保存は操作単位のsvSafeUpdateへ寄せて上書き衝突を防ぐ。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html"
+   ]
+  },
+  {
+   "title": "PUSH/PULL(pp)の管理面がstaffとtrainerで二重に存在し、単一ドキュメントを競合編集しうる",
+   "detail": "ppFlip/ppUndo/ppStart による PUSH/PULL 管理が staff（8箇所）と trainer（7箇所）の両方に実装され、player（5箇所）でも表示される。pp は単一の共有ドキュメントのため、スタッフとトレーナーが別端末で同じ日の PUSH/PULL を同時に反転すると相互に上書きし合う。加えて staff ではダッシュボードとトレーニング画面の両方に pp カードが出て二重管理感、trainer ではホーム最上部を占有（トレーナー業務と関連薄）。統合案（中優先）：pp の編集権限を1ロール（staff）に集約し、trainer/playerは表示のみに。編集はundoだけでなく任意日を直せる履歴付きにするか、少なくとも楽観ロックで競合検出する。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ]
+  },
+  {
+   "title": "チームの欠席情報が『欠席申告(a)』と『トレーニング欠席(tlog)』の2系統に分散",
+   "detail": "選手の欠席は、欠席申告フォーム（player doPlayerAbsence→a、staff V.absence/doRecordAbsence→a）と、トレーニング実施の『今日は休む』（player finishTraining が kind:absence 相当で tlog）に別々に記録される。coach のトレーニング画面は欠席KPIを tlog から数え（renderTrainingView『欠席14日/怪我による欠席』）、staff の欠席管理は a を集計するため、同じ『休んだ』事実が2データに割れ、集計基準がサイトで食い違う。連携ギャップ（中優先）：欠席の正典を a に定め、トレーニングの『休む』選択時に a へも申告レコードを生成（またはtlog欠席をa由来で表示）し、欠席の単一集計を実現する。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/coach/index.html"
+   ]
+  },
+  {
+   "title": "フィジカルベスト/推定1RM/最新コンディションが同一サイト内で多重表示（正典不明）",
+   "detail": "player/index.html では、フィジカルベスト(SQ/BP/DL/ブロンコ)が『ホームのマイフィジカル』『マイページのフィジカルベスト』『フィジカル測定画面上部』『マイフィジカル詳細(mystatus)』『マイデータ』の5箇所、推定1RMが『マイページ/トレーニング/マイデータ』の3箇所、最新コンディション/体組成が『マイページ』と『マイデータ』で重複表示される。どこが正典か不明で、片方だけ古い/計算基準が違うと混乱する。統合案（中優先）：分析・ベスト値の正典を mydata（詳細）と mystatus（サマリ）に集約し、ホーム/マイページ/各入力画面には『最新1件＋詳細への導線』だけを残す。mystatus と mydata 自体の役割重複も、mystatus=現在地サマリ / mydata=推移分析、と責務を明確化する。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html"
+   ]
+  },
+  {
+   "title": "概況ダッシュボードと各タブで同一行が二重表示（coach/staff）",
+   "detail": "coach/index.html は概況ホームと各カテゴリタブが同じ情報を重複表示する：『復帰が近い選手』(概況/怪我)、『コンディション要注意』(概況/コンディション)、KPI『現在の怪我』(概況/怪我)、考察 insInjury/insCondition/insTraining/insPhysical の上位（概況ダイジェスト＝各タブ考察と重複）。staff ダッシュボードも本日提出/滞留/チーム記録/お知らせ等が縦長で、各専用画面と内容が重なる。統合案（中優先）：概況は各タブの『件数＋先頭数件＋タブへのジャンプ』に留め、詳細一覧はタブ側に一本化して重複描画を削る。ポジションマトリクスの赤警告行から該当ポジションの選手一覧へ直接遷移できる導線を追加（現状タップ不可）。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/coach/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html"
+   ]
+  },
+  {
+   "title": "本日のリハビリメニュー(rplan)と3者コメント欄がサイト内2箇所に重複描画",
+   "detail": "player/index.html では『本日のリハビリメニュー』がマイページと怪我タブの両方に表示される。trainer/index.html では3者共有コメント欄がカルテ『コメントタブ』(renderInjComments)とリハビリ詳細下部(goRehabPlayer)の2箇所に描画され、ホームの『担当リハビリ選手』もリハビリタブ一覧とほぼ同一内容。いずれも同じデータを2画面で見せているだけで、更新時の一貫性リスクと画面の冗長さを生む。統合案（低〜中優先）：メニュー/コメントは正典画面に一本化し、他画面からはリンクのみ。trainerホームの『担当リハビリ選手』はリハビリタブへの導線に置換。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html"
+   ]
+  },
+  {
+   "title": "記録者名がSOAP/テーピング記録で自由入力のため表記ゆれが発生（ログイン者と非連動）",
+   "detail": "trainer/index.html の SOAP(showSOAPForm/saveSOAP)とテーピング記録(showTapeRecForm/saveTapeRec)は記録者フィールドが自由入力で、ログイン中トレーナー(myTrainer.name)が強制されない（saveTapeRecはデフォルト充填はあるが手打ち変更可）。同一人物が別表記で残り、後の集計・引き継ぎ追跡が分散する。連携案（低優先）：記録者は原則ログイン中トレーナーIDで自動確定（表示名は trainers から解決）し、代理入力時のみ明示切替にする。これは trainers の『名前編集不可（削除→再登録）』問題（trainer名の改名がIDと紐付かない）とも関連するため、記録は名前文字列でなく trainerId で保持するのが望ましい。",
+   "severity": "low",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html"
+   ]
+  },
+  {
+   "title": "測定会(msess)↔フィジカル(ph/bronco)は連携済みだが、記録入口が複数で紐付け漏れの余地",
+   "detail": "good例として、player の doPhys/doBronco は getCurrentMSess() で msessId を自動付与し（player 2761-2762行）、msessBelongs/msessStatus（1080-1094行）が『msessId一致 or (msessId無し&期間内日付)』で参加判定を staff V.msess と共通化しており連携は良好。ただしブロンコの入口が showPhysForm/showBroncoForm/showBroncoFormDirect と複数あり、getCurrentMSess('bronco') の分岐（2761行, フィジカル回同時開催時の誤紐付け防止）に依存するため、入口統合で紐付けの一貫性を高められる。また staff 側はフィジカル記録の一括入力/通常追加と編集フォームで msessId 設定場所が異なる。統合案（低優先）：ブロンコ/BIG3の入力を1フォームに統合し、msessId付与ロジックを入口非依存にする。",
+   "severity": "low",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html"
+   ]
+  },
+  {
+   "title": "廃止候補：coachの未使用キー購読（初期ロード・読み取りコストの無駄）",
+   "detail": "coach/index.html は全27キーを onSnapshot 購読するが、実際に描画で使うのは p,i,r,ph,f,chart,tmenu,tlog(+tla_),e1rm,bc,std のみ。tape/tapeslot/trainers/rtpl/rplan/rlog/phskip/rtest_tpl/rtest/msess/taperec/texlist/md/wc/ann/offday/cal/matchsel/injcomm は購読するが未描画。加えて起動時に全選手×全半期の tla_ を Promise.all で一括取得(loadTlogArch)しており、選手数×半期数の増加でスケール懸念。廃止/整理（低優先）：coachの購読対象を描画に使うキーへ絞り、tla_ は個人レポートを開いた時に遅延取得へ変更する。",
+   "severity": "low",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/coach/index.html"
+   ]
+  },
+  {
+   "title": "廃止・整理候補：冗長な重複画面/入口の集約",
+   "detail": "以下は機能重複により統合/廃止の候補。(1) player: マイフィジカル詳細(mystatus) と マイデータ(mydata) の分析役割が重複→責務分割 or 統合。(2) player: showBroncoFormDirect 等ブロンコ入力の冗長入口→1本化。(3) staff: PUSH/PULLカードのダッシュボード掲載とトレーニング画面掲載の一方を廃止。(4) trainer: ホーム『担当リハビリ選手』はリハビリタブ一覧と実質同一→リンク化。(5) player: リハビリログ(rlog)は選手が書けるが読めない→表示追加 or 選手書き込み廃止のいずれかに整理（現状は投げっぱなしで冗長）。(6) staff使い方ガイドの『各記録は修正・削除できる』記述が、コンディション(f)/体組成(bc)/欠席(a)/カレンダー(cal)/お知らせ(ann)など編集不可の実装と食い違うため、ガイド記述の是正 or 編集機能追加のどちらかで整合を取る。優先度：いずれも低〜中、UI簡素化とスケール改善に寄与。",
+   "severity": "low",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html"
+   ]
+  }
+ ]
+}

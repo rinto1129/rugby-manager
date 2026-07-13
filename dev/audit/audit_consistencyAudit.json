@@ -1,0 +1,62 @@
+{
+ "findings": [
+  {
+   "title": "coach: setTrExC / setTrMetricC がトップレベルで二重定義（後勝ちで挙動が変わる）",
+   "detail": "coach/index.html の setTrExC と setTrMetricC が1236-1237行と2013-2014行の2箇所でトップレベル関数宣言されている。関数宣言は巻き上げ＋後勝ちのため、実際に有効なのは後者(2013-2014)で、前者(1236-1237)は完全な死にコード。しかも両者は挙動が異なり、前者は window._noAnim を触らずに renderPlayerReport() を呼ぶのに対し、後者は window._noAnim=true/false で囲んで再描画時のアニメーションを抑止する。過去にtrainerで発生した『並行編集による関数重複』と同型の問題がcoachに残存している。どちらの実装を正とするか決めて一方を削除すべき。他3ファイルの重複grep結果ではplayerのinR/stepは異なる関数内のローカル関数、staff/trainerはトップレベル重複なしで、実害があるのはcoachのこの2関数のみ。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/coach/index.html"
+   ]
+  },
+  {
+   "title": "getBest / getLatest だけ pid を厳密===比較（他は全て idEq）で型不一致に脆弱",
+   "detail": "player(1246-1247) / staff(1374-1375) / coach(321-322) の getLatest・getBest は D.ph の絞り込みに x.pid===pid という厳密等価を使っている（3ファイルでバイト一致）。一方、同一コードベースの他の pid 照合はほぼ全て idEq(x.pid,pid) を使用（player内だけで idEq(x.pid,pid) が11箇所、同一ファイルの getCurrentWeightInfo/getWeightInfoAt でも idEq(r.pid,pid) を使用）。ph レコードの pid が文字列で保存され呼び出し側 pid が数値（またはその逆）だと、集計系(idEq)はヒットするのに getBest/getLatest だけが null を返し、『同じ選手なのにフィジカル最新値・自己ベストだけ表示されない』という食い違いが起きうる。getBest/getLatest の pid 比較も idEq に統一すべき。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/coach/index.html"
+   ]
+  },
+  {
+   "title": "escapeHtml 漏れ：ユーザー入力（選手名/特記事項/予定タイトル/リハビリコメント等）をHTMLへ直接埋め込み",
+   "detail": "代表例。player/index.html:2216 でプロフィール見出しに p.name・p.note・p.position を escapeHtml なしで文字列連結。staff/index.html:1763 でカレンダー予定 ev.title・ev.detail を生挿入（onclick側は escAnn で JS文字列エスケープしているが表示側HTMLは未エスケープ）、同2638も ev.title 生挿入、同6341は測定会名 s.name を生挿入。trainer/index.html:1409 はリハビリの lastLog.comment を生挿入。これらは選手・スタッフ・トレーナーが自由入力する項目で、< や \" を含む名前/メモ/予定名を保存すると表示崩れ〜格納型XSSの温床になる。escapeHtml() は全4ファイルにバイト一致で存在するのに適用漏れがある。なお player:5655 / coach:780 の ins.detail はインサイトエンジンが生成する内部文字列で相対的に低リスク。ユーザー自由入力欄の埋め込みを優先して escapeHtml で包むべき。",
+   "severity": "medium",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html"
+   ]
+  },
+  {
+   "title": "RTP_LEVELS の color 値がサイト間で不一致（player/staff と trainer/coach で別パレット）",
+   "detail": "RTP_LEVELS は k/label/desc は全4ファイルで一致するが color だけが2系統に割れている。player(393) と staff(3522-)は暗め系（rest:#B91C1C, rehab:#C2410C, partial:#A16207, full_nocontact:#1D4ED8, full_limited:#6D52D6, full:#046C48）。trainer(604-) と coach(245-)は鮮やか系（rest:#DC2B2B, rehab:#F97316, partial:#FBBF24, full_nocontact:#3B82F6, full_limited:#8B5CF6, full:#0E9F6E）。同じ『完全休養』バッジがサイトによって違う色で表示される。正規化コンテンツのmd5で player==staff、trainer==coach を確認済み。実害は軽微だが、選手が見る色とトレーナー/コーチが見る色が一致しないため配色を統一すべき。",
+   "severity": "low",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/coach/index.html"
+   ]
+  },
+  {
+   "title": "staff に生の sv('p') 生存呼び出しが残存（svSafeトランザクションを非経由・全上書き）",
+   "detail": "svSafe/svSafeUpdate 以外の生 sv() 呼び出しを全4ファイルで洗い出した結果、定義本体を除く『実行される』直接呼び出しは staff/index.html:1135 の `if(D.p===INIT&&pDocPresent===false)sv('p');` の1件のみ（player:946・trainer:720・staff:1138 は関数定義、coachは sv 自体が存在しない）。sv() は runTransaction を使わず doc(k).set() で 'p'（名簿）collection をまるごと上書きするため、pDocPresent 判定がずれると名簿全消しに直結する。現状は『Firestoreに選手docが本当に無い初回だけ』というガード付きで意図的なシードだが、唯一のトランザクション非経由の生存書き込みなので、ガード条件の正しさを担保するか svSafe 系へ寄せる検討が望ましい。",
+   "severity": "low",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html"
+   ]
+  },
+  {
+   "title": "共通ヘルパーの実装一致検証：多くは完全一致、差分は構造的欠落のみ（並行編集の乖離は限定的）",
+   "detail": "diff/md5で照合した結果、単一行ヘルパー idEq・toDateStr・escapeHtml・big3・getLatest・getBest は存在する全ファイルでバイト完全一致。多行の RPECHART(%1RM換算表)・getPctFromRIR・estimateWeight・STD_DEFAULT・getStdCfg・getLiftRankInfo・getBroncoRankInfo・getCurrentWeightInfo・computeAllBadges も player/staff/coach 間で（コメント行の有無を除き）実装一致。STG は4ファイル一致。差異は『機能の有無』だけで、ロジック乖離は上記findings以外に検出されず：(1) trainerはランク/バッジ/RPE系(RPECHART・STD_DEFAULT・getLiftRankInfo・computeAllBadges等)を一切持たず呼び出しもしない＝設計上のリハビリ特化で未定義呼び出しなし。(2) computeAllBadges と getWeightInfoAt は player/staff のみ、coach/trainer には無い（coachはバッジ非表示のため未使用で整合）。(3) SK(スキーマキー)は各サイトで必要キーのみ（trainerは怪我/リハビリ系、playerは 'trainers' キー無し等）。定義前使用・未定義関数呼び出しは検出されなかった。item1の結論として、共通部のコピー乖離は『RTP色』と『getBest/getLatestのpid比較』以外は無い。",
+   "severity": "low",
+   "files": [
+    "/Users/nakayamarinnin/Documents/rugby-manager/player/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/staff/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/trainer/index.html",
+    "/Users/nakayamarinnin/Documents/rugby-manager/coach/index.html"
+   ]
+  }
+ ]
+}

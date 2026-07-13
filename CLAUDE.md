@@ -25,13 +25,16 @@
 - 過去に日付指定のルールが期限切れして全データ消失事件があった。ルールに日付指定を入れてはいけない。
 
 ## ファイル構成（4サイト + ランディング）
-| ローカルのファイル | GitHubのパス | 役割 | テーマ |
+| ローカルのファイル | GitHubのパス | 役割 | テーマ（現状） |
 |---|---|---|---|
-| `index.html` | リポジトリ直下 `index.html` | ランディングページ（4サイトへのリンク） | ダーク（紺） |
-| `player/index.html` | `player/index.html` | 選手用（コンディション入力・トレーニング実施・怪我報告） | ダーク |
-| `staff/index.html` | `staff/index.html` | スタッフ用（凛人が入力。選手管理・怪我管理・メニュー作成・分析） | ライト |
-| `trainer/index.html` | `trainer/index.html` | 専門学生トレーナー用（テーピング枠・リハビリ記録・復帰テスト） | ダーク系 |
-| `coach/index.html` | `coach/index.html` | 監督・コーチ用（**閲覧専用**。怪我/フィジカル/トレーニングの可視化ダッシュボード） | ダーク（緑アクセント） |
+| `index.html` | リポジトリ直下 `index.html` | ランディングページ（4サイトへのリンク） | ライト（マルーン基調） |
+| `player/index.html` | `player/index.html` | 選手用（コンディション入力・トレーニング実施・怪我報告） | ライト（白カード＋クリーム地・マルーン/ゴールドアクセント） |
+| `staff/index.html` | `staff/index.html` | スタッフ用（凛人が入力。選手管理・怪我管理・メニュー作成・分析） | ライト（FUKUDAI RED） |
+| `trainer/index.html` | `trainer/index.html` | 専門学生トレーナー用（テーピング枠・リハビリ記録・復帰テスト） | ダーク（ネイビー＋青アクセント） |
+| `coach/index.html` | `coach/index.html` | 監督・コーチ用（**閲覧専用**。怪我/フィジカル/トレーニングの可視化ダッシュボード） | ダーク（黒＋ネオン緑・グラスモーフィズム） |
+
+※ アクティブプラン（`dev/audit/PLAN_zesty-fluttering-kitten.md`）のP3で**全サイトをマルーン×ゴールド基調のダークテーマに統一予定**（trainer=青/coach=緑は差し色維持）。テーマ列は移行完了時に更新すること。
+※ ローカルの絶対パスは `/Users/nakayamarinnin/Documents/個人開発プロジェクト/rugby-manager`（2026-07-13にDocuments直下から移動。**パスに日本語を含むためjscに絶対パスを渡せない** → dev/run_tests.py はcwd固定＋相対パスで回避している）。
 
 - 各サイトは別々のHTMLファイルだが、**同じFirebaseの同じデータ**を見ている。
 - 共通の定数・ヘルパー関数（後述）は各ファイルにコピーされている。**1つを直したら、関係する他ファイルも揃える**のが鉄則。
@@ -74,20 +77,23 @@ apiKey: AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls
 - ユーザーはトレーニング科学に本格的に詳しい（漸進性過負荷・RIR・ボリューム管理を理解）。専門用語はそのまま使ってよい。
 - 日本語でやりとりする。
 
-## 必須: 変更後の構文チェック方法
-HTMLに埋め込まれた最初の `<script>` ブロックを抜き出して `node --check` する。
+## 必須: 変更後の構文チェック・テスト方法
+**このマシンに node は無い。** JavaScriptCoreの `jsc` を使う（PATHにも無い。実パス: `/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc`）。
+**⚠️ jscは日本語を含むパスの引数を開けない** → 必ずリポジトリルートをcwdにして相対パスで渡すか、`dev/run_tests.py` を使う。
+
 ```bash
-# 例: player/index.html の構文チェック
-python3 -c "
-import re,subprocess
-c=open('player/index.html',encoding='utf-8').read()
-s=re.findall(r'<script(?![^>]*src)[^>]*>(.*?)</script>',c,re.DOTALL)
-open('/tmp/t.js','w').write(s[0])
-r=subprocess.run(['node','--check','/tmp/t.js'],capture_output=True,text=True)
-print('OK' if r.returncode==0 else r.stderr[:300])
-"
+# ① 全テスト一括（構文チェック込み・38本を対象サイト別に実行）
+python3 dev/run_tests.py                       # 全部
+python3 dev/run_tests.py test_cond             # 名前部分一致で絞る
+# ② 単発の構文＋ロードチェック（SyntaxErrorが出なければ健全）
+python3 dev/extract.py player/index.html /tmp/player.js
+/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc dev/prelude.js /tmp/player.js
+# ③ 4ファイル同期照合（共通関数のコピー揃え忘れ検出＋new Chart数チェック）
+python3 dev/sync_check.py                      # 台帳=dev/sync_manifest.json。毎フェーズ実行
+python3 dev/sync_check.py --residue            # 生hex/rgba残渣レポート（ダーク化以降）
 ```
-さらに、firebase/document/window/Chart をモックした模擬実行で、関数が完走しデータ整合・HTML生成が正しいかを確認する習慣がある。
+- 模擬実行テストは `dev/test_*.js`（firebase/document/window/Chartをモック=dev/prelude.js）。新規テストは先頭15行に `// 実行: jsc dev/prelude.js /tmp/<site>.js dev/test_xxx.js` を必ず書く（run_tests.pyが対象サイトを判別する）。
+- 共通関数を触ったら `sync_check.py` が緑になるまで他ファイルも揃える。新しい共通関数を作ったら `dev/sync_manifest.json` に登録する。
 
 ### よく出るバグ（要注意）
 - **Chart.js の `new Chart(e,{...})` で閉じ波括弧が1つ足りない**ことが頻発する（末尾 `}}}});` を `}}}}});` に直す）。括弧バランスは、文字列リテラルを除去してから `{` `}` `(` `)` `[` `]` を数えて検証する。

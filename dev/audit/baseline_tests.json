@@ -1,0 +1,289 @@
+{
+ "date": "2026-07-13T08:13:52",
+ "results": [
+  {
+   "test": "test_add_ex.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL ADD-EX TESTS PASSED"
+  },
+  {
+   "test": "test_badge_ui_player.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL BADGE-UI-PLAYER TESTS PASSED"
+  },
+  {
+   "test": "test_badge_ui_staff.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL BADGE-UI-STAFF TESTS PASSED"
+  },
+  {
+   "test": "test_badges.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL BADGES TESTS PASSED"
+  },
+  {
+   "test": "test_badges.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL BADGES TESTS PASSED"
+  },
+  {
+   "test": "test_bronco_board_staff.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL BRONCO-BOARD TESTS PASSED"
+  },
+  {
+   "test": "test_bronco_coach.js",
+   "target": "coach",
+   "pass": true,
+   "tail": "ALL BRONCO-COACH TESTS PASSED"
+  },
+  {
+   "test": "test_bronco_std.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL TESTS PASSED"
+  },
+  {
+   "test": "test_bronco_std.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL TESTS PASSED"
+  },
+  {
+   "test": "test_bronco_std.js",
+   "target": "coach",
+   "pass": true,
+   "tail": "ALL TESTS PASSED"
+  },
+  {
+   "test": "test_coach_report_std.js",
+   "target": "coach",
+   "pass": true,
+   "tail": "ALL COACH-REPORT-STD TESTS PASSED"
+  },
+  {
+   "test": "test_cond.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL COND TESTS PASSED"
+  },
+  {
+   "test": "test_dash.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL DASH TESTS PASSED"
+  },
+  {
+   "test": "test_dash_staff.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL DASH-STAFF TESTS PASSED"
+  },
+  {
+   "test": "test_engine.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL TESTS PASSED"
+  },
+  {
+   "test": "test_fitprog.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL FITPROG TESTS PASSED"
+  },
+  {
+   "test": "test_fitprog.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL FITPROG TESTS PASSED"
+  },
+  {
+   "test": "test_gps.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL PASS (test_gps)"
+  },
+  {
+   "test": "test_gps_rank.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL GPS_RANK TESTS PASSED"
+  },
+  {
+   "test": "test_latest_rank.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL LATEST-RANK TESTS PASSED"
+  },
+  {
+   "test": "test_latest_rank.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL LATEST-RANK TESTS PASSED"
+  },
+  {
+   "test": "test_latest_rank.js",
+   "target": "coach",
+   "pass": true,
+   "tail": "ALL LATEST-RANK TESTS PASSED"
+  },
+  {
+   "test": "test_msess_alert.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL MSESS-ALERT TESTS PASSED"
+  },
+  {
+   "test": "test_msess_close.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL MSESS-CLOSE TESTS PASSED"
+  },
+  {
+   "test": "test_msess_edit.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL MSESS-EDIT TESTS PASSED"
+  },
+  {
+   "test": "test_msess_edit.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL MSESS-EDIT TESTS PASSED"
+  },
+  {
+   "test": "test_mstat.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL PASS (test_mstat STAFF)"
+  },
+  {
+   "test": "test_mstat.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL PASS (test_mstat PLAYER)"
+  },
+  {
+   "test": "test_mydata.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL MYDATA TESTS PASSED"
+  },
+  {
+   "test": "test_mystatus.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL MYSTATUS TESTS PASSED"
+  },
+  {
+   "test": "test_pp_auto.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL PP-AUTO TESTS PASSED"
+  },
+  {
+   "test": "test_ranking.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL RANKING TESTS PASSED"
+  },
+  {
+   "test": "test_self_coach.js",
+   "target": "coach",
+   "pass": true,
+   "tail": "ALL SELF-COACH TESTS PASSED"
+  },
+  {
+   "test": "test_self_staff.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL SELF-STAFF TESTS PASSED"
+  },
+  {
+   "test": "test_self_training.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL SELF-TRAINING TESTS PASSED"
+  },
+  {
+   "test": "test_staff_pdetail_std.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL STAFF-PDETAIL-STD TESTS PASSED"
+  },
+  {
+   "test": "test_std_staff.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL STD-STAFF TESTS PASSED"
+  },
+  {
+   "test": "test_tgroup.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL TGROUP TESTS PASSED"
+  },
+  {
+   "test": "test_tgroup_player.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL TGROUP-PLAYER TESTS PASSED"
+  },
+  {
+   "test": "test_tlog_arch.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL TLOG-ARCH TESTS PASSED"
+  },
+  {
+   "test": "test_tlog_arch_coach.js",
+   "target": "coach",
+   "pass": true,
+   "tail": "ALL TLOG-ARCH-COACH TESTS PASSED"
+  },
+  {
+   "test": "test_tlog_arch_staff.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL TLOG-ARCH-STAFF TESTS PASSED"
+  },
+  {
+   "test": "test_tmenu_slot.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL TMENU-SLOT TESTS PASSED"
+  },
+  {
+   "test": "test_today_prog.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL TODAY-PROG TESTS PASSED"
+  },
+  {
+   "test": "test_train_weak.js",
+   "target": "player",
+   "pass": true,
+   "tail": "ALL TRAIN-WEAK TESTS PASSED"
+  },
+  {
+   "test": "test_trainbug.js",
+   "target": "staff",
+   "pass": true,
+   "tail": "ALL TRAINBUG TESTS PASSED"
+  },
+  {
+   "test": "test_trainbug.js",
+   "target": "coach",
+   "pass": true,
+   "tail": "ALL TRAINBUG TESTS PASSED"
+  }
+ ],
+ "run": 47,
+ "fail": 0
+}
