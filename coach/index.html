@@ -376,9 +376,11 @@ function getStdCfg(){
 // 現在体重: 直近30日の実測（コンディションの毎日体重＋体組成）の平均 → 期間外は最新実測 → 選手登録の体重
 function getCurrentWeightInfo(pid){
   var since=toDateStr(new Date(Date.now()-29*86400000));
-  var recs=[];
-  (D.f||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date)recs.push({date:r.date,w:w});});
-  (D.bc||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date)recs.push({date:r.date,w:w});});
+  // 同日にf(コンディション体重)とbc(体組成/cond由来)が併存しても二重計上しない＝日付キーでdedup（同日はbc優先）。
+  var byDate={};
+  (D.f||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date)byDate[r.date]=w;});
+  (D.bc||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date)byDate[r.date]=w;});
+  var recs=Object.keys(byDate).map(function(d){return{date:d,w:byDate[d]};});
   var recent=recs.filter(function(x){return x.date>=since;});
   if(recent.length){
     var avg=recent.reduce(function(s,x){return s+x.w;},0)/recent.length;

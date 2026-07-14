@@ -504,9 +504,11 @@ function getStdCfg(){
 // 現在体重: 直近30日の実測（コンディションの毎日体重＋体組成）の平均 → 期間外は最新実測 → 選手登録の体重
 function getCurrentWeightInfo(pid){
   var since=toDateStr(new Date(Date.now()-29*86400000));
-  var recs=[];
-  (D.f||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date)recs.push({date:r.date,w:w});});
-  (D.bc||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date)recs.push({date:r.date,w:w});});
+  // 同日にf(コンディション体重)とbc(体組成/cond由来)が併存しても二重計上しない＝日付キーでdedup（同日はbc優先）。
+  var byDate={};
+  (D.f||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date)byDate[r.date]=w;});
+  (D.bc||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date)byDate[r.date]=w;});
+  var recs=Object.keys(byDate).map(function(d){return{date:d,w:byDate[d]};});
   var recent=recs.filter(function(x){return x.date>=since;});
   if(recent.length){
     var avg=recent.reduce(function(s,x){return s+x.w;},0)/recent.length;
@@ -524,9 +526,11 @@ function getCurrentWeightInfo(pid){
 // 指定日時点の体重情報（バッジのランク到達時体重用）。dateStr以前30日の平均→それ以前の直近実測→登録体重。
 function getWeightInfoAt(pid,dateStr){
   var since=toDateStr(new Date(new Date(dateStr).getTime()-29*86400000));
-  var recs=[];
-  (D.f||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date&&r.date<=dateStr)recs.push({date:r.date,w:w});});
-  (D.bc||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date&&r.date<=dateStr)recs.push({date:r.date,w:w});});
+  // 同日のf/bc併存を二重計上しない＝日付キーでdedup（同日はbc優先）。
+  var byDate={};
+  (D.f||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date&&r.date<=dateStr)byDate[r.date]=w;});
+  (D.bc||[]).forEach(function(r){var w=parseFloat(r.weight);if(idEq(r.pid,pid)&&w>0&&r.date&&r.date<=dateStr)byDate[r.date]=w;});
+  var recs=Object.keys(byDate).map(function(d){return{date:d,w:byDate[d]};});
   var recent=recs.filter(function(x){return x.date>=since;});
   if(recent.length){
     var avg=recent.reduce(function(s,x){return s+x.w;},0)/recent.length;
@@ -541,6 +545,16 @@ function getWeightInfoAt(pid,dateStr){
   if(pw>0)return{w:pw,src:'選手登録の体重',live:false};
   return null;
 }
+// P7a: セッションロード(sRPE)用の実効TR時間。選手入力duration最優先（意図的入力を尊重）→未入力なら実測durMinで補完（朝入力の空振り対策）→当日tlogの実測durMin（旧記録の穴埋め）。
+// durMinはfinishTrainingのts→完了の壁時計計測で不確実（タブ放置で過大化）のため、手動durationがあればそちらを勝たせる。
+function effDur(f){
+  if(!f)return 0;
+  if(f.duration>0)return f.duration;
+  if(f.durMin>0)return f.durMin;
+  var t=(D.tlog||[]).filter(function(x){return idEq(x.pid,f.pid)&&x.date===f.date&&x.durMin>0;});
+  return t.length?Math.max.apply(null,t.map(function(x){return x.durMin;})):0;
+}
+function sLoad(f){return f?(f.rpe||0)*effDur(f):0;}
 // 種目ランク判定。oneRM=最新記録(getLatest)でランク算出・bestRMに自己ベスト併記。ratio=最新1RM÷(ゴールド倍率×体重)。ranks昇順でratio以上の最上位が現ランク。
 function getLiftRankInfo(pid,liftK){
   var p=D.p.find(function(x){return idEq(x.id,pid);});
@@ -2396,7 +2410,7 @@ mypage:function(){
     '</div>';
   }
   if(latestF){
-    h+='<div style="font-weight:600;margin:12px 0 8px">最新コンディション <span style="font-weight:400;color:var(--text-secondary);font-size:12px">'+fmt(latestF.date)+'</span></div><div class="grid3"><div class="mc"><div class="v" style="color:'+rc(latestF.rpe)+'">'+latestF.rpe+'</div><div class="l">RPE</div></div><div class="mc"><div class="v" style="color:'+sc(latestF.sleep)+'">'+latestF.sleep+'h</div><div class="l">睡眠</div></div><div class="mc"><div class="v" style="color:var(--purple)">'+(latestF.rpe*(latestF.duration||0))+'</div><div class="l">セッションロード(AU)</div></div></div>';
+    h+='<div style="font-weight:600;margin:12px 0 8px">最新コンディション <span style="font-weight:400;color:var(--text-secondary);font-size:12px">'+fmt(latestF.date)+'</span></div><div class="grid3"><div class="mc"><div class="v" style="color:'+rc(latestF.rpe)+'">'+latestF.rpe+'</div><div class="l">RPE</div></div><div class="mc"><div class="v" style="color:'+sc(latestF.sleep)+'">'+latestF.sleep+'h</div><div class="l">睡眠</div></div><div class="mc"><div class="v" style="color:var(--purple)">'+sLoad(latestF)+'</div><div class="l">セッションロード(AU)</div></div></div>';
     // 拡張項目（あるものだけ表示）
     var fx=[];
     if(latestF.weight)fx.push('<div class="mc"><div class="v" style="font-size:15px">'+latestF.weight+'</div><div class="l">体重(kg)</div></div>');
@@ -2506,7 +2520,7 @@ condition:function(){
     if(r.mood)ext+='<span title="気分">'+MOOD_EMO[r.mood-1]+'</span>';
     if(r.stress)ext+='<span style="font-size:10px;color:var(--text-secondary)">スト'+r.stress+'</span>';
     if(r.soreness)ext+='<span style="font-size:10px;color:var(--amber)">筋'+r.soreness+((r.sorenessParts&&r.sorenessParts.length)?'('+r.sorenessParts.map(escapeHtml).join('・')+')':'')+'</span>';
-    return'<div class="log-row" style="flex-wrap:wrap"><span style="min-width:60px;color:var(--text-secondary)">'+fmt(r.date)+'</span><div class="pain-dot" style="background:'+rc(r.rpe)+'">'+r.rpe+'</div><span style="color:'+sc(r.sleep)+'">'+r.sleep+'h</span><span style="color:var(--purple);font-weight:600" title="セッションロード(RPE×分)">'+(r.rpe*(r.duration||0))+' AU</span>'+ext+'<div style="margin-left:auto;display:flex;gap:4px"><button class="btn btn-sm" style="width:auto" onclick="showEditCondition(\''+r.id+'\')">修正</button><button class="btn btn-sm btn-d" style="width:auto" onclick="delCondition(\''+r.id+'\')">削除</button></div></div>';
+    return'<div class="log-row" style="flex-wrap:wrap"><span style="min-width:60px;color:var(--text-secondary)">'+fmt(r.date)+'</span><div class="pain-dot" style="background:'+rc(r.rpe)+'">'+r.rpe+'</div><span style="color:'+sc(r.sleep)+'">'+r.sleep+'h</span><span style="color:var(--purple);font-weight:600" title="セッションロード(RPE×分)">'+sLoad(r)+' AU</span>'+ext+'<div style="margin-left:auto;display:flex;gap:4px"><button class="btn btn-sm" style="width:auto" onclick="showEditCondition(\''+r.id+'\')">修正</button><button class="btn btn-sm btn-d" style="width:auto" onclick="delCondition(\''+r.id+'\')">削除</button></div></div>';
   }).join(''):'');
   bindSorePartsToggle('cf-sore','cf-parts-wrap','cf-parts');
   if(lf.length>=2)setTimeout(function(){var recs=lf.slice().reverse().slice(-20);var e=document.getElementById('ch-cf');if(!e)return;dC('cf');charts.cf=new Chart(e,{type:'line',data:{labels:recs.map(function(r){return r.date.slice(5);}),datasets:[{label:'RPE',data:recs.map(function(r){return r.rpe;}),borderColor:'#c1121f',tension:.3},{label:'睡眠',data:recs.map(function(r){return r.sleep;}),borderColor:'#1D4ED8',tension:.3},{label:'気分',data:recs.map(function(r){return r.mood||null;}),borderColor:'#046C48',tension:.3,spanGaps:true},{label:'体重',data:recs.map(function(r){return r.weight||null;}),borderColor:'#6D52D6',tension:.3,spanGaps:true,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:10},y1:{position:'right',display:'auto',grid:{drawOnChartArea:false}}},plugins:{legend:{position:'bottom'}}}});},80);
@@ -5279,6 +5293,21 @@ function retryPendingRebuild(){
   var ks=Object.keys(_pendingRebuild);if(!ks.length)return;
   ks.forEach(function(k){var p=_pendingRebuild[k];delete _pendingRebuild[k];rebuildE1rmFrom(p.pid,p.fromDate,function(){if(subView)showTrainingHistory();},function(){});});
 }
+// P7a: 完了セッションの実測durMinを当日コンディション(f)へ追記。当日f未提出なら書かず、tlog側のdurMinが読み側(effDur)フォールバックで拾われる。
+function syncSessionDurToF(log){
+  if(!log||!(log.durMin>0))return;
+  // 当日コンディション未提出（トレ→後でコンディション入力の順が普通）なら書かない＝f全体docの無駄な再書き込み(Sparkの書込枠)を避ける。
+  // その場合はtlog側のdurMinがeffDurの読み側フォールバックで拾われる。稀な多端末レースで取りこぼしてもtlogフォールバックで実害なし。
+  if(!(D.f||[]).some(function(r){return idEq(r.pid,log.pid)&&r.date===log.date;}))return;
+  svSafeUpdate('f',function(latest){
+    var mine=latest.filter(function(r){return idEq(r.pid,log.pid)&&r.date===log.date;});
+    if(!mine.length)return latest; // 当日f未提出→書かない（tlog側durMinがフォールバックされる）
+    mine.sort(function(a,b){return String(b.inputAt||'').localeCompare(String(a.inputAt||''));});
+    mine[0].durMin=log.durMin;
+    mine[0].editedAt=new Date().toISOString();
+    return latest;
+  },function(){},function(){});
+}
 function finishTraining(btnEl){
   if(!_curTLog)return;
   if(_curTLog.kind==='self'&&!_curTLog.results.length){alert('種目を追加してください');return;}
@@ -5326,6 +5355,9 @@ function finishTraining(btnEl){
   log.totalVolume=totalVol;
   log.hasInjurySkip=cv.hasInjurySkip;
   log=slimTlogRec(log); // 容量対策: 保存直前にスリム化（_curTLog・下書きは温存＝実施画面のprevEx表示等に必要）
+  // P7a: セッション実測時間（開始ts→完了now）を分で算出しdurMinを刻む。妥当域(1〜300分)のみ採用＝タブ放置/翌日ドラフト再開等の異常値は捨てる（slim後に付与＝tlogへ永続）。
+  var _sessMin=(_curTLog&&_curTLog.ts)?Math.round((Date.now()-new Date(_curTLog.ts).getTime())/60000):0;
+  if(_sessMin>=1&&_sessMin<=300)log.durMin=_sessMin;
 
   // 推定1RMを自動計算（BIG3系の種目で、現在の推定値より高ければ記録）。
   // bestE1rmPerBase=セッション内estBaseごとの最大→現在の最新値を超えたものだけ採用（抑圧ゲート）。
@@ -5344,6 +5376,7 @@ function finishTraining(btnEl){
   svSafeSeq(items,function(done){
     clearTDraft();
     ppAutoFlip(log); // チームウエイト完了→当日のPUSH/PULL自動確定（対象外はppAutoFlip内ガードで判定）
+    syncSessionDurToF(log); // P7a: 実測durMinを当日コンディションへ追記（sRPEに実測時間を反映）
     mergeTexlistFromLog(log); // 選手が追加した種目名を履歴（texlist）へ静かにマージ
     showTrainingResult(log,alerts,injurySkips,hasE1rm?e1rmValues:null);
   },function(err,done,item){
@@ -5351,6 +5384,7 @@ function finishTraining(btnEl){
       // tlogは保存済み。e1rmだけ失敗 → 記録は成立扱い（自己ベスト更新の注記のみ落とす）
       clearTDraft();
       ppAutoFlip(log); // tlog成立＝この経路でも自動確定する（漏らすと自己ベスト更新日だけflipされない）
+      syncSessionDurToF(log); // P7a: 実測durMinを当日コンディションへ追記（tlog成立時のみ）
       mergeTexlistFromLog(log);
       showTrainingResult(log,alerts,injurySkips,null);
     }else{

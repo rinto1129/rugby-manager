@@ -7,8 +7,15 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-14（**🔴v2プラン: P0・P1・P2a・P2b・P4・P5完了/push済み（P5=`585b926`）。P3不採用。P6=大部分を実装完了・敵対的レビュー(11エージェント)確定4バグ修正済・全検証緑＝push前（ユーザー確認待ち）。一部項目はP7以降へ送り**）
+- 日時: 2026-07-15（**🔴v2プラン: P0・P1・P2a・P2b・P4・P5・P6完了/push済み（P6=`1b25310`）。P3不採用。P7a=実装完了・敵対的レビュー(4次元→6所見)全処置・全検証緑＝push前（ユーザー確認待ち）。P7b-dは未着手**）
 - 更新者: Claude
+- **✅ P7a「体重dedup＋sRPE実測化」実装完了（ライトのまま・push前）**。**player/staff/coach 3ファイル＋sync_manifest変更**（+87/-23行）＋新テスト`dev/test_p7a.js`。検証: `python3 dev/run_tests.py`=**57 run/0 fail**＋`dev/sync_check.py`=ALL SYNC OK（effDur/sLoad をidentical登録）＋敵対的レビュー(4次元find→6所見→検証)=全処置後**残バグ0**。**push単位=1（player+staff+coach+manifest+新テスト＋HANDOFF）**。実装内容↓。
+  - **cond-bc materializeは不採用（ユーザー選択・2026-07-15）**: プランは「コンディション体重→同日bc(source:'cond')をupsert」だったが、bcは体組成(weight/fat/muscle)コレクションで**約15箇所が「体組成測定」として無条件に読む**（提出ステータス/測定会/一覧/CSV/チャート/最後に測った日）。weight-onlyのcond-bcがそこに**偽の測定として漏れる**リスク大。かつ体重平均は`getCurrentWeightInfo`が元々`f`も読むので**materialize無しでも正しい**。→ **cond-bcを作らず、体重は`f`のみに保存**。`doBCInput`のP5昇格分岐は無害な休眠コードとして残置（cond-bcが存在しないため実質no-op）。
+  - **体重dedup（identical: getCurrentWeightInfo=player/staff/coach・getWeightInfoAt=player/staff）**: 従来`D.f`と`D.bc`の体重を配列に両push→30日平均だったが、**同日に両方あると二重計上**（cond-bc有無に関わらず既存の潜在バグ＝同日にコンディション体重+実測bcで発生）。→ **日付キーのbyDate mapでdedup（同日はbc優先）**。`N回`カウントも実日数で正確化。
+  - **sRPE実測化（effDur/sLoad 新設・identical player/staff）**: セッションロード表示は従来`rpe*(duration||0)`＝選手手動入力のTR時間依存（朝入力運用で空欄が多く空振り）。→ `finishTraining`が**セッション実測時間**（開始ts→完了・妥当域1〜300分のみ採用）を`tlog.durMin`と当日`f.durMin`に記録（`syncSessionDurToF`）。表示は`sLoad(f)=rpe*effDur(f)`に置換（player2箇所+staff7箇所）。coachはセッションロード表示なし＝effDur不要。
+  - **effDurの優先順位＝duration(手動)>durMin(実測)>当日tlog>0（レビュー由来の設計変更）**: プランは「durMin優先」だったが、durMinは`ts→完了tap`の**壁時計計測で不確実**（タブ放置で過大化・実測が手動の正確値を上書き・手動編集が次セッションで再上書き＝レビューでmedium2件）。→ **手動durationがあればそれを最優先**。durMinは**空欄の穴埋め**（プランの朝入力空振り対策のゴールは達成）。これで編集の手動値が耐久し、壁時計の過大化も手動入力で自己修正可能。編集フォームは触らず（durMin優先廃止でプリフィル/durMinクリアのハックが不要になり全revert）。
+  - **syncSessionDurToF redundant-write ガード（レビュー由来）**: 当日コンディション未提出（トレ→後で入力の普通の順）だと`D.f`に候補が無く、updateFnが不変returnでも`tx.set`がf全体docを無駄に再書込み（Sparkの書込枠浪費）。→ 先頭で`D.f`に当日候補が無ければ**svSafeUpdate自体を呼ばず早期return**（取りこぼしはtlog側durMinのeffDurフォールバックで実害なし）。
+  - **レビュー6所見の処置**: ①手動編集が次セッションで再上書き(medium)②壁時計durMinが手動を上書き・過大(medium)→**duration優先化で両方解消**。③無関係編集でdurMin→duration焼付き(low)④空欄クリアが0で残らない(low)→**編集フォームrevert（effDurプリフィル/delete durMin撤去）で解消**。⑤redundant write(low)→**ガード追加**。⑥cross-midnightでdurMin取りこぼし(low)→**誤検出**（log.dateはセッション開始日でコンディションと一致）。
 - **✅ P6「staff/trainer CRUD残り＋prompt()7箇所撲滅」の中核を実装完了（ライトのまま・push前）**。**player/staff/trainer 3ファイル変更**（+約760/-90行・53新関数）＋新テスト`dev/test_p6.js`。検証: `python3 dev/run_tests.py`=**56 run/0 fail**＋`dev/sync_check.py`=ALL SYNC OK＋敵対的レビュー(5領域find→6候補→11エージェント検証)=確定4バグ修正後**残バグ0**。**push単位=1（player+staff+trainer+新テスト）。ユーザー確認後にpush**。実装内容↓。
   - **🎯 prompt()完全撲滅（7箇所→0）**: staff6箇所=`editStageDate`/`setStageTargetDate`(段階開始/目標日・空欄=削除保持)/`advStage`内(撤去→目標日設定ボタンに集約)/`markSkipForSess`(測定なし理由)/`goSaveAsTemplate`(テンプレ名・confirmも統合)/`rejectInjury`(却下理由・承認レース対策＋Undo)。trainer1箇所=`goSaveAsTemplateT`(テンプレ名・confirm統合)。**全ファイルで`grep -c "prompt("`=0**。雛形v2（pushView/showSub→フォーム→svSafeUpdate→toast/alert）で書き直し、テンプレ採番はtx内latest基準でid衝突回避。
   - **staff CRUD編集フォーム（削除ボタン横に「修正」新設）**: `f`(コンディション・選手固有フィールド保全)/`bc`(体組成)/`ann`(お知らせ・readBy保全)/`cal`(カレンダー・編集では測定会自動作成しない)/`a`(欠席・source:'player'保全、absTemp.sourceMap)。すべてin-place svSafeUpdate＋editedAt＋notFoundガード。
@@ -59,9 +66,10 @@
 | P2b | staff: tlog代理編集（tla_も可）＋共有関数移植（identical登録） | ✅ push済み `099337f`（test 45本/回帰51・sync OK・敵対的レビュー4件F1-F4修正済） |
 | P3 | ~~デザイン基盤前倒し（ダーク化）~~ | 🚫 **不採用・撤回**（ユーザーがダーク却下→ライト維持。実装は完了したがpushせず全revert） |
 | P4 | リハビリ役割分担フレーム（緩やか分担・roleGate・trainer確定ボタン撤去） | ✅ push済み `2d82102`（53 run/0 fail・sync OK・敵対的レビュー確定バグ0） |
-| P5 | player CRUD残り（怪我/rlog/痛み/wc/md/bc/tape/欠席/PIN） | ✅ 実装完了・**push前**（55 run/0 fail・sync OK・敵対的レビュー18体で確定4バグ修正済） |
-| P6 | staff/trainer CRUD残り＋prompt()7箇所（staff6+trainer1）撲滅 | 🟩 中核実装完了・**push前**（56 run/0 fail・sync OK・敵対的レビュー11体で確定4バグ修正済）。残: tape代理変更/wc・md新規代理入力/trainer rtest/rtest結果編集/rlog種目編集/preCheck編集はP7以降へ |
-| P7 | 機能統合（体重bc正典+durMin事後更新/欠席a正典・双方向/復帰一括+coach根拠フル/1フォーム化） | ⬜ |
+| P5 | player CRUD残り（怪我/rlog/痛み/wc/md/bc/tape/欠席/PIN） | ✅ push済み `585b926`（55 run/0 fail・sync OK・敵対的レビュー18体で確定4バグ修正済） |
+| P6 | staff/trainer CRUD残り＋prompt()7箇所（staff6+trainer1）撲滅 | ✅ push済み `1b25310`（56 run/0 fail・sync OK・敵対的レビュー11体で確定4バグ修正済）。残: tape代理変更/wc・md新規代理入力/trainer rtest/rtest結果編集/rlog種目編集/preCheck編集はP7以降へ |
+| P7a | 体重dedup＋sRPE実測化（durMin/effDur/sLoad） | 🟩 実装完了・**push前**（57 run/0 fail・sync OK・敵対的レビュー4次元→6所見全処置）。**cond-bc materializeは不採用**（体組成汚染回避・ユーザー選択）。effDurは**duration手動優先>durMin実測>tlog**（壁時計durMinの不確実性対策・レビュー由来の設計変更） |
+| P7b-d | 欠席a正典・双方向/復帰一括+coach根拠フル/1フォーム化 | ⬜ |
 | P8 | IA再編＋新機能（player動的タブ/ホーム7ブロック/NO SIDE測定シート/staff6グループ+キュー+マトリクス/coach週報+検索） | ⬜ |
 | P9a-c | 生hex残渣一掃→モチーフ仕上げ（pitchProgressHtml汎用化+RTPフィールドマップ）→総回帰 | ⬜ |
 
@@ -102,7 +110,7 @@
 - guardSubmit(二重送信ガード)はplayerに導入済み。新規フォームには必ず適用（雛形v2に含む）
 
 ## リポジトリの状態
-- ブランチ: main。origin/main=`585b926`(P5)。**作業ツリーにP6の未コミット変更あり**（player/staff/trainer/index.html＋dev/test_p6.js＋HANDOFF.md）。**ユーザー確認後に1コミットでpush予定**（push前に`git diff --stat`で対象外変更ゼロ確認）
+- ブランチ: main。origin/main=`1b25310`(P6)。**作業ツリーにP7aの未コミット変更あり**（player/staff/coach/index.html＋dev/sync_manifest.json＋dev/test_p7a.js＋HANDOFF.md）。**ユーザー確認後に1コミットでpush予定**（push前に`git diff --stat`で対象外変更ゼロ確認）
 - テスト用選手「テスト選手」(CTB/1年, note=動作確認用)が本番に1名存在（削除可）
 - ⚠️ 検証はjsc模擬実行で完結（本番Firestore直結のためブラウザで代理編集/削除の保存ボタンは押さない）。最終目視はユーザーのCmd+Shift+R確認に委ねる
 

@@ -139,6 +139,20 @@
    ],
    "kind": "function"
   },
+  "effDur": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
+  },
+  "sLoad": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
+  },
   "ppNext": {
    "files": [
     "player",
