@@ -858,6 +858,14 @@ function getCurrentUserName(role){
   if(role==='trainer')return (typeof myTrainer!=='undefined'&&myTrainer)?myTrainer.name:'専門学生';
   return '';
 }
+// 記録者名の解決: authorId(trainerId)があればtrainersから現在の名前を引く→旧レコードの author 文字列にフォールバック。改名が新規レコードに反映される。
+function recorderName(rec){
+  if(rec&&rec.authorId!=null){
+    var t=(D.trainers||[]).find(function(x){return idEq(x.id,rec.authorId);});
+    if(t)return t.name;
+  }
+  return (rec&&rec.author)||'';
+}
 
 // ===== P4: リハビリ役割分担フレーム（緩やか分担） =====
 // MY_ROLE = このファイルを操作するロール（staff/trainerで固定）。roleGateが参照する。
@@ -939,12 +947,13 @@ function renderInjCommentsListOnly(iid,role){
     var dt=c.createdAt?new Date(c.createdAt):null;
     var dateStr=dt?(toDateStr(dt)+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0')):'';
     var canDelete=c.role===role&&String(c.authorId)===String(getCurrentUserId(role));
+    var editing=canDelete&&window._injCommEdit!=null&&String(window._injCommEdit)===String(c.id);
     return'<div style="padding:8px 10px;border-radius:var(--radius);background:var(--bg-secondary);margin-bottom:6px">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;margin-bottom:4px">'+
-    '<span><span class="bd" style="background:'+color+';color:#fff;font-size:9px">'+label+'</span> <b style="margin-left:4px">'+(c.authorName||'')+'</b></span>'+
-    '<span style="color:var(--text-secondary)">'+dateStr+(canDelete?' <button class="btn btn-sm btn-d" onclick="delInjComment(\''+c.id+'\','+iid+',\''+role+'\')">削除</button>':'')+'</span>'+
+    '<span><span class="bd" style="background:'+color+';color:#fff;font-size:9px">'+label+'</span> <b style="margin-left:4px">'+(c.authorName||'')+'</b>'+(c.editedAt?' <span style="opacity:.6">(編集済)</span>':'')+'</span>'+
+    '<span style="color:var(--text-secondary)">'+dateStr+((canDelete&&!editing)?' <button class="btn btn-sm" onclick="editInjComment(\''+c.id+'\','+iid+',\''+role+'\')">編集</button> <button class="btn btn-sm btn-d" onclick="delInjComment(\''+c.id+'\','+iid+',\''+role+'\')">削除</button>':'')+'</span>'+
     '</div>'+
-    '<div style="font-size:13px;white-space:pre-wrap;word-break:break-word">'+escapeHtml(c.text||'')+'</div>'+
+    (editing?'<textarea class="ipt" id="injcomm-edit-'+c.id+'" style="font-size:13px;min-height:56px">'+escapeHtml(c.text||'')+'</textarea><div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px"><button class="btn btn-sm" onclick="cancelEditInjComment('+iid+',\''+role+'\')">キャンセル</button><button class="btn btn-sm btn-p" onclick="doEditInjComment(\''+c.id+'\','+iid+',\''+role+'\')">保存</button></div>':'<div style="font-size:13px;white-space:pre-wrap;word-break:break-word">'+escapeHtml(c.text||'')+'</div>')+
     '</div>';
   }).join('');
 }
@@ -976,6 +985,32 @@ function delInjComment(cid,iid,role){
   svSafeUpdate('injcomm',function(latest){
     return latest.filter(function(c){return!idEq(c.id,cid);});
   },function(){
+    var listEl=document.getElementById('injcomm-list-'+iid);
+    if(listEl)listEl.innerHTML=renderInjCommentsListOnly(iid,role);
+  });
+}
+// コメントの編集（作者本人のみ。インライン展開→保存でtext更新＋editedAt。サーバー最新で作者を再判定）
+function editInjComment(cid,iid,role){
+  window._injCommEdit=cid;
+  var listEl=document.getElementById('injcomm-list-'+iid);
+  if(listEl)listEl.innerHTML=renderInjCommentsListOnly(iid,role);
+}
+function cancelEditInjComment(iid,role){
+  window._injCommEdit=null;
+  var listEl=document.getElementById('injcomm-list-'+iid);
+  if(listEl)listEl.innerHTML=renderInjCommentsListOnly(iid,role);
+}
+function doEditInjComment(cid,iid,role){
+  var el=document.getElementById('injcomm-edit-'+cid);if(!el)return;
+  var text=(el.value||'').trim();
+  if(!text){alert('コメントを入力してください');return;}
+  var myId=getCurrentUserId(role);
+  svSafeUpdate('injcomm',function(latest){
+    var c=latest.find(function(x){return idEq(x.id,cid);});
+    if(c&&c.role===role&&String(c.authorId)===String(myId)){c.text=text;c.editedAt=new Date().toISOString();}
+    return latest;
+  },function(){
+    window._injCommEdit=null;
     var listEl=document.getElementById('injcomm-list-'+iid);
     if(listEl)listEl.innerHTML=renderInjCommentsListOnly(iid,role);
   });
@@ -1135,6 +1170,35 @@ function doSetupPIN(tid){
     showPINEntry(tid);
   });
 }
+// ログイン中トレーナーのPIN変更（現PIN照合→新PIN2回一致→trainersを更新＋メモリmyTrainer.pin同期）
+function showChangePINT(){window._subViewActive=true;
+  if(!myTrainer){go('home');return;}
+  var h='<div style="font-size:17px;font-weight:600;margin-bottom:12px">🔑 PIN変更</div>'+
+  '<div class="form-box"><div class="form-title">'+escapeHtml(myTrainer.name)+' さんのPIN</div>'+
+  '<div class="fl" style="margin-bottom:10px"><label>現在のPIN</label><input class="ipt" type="password" inputmode="numeric" maxlength="4" id="pin-cur"></div>'+
+  '<div class="fl" style="margin-bottom:10px"><label>新しいPIN（4桁）</label><input class="ipt" type="password" inputmode="numeric" maxlength="4" id="pin-n1"></div>'+
+  '<div class="fl"><label>新しいPIN（確認）</label><input class="ipt" type="password" inputmode="numeric" maxlength="4" id="pin-n2"></div></div>'+
+  '<div style="display:flex;gap:8px;margin-top:14px"><button class="btn" onclick="go(\'home\')">キャンセル</button><button class="btn btn-p" style="flex:1" onclick="doChangePINT(this)">PINを変更</button></div>'+
+  '<div style="font-size:11px;color:var(--text-secondary);margin-top:10px">PINを忘れた場合はスタッフにPINリセットを依頼してください。</div>';
+  $m().innerHTML=h;
+}
+function doChangePINT(btnEl){
+  if(!myTrainer)return;
+  var cur=(document.getElementById('pin-cur')||{}).value;
+  var n1=(document.getElementById('pin-n1')||{}).value;
+  var n2=(document.getElementById('pin-n2')||{}).value;
+  if(cur!==myTrainer.pin){alert('現在のPINが違います');return;}
+  if(!/^\d{4}$/.test(n1)){alert('新しいPINは4桁の数字で入力してください');return;}
+  if(n1!==n2){alert('新しいPINが一致しません');return;}
+  if(!guardSubmit(btnEl,'変更中…'))return;
+  var notFound=false;
+  svSafeUpdate('trainers',function(latest){
+    var idx=latest.findIndex(function(t){return idEq(t.id,myTrainer.id);});
+    if(idx<0){notFound=true;return latest;}
+    latest[idx].pin=n1;
+    return latest;
+  },function(){if(notFound){releaseSubmit(btnEl);alert('トレーナー記録が見つかりませんでした');return;}myTrainer.pin=n1;alert('PINを変更しました ✓');go('home');},function(){releaseSubmit(btnEl);alert('保存できませんでした。もう一度お試しください');});
+}
 
 function showPINEntry(tid){
   var trainer=D.trainers.find(function(t){return t.id===tid;});
@@ -1273,7 +1337,7 @@ home:function(){
   var today=todayStr();
   var h='<div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 4px">'+
   '<div style="font-size:18px;font-weight:700">'+escapeHtml(myTrainer.name)+'さん 👋</div>'+
-  '<button class="btn btn-sm" onclick="go(\'help\')" style="font-size:11px">📖 ガイド</button>'+
+  '<div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="showChangePINT()" style="font-size:11px">🔑 PIN変更</button><button class="btn btn-sm" onclick="go(\'help\')" style="font-size:11px">📖 ガイド</button></div>'+
   '</div>'+
   '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">'+fmt(today)+'</div>';
   h+=ppCardHtml(true);
@@ -1436,7 +1500,7 @@ tape:function(){
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
       '<div><div style="font-weight:600">'+fmt(date)+(isPast?' <span style="font-size:11px;color:var(--text-secondary)">（過去）</span>':'')+'</div>'+
       '<div style="font-size:11px;color:var(--text-secondary)">枠数: '+slots.length+' / 予約: '+rsvs.length+'件</div></div>'+
-      (!isPast?'<button class="btn btn-sm btn-d" onclick="delMyTapeDay(\''+date+'\')">削除</button>':'')+
+      '<button class="btn btn-sm btn-d" onclick="delMyTapeDay(\''+date+'\')">削除</button>'+
       '</div>';
       slots.forEach(function(s){
         var booked=tapeSlotBooked(rsvs,s.id);
@@ -1444,7 +1508,7 @@ tape:function(){
         h+='<div style="margin-bottom:6px;padding:8px;background:var(--bg-secondary);border-radius:var(--radius)">'+
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:'+(booked.length?'6px':'0')+'">'+
         '<span style="font-weight:600;font-size:13px">'+s.startTime+'〜'+s.endTime+'</span>'+
-        '<span class="bd '+(full?'bd-r':booked.length>0?'bd-a':'bd-g')+'">'+(full?'満員':booked.length+'/'+s.capacity+'名')+'</span></div>';
+        '<div style="display:flex;align-items:center;gap:4px"><span class="bd '+(full?'bd-r':booked.length>0?'bd-a':'bd-g')+'">'+(full?'満員':booked.length+'/'+s.capacity+'名')+'</span><button class="btn btn-sm" onclick="showEditTapeSlot(\''+s.id+'\')">編集</button><button class="btn btn-sm btn-d" onclick="delMyTapeSlot(\''+s.id+'\')">削除</button></div></div>';
         booked.forEach(function(rsv){
           var p=D.p.find(function(x){return x.id===rsv.pid;});
           h+='<div class="log-row" style="padding:4px 0">'+avH(p,22)+'<div style="flex:1"><span style="font-weight:600;font-size:12px">'+(p?p.name:'不明')+'</span><span style="font-size:11px;color:var(--text-secondary);margin-left:6px">'+rsv.parts.join('・')+'</span></div>'+(p?'<button class="btn btn-sm" onclick="showPlayerTapeRecs('+p.id+')">記録</button>':'')+'</div>';
@@ -1579,7 +1643,7 @@ function renderTapeRecCard(r,pid){
     '<div><span style="font-weight:700;font-size:15px">'+(r.side||'')+r.part+'</span> <span style="font-size:12px;color:var(--text-secondary)">'+fmt(r.date)+'</span></div>'+
     '<div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="showTapeRecForm(\''+r.id+'\','+pid+')">編集</button><button class="btn btn-sm btn-d" onclick="delTapeRec(\''+r.id+'\','+pid+')">削除</button></div>'+
     '</div>';
-  if(r.author)h+='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px">記録者: '+escapeHtml(r.author)+'</div>';
+  if(recorderName(r))h+='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px">記録者: '+escapeHtml(recorderName(r))+'</div>';
   // テープ種類
   if(r.tapeTypes&&r.tapeTypes.length){
     h+='<div style="margin-bottom:8px"><div style="font-size:11px;color:var(--text-secondary);font-weight:600;margin-bottom:3px">使用テープ</div>'+
@@ -1641,8 +1705,10 @@ function saveTapeRec(recId,btnEl){
   svSafeUpdate('taperec',function(latest){
     if(recId){
       var idx=latest.findIndex(function(x){return idEq(x.id,recId);});
-      if(idx>=0){data.id=recId;latest[idx]=data;}else{data.id=recId;latest.push(data);}
+      if(idx>=0){data.authorId=(latest[idx].authorId!=null?latest[idx].authorId:(myTrainer?myTrainer.id:null));data.id=recId;latest[idx]=data;} // 編集: 元のauthorIdを温存（別作者の記録を編集しても記録者を書き換えない）
+      else{data.authorId=(myTrainer?myTrainer.id:null);if(!data.author&&myTrainer)data.author=myTrainer.name;data.id=recId;latest.push(data);}
     }else{
+      data.authorId=(myTrainer?myTrainer.id:null);if(!data.author&&myTrainer)data.author=myTrainer.name; // 新規のみ記録者を刻む
       data.id=Date.now()+'_'+Math.floor(Math.random()*1000);
       latest.push(data);
     }
@@ -1727,7 +1793,7 @@ function renderChartTimeline(iid){
     if(s.p)parts.push('<b>P:</b> '+escapeHtml(s.p));
     var d=parts.join('<br>');
     if(!d&&s.s)d='<b>S:</b> '+escapeHtml(s.s);
-    events.push({date:s.date,type:'soap',title:'SOAP記録'+(s.author?' ('+escapeHtml(s.author)+')':''),desc:d||'記録あり'});
+    events.push({date:s.date,type:'soap',title:'SOAP記録'+(recorderName(s)?' ('+escapeHtml(recorderName(s))+')':''),desc:d||'記録あり'});
   });
   // 5. リハビリ段階の開始日
   if(rh&&rh.stageDates){
@@ -2346,7 +2412,7 @@ function renderChartSOAP(iid){
     soaps.forEach(function(s){
       h+='<div class="card" style="margin-bottom:10px">'+
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
-        '<span style="font-weight:700">'+fmt(s.date)+(s.author?' <span style="font-size:11px;color:var(--text-secondary);font-weight:400">'+escapeHtml(s.author)+'</span>':'')+'</span>'+
+        '<span style="font-weight:700">'+fmt(s.date)+(recorderName(s)?' <span style="font-size:11px;color:var(--text-secondary);font-weight:400">'+escapeHtml(recorderName(s))+'</span>':'')+'</span>'+
         '<div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="showSOAPForm('+iid+',\''+s.id+'\')">編集</button><button class="btn btn-sm btn-d" onclick="delSOAP('+iid+',\''+s.id+'\')">削除</button></div>'+
         '</div>';
       if(s.s)h+='<div class="soap-line"><span class="soap-tag" style="background:#3B82F6">S</span><span>'+escapeHtml(s.s)+'</span></div>';
@@ -2389,8 +2455,8 @@ function saveSOAP(iid,soapId,btn){
     var i=_chartIdx(latest,iid);
     if(!latest[i].soaps)latest[i].soaps=[];
     var rec=soapId?latest[i].soaps.find(function(x){return idEq(x.id,soapId);}):null;
-    if(rec){Object.assign(rec,data);}
-    else{data.id=soapId||(Date.now()+'_'+Math.floor(Math.random()*1000));latest[i].soaps.push(data);}
+    if(rec){Object.assign(rec,data);} // 編集: authorId/id は data に含めず温存（別作者の記録を編集しても記録者を書き換えない）
+    else{data.id=soapId||(Date.now()+'_'+Math.floor(Math.random()*1000));data.authorId=(myTrainer?myTrainer.id:null);if(!data.author&&myTrainer)data.author=myTrainer.name;latest[i].soaps.push(data);} // 新規のみ記録者を刻む
     return latest;
   },function(){chartTab('soap');},function(){releaseSubmit(btn);alert('保存に失敗しました。通信状況を確認してもう一度お試しください。入力内容は残っています。');});
 }
@@ -3762,7 +3828,8 @@ function doSaveRehabLogTrainer(injId,hasTpl,exCount,btnEl){
   // svSafeは失敗時に内部でalert＋ボタン固着してしまうため、svSafeSeqで成否を捕捉する
   stampWho(logRec);
   svSafeSeq([{k:'rlog',rec:logRec}],function(){
-    if(!hasTpl&&exercises.length&&confirm('このメニューをテンプレとして保存しますか？')){
+    // confirm+promptを1フォームに統合（保存/スキップはフォーム内で選択）
+    if(!hasTpl&&exercises.length){
       goSaveAsTemplateT(injId,exercises,cats);return;
     }
     goSetNextMenuT(injId);
@@ -3773,14 +3840,29 @@ function doSaveRehabLogTrainer(injId,hasTpl,exCount,btnEl){
 }
 
 function goSaveAsTemplateT(injId,exercises,cats){window._subViewActive=true;
-  var inj=(D.i||[]).find(function(x){return x.id===injId;});if(!inj)return;
-  var name=prompt('テンプレ名を入力してください：','');
-  if(!name)return goSetNextMenuT(injId);
-  if(!D.rtpl)D.rtpl=[];
-  var newId=D.rtpl.length?Math.max.apply(null,D.rtpl.map(function(t){return t.id;}))+1:1;
-  svSafe('rtpl',{id:newId,name:name,part:inj.part,stage:'',cats:cats,exercises:exercises,createdBy:myTrainer.name,createdAt:todayStr()},function(){
-    alert('テンプレを保存しました ✓');goSetNextMenuT(injId);
-  });
+  var inj=(D.i||[]).find(function(x){return idEq(x.id,injId);});if(!inj){goSetNextMenuT(injId);return;}
+  window._tplDraftT={injId:injId,exercises:exercises,cats:cats}; // 再描画でクロージャを失うため退避
+  var h='<div style="font-size:17px;font-weight:600;margin-bottom:6px">このメニューをテンプレとして保存しますか？</div>'+
+  '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">次回以降このメニューを呼び出せます。不要ならスキップしてください。</div>'+
+  '<div class="form-box"><div class="form-title">テンプレ名</div>'+
+  '<input class="ipt" id="tplt-name" placeholder="例: 足首リハ初期メニュー"></div>'+
+  '<div style="display:flex;gap:8px;margin-top:14px"><button class="btn" onclick="skipSaveTemplateT()">保存しない</button><button class="btn btn-p" style="flex:1" onclick="doSaveAsTemplateT(this)">テンプレを保存</button></div>';
+  $m().innerHTML=h;
+}
+function skipSaveTemplateT(){var d=window._tplDraftT||{};window._tplDraftT=null;goSetNextMenuT(d.injId);}
+function doSaveAsTemplateT(btnEl){
+  var d=window._tplDraftT;if(!d){go('rehab');return;}
+  var name=(document.getElementById('tplt-name')||{}).value||'';
+  if(!isFilled(name))return alert('テンプレ名を入力してください');
+  if(!guardSubmit(btnEl,'保存中…'))return;
+  var inj=(D.i||[]).find(function(x){return idEq(x.id,d.injId);});
+  var rec={name:name.trim(),part:inj?inj.part:'',stage:'',cats:d.cats,exercises:d.exercises,createdBy:myTrainer.name,createdAt:todayStr()};
+  window._tplDraftT=null;
+  svSafeUpdate('rtpl',function(latest){
+    rec.id=latest.length?Math.max.apply(null,latest.map(function(t){return t.id;}))+1:1; // 採番はtx内のlatest基準（同時保存でのid衝突を防ぐ）
+    latest.push(rec);
+    return latest;
+  },function(){alert('テンプレを保存しました ✓');goSetNextMenuT(d.injId);},function(){releaseSubmit(btnEl);window._tplDraftT=d;alert('保存できませんでした。もう一度お試しください');});
 }
 
 function goSetNextMenuT(injId){window._subViewActive=true;
@@ -3821,11 +3903,13 @@ function saveNextMenuT(injId){
 }
 
 function timeOptions(sel){
-  var h='';
-  for(var hh=0;hh<24;hh++){for(var mm=0;mm<60;mm+=10){
+  var h='';var found=false;
+  for(var hh=0;hh<24;hh++){for(var mm=0;mm<60;mm+=5){ // 5分刻み（枠は5分単位で分割生成されるため。旧10分刻みだと枠編集で選択できず00:00に落ちる不具合）
     var v=String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+    if(v===sel)found=true;
     h+='<option'+(v===sel?' selected':'')+'>'+v+'</option>';
   }}
+  if(sel&&!found)h='<option selected>'+sel+'</option>'+h; // グリッド外の既存値（過去データ等）も選択状態で保持
   return h;
 }
 
@@ -3891,6 +3975,53 @@ function delMyTapeDay(date){
       T.tape();
     });
   });
+}
+// テーピング枠の個別削除。予約ありの枠はslotIds跨ぎ予約の破損を避けるためブロック（日単位削除か予約取消を促す）。空枠のみ削除。
+function delMyTapeSlot(slotId){
+  var booked=tapeSlotBooked(D.tape||[],slotId);
+  if(booked.length){alert('この枠には予約があります。先に予約を取消すか、日単位の「削除」を使ってください。');return;}
+  if(!confirm('この枠を削除しますか？'))return;
+  svSafeUpdate('tapeslot',function(latest){return latest.filter(function(s){return!idEq(s.id,slotId);});},function(){T.tape();},function(){alert('削除に失敗しました。もう一度お試しください');});
+}
+// テーピング枠の個別編集（種別/開始/終了/定員。日付は不変・定員は予約数以上に制限）
+function showEditTapeSlot(slotId){window._subViewActive=true;
+  var s=(D.tapeslot||[]).find(function(x){return idEq(x.id,slotId);});if(!s){go('tape');return;}
+  var h='<div style="font-size:17px;font-weight:700;margin-bottom:14px">テーピング枠を編集</div>'+
+  '<div class="form-box"><div class="form-title">'+fmt(s.date)+' の枠</div>'+
+  '<div class="fl" style="margin-bottom:10px"><label>種別</label><select class="ipt" id="ets-type"><option value="practice">練習前</option><option value="match">試合前</option></select></div>'+
+  '<div class="grid g2" style="gap:8px;margin-bottom:10px">'+
+  '<div class="fl"><label>開始時間</label><select class="ipt" id="ets-start">'+timeOptions(s.startTime)+'</select></div>'+
+  '<div class="fl"><label>終了時間</label><select class="ipt" id="ets-end">'+timeOptions(s.endTime)+'</select></div></div>'+
+  '<div class="fl"><label>定員（同時対応人数）</label><input class="ipt" type="number" id="ets-cap" min="1" max="5"></div>'+
+  '</div>'+
+  '<div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="go(\'tape\')">キャンセル</button><button class="btn btn-p" style="flex:1" onclick="doEditTapeSlot(\''+slotId+'\',this)">保存</button></div>';
+  $m().innerHTML=h;
+  var te=document.getElementById('ets-type');if(te)te.value=s.type||'practice';
+  var se=document.getElementById('ets-start');if(se)se.value=s.startTime;
+  var ee=document.getElementById('ets-end');if(ee)ee.value=s.endTime;
+  var ce=document.getElementById('ets-cap');if(ce)ce.value=s.capacity||1;
+}
+function doEditTapeSlot(slotId,btnEl){
+  var s=(D.tapeslot||[]).find(function(x){return idEq(x.id,slotId);});if(!s)return;
+  var type=(document.getElementById('ets-type')||{}).value||'practice';
+  var startT=(document.getElementById('ets-start')||{}).value;
+  var endT=(document.getElementById('ets-end')||{}).value;
+  var cap=parseInt((document.getElementById('ets-cap')||{}).value)||1;
+  if(!startT||startT>=endT)return alert('時間を正しく入力してください（終了 > 開始）');
+  var booked=tapeSlotBooked(D.tape||[],slotId);
+  if(cap<booked.length)return alert('定員を予約数（'+booked.length+'名）より少なくできません');
+  if(!guardSubmit(btnEl,'保存中…'))return;
+  var notFound=false;
+  svSafeUpdate('tapeslot',function(latest){
+    var idx=latest.findIndex(function(x){return idEq(x.id,slotId);});
+    if(idx<0){notFound=true;return latest;}
+    latest[idx].type=type;
+    latest[idx].startTime=startT;
+    latest[idx].endTime=endT;
+    latest[idx].capacity=cap;
+    latest[idx].editedAt=new Date().toISOString();
+    return latest;
+  },function(){if(notFound){releaseSubmit(btnEl);alert('枠が見つかりませんでした');return;}go('tape');},function(){releaseSubmit(btnEl);alert('保存できませんでした。もう一度お試しください');});
 }
 
 // ===== LOAD =====

@@ -1711,12 +1711,13 @@ function renderInjCommentsListOnly(iid,role){
     var dt=c.createdAt?new Date(c.createdAt):null;
     var dateStr=dt?(toDateStr(dt)+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0')):'';
     var canDelete=c.role===role&&String(c.authorId)===String(getCurrentUserId(role));
+    var editing=canDelete&&window._injCommEdit!=null&&String(window._injCommEdit)===String(c.id);
     return'<div style="padding:8px 10px;border-radius:var(--radius);background:var(--bg-secondary);margin-bottom:6px">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;margin-bottom:4px">'+
-    '<span><span class="bd" style="background:'+color+';color:#fff;font-size:9px">'+label+'</span> <b style="margin-left:4px">'+(c.authorName||'')+'</b></span>'+
-    '<span style="color:var(--text-secondary)">'+dateStr+(canDelete?' <button class="btn btn-sm btn-d" onclick="delInjComment(\''+c.id+'\','+iid+',\''+role+'\')">削除</button>':'')+'</span>'+
+    '<span><span class="bd" style="background:'+color+';color:#fff;font-size:9px">'+label+'</span> <b style="margin-left:4px">'+(c.authorName||'')+'</b>'+(c.editedAt?' <span style="opacity:.6">(編集済)</span>':'')+'</span>'+
+    '<span style="color:var(--text-secondary)">'+dateStr+((canDelete&&!editing)?' <button class="btn btn-sm" onclick="editInjComment(\''+c.id+'\','+iid+',\''+role+'\')">編集</button> <button class="btn btn-sm btn-d" onclick="delInjComment(\''+c.id+'\','+iid+',\''+role+'\')">削除</button>':'')+'</span>'+
     '</div>'+
-    '<div style="font-size:13px;white-space:pre-wrap;word-break:break-word">'+escapeHtml(c.text||'')+'</div>'+
+    (editing?'<textarea class="ipt" id="injcomm-edit-'+c.id+'" style="font-size:13px;min-height:56px">'+escapeHtml(c.text||'')+'</textarea><div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px"><button class="btn btn-sm" onclick="cancelEditInjComment('+iid+',\''+role+'\')">キャンセル</button><button class="btn btn-sm btn-p" onclick="doEditInjComment(\''+c.id+'\','+iid+',\''+role+'\')">保存</button></div>':'<div style="font-size:13px;white-space:pre-wrap;word-break:break-word">'+escapeHtml(c.text||'')+'</div>')+
     '</div>';
   }).join('');
 }
@@ -1765,6 +1766,32 @@ function postInjComment(iid,role){
 function delInjComment(cid,iid,role){
   if(!confirm('このコメントを削除しますか？'))return;
   svSafeUpdate('injcomm',function(latest){return latest.filter(function(c){return!idEq(c.id,cid);});},function(){
+    var listEl=document.getElementById('injcomm-list-'+iid);
+    if(listEl)listEl.innerHTML=renderInjCommentsListOnly(iid,role);
+  });
+}
+// コメントの編集（作者本人のみ。インライン展開→保存でtext更新＋editedAt。サーバー最新で作者を再判定）
+function editInjComment(cid,iid,role){
+  window._injCommEdit=cid;
+  var listEl=document.getElementById('injcomm-list-'+iid);
+  if(listEl)listEl.innerHTML=renderInjCommentsListOnly(iid,role);
+}
+function cancelEditInjComment(iid,role){
+  window._injCommEdit=null;
+  var listEl=document.getElementById('injcomm-list-'+iid);
+  if(listEl)listEl.innerHTML=renderInjCommentsListOnly(iid,role);
+}
+function doEditInjComment(cid,iid,role){
+  var el=document.getElementById('injcomm-edit-'+cid);if(!el)return;
+  var text=(el.value||'').trim();
+  if(!text){alert('コメントを入力してください');return;}
+  var myId=getCurrentUserId(role);
+  svSafeUpdate('injcomm',function(latest){
+    var c=latest.find(function(x){return idEq(x.id,cid);});
+    if(c&&c.role===role&&String(c.authorId)===String(myId)){c.text=text;c.editedAt=new Date().toISOString();}
+    return latest;
+  },function(){
+    window._injCommEdit=null;
     var listEl=document.getElementById('injcomm-list-'+iid);
     if(listEl)listEl.innerHTML=renderInjCommentsListOnly(iid,role);
   });

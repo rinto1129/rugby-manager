@@ -7,8 +7,17 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-14（**🔴v2プラン: P0・P1・P2a・P2b・P4完了/push済み（P4=`2d82102`）。P3不採用。P5実装完了・敵対的レビュー(18エージェント)確定4バグ修正済・全検証緑＝push前（ユーザー確認待ち）。次=P6**）
+- 日時: 2026-07-14（**🔴v2プラン: P0・P1・P2a・P2b・P4・P5完了/push済み（P5=`585b926`）。P3不採用。P6=大部分を実装完了・敵対的レビュー(11エージェント)確定4バグ修正済・全検証緑＝push前（ユーザー確認待ち）。一部項目はP7以降へ送り**）
 - 更新者: Claude
+- **✅ P6「staff/trainer CRUD残り＋prompt()7箇所撲滅」の中核を実装完了（ライトのまま・push前）**。**player/staff/trainer 3ファイル変更**（+約760/-90行・53新関数）＋新テスト`dev/test_p6.js`。検証: `python3 dev/run_tests.py`=**56 run/0 fail**＋`dev/sync_check.py`=ALL SYNC OK＋敵対的レビュー(5領域find→6候補→11エージェント検証)=確定4バグ修正後**残バグ0**。**push単位=1（player+staff+trainer+新テスト）。ユーザー確認後にpush**。実装内容↓。
+  - **🎯 prompt()完全撲滅（7箇所→0）**: staff6箇所=`editStageDate`/`setStageTargetDate`(段階開始/目標日・空欄=削除保持)/`advStage`内(撤去→目標日設定ボタンに集約)/`markSkipForSess`(測定なし理由)/`goSaveAsTemplate`(テンプレ名・confirmも統合)/`rejectInjury`(却下理由・承認レース対策＋Undo)。trainer1箇所=`goSaveAsTemplateT`(テンプレ名・confirm統合)。**全ファイルで`grep -c "prompt("`=0**。雛形v2（pushView/showSub→フォーム→svSafeUpdate→toast/alert）で書き直し、テンプレ採番はtx内latest基準でid衝突回避。
+  - **staff CRUD編集フォーム（削除ボタン横に「修正」新設）**: `f`(コンディション・選手固有フィールド保全)/`bc`(体組成)/`ann`(お知らせ・readBy保全)/`cal`(カレンダー・編集では測定会自動作成しない)/`a`(欠席・source:'player'保全、absTemp.sourceMap)。すべてin-place svSafeUpdate＋editedAt＋notFoundガード。
+  - **staff wc/md 代理修正**: `showEditWeekCheckStaff`/`showEditMatchStaff`(コンディション欄のみ・injured/crampフラグと怪我サブフィールドは触らず＝i/r重複防止)。**wc/mdの新規「代理入力」はP7以降へ**（injId picker/svSafeSeq移植が必要）。
+  - **staff misc**: `goRenameTrainer`(トレーナー改名・name のみ)/`goEditRTestTpl`(復帰テストテンプレ編集・動的physTestsプリフィル、_rtPhysCount再初期化)/`delTapeSlot`(テーピング枠個別削除・予約ありはslotIds跨ぎ破損回避でブロック・Undo)/`cancelPhSkip`/`editPhSkipReason`(phskip取消/理由修正・id無し旧レコードはpid+phInMSessで照合)/`delRTestResult`(復帰テスト結果削除・Undo)。
+  - **trainer**: `showChangePINT`(PIN変更・ホームヘッダに導線・myTrainer.pin同期)/`delMyTapeSlot`＋`showEditTapeSlot`(枠個別削除/編集＋過去日も日単位削除可)/`goSaveAsTemplateT`(prompt撤去)。
+  - **cross-file**: `injcomm`コメント**編集**を player/staff/trainer 3ファイルに追加（作者本人のみ・インライン展開・updateFn内で作者再判定・editedAt表示）。`recorderName(rec)`リゾルバをstaff/trainerに追加＝SOAP/テーピングの記録者を`author`文字列→**authorId(trainerId)参照**化（表示は`trainers`から現在名を解決・旧レコードはauthor文字列にフォールバック・改名が新規レコードに反映）。
+  - **敵対的レビュー由来の確定修正4件（触る時に退行させない）**: ①**timeOptionsを5分グリッド化**＋グリッド外値のprepend保持（旧10分グリッドだと5分単位の枠を編集すると08:05等が選択できず`00:00`に破損＝high。staff/trainer両方修正）②**SOAP/テーピングのauthorIdは新規レコードのみ刻む**（編集時は元のauthorIdを温存＝別作者の記録を編集しても記録者を書き換えない。saveSOAP/saveTapeRec）③`undoCancelPhSkip`の二重復元ガードをphInMSess照合に（id無し＆msessId無しの旧レコードで`idEq(null,null)`が常にfalseで機能しなかった）④`doChangePINT`にnotFoundガード（トレーナー記録消失時に偽の成功表示＋in-memory pin desyncを防ぐ）。新テスト`dev/test_p6.js`(timeOptions/recorderName・31アサーション)で①②を回帰固定。
+  - **⏭️ P6でP7以降へ送った項目（未実装）**: (a)staff `tape`代理変更（player専用のselectedTapeSlot等の枠選択グローバル状態が必要＝新規UI構築が要る）(b)wc/md **新規**代理入力（svSafeSeq移植＋怪我重複対策）(c)trainer側 `rtest`編集/削除（staff側は削除実装済。trainerは結果一覧UIが未整備＝新サーフェス要）(d)`rtest`結果の**編集フォーム**（physResults再入力＝複雑。削除→再入力で代替）(e)`rlog`**種目編集**（exercises配列エディタ＝日付/実施者/コメント編集はstaff `goEditRehabLogStaff`に既存。種目単位の編集は複雑で未着手）(f)preCheck編集（脳震盪サブオブジェクト編集＝複雑）。**これらはP7/P8で機能統合・IA再編と併せて実装するのが自然**。
 - **✅ P5「player CRUD残り（怪我/rlog/痛み/wc/md/bc/tape/欠席/PIN）」実装完了（ライトのまま・push前）**。**player/index.htmlのみ変更**（+474/-16）＋新テスト2本（`dev/test_bc_dup.js`/`dev/test_p5_guards.js`）。検証: `python3 dev/run_tests.py`=**55 run/0 fail**＋`dev/sync_check.py`=ALL SYNC OK（共有関数不変=player固有UIのみ・manifest変更なし）＋敵対的レビュー(6視点find→11所見→18エージェント検証)=確定4バグ修正後**残バグ0**。**push単位=1（player+2新テスト）。ユーザー確認後にpush**。実装内容↓。
   - **P5-1 怪我報告(i)自己編集/取消**: injuryタブのpending怪我カード（`source∈{player,match}` かつ `approved==null`）に「報告を修正/取消」。`editInjury`/`doEditInjury`（フィールド編集＋noteを`【選手報告・修正】/【試合で受傷・修正】`で再構成・painLevel/canPractice更新・approved温存）／`cancelInjury`（i削除→対のr削除で孤児回避・**Undoで両方復元**）。**承認レース対策**=可否をサーバー最新の`approved/source`で**updateFn内で再判定**（doEditInjury/cancelInjury両方に`blocked`ガード）。承認後は「修正はスタッフへ」表示。
   - **P5-2 rlog閲覧+当日編集/削除**: injuryタブに「リハビリ実施履歴」（**rlogにpid無し→自分の怪我のinjId群で絞る**・content||comment両対応）。`showEditRlog`/`doEditRlog`/`delRlog`(Undo)/`undoDelRlog`。編集/削除は`by==='player'`かつ**当日のみ**（描画editable＋updateFn両方でゲート）。
@@ -51,7 +60,7 @@
 | P3 | ~~デザイン基盤前倒し（ダーク化）~~ | 🚫 **不採用・撤回**（ユーザーがダーク却下→ライト維持。実装は完了したがpushせず全revert） |
 | P4 | リハビリ役割分担フレーム（緩やか分担・roleGate・trainer確定ボタン撤去） | ✅ push済み `2d82102`（53 run/0 fail・sync OK・敵対的レビュー確定バグ0） |
 | P5 | player CRUD残り（怪我/rlog/痛み/wc/md/bc/tape/欠席/PIN） | ✅ 実装完了・**push前**（55 run/0 fail・sync OK・敵対的レビュー18体で確定4バグ修正済） |
-| P6 | staff/trainer CRUD残り＋prompt()7箇所（staff6+trainer1）撲滅 | ⬜ **次はここ** |
+| P6 | staff/trainer CRUD残り＋prompt()7箇所（staff6+trainer1）撲滅 | 🟩 中核実装完了・**push前**（56 run/0 fail・sync OK・敵対的レビュー11体で確定4バグ修正済）。残: tape代理変更/wc・md新規代理入力/trainer rtest/rtest結果編集/rlog種目編集/preCheck編集はP7以降へ |
 | P7 | 機能統合（体重bc正典+durMin事後更新/欠席a正典・双方向/復帰一括+coach根拠フル/1フォーム化） | ⬜ |
 | P8 | IA再編＋新機能（player動的タブ/ホーム7ブロック/NO SIDE測定シート/staff6グループ+キュー+マトリクス/coach週報+検索） | ⬜ |
 | P9a-c | 生hex残渣一掃→モチーフ仕上げ（pitchProgressHtml汎用化+RTPフィールドマップ）→総回帰 | ⬜ |
@@ -93,7 +102,7 @@
 - guardSubmit(二重送信ガード)はplayerに導入済み。新規フォームには必ず適用（雛形v2に含む）
 
 ## リポジトリの状態
-- ブランチ: main（origin/main=`099337f` と同期・作業ツリーはこのHANDOFF更新のみ）。直近コミット=`099337f`(P2b)
+- ブランチ: main。origin/main=`585b926`(P5)。**作業ツリーにP6の未コミット変更あり**（player/staff/trainer/index.html＋dev/test_p6.js＋HANDOFF.md）。**ユーザー確認後に1コミットでpush予定**（push前に`git diff --stat`で対象外変更ゼロ確認）
 - テスト用選手「テスト選手」(CTB/1年, note=動作確認用)が本番に1名存在（削除可）
 - ⚠️ 検証はjsc模擬実行で完結（本番Firestore直結のためブラウザで代理編集/削除の保存ボタンは押さない）。最終目視はユーザーのCmd+Shift+R確認に委ねる
 
