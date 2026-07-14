@@ -33,7 +33,7 @@
 | `trainer/index.html` | `trainer/index.html` | 専門学生トレーナー用（テーピング枠・リハビリ記録・復帰テスト） | ダーク（ネイビー＋青アクセント） |
 | `coach/index.html` | `coach/index.html` | 監督・コーチ用（**閲覧専用**。怪我/フィジカル/トレーニングの可視化ダッシュボード） | ダーク（黒＋ネオン緑・グラスモーフィズム） |
 
-※ アクティブプラン（`dev/audit/PLAN_zesty-fluttering-kitten.md`）のP3で**全サイトをマルーン×ゴールド基調のダークテーマに統一予定**（trainer=青/coach=緑は差し色維持）。テーマ列は移行完了時に更新すること。
+※ ~~P3で全サイトをダークテーマに統一予定~~ → **ダーク化は不採用（2026-07-14撤回）**。playerダーク化を実機で見たユーザーが「みにくい」と却下しライト維持を選択。上表のテーマ列（各サイトのライト構成）が現状かつ正。**今後ダークは提案しない**（詳細はHANDOFF.md「P3不採用」節）。
 ※ ローカルの絶対パスは `/Users/nakayamarinnin/Documents/個人開発プロジェクト/rugby-manager`（2026-07-13にDocuments直下から移動。**パスに日本語を含むためjscに絶対パスを渡せない** → dev/run_tests.py はcwd固定＋相対パスで回避している）。
 
 - 各サイトは別々のHTMLファイルだが、**同じFirebaseの同じデータ**を見ている。
@@ -63,6 +63,7 @@ apiKey: AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls
 - `avH(p,sz)`（staff/player）/ `ava(p,sz)`（coach）アバター表示
 - トレーニング系: `RPECHART`（reps×RPE→%1RMの表）, `EST_BASES`（squat/bench/deadlift）, `estimateWeight(oneRM,reps,rir)`, `estimateOneRM(weight,reps,rir)`, `getPlayer1RM(pid,estBase)`
 - 定数: `STG`（リハビリ7段階）, `RTP_LEVELS`（練習参加6段階）, `PARTS`, `POS`, `RCATS`, `PAIN_TYPES`
+- リハビリ役割分担（P4・staff/trainerのみ）: `MY_ROLE`（このファイルのロール='staff'/'trainer'・identicalブロック外のper-file定数）／`ROLE_MODE`（'soft'=出荷。'strict'へ1行で切替）／`ROLE_ACL`（アクション→担当ロール）／`roleGate(action)`（可否）／`roleGuard(action)`（不許可でalert+false・日次保存の入口ゲート・softは素通り）／`roleTag(role)`（🔵ﾄﾚｰﾅｰ/🟤ｽﾀｯﾌ バッジ）／`whoTag(role,name,at)`（最終編集者表示）／`stampWho(rec)`（保存時にsavedRole/savedBy/savedAt追記）／`REQ_META`（依頼センチネル）。**確定操作(resolve/delete/approve系)=スタッフ専任・日次記録(rlog/eval/diagnosis/nextmenu)=softは両者可**。リハ関連の新ボタンは全て`roleGate`/`roleGuard`経由で書く。
 
 ## メイン要素のID（画面描画先）
 - staff: `main-ct`（`$m()` が返す）

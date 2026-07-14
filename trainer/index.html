@@ -859,6 +859,66 @@ function getCurrentUserName(role){
   return '';
 }
 
+// ===== P4: リハビリ役割分担フレーム（緩やか分担） =====
+// MY_ROLE = このファイルを操作するロール（staff/trainerで固定）。roleGateが参照する。
+var MY_ROLE='trainer';
+// ROLE_MODE: 'soft'=日次記録は両者可（トレーナー主体はバッジで表示）・確定操作のみスタッフ専任
+//            'strict'=日次記録もトレーナー専任化（staffは「依頼」経由）。将来この1行を'strict'に変えるだけで切替可能。
+var ROLE_MODE='soft';
+// ROLE_ACL: アクション→担当ロール。'staff'=確定操作(両モードでスタッフ専任)／'trainer'=日次記録(softは両者可・strictでトレーナー専任)／'both'=常に両者可
+var ROLE_ACL={rlog:'trainer',stage:'both',diagnosis:'trainer',eval:'trainer',nextmenu:'trainer',resolve:'staff',unresolve:'staff','delete':'staff',approveRtp:'staff',approveRtest:'staff'};
+// REQ_META: 「依頼」機構。prefix=injcomm検出用センチネル文字列／label=依頼対象アクションの表示名
+var REQ_META={prefix:'🔔【依頼】',label:{resolve:'「回復済み」への変更',unresolve:'「治療中に戻す」','delete':'この記録の削除',approveRtp:'RTP（完全復帰）承認',approveRtest:'復帰テスト承認'}};
+// roleGate(action): MY_ROLE が action を実行してよいか（true=許可／false=不可＝依頼へ誘導）
+function roleGate(action){
+  var owner=ROLE_ACL[action]||'both';
+  if(owner==='both')return true;
+  if(owner==='staff')return MY_ROLE==='staff';
+  if(ROLE_MODE==='soft')return true;
+  return MY_ROLE==='trainer';
+}
+// roleGuard(action): roleGateが不許可なら理由を提示してfalse（呼び出し側は即return）。
+// softでは日次記録は常に許可＝完全に素通り（出荷挙動は不変）。strict時のみ実効化する。
+function roleGuard(action){
+  if(roleGate(action))return true;
+  var owner=ROLE_ACL[action],jp={trainer:'トレーナー',staff:'スタッフ'};
+  if(owner==='staff')alert('この操作はスタッフが確定します。トレーナーは「依頼」から連絡してください。');
+  else alert('現在は'+(jp[owner]||'担当者')+'が記録する設定です（ROLE_MODE=strict）。');
+  return false;
+}
+// roleTag(role): 記録者の役割バッジ（🔵トレーナー記録／🟤スタッフ記録）
+function roleTag(role){
+  if(role==='trainer')return '<span class="bd" style="background:var(--blue);color:#fff;font-size:9px">🔵 トレーナー</span>';
+  if(role==='staff')return '<span class="bd" style="background:var(--maroon);color:#fff;font-size:9px">🟤 スタッフ</span>';
+  if(role==='player')return '<span class="bd" style="background:var(--text-tertiary);color:#fff;font-size:9px">選手</span>';
+  return '';
+}
+// stampWho(rec): 保存時に「誰が(role/name)・いつ」を記録（追加フィールドのみ）。最終編集者表示の土台。
+function stampWho(rec){if(!rec)return rec;rec.savedRole=MY_ROLE;rec.savedBy=getCurrentUserName(MY_ROLE);rec.savedAt=new Date().toISOString();return rec;}
+// whoTag(role,name,at): 最終編集者の表示「🔵/🟤 名前 ・ 7/14 10:30」。無い要素は省略。
+function whoTag(role,name,at){
+  var b=role?roleTag(role):'';
+  var lbl={trainer:'トレーナー',staff:'スタッフ',player:'選手'};
+  var nm=(name&&name!==lbl[role])?escapeHtml(String(name)):''; // 名前がロール名と同一（例: staffの'スタッフ'）なら重複表示しない
+  var head=[b,nm].filter(Boolean).join(' ');
+  var tm=at?fmtDateTime(at):'';
+  if(!head&&!tm)return '';
+  return '<span style="font-size:11px;color:var(--text-secondary)">'+head+(tm?(head?' ・ ':'')+tm:'')+'</span>';
+}
+
+// reqStaffAction: 確定操作（回復判定/削除等）をスタッフに依頼する。injcommへセンチネル付きで投稿し、
+// スタッフのダッシュボード緊急レイヤーに新着チップとして立つ（読み側はREQ_META.prefixで検出）。
+function reqStaffAction(injId,action,btnEl){
+  if(btnEl&&!guardSubmit(btnEl,'送信中...'))return;
+  if(!myTrainer){alert('ログインし直してください');if(btnEl)releaseSubmit(btnEl);return;}
+  var label=(REQ_META.label&&REQ_META.label[action])||action;
+  var who=getCurrentUserName('trainer');
+  var newComm={id:'ic_'+Date.now()+'_'+Math.floor(Math.random()*1000),injId:injId,role:'trainer',authorId:getCurrentUserId('trainer'),authorName:who,text:REQ_META.prefix+label+'をお願いします。（'+who+'）',createdAt:new Date().toISOString()};
+  svSafeUpdate('injcomm',function(latest){latest.push(newComm);return latest;},function(){
+    if(btnEl)btnEl.outerHTML='<span class="bd bd-g" style="font-size:12px">✓ 依頼を送信しました</span>';
+  },function(e){alert('依頼の送信に失敗しました: '+(e&&e.message||e));if(btnEl)releaseSubmit(btnEl);});
+}
+
 function renderInjComments(iid,role){
   var commentsH=renderInjCommentsListOnly(iid,role);
   return'<div class="form-box" style="margin-top:16px"><div class="form-title">💬 コメント（スタッフ・選手・専門学生で共有）</div>'+
@@ -1795,8 +1855,13 @@ function renderChartOverview(iid){
   // アクションボタン
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+
     '<button class="btn btn-p" onclick="goEditInjury('+iid+')">基本情報を編集</button>'+
-    (!inj.resolved?'<button class="btn btn-s" onclick="resolveInj('+iid+')">回復済みにする</button>':'<button class="btn" onclick="unresolveInj('+iid+')">治療中に戻す</button>')+
-    '<button class="btn btn-d" onclick="deleteInjury('+iid+')">削除</button>'+
+    // P4: 回復判定・削除は確定操作＝スタッフ専任。roleGate('resolve')がtrueなら実操作、falseなら「依頼」導線（trainerは常に依頼側）。
+    (roleGate('resolve')?
+      (!inj.resolved?'<button class="btn btn-s" onclick="resolveInj('+iid+')">回復済みにする</button>':'<button class="btn" onclick="unresolveInj('+iid+')">治療中に戻す</button>')+
+      '<button class="btn btn-d" onclick="deleteInjury('+iid+')">削除</button>'
+    :
+      (!inj.resolved?'<button class="btn btn-s" onclick="reqStaffAction('+iid+',\'resolve\',this)">🔔 回復済みをスタッフに依頼</button>':'<button class="btn" onclick="reqStaffAction('+iid+',\'unresolve\',this)">🔔 治療中に戻すよう依頼</button>')
+    )+
     '</div>';
   return h;
 }
@@ -1839,6 +1904,7 @@ function renderChartDiagnosis(iid){
   return h;
 }
 function saveChartDiagnosis(iid){
+  if(!roleGuard('diagnosis'))return;
   var g=function(id){var e=document.getElementById(id);return e?e.value:'';};
   // フォーム値を先に収集し、server-latestへは対象フィールドのみマージ（evals/soaps等を巻き戻さない）
   var det={mechanism:g('cd-mech'),scene:g('cd-scene'),tissue:g('cd-tissue'),severity:g('cd-sev'),situation:g('cd-situation'),firstaid:g('cd-firstaid')};
@@ -1850,6 +1916,7 @@ function saveChartDiagnosis(iid){
   chartUpdate(iid,function(ch){
     ch.injDetail=Object.assign(ch.injDetail||{},det);
     ch.medical=Object.assign(ch.medical||{},med);
+    stampWho(ch.injDetail);
   },function(){alert('保存しました');});
 }
 
@@ -1889,6 +1956,8 @@ function renderChartEval(iid){
         '<span style="font-weight:700;font-size:14px">'+fmt(ev.date)+'</span>'+
         '<div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="showEvalForm('+iid+',\''+ev.id+'\')">編集</button><button class="btn btn-sm btn-d" onclick="delEval('+iid+',\''+ev.id+'\')">削除</button></div>'+
         '</div>';
+      var _who=whoTag(ev.savedRole,ev.savedBy,ev.savedAt||ev.inputAt); // P4: 最終編集者・日時
+      if(_who)h+='<div style="margin:-2px 0 8px">'+_who+'</div>';
       // 痛み
       if(ev.pain){
         var painParts=[];
@@ -2177,6 +2246,7 @@ function showEvalSavedBanner(html){
 }
 
 function saveEval(iid,evalId,btn){
+  if(!roleGuard('eval'))return;
   var pain={},rom={},mmt={},circ={},ortho={},special=[];
   var fit={},romH={},mmtH={},circH={},fitH={};
   document.querySelectorAll('.ev-pain').forEach(function(e){if(e.value!=='')pain[e.dataset.k]=parseFloat(e.value);});
@@ -2210,7 +2280,7 @@ function saveEval(iid,evalId,btn){
     var rec=null;
     if(evalId)rec=latest[i].evals.find(function(x){return idEq(x.id,evalId);});
     if(!rec){rec={id:evalId||(Date.now()+'_'+Math.floor(Math.random()*1000))};latest[i].evals.push(rec);}
-    rec.date=date;rec.pain=pain;rec.rom=rom;rec.mmt=mmt;rec.circ=circ;rec.ortho=ortho;rec.special=special;rec.note=note;rec.inputAt=nowISO;
+    rec.date=date;rec.pain=pain;rec.rom=rom;rec.mmt=mmt;rec.circ=circ;rec.ortho=ortho;rec.special=special;rec.note=note;rec.inputAt=nowISO;stampWho(rec);
     // 拡張フィールドは中身がある時だけ書く（空{}で既存evalを汚さない＝chart肥大も抑制）
     if(Object.keys(fit).length)rec.fit=fit;
     if(Object.keys(romH).length)rec.romH=romH;
@@ -2419,6 +2489,7 @@ function changeStage(iid,delta){
   rh.stageDates[ns]=todayStr();
   if(!rh.stageBy)rh.stageBy=[];
   rh.stageBy[ns]=myTrainer?myTrainer.name:'';
+  stampWho(rh);
   svRec('r',rh);
   chartTab('return');
 }
@@ -2728,7 +2799,7 @@ function goRehabPlayer(injId){window._subViewActive=true;
       return'<div class="card" style="margin-bottom:6px;padding:.75rem">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
       '<span style="font-weight:600">'+fmt(l.date)+'</span>'+
-      '<span style="font-size:11px;color:var(--text-secondary)">'+(l.implementer||l.by||'不明')+'</span></div>'+
+      whoTag(l.savedRole,l.implementer||l.by,l.savedAt||l.inputAt)+'</div>'+
       // 評価データ表示（脳震盪=旧preCheck方式、非脳震盪=同日のクイック評価chart.evalsを参照）
       (function(){
         if(_qch.isConcussion){
@@ -3653,6 +3724,7 @@ function addCustomRehabItemT(){
 function removeCustomRehabItemT(ci){var el=document.getElementById('crit-'+ci);if(el)el.remove();}
 
 function doSaveRehabLogTrainer(injId,hasTpl,exCount,btnEl){
+  if(!roleGuard('rlog'))return;
   var date=document.getElementById('rl-date').value;
   if(!date)return alert('日付を入力してください');
   if(!guardSubmit(btnEl,'保存中…'))return;
@@ -3688,6 +3760,7 @@ function doSaveRehabLogTrainer(injId,hasTpl,exCount,btnEl){
   var curSess=getCurrentMSess();
   var logRec={id:Date.now(),injId:injId,date:date,implementer:myTrainer.name,by:myTrainer.name,cats:cats,exercises:exercises,comment:comment,preCheck:preCheck,msessId:curSess?curSess.id:null,inputAt:new Date().toISOString()};
   // svSafeは失敗時に内部でalert＋ボタン固着してしまうため、svSafeSeqで成否を捕捉する
+  stampWho(logRec);
   svSafeSeq([{k:'rlog',rec:logRec}],function(){
     if(!hasTpl&&exercises.length&&confirm('このメニューをテンプレとして保存しますか？')){
       goSaveAsTemplateT(injId,exercises,cats);return;
@@ -3740,10 +3813,11 @@ function toggleNextMenuCatT(ci){
 }
 
 function saveNextMenuT(injId){
+  if(!roleGuard('nextmenu'))return;
   var cats=window._nextMenuCatsT||[];
   // 対象日（設定日の翌日）を持たせる。staffダッシュボードの「明日の予定」が日付で振り分けされるため必須
   var _tm=new Date();_tm.setDate(_tm.getDate()+1);var tomorrowDate=toDateStr(_tm);
-  svSafeUpdate('rplan',function(latest){var plan=latest.find(function(x){return idEq(x.injId,injId);});if(!plan){plan={injId:injId,tplId:null,tomorrowCats:[]};latest.push(plan);}plan.tomorrowCats=cats;plan.tomorrowDate=cats.length?tomorrowDate:null;return latest;},function(){alert('保存しました ✓');goRehabPlayer(injId);});
+  svSafeUpdate('rplan',function(latest){var plan=latest.find(function(x){return idEq(x.injId,injId);});if(!plan){plan={injId:injId,tplId:null,tomorrowCats:[]};latest.push(plan);}plan.tomorrowCats=cats;plan.tomorrowDate=cats.length?tomorrowDate:null;stampWho(plan);return latest;},function(){alert('保存しました ✓');goRehabPlayer(injId);});
 }
 
 function timeOptions(sel){

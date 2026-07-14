@@ -276,6 +276,55 @@
     "staff"
    ],
    "kind": "function"
+  },
+  "ROLE_ACL": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "var"
+  },
+  "roleGate": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
+  },
+  "roleTag": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
+  },
+  "REQ_META": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "var"
+  },
+  "stampWho": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
+  },
+  "whoTag": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
+  },
+  "roleGuard": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
   }
  },
  "variant": {},
