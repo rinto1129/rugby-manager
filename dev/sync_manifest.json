@@ -206,6 +206,76 @@
     "trainer"
    ],
    "kind": "function"
+  },
+  "newId": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
+  },
+  "isFilled": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
+  },
+  "guardSubmit": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
+  },
+  "releaseSubmit": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
+  },
+  "getCompareVolume": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
+  },
+  "computeTlogVolumes": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
+  },
+  "bestE1rmPerBase": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
+  },
+  "rebuildE1rmFrom": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
+  },
+  "slimTlogRec": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
+  },
+  "toast": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
   }
  },
  "variant": {},

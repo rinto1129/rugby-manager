@@ -4806,11 +4806,11 @@ function bestE1rmPerBase(results){
 // date>=fromDate で全削除→tlogAll() を日付昇順にリプレイし、estBaseごと単調最大を超えた日だけ再生成する。
 // baseline(runningMax)=生き残り e1rm(date<fromDate)の最大値（同日タイ順序に依存しない max 意味論で再構築）。
 // 前提: fromDate以降の全tlogがメモリ(tlogAll)に載っていること→_tlogArchLoadedを保証してから実行（playerは編集対象が直近D.tlogのみなので通常満たすが安全側でロード）。
-var _e1rmRebuildGen=0;   // 世代トークン: 新しいrebuildが走ったら古いrebuildのコールバックを無効化（削除→即Undo連打の競合対策）
-var _pendingRebuild=null; // rebuild失敗時に退避→次回trainingHistory描画で自動リトライ
+var _e1rmRebuildGen={};   // pid別 世代トークン: 同一pidで新しいrebuildが走ったら古いrebuildのコールバックを無効化（削除→即Undo連打の競合対策）。別pidは互いに干渉しない
+var _pendingRebuild={};   // pid別 rebuild失敗時の退避→次回描画で自動リトライ
 function rebuildE1rmFrom(pid,fromDate,onDone,onError,_retried){
   if(!_tlogArchLoaded&&!_retried){loadTlogArch(function(){rebuildE1rmFrom(pid,fromDate,onDone,onError,true);});return;}
-  var myGen=++_e1rmRebuildGen;
+  var myGen=(_e1rmRebuildGen[pid]=(_e1rmRebuildGen[pid]||0)+1);
   var validDate=function(d){return typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d);};
   svSafeUpdate('e1rm',function(latest){
     if(!Array.isArray(latest))latest=[];
@@ -4844,12 +4844,11 @@ function rebuildE1rmFrom(pid,fromDate,onDone,onError,_retried){
     });
     var rebuilt=order.map(function(d){var b=byDate[d];return{id:newId(),pid:pid,date:d,inputAt:(b.ts||d+'T00:00:00.000Z'),values:b.values,source:'rebuild',tlogId:(b.id!=null?b.id:null)};});
     return kept.concat(rebuilt);
-  },function(){if(myGen!==_e1rmRebuildGen)return;_pendingRebuild=null;if(onDone)onDone();},function(e){if(myGen!==_e1rmRebuildGen)return;console.error('rebuildE1rmFrom error',e);_pendingRebuild={pid:pid,fromDate:fromDate};if(onError)onError(e);});
+  },function(){if(myGen!==_e1rmRebuildGen[pid])return;delete _pendingRebuild[pid];if(onDone)onDone();},function(e){if(myGen!==_e1rmRebuildGen[pid])return;console.error('rebuildE1rmFrom error',e);_pendingRebuild[pid]={pid:pid,fromDate:fromDate};if(onError)onError(e);});
 }
 function retryPendingRebuild(){
-  if(!_pendingRebuild)return;
-  var p=_pendingRebuild;_pendingRebuild=null;
-  rebuildE1rmFrom(p.pid,p.fromDate,function(){if(subView)showTrainingHistory();},function(){});
+  var ks=Object.keys(_pendingRebuild);if(!ks.length)return;
+  ks.forEach(function(k){var p=_pendingRebuild[k];delete _pendingRebuild[k];rebuildE1rmFrom(p.pid,p.fromDate,function(){if(subView)showTrainingHistory();},function(){});});
 }
 function finishTraining(btnEl){
   if(!_curTLog)return;

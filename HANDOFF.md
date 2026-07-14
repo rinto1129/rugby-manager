@@ -7,9 +7,14 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-13（**🔴v2プラン進行中: P0・P1・P2a完了/push済み。次=P2b（staff代理編集＝共有関数移植＋アーカイブdoc対応）**。旧プランtingly-munching-auroraは廃止済み）
+- 日時: 2026-07-14（**🔴v2プラン進行中: P0・P1・P2a・P2b完了。P2bは実装＋全検証グリーンだが⚠️未コミット/未push＝ユーザーのpush確認待ち**。旧プランtingly-munching-auroraは廃止済み）
 - 更新者: Claude
-- **次セッションの最初の一手**: `dev/audit/PLAN_zesty-fluttering-kitten.md` のP2b節を読む → staff `renderTrainTab`(4075)/`trSessDetail`(4263)に代理編集/削除UIを差込。**staffに無い共有ヘルパー（computeTlogVolumes/bestE1rmPerBase/rebuildE1rmFrom/getCompareVolume/newId/isFilled/guardSubmit/toast-Undo拡張）をplayerから移植しidentical登録**。所在特定=`date>=今日-15→'tlog' / 未満→tlaKey(pid,tlaHalf(date))`、アーカイブ編集後は`_tlogArch`更新＋`_tlaCache=null`。検証は `python3 dev/run_tests.py` と `python3 dev/sync_check.py`
+- **次セッションの最初の一手**: (1) P2bの差分をユーザーに確認して**commit＋push**（`git diff --stat`で対象=`staff/index.html`・`player/index.html`・`dev/sync_manifest.json`・`dev/test_tlog_edit.js`・`dev/test_tlog_edit_staff.js`(新規)のみを確認→push→Cmd+Shift+R）。または (2) push済みなら `dev/audit/PLAN_zesty-fluttering-kitten.md` のP3節（デザイン基盤前倒し・ダークトークン）へ。検証は毎回 `python3 dev/run_tests.py`（51 run/0 fail が基線）＋`python3 dev/sync_check.py`（ALL SYNC OK）。
+- **P2b完了メモ（staff代理編集・未push）**: staffの`trSessDetail`セッション展開内に「代理修正／代理削除」ボタン（fitnessは削除のみ）。playerから共有ヘルパーを移植し**10関数をidentical登録**（`newId`/`isFilled`/`guardSubmit`/`releaseSubmit`/`getCompareVolume`/`computeTlogVolumes`/`bestE1rmPerBase`/`rebuildE1rmFrom`/`slimTlogRec`/`toast`）。編集はインラインフォーム（pushViewは1階層で選手詳細を失うため不採用）。**所在特定=`tlogDocKeys(rec)`＝移送境界(TLOG_KEEP_DAYS)より古い記録は`['tlog', tlaKey]`両doc対象／新しい記録はメインdoc優先**。`tlogUpdateKeys`で全docへ順次適用→アーカイブdoc書換後は`_tlogArch`手動同期＋`_tlaCache=null`→`rebuildE1rmFrom(rec.pid, rec.date)`。新テスト`dev/test_tlog_edit_staff.js`（45アサーション・アーカイブdoc編集/削除/Undo/複数pid隔離/notFound/F1/F3含む）PASS。
+- **P2bの敵対的レビュー由来の確定修正（重要・触る時に退行させない）**:
+  - **F3/F4（rebuildE1rmFrom・player/staff両方＝identical）**: `_e1rmRebuildGen`/`_pendingRebuild`を**pid別マップ`{}`化**。旧スカラーは別pidのrebuildが互いのコールバックを握りつぶし、失敗が保留にも載らずe1rm恒久不整合になる欠陥だった。`retryPendingRebuild`（各ファイルvariant）は全pid分flush。**スカラーに戻さないこと**。
+  - **F1（staff・tlogDocKeys）**: 起動時`archiveTlog`との競合で「D.tlogとtla_docに過渡的両在籍」した古い記録を削除しても復活しないよう両doc掃除。
+  - **F2（staff・delTlogStaff）**: Undoは削除前`snapshot=slimTlogRec(rec)`を保持（Firestore tx再試行時のclosure latch陳腐化に非依存）。
 - **P2a完了メモ（player・push済み）**: `computeTlogVolumes`/`bestE1rmPerBase`抽出→finishTraining/編集/rebuild同一経路化。`rebuildE1rmFrom(pid,fromDate)`=誤高値による抑圧e1rmをリプレイ再生成（**日付ごと1レコード=max集約**で同日タイ退行も根治）。`toast(msg,actionLabel,actionFn)`拡張＋`.toast-undo`。showTrainingHistory各行→`showTlogDetail`→`showEditTlog`/`delTlog`（confirm不使用・削除=即実行+5秒Undo・直近D.tlogのみ編集可）。**敵対的検証(ワークフロー)で判明した4必須修正を反映**: ①getCompareVolumeをid/ts引数化(編集時_curTLog=null対策) ②fromDate=min(旧,新) ③notFoundガード＋移送済み行はボタン非表示 ④in-place更新(ts/kind/menuId温存)+slimTlogRec。新テスト`dev/test_tlog_edit.js`39本PASS。
 - ⚠️ **プロジェクトパスが移動**: `/Users/nakayamarinnin/Documents/個人開発プロジェクト/rugby-manager`（旧 Documents/rugby-manager は消滅）。**パスに日本語を含むためjscに絶対パスを渡せない** → dev/run_tests.py がcwd固定で回避。
 
@@ -26,8 +31,8 @@
 | P0 | 基線記録＋検証基盤新設＋文書訂正 | ✅ push済み `2b008a4`（基線47実行全PASS） |
 | P1 | 整合性バグ修正＋chartUpdate安全化（+ppCardHtml trainer同期） | ✅ push済み `65886da`（coach死にコード削除/getBest・getLatest idEq化/escapeHtml5箇所/trainerにic+SVGシンボル移植しppCardHtml正典同期/chartUpdate新設・生saveChart8箇所を操作単位化/test_chart_safe.js両サイトPASS。※trainerのsaveSOAP/delSOAPは既に操作単位化済みだった=rom-rom P0-bの成果） |
 | P2a | player: tlog編集/削除＋rebuildE1rmFrom（リプレイ方式）＋CRUD雛形v2（Undoトースト） | ✅ push済み（test_tlog_edit 39本PASS/回帰50/50/sync OK。敵対的検証GO-WITH-FIXES反映） |
-| P2b | staff: tlog代理編集（tla_も可）＋共有関数移植（identical登録） | ⬜ 次はここ |
-| P3 | デザイン基盤前倒し（ダークトークン+コンポーネント+meta/PWA+グラデ集約+一次ダーク化）4push | ⬜ |
+| P2b | staff: tlog代理編集（tla_も可）＋共有関数移植（identical登録） | ✅ 実装完了・全検証グリーン（test 45本/回帰51・sync OK）・⚠️未push（確認待ち）。敵対的レビュー4件(F1-F4)修正済 |
+| P3 | デザイン基盤前倒し（ダークトークン+コンポーネント+meta/PWA+グラデ集約+一次ダーク化）4push | ⬜ 次はここ |
 | P4 | リハビリ役割分担フレーム（緩やか分担・roleGate・trainer確定ボタン撤去） | ⬜ |
 | P5 | player CRUD残り（怪我/rlog/痛み/wc/md/bc/tape/PIN） | ⬜ |
 | P6 | staff/trainer CRUD残り＋prompt()7箇所（staff6+trainer1）撲滅 | ⬜ |
@@ -72,9 +77,9 @@
 - guardSubmit(二重送信ガード)はplayerに導入済み。新規フォームには必ず適用（雛形v2に含む）
 
 ## リポジトリの状態
-- ブランチ: main（origin/main=`9b21e6b` と同期）
-- 作業ツリー: **P0成果物が未コミット**= dev/run_tests.py・sync_check.py・sync_manifest.json・hex_ledger.py・audit/（baseline_tests.json・hex_ledger.json・PLAN_zesty*.md・監査6json）・CLAUDE.md・HANDOFF.md。**サイト本体4ファイル＋index.htmlは無変更**
+- ブランチ: main。直近コミット=`d6ddef5`(P2a)。**P2bの成果物が未コミット**（`git diff --stat`で5ファイル: `staff/index.html`+293/`player/index.html`(F3/F4のみ)/`dev/sync_manifest.json`(identical10登録)/`dev/test_tlog_edit.js`(reset更新1行)/`dev/test_tlog_edit_staff.js`(新規)）。**push前にユーザー確認必須**
 - テスト用選手「テスト選手」(CTB/1年, note=動作確認用)が本番に1名存在（削除可）
+- ⚠️ 検証はjsc模擬実行で完結（本番Firestore直結のためブラウザで代理編集/削除の保存ボタンは押さない）。最終目視はユーザーのCmd+Shift+R確認に委ねる
 
 ## 運用ルール（このプロジェクト固有）
 - データは「短いキー」で読む。保存は `svSafe` / `svSafeUpdate` を使う。

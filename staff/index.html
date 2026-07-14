@@ -192,6 +192,9 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 .toast{display:flex;align-items:center;gap:8px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border-tertiary);border-left:3px solid var(--maroon);border-radius:12px;padding:10px 16px;font-size:13px;font-weight:700;box-shadow:var(--shadow-md);opacity:0;transform:translateY(-10px);transition:opacity .24s ease-out,transform .24s cubic-bezier(.22,1,.36,1);max-width:100%}
 .toast.show{opacity:1;transform:none}
 .toast.hide{opacity:0;transform:translateY(-6px)}
+/* Undoトースト用ボタン（#toast-wrapがpointer-events:noneのため、ボタン側でautoに戻さないと押せない） */
+.toast-undo{pointer-events:auto;cursor:pointer;display:inline-flex;align-items:center;gap:4px;margin-left:8px;background:transparent;color:var(--maroon);border:1.5px solid var(--maroon);border-radius:8px;padding:4px 11px;font-size:12px;font-weight:800;font-family:inherit;white-space:nowrap;flex:none}
+.toast-undo:active{opacity:.6}
 /* reveal（クラスA=遷移演出）。「隠す側」宣言はreduced-motion:no-preference内のみ（reduce設定者の画面消失防止） */
 @media(prefers-reduced-motion:no-preference){
   .rv-armed{opacity:0;transform:translateY(14px)}
@@ -374,15 +377,25 @@ function roleBadgeHtml(role){
   return'<span class="bd bd-p">'+escapeHtml(role||'')+(en?' <span style="font-family:var(--font-num);font-style:italic;font-weight:800;font-size:8px;letter-spacing:.06em">'+en+'</span>':'')+'</span>';
 }
 // 成功トースト（クラスB=毎回発火・2.2秒退場・右上）。失敗系alertは置換禁止（同期ブロッキング維持）
-function toast(msg){
+function toast(msg,actionLabel,actionFn){
   try{
     var w=document.getElementById('toast-wrap');
     if(!w){w=document.createElement('div');w.id='toast-wrap';document.body.appendChild(w);}
     var t=document.createElement('div');t.className='toast';
     t.innerHTML=ic('i-check-c',18,'var(--maroon)')+'<span>'+escapeHtml(msg)+'</span>';
+    var hasAction=actionLabel&&typeof actionFn==='function';
+    var hideTimer=null;
+    function dismiss(){if(t.classList.contains('hide'))return;t.classList.add('hide');setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},350);}
+    if(hasAction){
+      var b=document.createElement('button');b.className='toast-undo';b.type='button';
+      b.innerHTML=ic('i-undo',13,'var(--maroon)')+'<span>'+escapeHtml(actionLabel)+'</span>';
+      var used=false;
+      b.addEventListener('click',function(){if(used)return;used=true;if(hideTimer)clearTimeout(hideTimer);dismiss();try{actionFn();}catch(e){console.error(e);}});
+      t.appendChild(b);
+    }
     w.appendChild(t);
     requestAnimationFrame(function(){requestAnimationFrame(function(){t.classList.add('show');});});
-    setTimeout(function(){t.classList.add('hide');setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},350);},2200);
+    hideTimer=setTimeout(dismiss,hasAction?5200:2200);
   }catch(e){}
 }
 // ===== reveal（クラスA=遷移演出）。nav()経由のページ初回表示だけ発火 =====
@@ -1136,6 +1149,30 @@ return Promise.all(promises).then(function(){
 });
 }
 function sv(k){db.collection('appdata').doc(k).set({data:JSON.stringify(D[k])}).catch(function(e){console.error('Save error:',k,e);});}
+// 衝突しない一意ID（Date.now()より高解像度＝同ミリ秒の連続生成でも重複しない。playerと共通・identical登録）
+function newId(){return Date.now()*1000+Math.floor(Math.random()*1000);}
+// 数値必須入力の充足判定（0を誤って空扱いしない。playerと共通・identical登録）
+function isFilled(v){if(v===''||v==null)return false;if(typeof v==='number')return !Number.isNaN(v);if(typeof v==='string')return v.trim()!=='';return true;}
+// 二重送信ガード：保存中はボタンをdisabled＋ラベル差し替え。releaseSubmitで原状復帰。（playerと共通・identical登録）
+function guardSubmit(btnEl,label){
+  if(!btnEl)return false;
+  if(btnEl.dataset.busy==='1')return false; // 既に処理中なら弾く
+  btnEl.dataset.busy='1';
+  btnEl.dataset.prevLabel=btnEl.innerHTML;
+  btnEl.disabled=true;
+  btnEl.style.opacity='.6';
+  btnEl.style.pointerEvents='none';
+  if(label!=null)btnEl.innerHTML=escapeHtml(label);
+  return true;
+}
+function releaseSubmit(btnEl){
+  if(!btnEl)return;
+  btnEl.dataset.busy='';
+  if(btnEl.dataset.prevLabel!=null&&btnEl.dataset.prevLabel!=='')btnEl.innerHTML=btnEl.dataset.prevLabel;
+  btnEl.disabled=false;
+  btnEl.style.opacity='';
+  btnEl.style.pointerEvents='';
+}
 function svSafe(k,newRec,onDone){
   // Firestoreトランザクションで最新取得→追加→保存（同時書き込みでも記録を失わない）
   var ref=db.collection('appdata').doc(k);
@@ -1332,6 +1369,114 @@ function archiveTlog(){
     },function(e){console.error('tlog archive('+gk+') skip:',e);});
   }
   step(0);
+}
+// ===== tlog代理編集の計算エンジン（playerから移植・identical登録）=====
+// _curTLog は player実施画面専用のグローバル。staffでは代理編集経路(getCompareVolumeを常に6引数で呼ぶ)のため
+// 下の分岐は到達しないが、identical移植のため宣言のみ置く（未定義参照の保険）。
+var _curTLog=null;
+function getCompareVolume(pid,exName,beforeDate,mode,selfId,selfTs){
+  var hasSelf=arguments.length>=5;
+  var nowTs=hasSelf?selfTs:((_curTLog&&_curTLog.ts)?_curTLog.ts:new Date().toISOString());
+  var curId=hasSelf?selfId:(_curTLog?_curTLog.id:null);
+  var logs=tlogAll().filter(function(l){
+    if(!idEq(l.pid,pid))return false;
+    if(curId&&idEq(l.id,curId))return false; // 自分自身は除外
+    // タイムスタンプがあれば時刻で、なければ日付で「前」を判定
+    if(l.ts&&nowTs)return l.ts<nowTs;
+    return l.date<beforeDate;
+  }).sort(function(a,b){
+    // 新しい順（tsがあればts、なければdate）
+    var at=a.ts||a.date,bt=b.ts||b.date;
+    return bt.localeCompare(at);
+  });
+  if(mode==='week'){
+    var wkAgo=new Date(beforeDate);wkAgo.setDate(wkAgo.getDate()-6);var wkStr=toDateStr(wkAgo);
+    logs=logs.filter(function(l){return l.date<=wkStr;});
+  }
+  for(var i=0;i<logs.length;i++){
+    var r=(logs[i].results||[]).find(function(x){return x.exName===exName&&!x.skipped;});
+    if(r&&r.sets){return{vol:r.sets.reduce(function(s,x){return s+((parseFloat(x.weight)||0)*(parseInt(x.reps)||0));},0),date:logs[i].date};}
+  }
+  return null;
+}
+function computeTlogVolumes(results,pid,date,mode,recId,recTs){
+  var alerts=[],injurySkips=[],totalVol=0;
+  (results||[]).forEach(function(c){
+    if(c.skipped){if(c.skipReason==='痛み・怪我')injurySkips.push(c.exName);return;}
+    var exVol=(c.sets||[]).reduce(function(sum,s){return sum+((s.weight||0)*(s.reps||0));},0);
+    totalVol+=exVol;
+    (c.sets||[]).forEach(function(s,si){
+      if(c.targetReps&&s.reps<c.targetReps)alerts.push({type:'reps',ex:c.exName,set:si+1,msg:c.exName+' '+(si+1)+'セット目: 目標'+c.targetReps+'回→実際'+s.reps+'回'});
+      if(c.targetRir!=null&&s.rir!=null&&s.rir>c.targetRir)alerts.push({type:'rir',ex:c.exName,set:si+1,msg:c.exName+' '+(si+1)+'セット目: 設定RIR'+c.targetRir+'→実際'+s.rir+'（余裕あり=強度不足かも）'});
+      if(c.targetRir!=null&&s.rir!=null&&s.rir<c.targetRir)alerts.push({type:'rir_low',ex:c.exName,set:si+1,msg:c.exName+' '+(si+1)+'セット目: 設定RIR'+c.targetRir+'→実際'+s.rir+'（追い込みすぎ注意）'});
+    });
+    var cmp=getCompareVolume(pid,c.exName,date,mode,recId!==undefined?recId:null,recTs);
+    c.volume=exVol;c.lastVolume=cmp?cmp.vol:0;c.lastVolumeDate=cmp?cmp.date:null;
+  });
+  return{results:results,totalVolume:totalVol,alerts:alerts,injurySkips:injurySkips,hasInjurySkip:injurySkips.length>0};
+}
+// セッション内の推定1RM: estBaseごとに全結果×全セット横断の最大値（weight&&repsのあるセットのみ・rir欠測は0扱い＝finishTraining/rebuild共通）。
+// ※抑圧ゲート（現在値超過判定）は含まない。呼び出し側で getLatestE1RM と比較する。
+function bestE1rmPerBase(results){
+  var best={};
+  (results||[]).forEach(function(r){
+    if(r.skipped||!r.estBase)return;
+    (r.sets||[]).forEach(function(s){
+      if(s.weight&&s.reps){var e=estimateOneRM(s.weight,s.reps,s.rir!=null?s.rir:0);if(e&&(!best[r.estBase]||e>best[r.estBase].e1rm))best[r.estBase]={e1rm:e,weight:s.weight,reps:s.reps,rir:s.rir};}
+    });
+  });
+  return best;
+}
+// ===== 推定1RMのリプレイ再生成（tlog編集/削除の後に呼ぶ・誤高値による「抑圧レコード」を復元する） =====
+// finishTraining は estBaseごと best>現在の最新値 の時だけ e1rm を記録する＝単調増加。誤高値がある日X以降、
+// 正しいが低い日はレコード自体が作られず恒久抑圧される。編集/削除では抑圧分が復活しないため、当該pidの e1rm を
+// date>=fromDate で全削除→tlogAll() を日付昇順にリプレイし、estBaseごと単調最大を超えた日だけ再生成する。
+// baseline(runningMax)=生き残り e1rm(date<fromDate)の最大値（同日タイ順序に依存しない max 意味論で再構築）。
+// 前提: fromDate以降の全tlogがメモリ(tlogAll)に載っていること→_tlogArchLoadedを保証してから実行（staffは全選手のアーカイブを起動時プリロード）。
+var _e1rmRebuildGen={};   // pid別 世代トークン: 同一pidで新しいrebuildが走ったら古いrebuildのコールバックを無効化（削除→即Undo連打の競合対策）。別pidは互いに干渉しない
+var _pendingRebuild={};   // pid別 rebuild失敗時の退避→次回描画で自動リトライ
+function rebuildE1rmFrom(pid,fromDate,onDone,onError,_retried){
+  if(!_tlogArchLoaded&&!_retried){loadTlogArch(function(){rebuildE1rmFrom(pid,fromDate,onDone,onError,true);});return;}
+  var myGen=(_e1rmRebuildGen[pid]=(_e1rmRebuildGen[pid]||0)+1);
+  var validDate=function(d){return typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d);};
+  svSafeUpdate('e1rm',function(latest){
+    if(!Array.isArray(latest))latest=[];
+    // 1) 保持: 他pidは全て温存。対象pidでも「日付が無効」または date<fromDate は温存（無効dateレコードの無言消失を防ぐ）
+    var kept=latest.filter(function(r){return !idEq(r.pid,pid)||!validDate(r.date)||r.date<fromDate;});
+    // 2) baseline: 生き残った対象pid(date<fromDate)の estBaseごと最大値
+    var runMax={};
+    latest.forEach(function(r){
+      if(idEq(r.pid,pid)&&validDate(r.date)&&r.date<fromDate&&r.values){
+        for(var k in r.values){if(r.values[k]&&(runMax[k]==null||r.values[k].e1rm>runMax[k]))runMax[k]=r.values[k].e1rm;}
+      }
+    });
+    // 3) リプレイ: 対象pidの date>=fromDate セッションを日付昇順（同日は ts||id 昇順）で再構築。tlogAll()は更新関数内で毎回評価＝tx再試行時に最新D.tlogを読む
+    var logs=tlogAll().filter(function(l){return l&&idEq(l.pid,pid)&&validDate(l.date)&&l.date>=fromDate;}).sort(function(a,b){
+      var d=(a.date||'').localeCompare(b.date||'');if(d)return d;
+      var t=String(a.ts||'').localeCompare(String(b.ts||''));if(t)return t;
+      return String(a.id||'').localeCompare(String(b.id||''));
+    });
+    // セッション順に単調最大ゲートを通しつつ、生成レコードは「日付ごと1件（estBaseごと最大）」へ集約する。
+    // → 同日に2セッションで自己ベスト更新しても1日1レコードになり、getLatestE1RM等の同日タイ順序依存（低い方を返す退行）を根絶する。
+    var byDate={},order=[];
+    logs.forEach(function(l){
+      var best=bestE1rmPerBase(l.results);
+      Object.keys(best).forEach(function(k){
+        if(runMax[k]==null||best[k].e1rm>runMax[k]){
+          runMax[k]=best[k].e1rm;
+          if(!byDate[l.date]){byDate[l.date]={date:l.date,ts:l.ts,id:l.id,values:{}};order.push(l.date);}
+          if(!byDate[l.date].values[k]||best[k].e1rm>byDate[l.date].values[k].e1rm)byDate[l.date].values[k]=best[k];
+        }
+      });
+    });
+    var rebuilt=order.map(function(d){var b=byDate[d];return{id:newId(),pid:pid,date:d,inputAt:(b.ts||d+'T00:00:00.000Z'),values:b.values,source:'rebuild',tlogId:(b.id!=null?b.id:null)};});
+    return kept.concat(rebuilt);
+  },function(){if(myGen!==_e1rmRebuildGen[pid])return;delete _pendingRebuild[pid];if(onDone)onDone();},function(e){if(myGen!==_e1rmRebuildGen[pid])return;console.error('rebuildE1rmFrom error',e);_pendingRebuild[pid]={pid:pid,fromDate:fromDate};if(onError)onError(e);});
+}
+// rebuild失敗の自動リトライ（staff版=トレーニングタブが開いていれば再描画）。renderTrainTab先頭から呼ぶ。
+function retryPendingRebuild(){
+  var ks=Object.keys(_pendingRebuild);if(!ks.length)return;
+  ks.forEach(function(k){var p=_pendingRebuild[k];delete _pendingRebuild[k];rebuildE1rmFrom(p.pid,p.fromDate,function(){if(document.getElementById('dt5'))renderTrainTab();},function(){});});
 }
 function startListeners(){
   Object.keys(SK).forEach(function(k){
@@ -4069,8 +4214,9 @@ function goPlayerDetail(pid,openTab){
 }
 function dtTab(i){document.querySelectorAll('#main-ct .tab').forEach(function(t,j){t.classList.toggle('ac',j===i);});document.querySelectorAll('#main-ct .tc').forEach(function(t,j){t.classList.toggle('ac',j===i);});if(i===5)renderTrainTab();}
 // トレーニングタブの描画（display:none中の0高さ描画を避けるため、タブが開かれた瞬間に描く）
-function renderTrainTab(){
+function renderTrainTab(reopenId){
   var pid=window._dtPid;var el=document.getElementById('dt5');if(!el)return;
+  retryPendingRebuild(); // 直前のrebuildが通信断で失敗していれば自動リトライ
   var logs=tlogAll().filter(function(l){return idEq(l.pid,pid);}).sort(function(a,b){return (b.ts||b.date||'').localeCompare(a.ts||a.date||'');});
   if(!logs.length){el.innerHTML='<div class="form-box"><div class="form-title">セッション履歴</div><div class="no">まだトレーニング記録がありません</div></div>';return;}
   // ===== 上段: 種目推移（漸進性過負荷） =====
@@ -4158,6 +4304,7 @@ function renderTrainTab(){
   if(logs.length>20)h+='<div style="font-size:11px;color:var(--text-secondary);margin-top:6px">ほか '+(logs.length-20)+' 件</div>';
   h+='<div style="font-size:10px;color:var(--text-tertiary);margin-top:8px">※ボリュームはウォームアップ込み（各セットの重量×回数の合計）</div>';
   el.innerHTML=trendHtml+h+'</div>';
+  if(reopenId!=null){var re=document.getElementById('trsess-'+reopenId);if(re){re.style.display='block';var arw=document.getElementById('trsess-arw-'+reopenId);if(arw)arw.innerHTML=ic('i-chevron-d',12);}} // 代理修正の直後は該当セッションを開いたまま再描画
   if(trendHtml)setTimeout(function(){drawTrChart(pid,window._trEx,window._trMetric);},30);
 }
 // 種目セレクタ／指標トグル変更 → タブ全再描画（グラフはdC先行で作り直す）
@@ -4271,6 +4418,7 @@ function trSessDetail(lg){
     h+='<div style="padding:6px 0"><div style="font-weight:600;font-size:13px;margin-bottom:4px">'+ic('i-run',12,'var(--green)')+' '+escapeHtml(fd.ftype||'フィットネス')+' <span class="bd bd-b" style="font-size:9px">自主</span></div>'+
       '<div style="font-size:12px;color:var(--text-secondary)">'+(fitTimeStr(fd)?(fd.timeSec!=null?'タイム ':'時間 ')+fitTimeStr(fd):'')+(fd.km!=null?' ／ 距離 '+fd.km+'km':'')+(fd.rpe!=null?' ／ RPE '+fd.rpe:'')+'</div>'+
       (fd.note?'<div style="font-size:11px;color:var(--text-secondary);margin-top:4px;white-space:pre-wrap">'+escapeHtml(fd.note)+'</div>':'')+'</div>';
+    h+='<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn btn-d btn-sm" onclick="delTlogStaff(\''+String(lg.id)+'\')">'+ic('i-trash',12)+' 代理削除</button></div>';
     return h+'</div>';
   }
   (lg.results||[]).forEach(function(r){
@@ -4292,8 +4440,150 @@ function trSessDetail(lg){
     });
     h+='</div></div>';
   });
+  h+='<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn btn-sm" onclick="editTlogStaff(\''+String(lg.id)+'\')">'+ic('i-edit',12)+' 代理修正</button><button class="btn btn-d btn-sm" onclick="delTlogStaff(\''+String(lg.id)+'\')">'+ic('i-trash',12)+' 代理削除</button></div>';
   h+='</div>';
   return h;
+}
+// ===== staff tlog代理編集/削除（CRUD雛形v2: in-place+editedAt / 削除=即時+5秒Undo・confirm不使用） =====
+// playerは自分の直近D.tlogのみ編集可。staffは全選手の全記録（アーカイブtla_含む）を代理編集できる。
+// 記録の所在（メインdoc'tlog' or アーカイブdoc tla_）を特定し、そのdocだけをsvSafeUpdate（idマージ復活防止）。
+// アーカイブdocを書き換えたらメモリ上_tlogArchへ反映＋_tlaCache=null（tlogAll/グラフ/rebuildが追従）。
+function tlogDocKeys(rec){
+  // 記録が在り得るdocキー集合。移送境界(TLOG_KEEP_DAYS)より古い記録は tlog(未移送)/tla(移送済)/過渡的に両方 を取り得るため
+  // 両docを対象にする（起動時archiveTlogとの競合で削除/編集した記録がアーカイブから復活する事故を封じる＝idマージ復活防止の徹底）。
+  // 新しい/無効date記録は移送対象外→現在の所在（メインdoc優先）に従う。
+  var valid=typeof rec.date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(rec.date);
+  if(valid){
+    var cut=toDateStr(new Date(Date.now()-TLOG_KEEP_DAYS*86400000));
+    if(rec.date<cut)return ['tlog',tlaKey(rec.pid,tlaHalf(rec.date))];
+  }
+  return (D.tlog||[]).some(function(l){return idEq(l.id,rec.id);})?['tlog']:[tlaKey(rec.pid,tlaHalf(rec.date))];
+}
+// 複数docへ同一updateFnを順次適用（削除/編集を所在候補の全docに反映）。updateFn(latest,key)。全成功でonAllDone・途中失敗でonErr。
+function tlogUpdateKeys(keys,updateFn,onAllDone,onErr){
+  var i=0,failed=false;
+  (function step(){
+    if(failed)return;
+    if(i>=keys.length){if(onAllDone)onAllDone();return;}
+    var key=keys[i++];
+    svSafeUpdate(key,function(latest){return updateFn(latest,key);},function(){step();},function(e){failed=true;if(onErr)onErr(e);});
+  })();
+}
+// 代理編集フォームをセッション展開(#trsess-<id>)内にインライン描画（playerの全画面showSubと違い、選手詳細の文脈を保つ）
+function editTlogStaff(id){
+  var rec=tlogAll().find(function(l){return idEq(l.id,id);});
+  if(!rec){toast('記録が見つかりません。再読み込みしてください');return;}
+  if(rec.fitness){toast('フィットネス記録は代理削除のみ対応です');return;}
+  window._etl={recId:id,results:(rec.results||[]).map(function(r){
+    return{exName:r.exName,estBase:r.estBase||null,skipped:!!r.skipped,skipReason:r.skipReason||'',
+      sets:(r.sets||[]).map(function(s){return{weight:(s.weight!=null?s.weight:''),reps:(s.reps!=null?s.reps:''),rir:(s.rir!=null?s.rir:'')};})};
+  })};
+  renderTlogEditInline(id);
+}
+function renderTlogEditInline(id){
+  var host=document.getElementById('trsess-'+id);if(!host||!window._etl||!idEq(_etl.recId,id))return;
+  var rec=tlogAll().find(function(l){return idEq(l.id,id);});if(!rec)return;
+  var mn=(D.tmenu||[]).find(function(x){return idEq(x.id,rec.menuId);});
+  var title=rec.kind==='self'?'自主トレ（ウエイト）':(mn?escapeHtml(mn.name):'トレーニング記録');
+  var h='<div style="background:var(--bg-tertiary);border-radius:var(--radius);padding:10px 12px;margin:2px 0 8px">';
+  h+='<div style="font-size:13px;font-weight:700;margin-bottom:2px">'+ic('i-edit',13,'var(--maroon)')+' 代理修正</div>';
+  h+='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">'+title+' ・ '+fmt(rec.date)+(_tlogArch.some(function(l){return idEq(l.id,rec.id);})?' <span class="bd bd-a" style="font-size:9px">アーカイブ</span>':'')+'</div>';
+  _etl.results.forEach(function(r,ri){
+    h+='<div style="border-top:1px solid var(--border-tertiary);padding:8px 0">';
+    h+='<div style="font-size:13px;font-weight:600;margin-bottom:6px">'+escapeHtml(r.exName)+(r.estBase?' <span class="bd bd-b" style="font-size:9px">推定1RM対象</span>':'')+'</div>';
+    if(r.skipped){
+      h+='<div style="font-size:12px;color:var(--text-secondary)">'+ic('i-bandage',12,'var(--red)')+' スキップ'+(r.skipReason?'（'+escapeHtml(r.skipReason)+'）':'')+'（編集対象外）</div>';
+    }else{
+      r.sets.forEach(function(s,si){
+        h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'+
+          '<span style="flex:none;min-width:34px;font-size:11px;font-weight:800;color:var(--blue);background:var(--blue-bg);border-radius:8px;padding:7px 0;text-align:center">S'+(si+1)+'</span>'+
+          '<input class="ipt" type="number" step="any" inputmode="decimal" style="flex:1;min-width:0;text-align:center;padding:8px" value="'+(s.weight!==''&&s.weight!=null?s.weight:'')+'" placeholder="kg" oninput="etlUpdS('+ri+','+si+',\'weight\',this.value)">'+
+          '<input class="ipt" type="number" inputmode="numeric" style="width:56px;text-align:center;padding:8px" value="'+(s.reps!==''&&s.reps!=null?s.reps:'')+'" placeholder="回" oninput="etlUpdS('+ri+','+si+',\'reps\',this.value)">'+
+          '<input class="ipt" type="number" inputmode="numeric" style="width:54px;text-align:center;padding:8px" value="'+(s.rir!==''&&s.rir!=null?s.rir:'')+'" placeholder="RIR" oninput="etlUpdS('+ri+','+si+',\'rir\',this.value)">'+
+          '<button class="btn btn-d btn-sm" style="padding:7px 9px" onclick="etlDelSetS('+ri+','+si+')">×</button>'+
+        '</div>';
+      });
+      h+='<button class="btn btn-sm" onclick="etlAddSetS('+ri+')">'+ic('i-plus',11)+' セット追加</button>';
+    }
+    h+='</div>';
+  });
+  h+='<div style="font-size:11px;color:var(--text-secondary);margin:6px 0 10px">'+ic('i-info',12)+' 重量の入力ミスを直すと推定1RMも自動で再計算されます。重量か回数が空のセットは保存時に除外。</div>';
+  h+='<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-sm" onclick="editTlogCancel(\''+String(id)+'\')">キャンセル</button><button class="btn btn-p btn-sm" onclick="doEditTlogStaff(\''+String(id)+'\',this)">修正を保存</button></div>';
+  h+='</div>';
+  host.innerHTML=h;
+}
+function etlUpdS(ri,si,f,v){if(window._etl&&_etl.results[ri]&&_etl.results[ri].sets[si])_etl.results[ri].sets[si][f]=v;}
+function etlAddSetS(ri){if(!window._etl||!_etl.results[ri])return;_etl.results[ri].sets.push({weight:'',reps:'',rir:''});renderTlogEditInline(_etl.recId);}
+function etlDelSetS(ri,si){if(!window._etl||!_etl.results[ri])return;_etl.results[ri].sets.splice(si,1);renderTlogEditInline(_etl.recId);}
+function editTlogCancel(id){window._etl=null;var host=document.getElementById('trsess-'+id);var rec=tlogAll().find(function(l){return idEq(l.id,id);});if(host&&rec)host.innerHTML=trSessDetail(rec);}
+function doEditTlogStaff(id,btnEl){
+  var rec=tlogAll().find(function(l){return idEq(l.id,id);});
+  if(!rec){toast('記録が見つかりません。再読み込みしてください');return;}
+  if(!window._etl||!idEq(_etl.recId,id)){alert('編集状態が失われました。もう一度開いてください');return;}
+  if(!guardSubmit(btnEl,'保存中…'))return;
+  var editResults=_etl.results;
+  // 元recの各resultへ_etlのsetsを反映してcleanResultsを構築。skipped・estBase・exName等メタは温存し、setsのみ差し替える。
+  var cleanResults=(rec.results||[]).map(function(r,ri){
+    var c={};for(var key in r){if(Object.prototype.hasOwnProperty.call(r,key))c[key]=r[key];}
+    if(r.skipped)return c;
+    var er=editResults[ri];
+    var srcSets=(er&&er.sets)?er.sets:(r.sets||[]);
+    c.sets=srcSets.filter(function(s){return isFilled(s.weight)&&isFilled(s.reps);}).map(function(s){
+      return{weight:parseFloat(s.weight)||0,reps:parseInt(s.reps)||0,rir:isFilled(s.rir)?parseInt(s.rir):null};
+    });
+    return c;
+  });
+  var cv=computeTlogVolumes(cleanResults,rec.pid,rec.date,'prev',rec.id,rec.ts);
+  var editedAt=new Date().toISOString();  // 所在候補の全doc/メモリで同一値にするため1回だけ生成
+  var keys=tlogDocKeys(rec);
+  var found=false,updated=null;
+  tlogUpdateKeys(keys,function(latest,key){
+    var idx=latest.findIndex(function(l){return idEq(l.id,id);});
+    if(idx<0)return latest;
+    found=true;
+    var t=latest[idx];
+    t.results=cv.results;t.totalVolume=cv.totalVolume;
+    if(cv.hasInjurySkip)t.hasInjurySkip=true;else delete t.hasInjurySkip;
+    t.editedAt=editedAt;
+    latest[idx]=slimTlogRec(t); // 新規保存経路と対称にスリム化（ts/kind/menuId/date等の温存はslimTlogRecが担保）
+    updated=latest[idx];
+    return latest;
+  },function(){
+    if(!found){releaseSubmit(btnEl);toast('記録が見つかりません。再読み込みしてください');return;}
+    var ai=_tlogArch.findIndex(function(l){return idEq(l.id,id);});if(ai>=0&&updated){_tlogArch[ai]=updated;_tlaCache=null;} // アーカイブdocはtlogAllが_tlogArchを読むため手動反映
+    window._etl=null;
+    rebuildE1rmFrom(rec.pid,rec.date,function(){renderTrainTab(id);toast('修正しました');},function(){renderTrainTab(id);toast('修正しました（推定1RMの再計算は保留中）');});
+  },function(){releaseSubmit(btnEl);alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');});
+}
+function delTlogStaff(id){
+  var rec=tlogAll().find(function(l){return idEq(l.id,id);});
+  if(!rec){toast('記録が見つかりません。再読み込みしてください');return;}
+  var snapshot=slimTlogRec(rec);        // 削除前の値をUndo用に確保（tx再試行のlatch陳腐化に依存しない・所在に依らずtlogAllで取得済み）
+  var keys=tlogDocKeys(rec);
+  var removedKey=null;
+  tlogUpdateKeys(keys,function(latest,key){
+    var idx=latest.findIndex(function(l){return idEq(l.id,id);});
+    if(idx<0)return latest;
+    removedKey=key;                      // ヒットしたdoc（Undo復元先）。両doc在籍なら後勝ちだが復元先として妥当
+    return latest.filter(function(l){return !idEq(l.id,id);});
+  },function(){
+    // _tlogArch（アーカイブのメモリ表現）は無条件に掃除（アーカイブ由来なら消える／そうでなければ元々不在で無害）
+    var wasInArch=_tlogArch.some(function(l){return idEq(l.id,id);});
+    if(wasInArch){_tlogArch=_tlogArch.filter(function(l){return !idEq(l.id,id);});_tlaCache=null;}
+    if(!removedKey&&!wasInArch){toast('記録が見つかりません。再読み込みしてください');return;}
+    var saved=snapshot,savedKey=removedKey||tlaKey(rec.pid,tlaHalf(rec.date));
+    rebuildE1rmFrom(rec.pid,rec.date,function(){renderTrainTab();toast('削除しました','元に戻す',function(){undoDelTlogStaff(saved,savedKey);});},function(){renderTrainTab();toast('削除しました（推定1RMの再計算は保留中）','元に戻す',function(){undoDelTlogStaff(saved,savedKey);});});
+  },function(){alert('削除に失敗しました。もう一度お試しください');});
+}
+function undoDelTlogStaff(rec,key){
+  svSafeUpdate(key,function(latest){
+    if(latest.some(function(l){return idEq(l.id,rec.id);}))return latest; // 二重復元ガード（Undo連打・同一レコード再削除の競合対策）
+    latest.push(rec);
+    return latest;
+  },function(){
+    if(key!=='tlog'){if(!_tlogArch.some(function(l){return idEq(l.id,rec.id);}))_tlogArch.push(rec);_tlaCache=null;}
+    rebuildE1rmFrom(rec.pid,rec.date,function(){if(document.getElementById('dt5'))renderTrainTab(rec.id);toast('元に戻しました');},function(){if(document.getElementById('dt5'))renderTrainTab(rec.id);toast('元に戻しました');});
+  },function(){alert('復元に失敗しました。もう一度お試しください');});
 }
 function handlePhoto(input,pid){var file=input.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e){var img=new Image();img.onload=function(){var c=document.createElement('canvas');c.width=100;c.height=100;var ctx=c.getContext('2d');var mn=Math.min(img.width,img.height);ctx.drawImage(img,(img.width-mn)/2,(img.height-mn)/2,mn,mn,0,0,100,100);var d=c.toDataURL('image/jpeg',0.7);document.getElementById('photo-pv').style.backgroundImage='url('+d+')';document.getElementById('photo-pv').textContent='';var p=D.p.find(function(x){return x.id===pid;});if(p)p._tp=d;
 // 保存忘れ警告バナーを表示

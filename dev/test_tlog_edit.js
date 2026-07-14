@@ -23,7 +23,7 @@ function reset(tlogs,e1rms){
   D.tlog=tlogs||[];__store['tlog']=JSON.stringify(D.tlog);
   D.e1rm=e1rms||[];__store['e1rm']=JSON.stringify(D.e1rm);
   _tlogArch=[];_tlaCache=null;_tlogArchLoaded=true;_tlaPid=1;   // アーカイブ非同期ロードを回避
-  _e1rmRebuildGen=0;_pendingRebuild=null;_toasts=[];window._etl=null;window._trCompareMode=null;_curTLog=null;
+  _e1rmRebuildGen={};_pendingRebuild={};_toasts=[];window._etl=null;window._trCompareMode=null;_curTLog=null;
 }
 function pidE1(pid){return D.e1rm.filter(function(r){return idEq(r.pid,pid);});}
 
