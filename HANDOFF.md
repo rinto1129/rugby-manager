@@ -7,9 +7,15 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-15（**🔴v2プラン: P0・P1・P2a・P2b・P4・P5・P6完了/push済み（P6=`1b25310`）。P3不採用。P7a=実装完了・敵対的レビュー(4次元→6所見)全処置・全検証緑＝push前（ユーザー確認待ち）。P7b-dは未着手**）
+- 日時: 2026-07-15（**🔴v2プラン: P0・P1・P2a・P2b・P4・P5・P6・P7a完了/push済み（P7a=`6aa9713`）。P3不採用。P7b=実装完了・敵対的レビュー2巡（1巡目5次元→13確定→設計見直し、2巡目2体で残2件修正）・全検証緑＝push前（ユーザー確認待ち）。P7c-dは未着手**）
 - 更新者: Claude
-- **✅ P7a「体重dedup＋sRPE実測化」実装完了（ライトのまま・push前）**。**player/staff/coach 3ファイル＋sync_manifest変更**（+87/-23行）＋新テスト`dev/test_p7a.js`。検証: `python3 dev/run_tests.py`=**57 run/0 fail**＋`dev/sync_check.py`=ALL SYNC OK（effDur/sLoad をidentical登録）＋敵対的レビュー(4次元find→6所見→検証)=全処置後**残バグ0**。**push単位=1（player+staff+coach+manifest+新テスト＋HANDOFF）**。実装内容↓。
+- **✅ P7b「欠席統一（今日は休む↔欠席a）」実装完了（ライトのまま・push前）**。**player/coach 2ファイル変更**（+106/-12行）＋新テスト2本（`dev/test_absence_sync.js`/`dev/test_absence_coach.js`）。**staffは無変更**。検証: `python3 dev/run_tests.py`=**59 run/0 fail**＋`dev/sync_check.py`=ALL SYNC OK＋敵対的レビュー2巡。**push単位=1（player+coach+新テスト2本＋HANDOFF）**。実装内容↓。
+  - **🔑 最重要の設計判断（2026-07-15・レビュー由来）: 「今日は休む」を欠席a に書き込む案は不採用**。プラン/初版は休むを`a`(欠席申告)にもupsertする双方向設計だったが、敵対的レビュー(5次元find→13確定)で `a`（＝チーム練習の欠席セッション・スタッフ所有・約十数箇所が正典読み）に休む(個人ウエイト休養)を混ぜると**①スタッフ作成セッションへの誤混入②オフ日の幻セッション生成で出席率破壊③正式な欠席/遅刻申告のブロック④二重計上**が起きると判明。**これはP7aで却下した cond-bc と同型の「二次記録を正典ストアに書く汚染」**。→ **休むは tlog(absent) のみに保持**（`a`には一切書かない）。ユーザー承認済み（AskUserQuestion「休むはtlogのみに戻す（推奨）」2026-07-15）。
+  - **coach=追加読み（ユーザー選択・主目的）**: coachは従来通りtlog欠席で休むを把握＋**新`aAbsenceEvents(fromDate)`で`a`の全欠席申告（tlog無しの(pid,date)のみ）を追加読み**（`seen`セットで二重計上回避・a内重複も畳む）。coachは`a`をこれまで欠席に未使用だった＝**今まで見えなかった正式欠席申告がcoachに反映**（今回の実質的価値）。repoint=insTraining欠席率(分母/分子両方に加算＝率≤100%維持)/renderTrainingView(absentCount/injuryAbsent/injNotices/記録一覧)/buildHistCoach。**遅刻/早退/部分参加は全欠席でないため除外**（reason接頭辞ブロックリスト）。`isInjuryAbsent(l)`=tlogは'痛み・怪我'完全一致（含有チェックで同値）／**a由来(_fromA)は自由記述の怪我誤検出（「怪我人の付き添い」等）回避のため怪我判定しない**。
+  - **削除=ハード削除＋Undo（ユーザー選択）**: `deleted:true`論理削除は現状全ファイル未使用で全read siteへの`!l.deleted`一斉追加が必要＝不採用。休む取消はtlogを実削除→tlogToday(1659)/出席率(6221)等の**全tlog読み側は無改修で正しく戻る**。
+  - **player実装**: `myAbsentTlogsToday()`／`saveTrainingAbsent`を**svSafeUpdateで取引内冪等化**（サーバー最新に同日欠席あれば無変更＝連打/複数端末レースでも同日1件）＋**本日チーム練習実施済み(自主除く)なら休む不可ガード**（実施と欠席の矛盾防止）／`cancelTrainingRest`＋`undoCancelTrainingRest`（当日休むtlogをハード削除＋5秒Undo・delTlog同方式・**Undoは同(pid,date)照合で取消→再休養→Undoの同日2件も防ぐ**）／`startTraining`を**cancel-aware化**（本日休養済みなら取消導線を先に表示＝休む/実施の共存を防ぐ）／`T.training`最上部に**日次休養バナー＋取消**。`cancelAbsence`/`delTlog`/`undoDelTlog`は`a`↔tlog連携を持たせず**pre-P7b挙動を維持**（過剰削除・孤児化を回避）。
+  - **敵対的レビュー2巡目(coach/player各1体)の残処置**: ①player=実施→再メニュー→休むでの実tlog+欠席tlog共存（実施済みガードで解消）②player=取消→再休養→Undoの同日2件（Undo(pid,date)照合で解消）③coach=`aEv`怪我通知ループが`_fromA`で常にfalse＝デッドコード（削除）④coach=staff自由記述が偶然「遅刻」等で始まると除外される稀エッジ（許容）。**新規失敗0**。
+- **✅ P7a「体重dedup＋sRPE実測化」push済み `6aa9713`**。**player/staff/coach 3ファイル＋sync_manifest変更**（+87/-23行）＋新テスト`dev/test_p7a.js`。検証: `python3 dev/run_tests.py`=**57 run/0 fail**＋`dev/sync_check.py`=ALL SYNC OK（effDur/sLoad をidentical登録）＋敵対的レビュー(4次元find→6所見→検証)=全処置後**残バグ0**。実装内容↓。
   - **cond-bc materializeは不採用（ユーザー選択・2026-07-15）**: プランは「コンディション体重→同日bc(source:'cond')をupsert」だったが、bcは体組成(weight/fat/muscle)コレクションで**約15箇所が「体組成測定」として無条件に読む**（提出ステータス/測定会/一覧/CSV/チャート/最後に測った日）。weight-onlyのcond-bcがそこに**偽の測定として漏れる**リスク大。かつ体重平均は`getCurrentWeightInfo`が元々`f`も読むので**materialize無しでも正しい**。→ **cond-bcを作らず、体重は`f`のみに保存**。`doBCInput`のP5昇格分岐は無害な休眠コードとして残置（cond-bcが存在しないため実質no-op）。
   - **体重dedup（identical: getCurrentWeightInfo=player/staff/coach・getWeightInfoAt=player/staff）**: 従来`D.f`と`D.bc`の体重を配列に両push→30日平均だったが、**同日に両方あると二重計上**（cond-bc有無に関わらず既存の潜在バグ＝同日にコンディション体重+実測bcで発生）。→ **日付キーのbyDate mapでdedup（同日はbc優先）**。`N回`カウントも実日数で正確化。
   - **sRPE実測化（effDur/sLoad 新設・identical player/staff）**: セッションロード表示は従来`rpe*(duration||0)`＝選手手動入力のTR時間依存（朝入力運用で空欄が多く空振り）。→ `finishTraining`が**セッション実測時間**（開始ts→完了・妥当域1〜300分のみ採用）を`tlog.durMin`と当日`f.durMin`に記録（`syncSessionDurToF`）。表示は`sLoad(f)=rpe*effDur(f)`に置換（player2箇所+staff7箇所）。coachはセッションロード表示なし＝effDur不要。
@@ -68,8 +74,9 @@
 | P4 | リハビリ役割分担フレーム（緩やか分担・roleGate・trainer確定ボタン撤去） | ✅ push済み `2d82102`（53 run/0 fail・sync OK・敵対的レビュー確定バグ0） |
 | P5 | player CRUD残り（怪我/rlog/痛み/wc/md/bc/tape/欠席/PIN） | ✅ push済み `585b926`（55 run/0 fail・sync OK・敵対的レビュー18体で確定4バグ修正済） |
 | P6 | staff/trainer CRUD残り＋prompt()7箇所（staff6+trainer1）撲滅 | ✅ push済み `1b25310`（56 run/0 fail・sync OK・敵対的レビュー11体で確定4バグ修正済）。残: tape代理変更/wc・md新規代理入力/trainer rtest/rtest結果編集/rlog種目編集/preCheck編集はP7以降へ |
-| P7a | 体重dedup＋sRPE実測化（durMin/effDur/sLoad） | 🟩 実装完了・**push前**（57 run/0 fail・sync OK・敵対的レビュー4次元→6所見全処置）。**cond-bc materializeは不採用**（体組成汚染回避・ユーザー選択）。effDurは**duration手動優先>durMin実測>tlog**（壁時計durMinの不確実性対策・レビュー由来の設計変更） |
-| P7b-d | 欠席a正典・双方向/復帰一括+coach根拠フル/1フォーム化 | ⬜ |
+| P7a | 体重dedup＋sRPE実測化（durMin/effDur/sLoad） | ✅ push済み `6aa9713`（57 run/0 fail・sync OK・敵対的レビュー4次元→6所見全処置）。**cond-bc materializeは不採用**（体組成汚染回避・ユーザー選択）。effDurは**duration手動優先>durMin実測>tlog** |
+| P7b | 欠席統一（今日は休む↔欠席a・coach追加読み） | 🟩 実装完了・**push前**（59 run/0 fail・sync OK・敵対的レビュー2巡）。**休むはtlogのみ保持＝aに書かない（汚染回避・cond-bcと同型・ユーザー選択）**。coachは`aAbsenceEvents`で正式欠席申告を追加読み。取消=ハード削除+Undo。staff無変更 |
+| P7c-d | 復帰フロー+coach根拠フル/1フォーム化（受傷1フォーム・リハ1画面・pp編集staff集約） | ⬜ |
 | P8 | IA再編＋新機能（player動的タブ/ホーム7ブロック/NO SIDE測定シート/staff6グループ+キュー+マトリクス/coach週報+検索） | ⬜ |
 | P9a-c | 生hex残渣一掃→モチーフ仕上げ（pitchProgressHtml汎用化+RTPフィールドマップ）→総回帰 | ⬜ |
 
@@ -110,7 +117,7 @@
 - guardSubmit(二重送信ガード)はplayerに導入済み。新規フォームには必ず適用（雛形v2に含む）
 
 ## リポジトリの状態
-- ブランチ: main。origin/main=`1b25310`(P6)。**作業ツリーにP7aの未コミット変更あり**（player/staff/coach/index.html＋dev/sync_manifest.json＋dev/test_p7a.js＋HANDOFF.md）。**ユーザー確認後に1コミットでpush予定**（push前に`git diff --stat`で対象外変更ゼロ確認）
+- ブランチ: main。origin/main=`6aa9713`(P7a)。**作業ツリーにP7bの未コミット変更あり**（player/index.html＋coach/index.html＋dev/test_absence_sync.js＋dev/test_absence_coach.js＋HANDOFF.md。staffは無変更）。**ユーザー確認後に1コミットでpush予定**（push前に`git diff --stat`で対象外変更ゼロ確認）
 - テスト用選手「テスト選手」(CTB/1年, note=動作確認用)が本番に1名存在（削除可）
 - ⚠️ 検証はjsc模擬実行で完結（本番Firestore直結のためブラウザで代理編集/削除の保存ボタンは押さない）。最終目視はユーザーのCmd+Shift+R確認に委ねる
 

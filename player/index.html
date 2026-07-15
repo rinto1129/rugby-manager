@@ -4399,6 +4399,13 @@ T.training=function(){
   var menus=getMyMenus();
   var h='<div style="font-size:18px;font-weight:700;margin:4px 0 14px;display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="22" height="22" fill="var(--blue)"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z"/></svg>トレーニング</div>';
 
+  // 欠席統一(P7b): 本日休養記録済みなら日次バナー＋取消導線を最上部に出す。
+  var restedToday=myAbsentTlogsToday();
+  if(restedToday.length){
+    var rrT=restedToday[0].absentReason||'';
+    h+='<div class="alert-card alert-info" style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px"><span>本日は<b>休養</b>として記録済み'+(rrT?'（'+escapeHtml(rrT)+'）':'')+'</span><button class="btn btn-sm btn-d" style="flex:none" onclick="cancelTrainingRest()">取り消す</button></div>';
+  }
+
   // 今日のプログラム（本日weight日 ∧ pp初期化済み → 今日のタイプのスロットメニューを1タップ開始）
   var tpType=ppNext();
   var tpWeightToday=(D.cal||[]).some(function(e){return e&&e.type==='weight'&&e.date===todayStr();});
@@ -4496,6 +4503,18 @@ function startTraining(menuId){
   // まず出欠確認画面を表示
   var mn=getMyMenus().find(function(x){return idEq(x.id,menuId);});
   if(!mn)return;
+  // 欠席統一(P7b): 本日すでに休養記録済みなら、休む/実施の共存を防ぐため取消導線を先に見せる。
+  var rested=myAbsentTlogsToday();
+  if(rested.length){
+    var rr=rested[0].absentReason||'';
+    var rh='<div style="font-size:17px;font-weight:700;margin:4px 0 6px">'+escapeHtml(mn.name)+'</div>';
+    rh+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">'+fmt(todayStr())+'</div>';
+    rh+='<div class="alert-card alert-info" style="margin-bottom:16px">本日は<b>休養</b>として記録されています'+(rr?'（理由: '+escapeHtml(rr)+'）':'')+'</div>';
+    rh+='<button class="btn btn-p" style="width:100%;padding:13px" onclick="cancelTrainingRest()">休養を取り消してトレーニングする</button>';
+    rh+='<button class="btn" style="width:100%;margin-top:8px" onclick="go(\'training\')">戻る</button>';
+    showSub(rh);
+    return;
+  }
   var h='<div style="font-size:17px;font-weight:700;margin:4px 0 6px">'+escapeHtml(mn.name)+'</div>';
   h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:20px">'+fmt(todayStr())+' のトレーニング</div>';
   h+='<div style="text-align:center;padding:20px 0"><div style="font-size:15px;font-weight:600;margin-bottom:20px">今日はトレーニングしますか？</div>';
@@ -4518,16 +4537,59 @@ function showTrainingAbsent(menuId){
   h+='<button class="btn" style="width:100%;margin-top:8px" onclick="startTraining(\''+menuId+'\')">戻る</button>';
   showSub(h);
 }
-// 欠席を記録（tlogにabsentフラグで保存。スタッフが把握できる）
+// ===== 欠席統一(P7b): 「今日は休む」= tlog(absent) のみに保持する（a には書かない）=====
+// 設計判断(2026-07-15): 当初プランは休むを a(欠席申告) にもupsertする案だったが、a は「チーム練習の欠席セッション（スタッフ所有）」で
+// 約十数箇所が正典として読むため、休む(個人のウエイト休養)を混ぜると①スタッフ作成セッションへの誤混入②オフ日の幻セッション生成で
+// 出席率破壊③正式な欠席/遅刻申告のブロック④二重計上 が起きる（敵対的レビューで13件確認＝P7aのcond-bc不採用と同型の汚染）。
+// → 休むは tlog(absent) のみに保持。coach は既存のtlog欠席読みで休むを把握し、a の正式申告を追加読み(aAbsenceEvents)する。a は正式な欠席申告専用のまま。
+// 当日の自分の「休む」tlogレコード群（複数メニュー/連打で複数あり得る）。
+function myAbsentTlogsToday(){
+  return (D.tlog||[]).filter(function(l){return idEq(l.pid,myPid)&&l.absent&&l.date===todayStr();});
+}
+// 欠席を記録（tlogにabsentフラグで保存。二重送信は取引内で冪等化＝連打/複数端末でも同日1件）。
 function saveTrainingAbsent(menuId,reason){
+  // 既に本日休養済みなら重複作成せず案内（cancel-aware startTraining経由なら通常到達しないがローカル即応の二重防止）
+  if(myAbsentTlogsToday().length){
+    showSub('<div style="text-align:center;padding:30px 10px"><div style="margin-bottom:10px">'+ic('i-note',40,'var(--rose)')+'</div><div style="font-size:16px;font-weight:700;margin-bottom:8px">本日はすでに休養として記録済みです</div></div><button class="btn btn-p" style="width:100%;margin-top:16px" onclick="go(\'training\')">完了</button>');
+    return;
+  }
+  // 本日すでにチーム練習を実施済み(自主トレ除く)なら休む不可（実施と欠席の矛盾＝coachで実施1件＋欠席1件になるのを防ぐ）。
+  if((D.tlog||[]).some(function(l){return idEq(l.pid,myPid)&&!l.absent&&l.kind!=='self'&&l.date===todayStr();})){
+    showSub('<div style="text-align:center;padding:30px 10px"><div style="margin-bottom:10px">'+ic('i-note',40,'var(--amber)')+'</div><div style="font-size:16px;font-weight:700;margin-bottom:8px">本日はすでにトレーニングを記録済みです</div><div style="font-size:13px;color:var(--text-secondary);margin-top:8px">休養にする場合は先にトレーニング履歴から本日の記録を削除してください。</div></div><button class="btn btn-p" style="width:100%;margin-top:16px" onclick="go(\'training\')">完了</button>');
+    return;
+  }
   var log={id:newId(),pid:myPid,menuId:menuId,date:todayStr(),ts:new Date().toISOString(),absent:true,absentReason:reason,results:[],totalVolume:0};
-  svSafe('tlog',log,function(){
+  // svSafeUpdateでサーバー最新を取引内で再確認→同日欠席が既にあれば無変更（連打/複数端末のレースでもtlog欠席は同日1件に収束）。
+  svSafeUpdate('tlog',function(latest){
+    if((latest||[]).some(function(l){return idEq(l.pid,myPid)&&l.absent&&l.date===log.date;}))return latest;
+    (latest||[]).push(log);
+    return latest;
+  },function(){
     clearTDraft();
     var h='<div style="text-align:center;padding:30px 10px"><div style="margin-bottom:10px">'+ic('i-note',40,'var(--rose)')+'</div><div style="font-size:16px;font-weight:700;margin-bottom:8px">欠席を記録しました</div><div style="font-size:13px;color:var(--text-secondary)">理由: '+escapeHtml(reason)+'</div>';
     if(reason==='痛み・怪我')h+='<div style="font-size:12px;color:var(--text-secondary);margin-top:10px">スタッフに共有されました。お大事に。</div>';
     h+='</div><button class="btn btn-p" style="width:100%;margin-top:16px" onclick="go(\'training\')">完了</button>';
     showSub(h);
-  });
+  },function(){alert('保存に失敗しました。もう一度お試しください');});
+}
+// 「休む」の取消（トレタブ）。当日の自分の休むtlogをハード削除＋5秒Undo（aには書いていないのでtlogのみ・delTlogと同方式）。
+function cancelTrainingRest(){
+  var mine=myAbsentTlogsToday();
+  if(!mine.length){go('training');return;}
+  var ids={};mine.forEach(function(l){ids[l.id]=1;});
+  svSafeUpdate('tlog',function(latest){return (latest||[]).filter(function(l){return !ids[l.id];});},function(){
+    go('training');toast('休養の記録を取り消しました','元に戻す',function(){undoCancelTrainingRest(mine);});
+  },function(){alert('取り消しに失敗しました。もう一度お試しください');});
+}
+function undoCancelTrainingRest(recs){
+  svSafeUpdate('tlog',function(latest){
+    (recs||[]).forEach(function(rec){
+      // 二重復元ガード: 同id、または（欠席レコードなら）同(pid,date)の欠席が既にあれば復元しない（取消→再休養→Undoで同日2件を防ぐ）。
+      var dup=(latest||[]).some(function(l){return idEq(l.id,rec.id)||(rec.absent&&idEq(l.pid,rec.pid)&&l.absent&&l.date===rec.date);});
+      if(!dup)(latest||[]).push(rec);
+    });
+    return latest;
+  },function(){go('training');toast('元に戻しました');},function(){alert('復元に失敗しました。もう一度お試しください');});
 }
 // ===== トレーニング入力の下書き（二層保存：localStorage即時＋Firestore tdraft間引き同期。選手ごと1件）=====
 // localStorageが信頼層。Firestoreは端末跨ぎ復元用の保険なので、同期失敗は静かに無視する（入力中にalertを出さない）。

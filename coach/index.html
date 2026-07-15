@@ -296,6 +296,32 @@ function tlogAll(){
   _tlaCache=out;_tlaCacheSrc=base;_tlaCacheArch=_tlogArch;
   return out;
 }
+// ===== 欠席統一(P7b・coach追加読み) =====
+// 怪我による欠席か。tlogは理由が固定enum（'痛み・怪我'のみ怪我＝含有チェックで完全一致と同値）。
+// a(申告)は自由記述のため誤検出（例:「怪我人の付き添い」「親知らずの痛み」）を避け、怪我判定の対象外にする（_fromA除外）。
+function isInjuryAbsent(l){if(l&&l._fromA)return false;var r=(l&&l.absentReason)||'';return r.indexOf('痛み')>=0||r.indexOf('怪我')>=0;}
+// a(欠席申告)のうち「全欠席」だけを疑似tlog欠席レコードとして返す（追加読み）。
+// ・選手申告の種別 遅刻/早退/部分参加 は全欠席でないため除外（'種別：理由'が遅刻/早退/部分参加で始まるものを落とす）。
+//   スタッフ記録(自由記述・種別接頭なし)や 欠席：... は全欠席として採用。
+// ・同(pid,date)に tlog欠席が既にある場合は二重計上を避けて除外（seenで畳む・a内の同(pid,date)重複も除去）。
+function aAbsenceEvents(fromDate){
+  var seen={};
+  tlogAll().forEach(function(l){if(l&&l.absent)seen[l.pid+'|'+l.date]=1;});
+  var out=[];
+  (D.a||[]).forEach(function(s){
+    if(!s||!s.date||(fromDate&&s.date<fromDate))return;
+    (s.absentees||[]).forEach(function(ab){
+      if(!ab)return;
+      var rs=ab.reason||'';
+      if(rs.indexOf('遅刻')===0||rs.indexOf('早退')===0||rs.indexOf('部分参加')===0)return; // 部分出席系は全欠席でない
+      var key=ab.pid+'|'+s.date;
+      if(seen[key])return;
+      seen[key]=1;
+      out.push({pid:ab.pid,date:s.date,absent:true,absentReason:rs,_fromA:true});
+    });
+  });
+  return out;
+}
 // 全選手×全半期のアーカイブdocを一括取得（存在しないdocは空扱い・個別失敗も空扱いで継続）
 function loadTlogArch(cb){
   if(_tlogArchLoaded){if(cb)cb();return;}
@@ -983,7 +1009,8 @@ function insTraining(){
     }
   }
   // 欠席率（自主トレは欠席し得ない=分母に入れると率が薄まるためkind!=='self'で除外）
-  var recent=logs.filter(function(l){return l.date>=agoStr(13)&&l.kind!=='self';});
+  // P7b: tlog欠席に加え、a(申告のみ・tlog無し)欠席も母集合に含める（追加読み・二重計上なし）。各a欠席は「予定日1件＋欠席1件」として分母/分子の双方に入る。
+  var recent=logs.filter(function(l){return l.date>=agoStr(13)&&l.kind!=='self';}).concat(aAbsenceEvents(agoStr(13)));
   var absList=recent.filter(function(l){return l.absent;});
   var abs=absList.length;
   if(recent.length>=5){
@@ -1287,12 +1314,13 @@ function buildTrendCoach(pid){
 }
 // セッション履歴カードのHTML（折りたたみ展開）
 function buildHistCoach(pid){
-  var logs=tlogAll().filter(function(l){return idEq(l.pid,pid);}).sort(function(a,b){return (b.ts||b.date||'').localeCompare(a.ts||a.date||'');});
+  var aEvP=aAbsenceEvents(null).filter(function(e){return idEq(e.pid,pid);}); // P7b: a(申告のみ・tlog無し)欠席も履歴に混ぜる
+  var logs=tlogAll().filter(function(l){return idEq(l.pid,pid);}).concat(aEvP).sort(function(a,b){return (b.ts||b.date||'').localeCompare(a.ts||a.date||'');});
   if(!logs.length)return'';
   var h='<div class="card" style="margin-top:12px"><div style="font-size:13px;font-weight:700;margin-bottom:10px">🏋️ セッション履歴</div>';
   logs.slice(0,20).forEach(function(lg){
     if(lg.absent){
-      h+='<div class="row"><span style="min-width:60px;color:var(--txt-2);font-size:12px">'+fmt(lg.date)+'</span><span class="chip" style="'+(lg.absentReason==='痛み・怪我'?'background:var(--red-bg);color:var(--red)':'')+'">欠席</span><span style="flex:1;color:var(--txt-2);font-size:11px">'+escapeHtml(lg.absentReason||'-')+'</span></div>';
+      h+='<div class="row"><span style="min-width:60px;color:var(--txt-2);font-size:12px">'+fmt(lg.date)+'</span><span class="chip" style="'+(isInjuryAbsent(lg)?'background:var(--red-bg);color:var(--red)':'')+'">欠席</span><span style="flex:1;color:var(--txt-2);font-size:11px">'+escapeHtml(lg.absentReason||'-')+'</span></div>';
       return;
     }
     var selfBadge=lg.kind==='self'?' <span class="chip" style="background:var(--blue-bg);color:var(--blue)">自主</span>':'';
@@ -1720,9 +1748,11 @@ function renderTrainingView(){
   var logs=tlogAll().slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
   var cutoff=agoStr(13);
   var recent=logs.filter(function(l){return l.date>=cutoff;});
+  var aEv=aAbsenceEvents(cutoff); // P7b: a(申告のみ・tlog無し)欠席を追加読み（二重計上なし）
+  var recentAll=recent.concat(aEv);
   var doneCount=recent.filter(function(l){return !l.absent&&l.kind!=='self';}).length; // チーム練習参加の指標=自主トレは含めない
-  var absentCount=recent.filter(function(l){return l.absent;}).length;
-  var injuryAbsent=recent.filter(function(l){return l.absent&&l.absentReason==='痛み・怪我';}).length;
+  var absentCount=recentAll.filter(function(l){return l.absent;}).length;
+  var injuryAbsent=recentAll.filter(function(l){return l.absent&&isInjuryAbsent(l);}).length;
   var vol7=teamVolume(agoStr(6),today);
   h+='<div class="sec"><div class="grid g4">'+
     rv(kpiTile(doneCount,'実施記録（14日）','var(--green)','件'),0)+
@@ -1735,9 +1765,10 @@ function renderTrainingView(){
   // 怪我でできなかった種目
   var injNotices=[];
   recent.forEach(function(lg){
-    if(lg.absent&&lg.absentReason==='痛み・怪我'){var pa=D.p.find(function(x){return idEq(x.id,lg.pid);});if(pa)injNotices.push({name:pa.name,pid:lg.pid,ex:'全体欠席',date:lg.date});return;}
+    if(lg.absent&&isInjuryAbsent(lg)){var pa=D.p.find(function(x){return idEq(x.id,lg.pid);});if(pa)injNotices.push({name:pa.name,pid:lg.pid,ex:'全体欠席',date:lg.date});return;}
     (lg.results||[]).forEach(function(r){if(r.skipped&&r.skipReason==='痛み・怪我'){var p=D.p.find(function(x){return idEq(x.id,lg.pid);});if(p)injNotices.push({name:p.name,pid:lg.pid,ex:r.exName,date:lg.date});}});
   });
+  // 注: a(申告)由来の欠席は自由記述で怪我誤検出を避けるためisInjuryAbsentが常にfalse＝この怪我通知には載せない（意図的）。
   if(injNotices.length){
     h+='<div class="sec">'+secH('ALERT','痛み・怪我でできなかった種目','直近14日')+
       rv('<div class="card" style="border-left:3px solid var(--red)">'+injNotices.slice(0,12).map(function(n){
@@ -1746,14 +1777,15 @@ function renderTrainingView(){
   }
   // 実施記録一覧
   h+='<div class="sec">'+secH('LOG','トレーニング記録','新しい順');
-  if(!logs.length){h+=rv('<div class="card"><div class="no">まだ記録がありません</div></div>',1);}
+  var listLogs=logs.concat(aEv).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}); // P7b: a由来欠席も一覧に混ぜる
+  if(!listLogs.length){h+=rv('<div class="card"><div class="no">まだ記録がありません</div></div>',1);}
   else{
     var rows='';
-    logs.slice(0,25).forEach(function(lg){
+    listLogs.slice(0,25).forEach(function(lg){
       var p=D.p.find(function(x){return idEq(x.id,lg.pid);});if(!p)return;
       var selfBadge=lg.kind==='self'?' <span class="bd bd-b">自主</span>':'';
       if(lg.absent){
-        var rc=lg.absentReason==='痛み・怪我'?'bd-r':'bd-n';
+        var rc=isInjuryAbsent(lg)?'bd-r':'bd-n';
         rows+='<div class="row row-click" onclick="openPlayer('+lg.pid+')">'+ava(p,30)+'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+escapeHtml(p.name)+' <span class="bd '+rc+'">欠席</span></div><div style="font-size:10px;color:var(--txt-2)">'+fmt(lg.date)+' ・ '+escapeHtml(lg.absentReason||'')+'</div></div></div>';
       }else if(lg.fitness){
         // フィットネス記録: results:[]/totalVolume:0 のため種目数/kg欄は無意味→種類+時間（+距離/RPE）を出す
