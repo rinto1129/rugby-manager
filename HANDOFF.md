@@ -7,8 +7,15 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-15（**🔴v2プラン: P0・P1・P2a・P2b・P4・P5・P6・P7a完了/push済み（P7a=`6aa9713`）。P3不採用。P7b=実装完了・敵対的レビュー2巡（1巡目5次元→13確定→設計見直し、2巡目2体で残2件修正）・全検証緑＝push前（ユーザー確認待ち）。P7c-dは未着手**）
+- 日時: 2026-07-15（**🔴v2プラン: P0・P1・P2a・P2b・P4・P5・P6・P7a・P7b完了/push済み（P7b=`ee08429`）。P3不採用。P7c=実装完了・敵対的レビュー4次元(11体)→2確定(both low)修正・全検証緑＝push前。P7dは未着手**）
 - 更新者: Claude
+- **⚠️ 並行セッション事故の記録（2026-07-15）**: 本セッションのP7c作業中に**別セッション（ユーザー=中山凛人）が `6a34e5f`「レポート追加: バックス ブロンコタイム2026-07」をコミット＆push**（origin/main=`6a34e5f`）。**内容は `reports/bronco-backs-2026-07.html`（310行）のみ・staff/coach/trainer は無変更＝私のP7cと非衝突**。P7cは `6a34e5f` の上に1コミットで乗せる。着手前の`git log`確認を徹底（メモリ`project_concurrent_session_race`）。
+- **✅ P7c「復帰フロー＋coach根拠＋承認ルール明文化＋トレーナー新規登録チップ」実装完了（ライトのまま・push前）**。**staff/coach/trainer 3ファイル変更**（+110/-3行）＋新テスト2本（`dev/test_p7c.js`/`dev/test_p7c_coach.js`）。検証: `python3 dev/run_tests.py`=**61 run/0 fail**＋`dev/sync_check.py`=ALL SYNC OK＋coach `renderPlayerReport` 実描画スモーク（全6根拠が出力・throwなし）＋敵対的レビュー(4次元find→11体verify→**2確定(both low)修正・4 REFUTED・承認ルールは所見ゼロ**)。**push単位=1（staff+coach+trainer+新テスト2本＋HANDOFF）**。実装内容↓。
+  - **復帰フロー（staff）**: `approveRTest` 承認後、`goRTestDetail` に「復帰処理」パネル（□RTP完全復帰／□回復済み／□リハ段階完了）。チェックした項目のみ `doApplyReturn` が逐次反映＝**RTP完全復帰=`chartUpdate`(ch.rtpLevel='full'+rtpLevelDate)／resolved=`svSafeUpdate('i')`／段階完了=`svSafeUpdate('r')`(stage=STG.length-1+stageDates+stampWho)**。**svSafeSeqは追記専用のため不使用**（既存レコード更新は chartUpdate/svSafeUpdate 逐次チェーン。各op冪等）。`approveRTest`/`applyReturnComplete` に `roleGuard('approveRtest'/'approveRtp')`（P4のapprove系ACLをボタン化）。未完了項目のみチェックボックス化・完了済みは✓表示。
+  - **🔑 P7cレビュー確定修正①(low)**: **r（リハビリ）レコードが無い怪我**（`approveInjury`で承認した選手/試合報告等はr未生成）でrf-stgが空振り→成功トースト誤表示＋「完了」に永遠に未到達。→ `returnFlowState(inj,ch,rh)`（テスト対象に切出し）で**rが無ければ段階管理対象外＝`stageDone`扱い**（rtp+resolvedだけで完了到達可）＋**rf-stgは`stageApplicable`時のみ描画**（空振り経路を根絶）。
+  - **coach根拠（閲覧専用・描画のみ）**: `renderPlayerReport` の「現在の怪我・リハビリ」に **診断名(medical.diagnosis)／機転(injDetail.mechanism)／復帰基準 達成N/12／最新評価(`evalSummary`=痛み最大・ROM/MMT先頭キー)／最新SOAP A・P／画像有無(imgTypes or imgFindings)** を追加。純粋 `injEvidence(ch)`/`evalSummary(ev)`（テスト対象）。**ch.imagesは死placeholderのため不使用**（imgTypes/imgFindingsで判定）。**🔑 P7cレビュー確定修正②(low)**: `evalSummary` のROM/MMT**値**は自由記述入力（trainerのtype=text）なので `escapeHtml(String(...))` で必ずエスケープ（innerHTML注入/レイアウト破壊防止・キーは元から escape 済）。`hasImg` は `imgFindings` が空配列でも誤検出しないよう `Array.isArray?length:値` で防御。
+  - **承認ルール明文化（レビュー所見ゼロ）**: staff `doAddInjury`=`source:'staff',approved:true,approvedBy:getCurrentUserName(MY_ROLE),approvedByRole:MY_ROLE`／trainer `trDoAddInjury`=`approvedBy/approvedByRole` 追加（source:'trainer',approved:true は既存）／staff `approveInjury`=`approvedBy/approvedByRole` 追加。**選手/試合起票のみ要承認（approved:null）は不変**。**approvedAtはstaff/trainer起票には付けない**（player通知feedは`source∈{player,match}`必須で誤通知はしないが最小面を維持）。選手側の全編集/取消/通知ゲートは`source∈{player,match}`必須＝staff作成(source:'staff')は正しく除外（自主検証＋レビューで回帰ゼロ確認）。
+  - **トレーナー新規登録チップ（staff・injcomm非使用）**: trainer起票の怪我は`source:'trainer'・即approved`で「新着怪我(承認待ち)」に載らない＝見落とし防止。**injcommを汚さず`inj.source==='trainer'`から派生**（`trainerNewInjChips`＝純粋・テスト対象）＋**端末ローカル(localStorage `rm_seen_newinj`)の既読で消える通知チップ**（`ackNewInjChip`=既読化→goInjuryDetail）。登録30日window＋seenで新端末の洪水を抑制。P4のFirestore-state依頼チップとは別系統（意図設計・レビューで2件REFUTED）。
 - **✅ P7b「欠席統一（今日は休む↔欠席a）」実装完了（ライトのまま・push前）**。**player/coach 2ファイル変更**（+106/-12行）＋新テスト2本（`dev/test_absence_sync.js`/`dev/test_absence_coach.js`）。**staffは無変更**。検証: `python3 dev/run_tests.py`=**59 run/0 fail**＋`dev/sync_check.py`=ALL SYNC OK＋敵対的レビュー2巡。**push単位=1（player+coach+新テスト2本＋HANDOFF）**。実装内容↓。
   - **🔑 最重要の設計判断（2026-07-15・レビュー由来）: 「今日は休む」を欠席a に書き込む案は不採用**。プラン/初版は休むを`a`(欠席申告)にもupsertする双方向設計だったが、敵対的レビュー(5次元find→13確定)で `a`（＝チーム練習の欠席セッション・スタッフ所有・約十数箇所が正典読み）に休む(個人ウエイト休養)を混ぜると**①スタッフ作成セッションへの誤混入②オフ日の幻セッション生成で出席率破壊③正式な欠席/遅刻申告のブロック④二重計上**が起きると判明。**これはP7aで却下した cond-bc と同型の「二次記録を正典ストアに書く汚染」**。→ **休むは tlog(absent) のみに保持**（`a`には一切書かない）。ユーザー承認済み（AskUserQuestion「休むはtlogのみに戻す（推奨）」2026-07-15）。
   - **coach=追加読み（ユーザー選択・主目的）**: coachは従来通りtlog欠席で休むを把握＋**新`aAbsenceEvents(fromDate)`で`a`の全欠席申告（tlog無しの(pid,date)のみ）を追加読み**（`seen`セットで二重計上回避・a内重複も畳む）。coachは`a`をこれまで欠席に未使用だった＝**今まで見えなかった正式欠席申告がcoachに反映**（今回の実質的価値）。repoint=insTraining欠席率(分母/分子両方に加算＝率≤100%維持)/renderTrainingView(absentCount/injuryAbsent/injNotices/記録一覧)/buildHistCoach。**遅刻/早退/部分参加は全欠席でないため除外**（reason接頭辞ブロックリスト）。`isInjuryAbsent(l)`=tlogは'痛み・怪我'完全一致（含有チェックで同値）／**a由来(_fromA)は自由記述の怪我誤検出（「怪我人の付き添い」等）回避のため怪我判定しない**。
@@ -75,8 +82,9 @@
 | P5 | player CRUD残り（怪我/rlog/痛み/wc/md/bc/tape/欠席/PIN） | ✅ push済み `585b926`（55 run/0 fail・sync OK・敵対的レビュー18体で確定4バグ修正済） |
 | P6 | staff/trainer CRUD残り＋prompt()7箇所（staff6+trainer1）撲滅 | ✅ push済み `1b25310`（56 run/0 fail・sync OK・敵対的レビュー11体で確定4バグ修正済）。残: tape代理変更/wc・md新規代理入力/trainer rtest/rtest結果編集/rlog種目編集/preCheck編集はP7以降へ |
 | P7a | 体重dedup＋sRPE実測化（durMin/effDur/sLoad） | ✅ push済み `6aa9713`（57 run/0 fail・sync OK・敵対的レビュー4次元→6所見全処置）。**cond-bc materializeは不採用**（体組成汚染回避・ユーザー選択）。effDurは**duration手動優先>durMin実測>tlog** |
-| P7b | 欠席統一（今日は休む↔欠席a・coach追加読み） | 🟩 実装完了・**push前**（59 run/0 fail・sync OK・敵対的レビュー2巡）。**休むはtlogのみ保持＝aに書かない（汚染回避・cond-bcと同型・ユーザー選択）**。coachは`aAbsenceEvents`で正式欠席申告を追加読み。取消=ハード削除+Undo。staff無変更 |
-| P7c-d | 復帰フロー+coach根拠フル/1フォーム化（受傷1フォーム・リハ1画面・pp編集staff集約） | ⬜ |
+| P7b | 欠席統一（今日は休む↔欠席a・coach追加読み） | ✅ push済み `ee08429`（59 run/0 fail・sync OK・敵対的レビュー2巡）。**休むはtlogのみ保持＝aに書かない（汚染回避・cond-bcと同型）**。coachは`aAbsenceEvents`で正式欠席申告を追加読み。取消=ハード削除+Undo。staff無変更 |
+| P7c | 復帰フロー＋coach根拠＋承認ルール明文化＋トレーナー新規登録チップ | 🟩 実装完了・**push前**（61 run/0 fail・sync OK・敵対的レビュー4次元11体→2確定(low)修正・render smoke緑）。svSafeSeq不使用（更新はchartUpdate/svSafeUpdate逐次）。承認ルール=trainer/staff起票即approved+approvedBy／player/match要承認。r無し怪我の空振り根絶・coach ROM/MMT値エスケープ |
+| P7d | 1フォーム化（受傷1フォーム・リハ1画面・選手側1シート・saveQuickEval廃止・pp編集staff集約・ブロンコ統合） | ⬜ |
 | P8 | IA再編＋新機能（player動的タブ/ホーム7ブロック/NO SIDE測定シート/staff6グループ+キュー+マトリクス/coach週報+検索） | ⬜ |
 | P9a-c | 生hex残渣一掃→モチーフ仕上げ（pitchProgressHtml汎用化+RTPフィールドマップ）→総回帰 | ⬜ |
 
@@ -117,7 +125,7 @@
 - guardSubmit(二重送信ガード)はplayerに導入済み。新規フォームには必ず適用（雛形v2に含む）
 
 ## リポジトリの状態
-- ブランチ: main。origin/main=`6aa9713`(P7a)。**作業ツリーにP7bの未コミット変更あり**（player/index.html＋coach/index.html＋dev/test_absence_sync.js＋dev/test_absence_coach.js＋HANDOFF.md。staffは無変更）。**ユーザー確認後に1コミットでpush予定**（push前に`git diff --stat`で対象外変更ゼロ確認）
+- ブランチ: main。origin/main=`6a34e5f`（P7b `ee08429` ＋ 別セッションの「レポート追加」`6a34e5f`＝ともにpush済み）。**P7cはこの上に1コミットでpush**（staff/coach/trainer＋dev/test_p7c.js＋dev/test_p7c_coach.js＋HANDOFF.md）。**⚠️ `reports/bronco-backs-2026-07.html` は別セッション（ユーザー）が作成・push済み＝P7cでは一切触らない**。push前に`git diff --stat`で対象外変更ゼロ確認済み
 - テスト用選手「テスト選手」(CTB/1年, note=動作確認用)が本番に1名存在（削除可）
 - ⚠️ 検証はjsc模擬実行で完結（本番Firestore直結のためブラウザで代理編集/削除の保存ボタンは押さない）。最終目視はユーザーのCmd+Shift+R確認に委ねる
 

@@ -584,6 +584,29 @@ function getChart(injId){
   if(!ch.images)ch.images=[];
   return ch;
 }
+// P7c coach根拠: カルテ(ch)から復帰判断の根拠を抽出（閲覧専用・書き込みなし）。純粋関数=テスト対象。
+function evalSummary(ev){
+  if(!ev)return '';
+  var parts=[];
+  if(ev.pain){var mp=Math.max(ev.pain.rest||0,ev.pain.motion||0,ev.pain.night||0,ev.pain.press||0);if(mp>0)parts.push('痛み'+mp+'/10');}
+  if(ev.rom){var rk=Object.keys(ev.rom)[0];if(rk!=null&&ev.rom[rk]!=null&&ev.rom[rk]!=='')parts.push('ROM '+escapeHtml(rk)+' '+escapeHtml(String(ev.rom[rk]))+'°');} // ROM値は自由記述入力＝必ずエスケープ(注入/レイアウト破壊防止)
+  if(ev.mmt){var mk=Object.keys(ev.mmt)[0];if(mk!=null&&ev.mmt[mk]!=null&&ev.mmt[mk]!=='')parts.push('MMT '+escapeHtml(mk)+' '+escapeHtml(String(ev.mmt[mk])));}
+  return parts.join(' / ');
+}
+function injEvidence(ch){
+  ch=ch||{};
+  var rc=ch.returnCriteria||{},med=ch.medical||{},det=ch.injDetail||{};
+  var critDone=RETURN_CRITERIA.filter(function(c){return rc[c];}).length;
+  var evs=(ch.evals||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var soaps=(ch.soaps||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var imgTypes=med.imgTypes||[];
+  return {
+    diagnosis:med.diagnosis||'', mechanism:det.mechanism||'',
+    critDone:critDone, critTotal:RETURN_CRITERIA.length,
+    ev:evs[0]||null, soap:soaps[0]||null,
+    hasImg:(imgTypes.length>0)|| !!(Array.isArray(med.imgFindings)?med.imgFindings.length:med.imgFindings), imgTypes:imgTypes
+  };
+}
 function getPlayerInjHistory(pid,excludeIid){
   return D.i.filter(function(x){return idEq(x.pid,pid)&&!idEq(x.id,excludeIid);})
     .sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
@@ -1926,7 +1949,19 @@ function renderPlayerReport(pid){
       var days=inj.returnDate?Math.ceil((new Date(inj.returnDate)-new Date(today))/86400000):null;
       ic+='<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap"><span style="font-weight:700;font-size:14px">'+escapeHtml((inj.side||'')+inj.part+' '+inj.type)+'</span>'+(rtp?'<span class="bd" style="background:'+hexA(rtpC(rtp.k),.16)+';color:'+rtpC(rtp.k)+'">'+rtp.label+'</span>':'')+'</div>';
       ic+='<div style="font-size:11px;color:var(--txt-2);margin-bottom:7px">受傷: '+fmt(inj.date)+(inj.returnDate?' ／ 復帰予定: '+fmt(inj.returnDate)+(days!=null?'（'+(days<0?(-days)+'日超過':days===0?'本日':'あと'+days+'日')+'）':''):'')+'</div>';
-      ic+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><span style="font-size:10px;color:var(--txt-2)">リハビリ進捗</span><span style="font-size:10px;color:var(--accent);font-weight:700">'+STG[stage]+'</span></div><div class="pbar"><div class="pbar-f" data-w="'+progPct+'"></div></div></div>';
+      ic+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><span style="font-size:10px;color:var(--txt-2)">リハビリ進捗</span><span style="font-size:10px;color:var(--accent);font-weight:700">'+STG[stage]+'</span></div><div class="pbar"><div class="pbar-f" data-w="'+progPct+'"></div></div>';
+      // P7c 根拠: 診断/機転/復帰基準達成/最新評価/最新SOAP(A/P)/画像有無
+      var ev7=injEvidence(ch),rows7=[];
+      if(ev7.diagnosis)rows7.push(['診断',escapeHtml(ev7.diagnosis)]);
+      if(ev7.mechanism)rows7.push(['機転',escapeHtml(ev7.mechanism)]);
+      rows7.push(['復帰基準',ev7.critDone+'/'+ev7.critTotal+' 達成']);
+      var es7=evalSummary(ev7.ev);
+      if(es7)rows7.push(['最新評価',es7+(ev7.ev.date?' <span style="opacity:.55">'+fmt(ev7.ev.date)+'</span>':'')]);
+      if(ev7.soap){var ap7=[];if(ev7.soap.a)ap7.push('<b>A:</b> '+escapeHtml(ev7.soap.a));if(ev7.soap.p)ap7.push('<b>P:</b> '+escapeHtml(ev7.soap.p));if(ap7.length)rows7.push(['最新SOAP',ap7.join('<br>')+(ev7.soap.date?' <span style="opacity:.55">'+fmt(ev7.soap.date)+'</span>':'')]);}
+      rows7.push(['画像',ev7.hasImg?(ev7.imgTypes.length?escapeHtml(ev7.imgTypes.join('・')):'あり'):'なし']);
+      ic+='<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">'+rows7.map(function(r){
+        return '<div style="display:flex;gap:8px;font-size:11px;margin-bottom:3px"><span style="color:var(--txt-2);min-width:56px;flex-shrink:0">'+r[0]+'</span><span style="color:var(--txt);flex:1">'+r[1]+'</span></div>';
+      }).join('')+'</div></div>';
     });
     h+=rv('<div class="card" style="border-left:3px solid var(--red);margin-top:14px">'+ic+'</div>',1);
   }else{

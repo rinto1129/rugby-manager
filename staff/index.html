@@ -1725,6 +1725,14 @@ dash:function(){
       return'<div class="alert-card alert-down" style="cursor:pointer;justify-content:space-between;flex-wrap:wrap;gap:6px" onclick="goInjuryDetail('+x.injId+')"><span style="flex:1">'+escapeHtml(x.name)+' — '+escapeHtml(x.text)+'</span><span class="bd bd-r" style="white-space:nowrap;align-self:center">要対応</span></div>';
     }).join(''));
   }
+  // 緊急: トレーナーが新規登録した怪我（P7c）— 承認待ちには載らないため見落とし防止。端末既読(localStorage)で消える。
+  var newInjChips=trainerNewInjChips(D.i,getSeenNewInj(),Date.now(),30*86400000);
+  if(newInjChips.length){
+    urgentItems.push('<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.5rem">'+ic('i-bandage',15,'var(--blue)')+'トレーナーが新規登録<span class="bd bd-b">'+newInjChips.length+'</span><span style="font-size:11px;font-weight:600;color:var(--text-secondary)">内容の確認を</span></div>'+
+    newInjChips.map(function(inj){var p=D.p.find(function(pp){return idEq(pp.id,inj.pid);});
+      return'<div class="alert-card alert-info" style="cursor:pointer;justify-content:space-between;flex-wrap:wrap;gap:6px" onclick="ackNewInjChip('+inj.id+')"><span style="flex:1">'+escapeHtml((p?p.name:'?')+' — '+(inj.side||'')+inj.part+' '+inj.type)+' ('+fmt(inj.date)+')'+(inj.approvedBy?' / 登録: '+escapeHtml(inj.approvedBy):'')+'</span><span class="bd bd-b" style="white-space:nowrap;align-self:center">確認</span></div>';
+    }).join(''));
+  }
   // 緊急: 新着怪我
   if(pendingInj.length){
     urgentItems.push('<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.5rem">'+ic('i-bandage',15,'var(--red)')+'新着怪我<span class="bd bd-r">'+pendingInj.length+'</span><span style="font-size:11px;font-weight:600;color:var(--text-secondary)">スタッフ確認が必要</span></div>'+
@@ -3948,6 +3956,25 @@ function whoTag(role,name,at){
   if(!head&&!tm)return '';
   return '<span style="font-size:11px;color:var(--text-secondary)">'+head+(tm?(head?' ・ ':'')+tm:'')+'</span>';
 }
+// ===== P7c: トレーナー新規登録チップ（staffダッシュボードの見落とし防止通知） =====
+// トレーナー起票の怪我は source:'trainer'・即approved なので「新着怪我(承認待ち)」には載らない＝staffが気付きにくい。
+// injcommを汚さず inj.source==='trainer' から派生し、端末ローカル(localStorage)の既読で消える通知チップとして出す。
+var _SEEN_NEWINJ_KEY='rm_seen_newinj';
+function getSeenNewInj(){try{var a=JSON.parse(localStorage.getItem(_SEEN_NEWINJ_KEY)||'[]');return Array.isArray(a)?a:[];}catch(e){return[];}}
+function markSeenNewInj(injId){var a=getSeenNewInj();if(!a.some(function(s){return idEq(s,injId);})){a.push(injId);try{localStorage.setItem(_SEEN_NEWINJ_KEY,JSON.stringify(a));}catch(e){}}}
+// 純粋関数(テスト対象): source:'trainer' かつ 未resolved かつ 未読 かつ 登録が windowMs 以内 の怪我を新着チップ対象に返す。
+function trainerNewInjChips(injuries,seenIds,nowMs,windowMs){
+  seenIds=seenIds||[];
+  return (injuries||[]).filter(function(inj){
+    if(!inj||inj.source!=='trainer')return false;
+    if(inj.resolved)return false;
+    if(seenIds.some(function(s){return idEq(s,inj.id);}))return false;
+    if(windowMs&&typeof inj.id==='number'&&(nowMs-inj.id)>windowMs)return false; // 登録から古すぎるものは新着扱いしない(新端末での洪水防止)
+    return true;
+  });
+}
+// チップクリック=既読化してから詳細へ。goInjuryDetailで画面遷移→戻ると再描画で消える。
+function ackNewInjChip(injId){markSeenNewInj(injId);goInjuryDetail(injId);}
 
 function postInjComment(iid,role){
   var el=document.getElementById('injcomm-input-'+iid);
@@ -4213,7 +4240,8 @@ if(pid){var pp=D.p.find(function(x){return x.id===pid;});if(pp)document.getEleme
 }
 function doAddInjury(){var pid=parseInt(document.getElementById('ni-p-val').value);if(!pid)return alert('選手を選択してください');
 var part=document.getElementById('ni-part').value,type=document.getElementById('ni-type').value;
-var inj={id:Date.now(),pid:pid,side:document.getElementById('ni-side').value,part:part,partOther:part==='その他'?document.getElementById('ni-partOther').value:'',type:type,typeOther:type==='その他'?document.getElementById('ni-typeOther').value:'',date:document.getElementById('ni-date').value,returnDate:document.getElementById('ni-ret').value,hospitalVisited:document.getElementById('ni-hv').value==='1',hospitalDate:document.getElementById('ni-hd').value,note:document.getElementById('ni-note').value,resolved:false};
+// P7c 承認ルール明文化: staff起票=即approved（source:'staff'を明示・approvedByで記録者を残す）。選手/試合起票のみ要承認。
+var inj={id:Date.now(),pid:pid,side:document.getElementById('ni-side').value,part:part,partOther:part==='その他'?document.getElementById('ni-partOther').value:'',type:type,typeOther:type==='その他'?document.getElementById('ni-typeOther').value:'',date:document.getElementById('ni-date').value,returnDate:document.getElementById('ni-ret').value,hospitalVisited:document.getElementById('ni-hv').value==='1',hospitalDate:document.getElementById('ni-hd').value,note:document.getElementById('ni-note').value,resolved:false,source:'staff',approved:true,approvedBy:getCurrentUserName(MY_ROLE),approvedByRole:MY_ROLE};
 var rhRec={id:Date.now()+1,injId:inj.id,pid:pid,stage:0,logs:[],stageDates:[]};svSafe('i',inj,function(){svSafe('r',rhRec,function(){popView();});});}
 
 // === ADD PHYSICAL (with search) ===
@@ -7530,6 +7558,19 @@ function goRTestDetail(injId){
     '<button class="btn btn-p" style="width:100%;margin-bottom:14px" onclick="approveRTest('+injId+')">'+ic('i-flag',14)+' 復帰を承認する</button>';
   } else if(inj.rtestApproved){
     h+='<div class="alert-card alert-up" style="margin-bottom:10px">'+ic('i-check-c',14)+' 復帰承認済み！</div>';
+    // P7c 復帰フロー: 承認後、完全復帰への反映（RTP完全復帰／回復済み／リハ段階完了）を1操作でまとめて処理。
+    var rtCh=getChart(injId),rtRh=(D.r||[]).find(function(x){return idEq(x.injId,injId);});
+    var rfs=returnFlowState(inj,rtCh,rtRh); // rが無い怪我（選手/試合報告をapproveInjuryした等）は段階管理対象外＝完了扱い（rf-stgは出さず空振りを防ぐ）
+    if(rfs.allDone){
+      h+='<div class="alert-card alert-up" style="margin-bottom:14px">'+ic('i-check-c',14)+' 復帰処理 完了（RTP完全復帰・回復済み'+(rfs.stageApplicable?'・リハ段階完了':'')+'）</div>';
+    }else{
+      h+='<div class="form-box" style="margin-bottom:14px"><div class="form-title">復帰処理（未完了の項目に反映）</div>'+
+      '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">チェックした項目をまとめて反映します。</div>'+
+      _rtChkRow('rf-rtp','RTP「完全復帰」に設定',rfs.rtpFull)+
+      _rtChkRow('rf-res','怪我を「回復済み」に',rfs.resolved)+
+      (rfs.stageApplicable?_rtChkRow('rf-stg','リハビリ段階を「完全復帰」に',rfs.stageDone):'')+
+      '<button class="btn btn-p" style="width:100%;margin-top:8px" onclick="applyReturnComplete('+injId+')">'+ic('i-flag',14)+' 復帰処理を反映</button></div>';
+    }
   }
 
   // テスト結果履歴
@@ -7588,6 +7629,7 @@ function saveBroncoTarget(injId){
 }
 
 function approveRTest(injId){
+  if(!roleGuard('approveRtest'))return; // P7c 承認は確定操作＝スタッフ専任（strict時はトレーナーを依頼へ誘導）
   if(!confirm('復帰を承認しますか？'))return;
   var inj=D.i.find(function(x){return x.id===injId;});if(!inj)return;
   inj.rtestApproved=true;
@@ -7595,6 +7637,34 @@ function approveRTest(injId){
   svRec('i',inj);
   goRTestDetail(injId);
   toast('復帰を承認しました');
+}
+// P7c 復帰フロー: 承認後のチェックボックス行（完了済み=✓表示のみ・未完了=既定ONのチェックボックス）
+function _rtChkRow(id,label,done){
+  if(done)return '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;color:var(--green);font-size:13px"><span>✓</span>'+escapeHtml(label)+'（済）</label>';
+  return '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px"><input type="checkbox" id="'+id+'" checked>'+escapeHtml(label)+'</label>';
+}
+function _chkOn(id){var el=document.getElementById(id);return !!(el&&el.checked);}
+// 復帰処理の状態判定（テスト対象）: rが無い怪我は段階管理対象外＝stageDone扱い（rtp+resolvedだけで完了到達できる。空振りするrf-stgは呼び側で出さない）。
+function returnFlowState(inj,ch,rh){
+  var rtpFull=!!(ch&&ch.rtpLevel==='full'),resolved=!!(inj&&inj.resolved);
+  var stageApplicable=!!rh,stageDone=!rh||rh.stage===STG.length-1;
+  return {rtpFull:rtpFull,resolved:resolved,stageApplicable:stageApplicable,stageDone:stageDone,allDone:rtpFull&&resolved&&stageDone};
+}
+// UI境界: チェック状態を読んで doApplyReturn へ。確定操作なので approveRtp ゲート。
+function applyReturnComplete(injId){
+  if(!roleGuard('approveRtp'))return;
+  var sel={rtp:_chkOn('rf-rtp'),resolved:_chkOn('rf-res'),stage:_chkOn('rf-stg')};
+  if(!sel.rtp&&!sel.resolved&&!sel.stage){alert('反映する項目を選んでください');return;}
+  doApplyReturn(injId,sel,function(){goRTestDetail(injId);toast('復帰処理を反映しました');});
+}
+// テスト対象の純核: 選択された状態のみを server-latest に対して逐次反映（RTP完全復帰=chart／回復済み=i／段階完了=r）。
+// svSafeSeqは追記専用のため使わず、既存レコードを更新する chartUpdate / svSafeUpdate を逐次チェーンする。各opは冪等。
+function doApplyReturn(injId,sel,onDone){
+  var ops=[];
+  if(sel.rtp)ops.push(function(next){chartUpdate(injId,function(ch){ch.rtpLevel='full';ch.rtpLevelDate=todayStr();},next);});
+  if(sel.resolved)ops.push(function(next){svSafeUpdate('i',function(latest){var x=latest.find(function(o){return idEq(o.id,injId);});if(x)x.resolved=true;return latest;},next);});
+  if(sel.stage)ops.push(function(next){svSafeUpdate('r',function(latest){var x=latest.find(function(o){return idEq(o.injId,injId);});if(x){x.stage=STG.length-1;if(!x.stageDates)x.stageDates=[];x.stageDates[x.stage]=todayStr();stampWho(x);}return latest;},next);});
+  (function run(i){if(i>=ops.length){if(onDone)onDone();return;}ops[i](function(){run(i+1);});})(0);
 }
 
 
@@ -8228,6 +8298,7 @@ function approveInjury(iid){
   if(!inj)return;
   inj.approved=true;
   inj.approvedAt=new Date().toISOString();
+  inj.approvedBy=getCurrentUserName(MY_ROLE);inj.approvedByRole=MY_ROLE; // P7c 承認ルール明文化: 承認者を記録
   inj.notifyPlayer=true; // 選手側で未読通知扱い
   svRec('i',inj);
   V.dash();

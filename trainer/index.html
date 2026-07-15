@@ -2615,7 +2615,8 @@ function trDoAddInjury(btnEl){
   var part=document.getElementById('tri-part').value;
   var type=document.getElementById('tri-type').value;
   var injId=Date.now();
-  var inj={id:injId,pid:pid,side:document.getElementById('tri-side').value,part:part,partOther:part==='その他'?document.getElementById('tri-partOther').value:'',type:type,typeOther:type==='その他'?document.getElementById('tri-typeOther').value:'',date:document.getElementById('tri-date').value,returnDate:document.getElementById('tri-ret').value,note:document.getElementById('tri-note').value,resolved:false,source:'trainer',approved:true};
+  // P7c 承認ルール明文化: トレーナー起票=即approved（approvedByで記録者を残す）。staffダッシュボードには source:'trainer' 由来の「新規登録」チップが出る。
+  var inj={id:injId,pid:pid,side:document.getElementById('tri-side').value,part:part,partOther:part==='その他'?document.getElementById('tri-partOther').value:'',type:type,typeOther:type==='その他'?document.getElementById('tri-typeOther').value:'',date:document.getElementById('tri-date').value,returnDate:document.getElementById('tri-ret').value,note:document.getElementById('tri-note').value,resolved:false,source:'trainer',approved:true,approvedBy:getCurrentUserName(MY_ROLE),approvedByRole:MY_ROLE};
   // i(怪我)→r(リハビリ)を順次安全保存。svSafeSeqで成否を捕捉（svSafeは失敗時に内部alert＋ボタン固着するため使わない）
   svSafeSeq([{k:'i',rec:inj},{k:'r',rec:{id:injId+1,injId:injId,pid:pid,stage:0,logs:[],stageDates:[]}}],function(){
     alert('ケガを登録しました。リハビリ管理を開始します。');
