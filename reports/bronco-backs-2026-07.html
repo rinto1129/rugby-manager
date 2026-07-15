@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>バックス ブロンコタイム（2026年7月 直近測定）</title>
+<meta name="description" content="福岡大学ラグビー部 バックス陣 ブロンコテスト ポジション別基準クリア判定">
+<style>
+:root{
+  --cream:#faf5ee;
+  --paper:#fffdfa;
+  --maroon-900:#4a0e18;
+  --maroon-700:#6b1522;
+  --maroon-500:#8f2233;
+  --gold-500:#b58723;
+  --gold-300:#e6c869;
+  --gold-050:#fbf1da;
+  --ink:#2a211d;
+  --ink-soft:#6b5d54;
+  --line:#e6dccc;
+  --clear-600:#3f7a52;
+  --clear-050:#e9f3ea;
+  --over-600:#a9502a;
+  --over-050:#fbeee7;
+  --font-jp: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Noto Sans JP", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cica", Menlo, Consolas, "Roboto Mono", monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --cream:#1b1210;
+    --paper:#221715;
+    --maroon-900:#f4dcd0;
+    --maroon-700:#e7a98f;
+    --maroon-500:#d98a6a;
+    --gold-500:#e6b64a;
+    --gold-300:#f3d488;
+    --gold-050:#3a2c14;
+    --ink:#f2e9e2;
+    --ink-soft:#c9b8ad;
+    --line:#3c2c26;
+    --clear-600:#7ecb95;
+    --clear-050:#1f3324;
+    --over-600:#e39569;
+    --over-050:#3a231a;
+  }
+}
+:root[data-theme="dark"]{
+  --cream:#1b1210;
+  --paper:#221715;
+  --maroon-900:#f4dcd0;
+  --maroon-700:#e7a98f;
+  --maroon-500:#d98a6a;
+  --gold-500:#e6b64a;
+  --gold-300:#f3d488;
+  --gold-050:#3a2c14;
+  --ink:#f2e9e2;
+  --ink-soft:#c9b8ad;
+  --line:#3c2c26;
+  --clear-600:#7ecb95;
+  --clear-050:#1f3324;
+  --over-600:#e39569;
+  --over-050:#3a231a;
+}
+:root[data-theme="light"]{
+  --cream:#faf5ee;
+  --paper:#fffdfa;
+  --maroon-900:#4a0e18;
+  --maroon-700:#6b1522;
+  --maroon-500:#8f2233;
+  --gold-500:#b58723;
+  --gold-300:#e6c869;
+  --gold-050:#fbf1da;
+  --ink:#2a211d;
+  --ink-soft:#6b5d54;
+  --line:#e6dccc;
+  --clear-600:#3f7a52;
+  --clear-050:#e9f3ea;
+  --over-600:#a9502a;
+  --over-050:#fbeee7;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--cream);
+  color:var(--ink);
+  font-family:var(--font-jp);
+  padding:clamp(12px,4vw,52px);
+  line-height:1.6;
+}
+.sheet{ max-width:820px; margin:0 auto; }
+.eyebrow{
+  font-size:12px; font-weight:700; letter-spacing:.14em;
+  color:var(--maroon-500); text-transform:uppercase;
+  display:flex; align-items:center; gap:8px;
+}
+.eyebrow::before{ content:""; width:18px; height:2px; background:var(--maroon-500); display:inline-block; }
+h1{
+  font-size:clamp(22px,4vw,30px); font-weight:800; margin:6px 0 4px;
+  color:var(--maroon-900); letter-spacing:.01em; text-wrap:balance;
+}
+.subtitle{ font-size:13.5px; color:var(--ink-soft); margin:0 0 6px; }
+.subtitle b{ color:var(--ink); font-weight:600; }
+
+.legend{
+  display:flex; gap:18px; flex-wrap:wrap;
+  margin:18px 0 28px;
+  padding:10px 14px;
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:9px;
+  font-size:12px;
+  color:var(--ink-soft);
+}
+.legend-item{ display:flex; align-items:center; gap:6px; }
+.dot{ width:8px; height:8px; border-radius:50%; }
+.dot.clear{ background:var(--clear-600); }
+.dot.near{ background:var(--gold-500); }
+.dot.over{ background:var(--over-600); }
+
+.pos-group{ margin-top:30px; }
+.pos-head{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:12px; border-bottom:2px solid var(--maroon-900);
+  padding-bottom:9px; margin-bottom:2px;
+}
+.pos-head-left{ display:flex; align-items:baseline; gap:10px; }
+.pos-name{
+  font-size:19px; font-weight:800; color:var(--maroon-900); letter-spacing:.01em;
+}
+.pos-full{ font-size:12px; color:var(--ink-soft); }
+.pos-std{
+  font-family:var(--font-mono); font-size:13px; font-weight:700;
+  color:var(--ink-soft); white-space:nowrap;
+}
+.pos-std b{ color:var(--ink); font-variant-numeric:tabular-nums; }
+
+.table-wrap{ overflow-x:auto; }
+table{ width:100%; border-collapse:collapse; table-layout:fixed; }
+colgroup .col-name{ width:27%; }
+colgroup .col-metric{ width:36.5%; }
+thead th{
+  text-align:left; font-size:10px; font-weight:700; color:var(--ink-soft);
+  letter-spacing:.02em; padding:8px 2px 6px; white-space:nowrap;
+}
+thead th.metric{ text-align:center; }
+tbody tr{ border-top:1px solid var(--line); }
+tbody td{ padding:7px 2px; font-size:13px; vertical-align:middle; }
+.name-cell{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.name{ font-weight:700; }
+.year{ color:var(--ink-soft); font-size:10.5px; margin-left:3px; }
+
+.metric-cell{ text-align:center; }
+.pill{
+  display:inline-flex; align-items:baseline; gap:3px;
+  font-family:var(--font-mono); font-variant-numeric:tabular-nums;
+  padding:3px 6px; border-radius:6px; white-space:nowrap;
+}
+.pill .t{ font-size:12.5px; font-weight:700; }
+.pill .d{ font-size:9.5px; font-weight:700; }
+.pill.clear{ background:var(--clear-050); color:var(--clear-600); }
+.pill.near{ background:var(--gold-050); color:var(--gold-500); }
+.pill.over{ background:var(--over-050); color:var(--over-600); }
+
+.missing-box{
+  margin-top:34px; padding:16px 18px;
+  background:var(--paper); border:1px solid var(--line); border-radius:10px;
+  font-size:12.5px; color:var(--ink-soft);
+}
+.missing-box b{ color:var(--ink); font-weight:700; }
+
+footer{
+  margin-top:28px; padding-top:16px; border-top:1px solid var(--line);
+  font-size:11.5px; color:var(--ink-soft);
+  display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
+}
+
+@media (max-width:480px){
+  .pos-full{ display:none; }
+  .subtitle{ font-size:12.5px; }
+  .legend{ gap:10px 14px; padding:8px 10px; font-size:11px; margin:14px 0 22px; }
+  .pos-group{ margin-top:22px; }
+  .pos-name{ font-size:17px; }
+  .pos-std{ font-size:12px; }
+  thead th{ font-size:9.5px; }
+  tbody td{ padding:6px 2px; font-size:12.5px; }
+  .name{ font-size:12.5px; }
+  .year{ font-size:10px; }
+  .pill{ padding:2.5px 5px; gap:2px; }
+  .pill .t{ font-size:11.5px; }
+  .pill .d{ font-size:9px; }
+  .missing-box{ padding:12px 14px; font-size:11.5px; }
+}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="eyebrow">Fukuoka Univ. RFC — Physical Report</div>
+  <h1>バックス ブロンコタイム（ポジション別）</h1>
+  <p class="subtitle">新基準：<b>SH 4:30 ／ SO・CTB 4:40 ／ WTB・FB 4:35</b>。<b>最新タイム</b>と<b>シーズンベスト</b>それぞれで基準を超えているか、超えている場合は何秒オーバーかを表示。ポジション内は最新タイムが速い順。</p>
+
+  <div class="legend">
+    <div class="legend-item"><span class="dot clear"></span>基準クリア</div>
+    <div class="legend-item"><span class="dot near"></span>あと5秒以内</div>
+    <div class="legend-item"><span class="dot over"></span>基準超過（+秒＝オーバー分）</div>
+  </div>
+
+  <div id="groups"></div>
+
+  <div class="missing-box">
+    <b>今回の測定データなし：</b>前原 泰生(CTB4) ・ 大跡 恒生(SH4) ・ 上田 一心(SO4) ・ 大畑 醍資(SO2) ・ 牟田 凌大(SH2) ・ 安永 圭蔵(WTB1)
+  </div>
+
+  <footer>
+    <span>出典：フィジカル記録.csv（今シーズン全測定）</span>
+    <span>シーズンベスト＝今シーズン最速記録</span>
+  </footer>
+</div>
+
+<script>
+var STD = {
+  SH:  {label:"SH",  full:"スクラムハーフ", sec:270, fmt:"4:30"},
+  SO:  {label:"SO",  full:"スタンドオフ",   sec:280, fmt:"4:40"},
+  CTB: {label:"CTB", full:"センター",       sec:280, fmt:"4:40"},
+  WTB: {label:"WTB", full:"ウイング",       sec:275, fmt:"4:35"},
+  FB:  {label:"FB",  full:"フルバック",     sec:275, fmt:"4:35"}
+};
+
+var DATA = {
+  SH: [
+    ["利守 湊","1","4:38","4:29"],
+    ["森 泰造","3","4:41","4:37"],
+    ["﨑迫 那瑠","4","4:42","4:42"],
+    ["濵田 流星","3","4:42","4:38"],
+    ["井上 惺陽","1","4:54","4:50"],
+    ["大石 康介","1","5:05","5:05"]
+  ],
+  SO: [
+    ["安藤 佑真","1","4:56","4:56"],
+    ["馬場 稜典","4","5:05","4:52"],
+    ["松元 智紀","4","5:20","5:10"]
+  ],
+  CTB: [
+    ["的野 樹","1","4:46","4:45"],
+    ["岩﨑 弘樹","2","4:55","4:47"],
+    ["後田 啓斗","3","4:58","4:44"],
+    ["前 大和","2","4:59","4:59"],
+    ["緒方 凰介","1","4:59","4:59"],
+    ["若槻 達郎","2","5:01","5:01"],
+    ["島津 大靖","3","5:03","4:40"],
+    ["三原 颯太","4","5:06","5:06"],
+    ["藪田 悠人","1","5:10","5:00"]
+  ],
+  WTB: [
+    ["和合 陽音","1","4:47","4:47"],
+    ["鉾木 颯","4","4:53","4:53"],
+    ["新留 想太","3","4:56","4:42"],
+    ["佐古野 豊","2","5:00","5:00"],
+    ["大久保 舜瑛","4","5:04","4:51"],
+    ["赤島 崇仁","3","5:10","4:37"],
+    ["森下 翔太","1","5:20","5:20"]
+  ],
+  FB: [
+    ["安田 光汰","4","4:43","4:35"],
+    ["前山 丞","3","4:45","4:45"],
+    ["坂井 洸太","1","4:47","4:47"],
+    ["土橋 亮太","1","5:00","5:00"],
+    ["上田 匠翔","1","5:11","5:11"],
+    ["三好 壮汰","2","5:13","4:53"]
+  ]
+};
+
+function toSec(mmss){
+  var p = mmss.split(":");
+  return (+p[0])*60 + (+p[1]);
+}
+
+function pill(fmtStr, sec, stdSec){
+  var diff = sec - stdSec;
+  if(diff <= 0){
+    return '<span class="pill clear"><span class="t">'+fmtStr+'</span><span class="d">クリア</span></span>';
+  }
+  if(diff <= 5){
+    return '<span class="pill near"><span class="t">'+fmtStr+'</span><span class="d">+'+diff+'秒</span></span>';
+  }
+  return '<span class="pill over"><span class="t">'+fmtStr+'</span><span class="d">+'+diff+'秒</span></span>';
+}
+
+var order = ["SH","SO","CTB","WTB","FB"];
+var html = order.map(function(pos){
+  var std = STD[pos];
+  var rows = DATA[pos];
+  var body = rows.map(function(r){
+    var name=r[0], year=r[1], latestFmt=r[2], bestFmt=r[3];
+    var latestSec = toSec(latestFmt), bestSec = toSec(bestFmt);
+    return '<tr><td class="name-cell"><span class="name">'+name+'</span><span class="year">'+year+'年</span></td>'+
+      '<td class="metric-cell">'+pill(latestFmt, latestSec, std.sec)+'</td>'+
+      '<td class="metric-cell">'+pill(bestFmt, bestSec, std.sec)+'</td></tr>';
+  }).join('');
+  return '<div class="pos-group">'+
+    '<div class="pos-head"><div class="pos-head-left"><span class="pos-name">'+std.label+'</span><span class="pos-full">'+std.full+'</span></div>'+
+    '<span class="pos-std">基準 <b>'+std.fmt+'</b></span></div>'+
+    '<div class="table-wrap"><table><colgroup><col class="col-name"><col class="col-metric"><col class="col-metric"></colgroup>'+
+    '<thead><tr><th>選手</th><th class="metric">最新</th><th class="metric">ベスト</th></tr></thead>'+
+    '<tbody>'+body+'</tbody></table></div></div>';
+}).join('');
+
+document.getElementById('groups').innerHTML = html;
+</script>
+</body>
+</html>
