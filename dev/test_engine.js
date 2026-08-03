@@ -8,18 +8,20 @@ function eq(name,got,want){
   else print('  ok '+name+' = '+JSON.stringify(got));
 }
 // ---- テストデータ投入 ----
+// 日付は todayStr() 起点の相対日付（固定日付だと30日窓=getCurrentWeightInfoから脱落して経年FAILするため）
+function daysAgo(n){return toDateStr(new Date(Date.now()-n*86400000));}
 D.p=[
   {id:1,name:'テストPR',position:'PR',year:2,height:'180',weight:'100'},
   {id:2,name:'テストWTB',position:'WTB',year:3,height:'175',weight:'85'},
   {id:3,name:'未登録SH',position:'SH',year:1,height:'',weight:''}
 ];
 D.ph=[
-  {id:11,pid:1,date:'2026-06-20',squat:150,bench:110,deadlift:180},
-  {id:12,pid:1,date:'2026-05-01',squat:140},
-  {id:13,pid:2,date:'2026-06-25',squat:150,bench:100}
+  {id:11,pid:1,date:daysAgo(14),squat:150,bench:110,deadlift:180},
+  {id:12,pid:1,date:daysAgo(60),squat:140},
+  {id:13,pid:2,date:daysAgo(9),squat:150,bench:100}
 ];
-D.bc=[{id:21,pid:1,date:'2026-06-28',weight:102,fat:16,muscle:48}];
-D.f=[{id:31,pid:1,date:'2026-07-01',rpe:5,sleep:7,duration:60,weight:101}];
+D.bc=[{id:21,pid:1,date:daysAgo(5),weight:102,fat:16,muscle:48}];
+D.f=[{id:31,pid:1,date:daysAgo(2),rpe:5,sleep:7,duration:60,weight:101}];
 D.std=[];
 
 print('--- getCurrentWeightInfo ---');
