@@ -17,12 +17,21 @@
   --shadow-sm:0 1px 3px rgba(0,0,0,.25);--shadow-md:0 6px 20px rgba(0,0,0,.35);
   --font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif;--radius:10px;--radius-lg:14px;
   /* ブランドトークン（共通コンポーネントppCardHtml等が参照。値はP3ダーク統一時に再調整） */
-  --maroon:#8d0000;--maroon-vivid:#c1121f;--pull:#C2410C;--font-num:'Overpass',system-ui,sans-serif}
+  --maroon:#8d0000;--maroon-vivid:#c1121f;--pull:#C2410C;--font-num:'Overpass',system-ui,sans-serif;
+  /* P9a: 生hex/rgba残渣一掃で新設したトークン */
+  --amber-a30:rgba(245,158,11,.3);--amber-deep:#D97706;--amber-glow:rgba(245,158,11,.6);--amber-vivid:#F59E0B;--av1-bg:#B5D4F4;--av1-fg:#0C447C;
+  --av2-bg:#9FE1CB;--av2-fg:#085041;--av3-bg:#F5C4B3;--av3-fg:#712B13;--av4-bg:#FAC775;--av4-fg:#633806;
+  --av5-bg:#F4C0D1;--av5-fg:#72243E;--av6-bg:#C0DD97;--av6-fg:#27500A;--av7-bg:#CECBF6;--av7-fg:#3C3489;
+  --black-a25:rgba(0,0,0,.25);--blue-a30:rgba(59,130,246,.3);--blue-glow:rgba(59,130,246,.6);--cyan:#06B6D4;--cyan-deep:#0891B2;--cyan-glow:rgba(6,182,212,.6);
+  --cyan-pale:#E0F2FE;--green-a30:rgba(16,185,129,.3);--green-deep:#059669;--green-glow:rgba(16,185,129,.6);--green-pale:#D1FAE5;--green-vivid:#10B981;
+  --hero-sub:#A9B8CE;--pink:#EC4899;--pink-glow:rgba(236,72,153,.6);--pull-bg:rgba(194,65,12,.10);--purple-glow:rgba(139,92,246,.6);--red-glow:rgba(239,68,68,.6);
+  --red-vivid:#EF4444;--slate:#64748B;--slate-glow:rgba(100,116,139,.6);--soap-o:#0E9F6E;--white:#fff;--white-a06:rgba(255,255,255,.06);
+  --white-a12:rgba(255,255,255,0.12);--white-a25:rgba(255,255,255,0.25);}
 .ic{display:inline-block;vertical-align:-.14em;flex-shrink:0}
 .flag{display:inline-block;transform:skewX(-12deg);font-family:var(--font-num);font-style:italic;font-weight:800;letter-spacing:.05em;padding:2px 8px;border-radius:3px;font-size:10px}
 body{font-family:var(--font-sans);background:var(--bg-app);color:var(--text-primary);min-height:100vh;padding-bottom:80px;-webkit-font-smoothing:antialiased}
 .header{background:linear-gradient(180deg,var(--navy),var(--navy-2));border-bottom:1px solid var(--border-tertiary);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.header-title{font-size:15px;font-weight:700;color:#fff}
+.header-title{font-size:15px;font-weight:700;color:var(--white)}
 .header-user{font-size:12px;color:var(--accent);font-weight:600;cursor:pointer}
 .main{padding:16px;max-width:600px;margin:0 auto}
 .nav-bottom{position:fixed;bottom:0;left:0;right:0;background:var(--navy);border-top:1px solid var(--border-tertiary);display:flex;z-index:100}
@@ -32,7 +41,7 @@ body{font-family:var(--font-sans);background:var(--bg-app);color:var(--text-prim
 .card{background:var(--bg-primary);border:1px solid var(--border-tertiary);border-radius:var(--radius-lg);padding:1rem;margin-bottom:10px;box-shadow:var(--shadow-sm)}
 .card-click{cursor:pointer}.card-click:hover{border-color:var(--accent)}
 .btn{padding:8px 16px;border-radius:var(--radius);border:1px solid var(--border-secondary);background:var(--bg-secondary);font-size:13px;cursor:pointer;color:var(--text-primary);font-family:var(--font-sans);font-weight:500}.btn:hover{background:var(--bg-tertiary)}
-.btn-p{background:var(--accent);color:#fff;border-color:var(--accent)}.btn-p:hover{background:var(--accent-d)}
+.btn-p{background:var(--accent);color:var(--white);border-color:var(--accent)}.btn-p:hover{background:var(--accent-d)}
 .btn-d{color:var(--red);border-color:var(--red)}
 .btn-s{color:var(--green);border-color:var(--green)}
 .btn-sm{padding:4px 10px;font-size:11px;width:auto}
@@ -73,28 +82,28 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 .login-sub{font-size:13px;color:var(--text-secondary);text-align:center;margin-bottom:28px}
 .trainer-btn{display:block;width:100%;padding:14px 16px;border-radius:var(--radius-lg);border:1.5px solid var(--border-tertiary);background:var(--bg-primary);font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;text-align:left;font-family:var(--font-sans);color:var(--text-primary);transition:all .15s}
 .trainer-btn:hover{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
-.chart-hero{background:linear-gradient(135deg,#0F1B2D,#1E3251);border-radius:var(--radius-lg);padding:1.1rem 1.25rem;margin-bottom:0;box-shadow:var(--shadow-md)}
+.chart-hero{background:linear-gradient(135deg,var(--navy),var(--navy-3));border-radius:var(--radius-lg);padding:1.1rem 1.25rem;margin-bottom:0;box-shadow:var(--shadow-md)}
 .chart-tabs{display:flex;gap:4px;overflow-x:auto;background:var(--bg-secondary);border-radius:var(--radius);padding:5px;margin:12px 0 14px;-webkit-overflow-scrolling:touch}
 .chart-tab{flex-shrink:0;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;color:var(--text-secondary);cursor:pointer;white-space:nowrap;transition:all .15s}
 .chart-tab:hover{background:var(--bg-tertiary);color:var(--text-primary)}
-.chart-tab.ac{background:var(--accent);color:#fff}
+.chart-tab.ac{background:var(--accent);color:var(--white)}
 /* ===== タイムライン ===== */
 .tl-wrap{position:relative;padding:8px 0 8px 0}
 .tl-item{position:relative;padding:0 0 22px 38px}
 .tl-item:last-child{padding-bottom:4px}
-.tl-line{position:absolute;left:13px;top:22px;bottom:-4px;width:2px;background:linear-gradient(180deg,var(--tl-color,var(--accent)),rgba(255,255,255,.06))}
+.tl-line{position:absolute;left:13px;top:22px;bottom:-4px;width:2px;background:linear-gradient(180deg,var(--tl-color,var(--accent)),var(--white-a06))}
 .tl-item:last-child .tl-line{display:none}
-.tl-dot{position:absolute;left:5px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--tl-color,var(--accent));box-shadow:0 0 0 4px var(--bg-app),0 0 12px var(--tl-glow,rgba(59,130,246,.6));display:flex;align-items:center;justify-content:center;z-index:2}
-.tl-dot svg{width:10px;height:10px;fill:#fff}
+.tl-dot{position:absolute;left:5px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--tl-color,var(--accent));box-shadow:0 0 0 4px var(--bg-app),0 0 12px var(--tl-glow,var(--blue-glow));display:flex;align-items:center;justify-content:center;z-index:2}
+.tl-dot svg{width:10px;height:10px;fill:var(--white)}
 .tl-card{background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary));border:1px solid var(--border-tertiary);border-left:3px solid var(--tl-color,var(--accent));border-radius:10px;padding:11px 14px;transition:all .2s;box-shadow:var(--shadow-sm)}
-.tl-card:hover{transform:translateX(3px);box-shadow:0 4px 16px rgba(0,0,0,.25)}
+.tl-card:hover{transform:translateX(3px);box-shadow:0 4px 16px var(--black-a25)}
 .tl-date{font-size:11px;font-weight:700;color:var(--tl-color,var(--accent));letter-spacing:.03em;text-transform:uppercase;margin-bottom:3px}
 .tl-title{font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:2px}
 .tl-desc{font-size:12.5px;color:var(--text-secondary);line-height:1.5}
 .tl-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;margin-left:6px;vertical-align:middle}
 .tl-metric{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;background:var(--bg-tertiary);padding:2px 8px;border-radius:6px;margin:4px 4px 0 0}
 .soap-line{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;font-size:13px;line-height:1.5}
-.soap-tag{flex-shrink:0;width:22px;height:22px;border-radius:6px;color:#fff;font-weight:800;font-size:12px;display:inline-flex;align-items:center;justify-content:center}
+.soap-tag{flex-shrink:0;width:22px;height:22px;border-radius:6px;color:var(--white);font-weight:800;font-size:12px;display:inline-flex;align-items:center;justify-content:center}
 .detail-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid var(--border-tertiary);font-size:13px}.detail-row:last-child{border-bottom:none}
 .detail-label{color:var(--text-secondary)}.detail-value{font-weight:600;text-align:right}
 .chart-wrap{position:relative;height:200px;margin:12px 0}
@@ -153,12 +162,12 @@ var db=firebase.firestore();
 // 購読すると選手のセット保存の度に全trainer端末がtlog(数百KB)を再ダウンロード＋画面リセットされるため対象外にする。
 // cal/ppは軽量・低頻度更新のため上記除外方針の対象外（ppの「次のweight日」表示にcalが必要）。
 var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',cal:'rm_calendar',pp:'rm_pushpull'};
-var AVC=[['#B5D4F4','#0C447C'],['#9FE1CB','#085041'],['#F5C4B3','#712B13'],['#FAC775','#633806'],['#F4C0D1','#72243E'],['#C0DD97','#27500A'],['#CECBF6','#3C3489']];
+var AVC=[['var(--av1-bg)','var(--av1-fg)'],['var(--av2-bg)','var(--av2-fg)'],['var(--av3-bg)','var(--av3-fg)'],['var(--av4-bg)','var(--av4-fg)'],['var(--av5-bg)','var(--av5-fg)'],['var(--av6-bg)','var(--av6-fg)'],['var(--av7-bg)','var(--av7-fg)']];
 var D={p:[],i:[],r:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],cal:[],pp:[]};
 var myTrainer=null;
 var RCATS=['ケア','ROM改善','患部外トレーニング','トレーニング','アジリティ','フィットネス','サポート','オフ'];
-var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'#0891B2',サポート:'#059669',オフ:'var(--text-secondary)'};
-var RCAT_BG={ケア:'var(--blue-bg)',ROM改善:'var(--green-bg)',患部外トレーニング:'var(--amber-bg)',トレーニング:'var(--red-bg)',アジリティ:'var(--purple-bg)',フィットネス:'#E0F2FE',サポート:'#D1FAE5',オフ:'var(--bg-tertiary)'};
+var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'var(--cyan-deep)',サポート:'var(--green-deep)',オフ:'var(--text-secondary)'};
+var RCAT_BG={ケア:'var(--blue-bg)',ROM改善:'var(--green-bg)',患部外トレーニング:'var(--amber-bg)',トレーニング:'var(--red-bg)',アジリティ:'var(--purple-bg)',フィットネス:'var(--cyan-pale)',サポート:'var(--green-pale)',オフ:'var(--bg-tertiary)'};
 var STG=['ウォーキング','ランニング','スプリント','ジャンプ','コンタクト以外の練習','フルコンタクト','完全復帰'];
 var PARTS=['頭部','頸部','肩','鎖骨','肘','手首','指','腰','股関節','大腿','膝','すね','足首','踵','アキレス腱','ふくらはぎ','足の甲','足趾','その他'];
 var INJ_TYPES=['捻挫','肉離れ','骨折','脱臼','打撲','靭帯損傷','半月板損傷','脳震盪','裂傷','腱炎','疲労骨折','その他'];
@@ -896,9 +905,9 @@ function roleGuard(action){
 }
 // roleTag(role): 記録者の役割バッジ（🔵トレーナー記録／🟤スタッフ記録）
 function roleTag(role){
-  if(role==='trainer')return '<span class="bd" style="background:var(--blue);color:#fff;font-size:9px">🔵 トレーナー</span>';
-  if(role==='staff')return '<span class="bd" style="background:var(--maroon);color:#fff;font-size:9px">🟤 スタッフ</span>';
-  if(role==='player')return '<span class="bd" style="background:var(--text-tertiary);color:#fff;font-size:9px">選手</span>';
+  if(role==='trainer')return '<span class="bd" style="background:var(--blue);color:var(--white);font-size:9px">🔵 トレーナー</span>';
+  if(role==='staff')return '<span class="bd" style="background:var(--maroon);color:var(--white);font-size:9px">🟤 スタッフ</span>';
+  if(role==='player')return '<span class="bd" style="background:var(--text-tertiary);color:var(--white);font-size:9px">選手</span>';
   return '';
 }
 // stampWho(rec): 保存時に「誰が(role/name)・いつ」を記録（追加フィールドのみ）。最終編集者表示の土台。
@@ -950,7 +959,7 @@ function renderInjCommentsListOnly(iid,role){
     var editing=canDelete&&window._injCommEdit!=null&&String(window._injCommEdit)===String(c.id);
     return'<div style="padding:8px 10px;border-radius:var(--radius);background:var(--bg-secondary);margin-bottom:6px">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;margin-bottom:4px">'+
-    '<span><span class="bd" style="background:'+color+';color:#fff;font-size:9px">'+label+'</span> <b style="margin-left:4px">'+(c.authorName||'')+'</b>'+(c.editedAt?' <span style="opacity:.6">(編集済)</span>':'')+'</span>'+
+    '<span><span class="bd" style="background:'+color+';color:var(--white);font-size:9px">'+label+'</span> <b style="margin-left:4px">'+(c.authorName||'')+'</b>'+(c.editedAt?' <span style="opacity:.6">(編集済)</span>':'')+'</span>'+
     '<span style="color:var(--text-secondary)">'+dateStr+((canDelete&&!editing)?' <button class="btn btn-sm" onclick="editInjComment(\''+c.id+'\','+iid+',\''+role+'\')">編集</button> <button class="btn btn-sm btn-d" onclick="delInjComment(\''+c.id+'\','+iid+',\''+role+'\')">削除</button>':'')+'</span>'+
     '</div>'+
     (editing?'<textarea class="ipt" id="injcomm-edit-'+c.id+'" style="font-size:13px;min-height:56px">'+escapeHtml(c.text||'')+'</textarea><div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px"><button class="btn btn-sm" onclick="cancelEditInjComment('+iid+',\''+role+'\')">キャンセル</button><button class="btn btn-sm btn-p" onclick="doEditInjComment(\''+c.id+'\','+iid+',\''+role+'\')">保存</button></div>':'<div style="font-size:13px;white-space:pre-wrap;word-break:break-word">'+escapeHtml(c.text||'')+'</div>')+
@@ -1047,12 +1056,12 @@ function ppCardHtml(showCtrl){
       '<div style="font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px">'+ic('i-dumbbell',16,'var(--maroon)')+' ウエイト PUSH/PULL 初期設定</div>'+
       '<div style="display:flex;gap:10px">'+
       '<button class="btn" style="flex:1;background:var(--blue-bg);color:var(--blue);font-weight:700" onclick="ppStart(\'push\')">'+ic('i-push',14)+' PUSHから開始</button>'+
-      '<button class="btn" style="flex:1;background:rgba(194,65,12,.10);color:var(--pull);font-weight:700" onclick="ppStart(\'pull\')">'+ic('i-pull',14)+' PULLから開始</button>'+
+      '<button class="btn" style="flex:1;background:var(--pull-bg);color:var(--pull);font-weight:700" onclick="ppStart(\'pull\')">'+ic('i-pull',14)+' PULLから開始</button>'+
       '</div></div>';
   }
   var isPush=next==='push';
   var color=isPush?'var(--blue)':'var(--pull)'; // ブランドのmaroonとは分離: PUSH=--blue / PULL=--pull（危険の--redとも別）
-  var bg=isPush?'var(--blue-bg)':'rgba(194,65,12,.10)';
+  var bg=isPush?'var(--blue-bg)':'var(--pull-bg)';
   var wd=ppNextWeightDay();
   var wdTxt=wd?'・'+ppDateLabel(wd.date):'';
   var lastRec=D.pp[D.pp.length-1];
@@ -1071,7 +1080,7 @@ function ppCardHtml(showCtrl){
   return '<div class="card" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem;background:linear-gradient(135deg,'+bg+',transparent 70%);'+borderStyle+'">'+
     todayStrong+
     '<div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:6px;display:flex;align-items:center;gap:5px">'+ic('i-dumbbell',13)+' 次のウエイト'+wdTxt+'</div>'+
-    '<div><span class="flag" style="background:'+color+';color:#fff;font-size:22px;padding:5px 16px 5px 12px">'+ic('i-'+(isPush?'push':'pull'),20)+' '+(isPush?'PUSH':'PULL')+'</span></div>'+
+    '<div><span class="flag" style="background:'+color+';color:var(--white);font-size:22px;padding:5px 16px 5px 12px">'+ic('i-'+(isPush?'push':'pull'),20)+' '+(isPush?'PUSH':'PULL')+'</span></div>'+
     '<div style="font-size:11px;color:var(--text-secondary);margin-top:8px">'+metaTxt+'</div>'+
     ctrlHtml+
     '</div>';
@@ -1409,7 +1418,7 @@ help:function(){
   '・復帰テストの状況確認<br>'+
   '</div></div>'+
   
-  '<div class="card" style="margin-bottom:12px;border-left:3px solid #0891B2">'+
+  '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--cyan-deep)">'+
   '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🩻 テーピング</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '<b>枠を設定：</b>「+ 今日/来週の枠を設定」<br>'+
@@ -1729,8 +1738,8 @@ function renderChartTimeline(iid){
     goal:'<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm1-13h-2v6l5 3 1-1.6-4-2.4V7z"/></svg>',
     edit:'<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>'
   };
-  var C={injury:'#EF4444',hospital:'#8B5CF6',eval:'#3B82F6',soap:'#10B981',stage:'#F59E0B',rtp:'#06B6D4',goal:'#EC4899',edit:'#64748B'};
-  var G={injury:'rgba(239,68,68,.6)',hospital:'rgba(139,92,246,.6)',eval:'rgba(59,130,246,.6)',soap:'rgba(16,185,129,.6)',stage:'rgba(245,158,11,.6)',rtp:'rgba(6,182,212,.6)',goal:'rgba(236,72,153,.6)',edit:'rgba(100,116,139,.6)'};
+  var C={injury:'var(--red-vivid)',hospital:'#8B5CF6',eval:'#3B82F6',soap:'var(--green-vivid)',stage:'var(--amber-vivid)',rtp:'var(--cyan)',goal:'var(--pink)',edit:'var(--slate)'};
+  var G={injury:'var(--red-glow)',hospital:'var(--purple-glow)',eval:'var(--blue-glow)',soap:'var(--green-glow)',stage:'var(--amber-glow)',rtp:'var(--cyan-glow)',goal:'var(--pink-glow)',edit:'var(--slate-glow)'};
 
   // 1. 受傷
   events.push({date:inj.date,type:'injury',title:'受傷',desc:(inj.side||'')+inj.part+' '+inj.type+(inj.note?'<br>'+escapeHtml(inj.note):'')});
@@ -1758,7 +1767,7 @@ function renderChartTimeline(iid){
     var metrics='';
     if(ev.pain){
       var maxP=Math.max(ev.pain.rest||0,ev.pain.motion||0,ev.pain.night||0,ev.pain.press||0);
-      var pc=maxP>=7?'#EF4444':maxP>=4?'#F59E0B':'#10B981';
+      var pc=maxP>=7?'var(--red-vivid)':maxP>=4?'var(--amber-vivid)':'var(--green-vivid)';
       metrics+='<span class="tl-metric" style="color:'+pc+'">😣 痛み '+maxP+'/10</span>';
     }
     if(ev.rom){var romKeys=Object.keys(ev.rom);if(romKeys.length){var r0=ev.rom[romKeys[0]];if(r0)metrics+='<span class="tl-metric">📐 ROM '+r0+'°</span>';}}
@@ -1814,16 +1823,16 @@ function renderChartTimeline(iid){
   // ヘッダー統計
   var daysSince=Math.floor((new Date(todayStr())-new Date(inj.date))/86400000);
   var h='<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">'+
-    '<div style="flex:1;min-width:90px;background:linear-gradient(135deg,#3B82F6,#2563EB);border-radius:12px;padding:12px 14px;color:#fff;box-shadow:0 4px 14px rgba(59,130,246,.3)"><div style="font-size:24px;font-weight:800;line-height:1">'+daysSince+'</div><div style="font-size:11px;opacity:.9;margin-top:2px">受傷からの日数</div></div>'+
-    '<div style="flex:1;min-width:90px;background:linear-gradient(135deg,#10B981,#059669);border-radius:12px;padding:12px 14px;color:#fff;box-shadow:0 4px 14px rgba(16,185,129,.3)"><div style="font-size:24px;font-weight:800;line-height:1">'+events.filter(function(e){return e.type==='eval';}).length+'</div><div style="font-size:11px;opacity:.9;margin-top:2px">評価回数</div></div>'+
-    '<div style="flex:1;min-width:90px;background:linear-gradient(135deg,#F59E0B,#D97706);border-radius:12px;padding:12px 14px;color:#fff;box-shadow:0 4px 14px rgba(245,158,11,.3)"><div style="font-size:24px;font-weight:800;line-height:1">'+events.length+'</div><div style="font-size:11px;opacity:.9;margin-top:2px">記録イベント</div></div>'+
+    '<div style="flex:1;min-width:90px;background:linear-gradient(135deg,var(--blue),var(--accent-d));border-radius:12px;padding:12px 14px;color:var(--white);box-shadow:0 4px 14px var(--blue-a30)"><div style="font-size:24px;font-weight:800;line-height:1">'+daysSince+'</div><div style="font-size:11px;opacity:.9;margin-top:2px">受傷からの日数</div></div>'+
+    '<div style="flex:1;min-width:90px;background:linear-gradient(135deg,var(--green-vivid),var(--green-deep));border-radius:12px;padding:12px 14px;color:var(--white);box-shadow:0 4px 14px var(--green-a30)"><div style="font-size:24px;font-weight:800;line-height:1">'+events.filter(function(e){return e.type==='eval';}).length+'</div><div style="font-size:11px;opacity:.9;margin-top:2px">評価回数</div></div>'+
+    '<div style="flex:1;min-width:90px;background:linear-gradient(135deg,var(--amber-vivid),var(--amber-deep));border-radius:12px;padding:12px 14px;color:var(--white);box-shadow:0 4px 14px var(--amber-a30)"><div style="font-size:24px;font-weight:800;line-height:1">'+events.length+'</div><div style="font-size:11px;opacity:.9;margin-top:2px">記録イベント</div></div>'+
     '</div>';
 
   // タイムライン本体
   h+='<div class="tl-wrap">';
   events.forEach(function(ev){
     var col=C[ev.type]||'#3B82F6';
-    var glow=G[ev.type]||'rgba(59,130,246,.6)';
+    var glow=G[ev.type]||'var(--blue-glow)';
     var futureStyle=ev._future?'opacity:.75;border-style:dashed':'';
     h+='<div class="tl-item" style="--tl-color:'+col+';--tl-glow:'+glow+'">'+
       '<div class="tl-line"></div>'+
@@ -2147,7 +2156,7 @@ function showEvalForm(iid,evalId){
   // 進捗チップ（上部固定・横スクロール）
   h+='<div id="ev-prog" style="position:sticky;z-index:50;background:var(--bg-app);padding:8px 0;margin-bottom:10px;display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch">';
   secs.forEach(function(s,i){
-    h+='<div id="evchip-'+i+'" onclick="evGoSec('+i+')" style="flex:0 0 auto;display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:99px;border:1px solid var(--border-tertiary);background:var(--bg-secondary);color:var(--text-secondary);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap"><span class="ev-chip-n" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,0.12);font-size:11px">'+(i+1)+'</span>'+s.label+'</div>';
+    h+='<div id="evchip-'+i+'" onclick="evGoSec('+i+')" style="flex:0 0 auto;display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:99px;border:1px solid var(--border-tertiary);background:var(--bg-secondary);color:var(--text-secondary);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap"><span class="ev-chip-n" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--white-a12);font-size:11px">'+(i+1)+'</span>'+s.label+'</div>';
   });
   h+='</div>';
   // セクション本体（アコーディオン）
@@ -2189,9 +2198,9 @@ function evGoSec(n,noScroll){
     if(chip){
       var active=(i===n),done=(i<n);
       chip.style.background=active?'var(--blue)':(done?'var(--green-bg)':'var(--bg-secondary)');
-      chip.style.color=active?'#fff':(done?'var(--green)':'var(--text-secondary)');
+      chip.style.color=active?'var(--white)':(done?'var(--green)':'var(--text-secondary)');
       chip.style.borderColor=active?'var(--blue)':(done?'var(--green)':'var(--border-tertiary)');
-      var nEl=chip.querySelector('.ev-chip-n');if(nEl){nEl.textContent=done?'✓':(i+1);nEl.style.background=active?'rgba(255,255,255,0.25)':(done?'var(--green-bg)':'rgba(255,255,255,0.12)');}
+      var nEl=chip.querySelector('.ev-chip-n');if(nEl){nEl.textContent=done?'✓':(i+1);nEl.style.background=active?'var(--white-a25)':(done?'var(--green-bg)':'var(--white-a12)');}
     }
   });
   var ac=document.getElementById('evchip-'+n);if(ac&&ac.scrollIntoView){try{ac.scrollIntoView({inline:'center',block:'nearest'});}catch(e){}}
@@ -2452,10 +2461,10 @@ function renderChartSOAP(iid){
         '<span style="font-weight:700">'+fmt(s.date)+(recorderName(s)?' <span style="font-size:11px;color:var(--text-secondary);font-weight:400">'+escapeHtml(recorderName(s))+'</span>':'')+'</span>'+
         '<div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="showSOAPForm('+iid+',\''+s.id+'\')">編集</button><button class="btn btn-sm btn-d" onclick="delSOAP('+iid+',\''+s.id+'\')">削除</button></div>'+
         '</div>';
-      if(s.s)h+='<div class="soap-line"><span class="soap-tag" style="background:#3B82F6">S</span><span>'+escapeHtml(s.s)+'</span></div>';
-      if(s.o)h+='<div class="soap-line"><span class="soap-tag" style="background:#0E9F6E">O</span><span>'+escapeHtml(s.o)+'</span></div>';
-      if(s.a)h+='<div class="soap-line"><span class="soap-tag" style="background:#FBBF24">A</span><span>'+escapeHtml(s.a)+'</span></div>';
-      if(s.p)h+='<div class="soap-line"><span class="soap-tag" style="background:#A78BFA">P</span><span>'+escapeHtml(s.p)+'</span></div>';
+      if(s.s)h+='<div class="soap-line"><span class="soap-tag" style="background:var(--blue)">S</span><span>'+escapeHtml(s.s)+'</span></div>';
+      if(s.o)h+='<div class="soap-line"><span class="soap-tag" style="background:var(--soap-o)">O</span><span>'+escapeHtml(s.o)+'</span></div>';
+      if(s.a)h+='<div class="soap-line"><span class="soap-tag" style="background:var(--amber)">A</span><span>'+escapeHtml(s.a)+'</span></div>';
+      if(s.p)h+='<div class="soap-line"><span class="soap-tag" style="background:var(--purple)">P</span><span>'+escapeHtml(s.p)+'</span></div>';
       if(s.menu)h+='<div style="margin-top:8px;padding:8px;background:var(--bg-secondary);border-radius:6px;font-size:12px"><b>実施メニュー:</b> '+escapeHtml(s.menu)+'</div>';
       h+='</div>';
     });
@@ -2470,12 +2479,12 @@ function showSOAPForm(iid,soapId){
   var oDraft=isEdit?'':buildSOAPObjectiveDraft(iid); // ⑨ 新規時のみO欄の下書き候補を用意
   var h='<div style="max-width:600px">';
   h+='<div class="form-box"><div class="form-title">記録日</div><input type="date" class="ipt" id="sp-date" value="'+(s.date||todayStr())+'"></div>';
-  h+='<div class="form-box"><div class="form-title"><span class="soap-tag" style="background:#3B82F6">S</span> 主観的情報（選手の訴え）</div><textarea class="ipt" id="sp-s" placeholder="例：歩行時に膝の内側が痛む。階段の下りがつらい。" style="min-height:60px">'+escapeHtml(s.s||'')+'</textarea></div>';
-  h+='<div class="form-box"><div class="form-title"><span class="soap-tag" style="background:#0E9F6E">O</span> 客観的情報（観察・測定した事実）</div><textarea class="ipt" id="sp-o" placeholder="例：膝関節屈曲110°、腫脹軽度残存、圧痛(+)。" style="min-height:60px">'+escapeHtml(s.o||'')+'</textarea>'+
+  h+='<div class="form-box"><div class="form-title"><span class="soap-tag" style="background:var(--blue)">S</span> 主観的情報（選手の訴え）</div><textarea class="ipt" id="sp-s" placeholder="例：歩行時に膝の内側が痛む。階段の下りがつらい。" style="min-height:60px">'+escapeHtml(s.s||'')+'</textarea></div>';
+  h+='<div class="form-box"><div class="form-title"><span class="soap-tag" style="background:var(--soap-o)">O</span> 客観的情報（観察・測定した事実）</div><textarea class="ipt" id="sp-o" placeholder="例：膝関節屈曲110°、腫脹軽度残存、圧痛(+)。" style="min-height:60px">'+escapeHtml(s.o||'')+'</textarea>'+
     (oDraft?'<button class="btn btn-sm" style="margin-top:8px" onclick="insertSOAPDraft('+iid+')">📥 直近の評価から下書きを挿入</button><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">'+escapeHtml(oDraft)+'</div>':'')+
     '</div>';
-  h+='<div class="form-box"><div class="form-title"><span class="soap-tag" style="background:#FBBF24">A</span> 評価（考察・判断）</div><textarea class="ipt" id="sp-a" placeholder="例：可動域改善傾向。炎症は鎮静化しつつある。" style="min-height:60px">'+escapeHtml(s.a||'')+'</textarea></div>';
-  h+='<div class="form-box"><div class="form-title"><span class="soap-tag" style="background:#A78BFA">P</span> 計画（次の方針）</div><textarea class="ipt" id="sp-p" placeholder="例：来週からジョギング開始予定。可動域訓練継続。" style="min-height:60px">'+escapeHtml(s.p||'')+'</textarea></div>';
+  h+='<div class="form-box"><div class="form-title"><span class="soap-tag" style="background:var(--amber)">A</span> 評価（考察・判断）</div><textarea class="ipt" id="sp-a" placeholder="例：可動域改善傾向。炎症は鎮静化しつつある。" style="min-height:60px">'+escapeHtml(s.a||'')+'</textarea></div>';
+  h+='<div class="form-box"><div class="form-title"><span class="soap-tag" style="background:var(--purple)">P</span> 計画（次の方針）</div><textarea class="ipt" id="sp-p" placeholder="例：来週からジョギング開始予定。可動域訓練継続。" style="min-height:60px">'+escapeHtml(s.p||'')+'</textarea></div>';
   h+='<div class="form-box"><div class="form-title">🏋️ 実施したメニュー</div><textarea class="ipt" id="sp-menu" placeholder="例：温熱療法10分、可動域訓練、大腿四頭筋セッティング3×15" style="min-height:50px">'+escapeHtml(s.menu||'')+'</textarea></div>';
   h+='<div class="form-box"><div class="form-title">記録者</div><input class="ipt" id="sp-author" value="'+escapeHtml(s.author||'')+'" placeholder="記録した人の名前"></div>';
   h+='<div style="display:flex;gap:8px"><button class="btn btn-back" onclick="chartTab(\'soap\')">キャンセル</button><button class="btn btn-p" style="flex:1" onclick="saveSOAP('+iid+','+(isEdit?'\''+soapId+'\'':'null')+',this)">💾 保存</button></div>';
@@ -2675,9 +2684,9 @@ function openChart(iid,initTab){window._subViewActive=true;
   var hero='<div class="chart-hero">'+
     '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
     avH(p,48)+
-    '<div style="flex:1;min-width:140px"><div style="font-size:18px;font-weight:800;color:#fff">'+escapeHtml(p.name)+'</div>'+
-    '<div style="font-size:12px;color:#A9B8CE;margin-top:2px">'+(p.position||'-')+' ・ '+(p.year||'?')+'年</div></div>'+
-    '<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:#fff">'+(inj.side||'')+inj.part+'</div>'+
+    '<div style="flex:1;min-width:140px"><div style="font-size:18px;font-weight:800;color:var(--white)">'+escapeHtml(p.name)+'</div>'+
+    '<div style="font-size:12px;color:var(--hero-sub);margin-top:2px">'+(p.position||'-')+' ・ '+(p.year||'?')+'年</div></div>'+
+    '<div style="text-align:right"><div style="font-size:14px;font-weight:700;color:var(--white)">'+(inj.side||'')+inj.part+'</div>'+
     '<div style="margin-top:4px"><span class="bd '+(inj.resolved?'bd-g':'bd-r')+'">'+(inj.resolved?'回復済':'治療中')+'</span></div></div>'+
     '</div></div>';
   var tabs='<div class="chart-tabs">'+
@@ -2748,7 +2757,7 @@ function goRehabPlayer(injId){window._subViewActive=true;
       var sd=rh.stageDates&&rh.stageDates[idx]?rh.stageDates[idx]:'';
       h+='<div style="display:flex;flex-direction:column;align-items:center;min-width:64px;flex:1;position:relative">'+
       (idx<STG.length-1?'<div style="position:absolute;top:13px;left:50%;width:100%;height:2.5px;background:'+(isDone?'var(--green)':'var(--border-tertiary)')+';z-index:1"></div>':'')+
-      '<div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;z-index:2;border:2.5px solid '+(isDone?'var(--green)':isCur?'var(--blue)':'var(--border-tertiary)')+';background:'+(isDone?'var(--green)':isCur?'var(--blue)':'var(--bg-primary)')+';color:'+(isDone||isCur?'#fff':'var(--text-secondary)')+'">'+( isDone?'✓':(idx+1))+'</div>'+
+      '<div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;z-index:2;border:2.5px solid '+(isDone?'var(--green)':isCur?'var(--blue)':'var(--border-tertiary)')+';background:'+(isDone?'var(--green)':isCur?'var(--blue)':'var(--bg-primary)')+';color:'+(isDone||isCur?'var(--white)':'var(--text-secondary)')+'">'+( isDone?'✓':(idx+1))+'</div>'+
       '<div style="font-size:10px;color:var(--text-secondary);margin-top:3px;text-align:center;line-height:1.3">'+STG[idx]+'</div>'+
       (sd?'<div style="font-size:10px;color:var(--green);font-weight:600">'+fmt(sd)+'</div>':'')+
       '</div>';
@@ -3061,7 +3070,7 @@ function renderChgChkGate(injId){
     return'<div style="background:var(--red-bg);border:1.5px solid var(--red);border-radius:var(--radius);padding:12px">'+
     '<div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:6px">⚠️ 今日は中断してください</div>'+
     '<div style="font-size:12px;line-height:1.6;margin-bottom:10px">'+flags.join('・')+'があります。炎症や組織への負担が増えているサインかもしれません。<b>自己判断でリハビリを進めず、スタッフに連絡して指示を仰いでください。</b></div>'+
-    '<button id="chgchk-esc-btn" onclick="escalateChgChk('+injId+',this)" style="width:100%;padding:10px;border-radius:var(--radius);border:1.5px solid var(--red);background:var(--red);color:#fff;font-size:14px;font-weight:700;cursor:pointer">📤 この内容をスタッフに連絡する</button>'+
+    '<button id="chgchk-esc-btn" onclick="escalateChgChk('+injId+',this)" style="width:100%;padding:10px;border-radius:var(--radius);border:1.5px solid var(--red);background:var(--red);color:var(--white);font-size:14px;font-weight:700;cursor:pointer">📤 この内容をスタッフに連絡する</button>'+
     '</div>';
   }
   return'<div style="background:var(--green-bg);border:1.5px solid var(--green);border-radius:var(--radius);padding:12px">'+

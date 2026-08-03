@@ -1,0 +1,577 @@
+{
+ "note": "P9a(2026-08-03)整備。ここに載る値は「var()化すると壊れる経路」に流れる生値のみ: chartjs=Chart.js/canvasはvar()文字列を解決できない / parse-sink=darkenForLight等のparseInt分解・c+'66'型hex連結 / firestore-seed=保存データのシード値 / svg-attr=プレゼンテーション属性 / mask-shape=アルファ形状。新規マークアップの色は必ずvar(--token)で書くこと（このリストへの安易な追加は禁止）。",
+ "allow": [
+  {
+   "value": "#000",
+   "category": "mask-shape",
+   "sites": [
+    "player"
+   ],
+   "reason": "mask-imageのアルファ形状定義（色でなくマスク形状。テーマ対象外）"
+  },
+  {
+   "value": "#046c48",
+   "category": "parse-sink",
+   "sites": [
+    "player",
+    "staff"
+   ],
+   "reason": "RTP_LEVELS。staff/trainerでlv.color+'18'等のhex連結アルファあり（playerのstyle利用と定数を跨サイトで統一保守）"
+  },
+  {
+   "value": "#0891b2",
+   "category": "chartjs",
+   "sites": [
+    "staff",
+    "trainer"
+   ],
+   "reason": "Chart.js専用パレット定数（painColors/romColors/barColors等）。canvas描画はvar()解決不可"
+  },
+  {
+   "value": "#0e9f6e",
+   "category": "parse-sink",
+   "sites": [
+    "coach",
+    "trainer"
+   ],
+   "reason": "coach RTP_DARK/rtpC。hexA()がparseInt/sliceで分解しrgba生成"
+  },
+  {
+   "value": "#0f766e",
+   "category": "chartjs",
+   "sites": [
+    "staff"
+   ],
+   "reason": "Chart.js専用パレット定数（painColors/romColors/barColors等）。canvas描画はvar()解決不可"
+  },
+  {
+   "value": "#185fa5",
+   "category": "chartjs",
+   "sites": [
+    "player"
+   ],
+   "reason": "switchPhysGraphの種目設定色。Chart.jsへ渡り、c.color+'22'のhex連結もあり"
+  },
+  {
+   "value": "#1d4ed8",
+   "category": "parse-sink",
+   "sites": [
+    "player",
+    "staff"
+   ],
+   "reason": "RTP_LEVELS。staff/trainerでlv.color+'18'等のhex連結アルファあり（playerのstyle利用と定数を跨サイトで統一保守）"
+  },
+  {
+   "value": "#1d9e75",
+   "category": "chartjs",
+   "sites": [
+    "player"
+   ],
+   "reason": "switchPhysGraphの種目設定色。Chart.jsへ渡り、c.color+'22'のhex連結もあり"
+  },
+  {
+   "value": "#1fa2ff",
+   "category": "svg-attr",
+   "sites": [
+    "coach"
+   ],
+   "reason": "SVG <stop>のプレゼンテーション属性（スパークライン/リング用グラデ定義）"
+  },
+  {
+   "value": "#35e89c",
+   "category": "svg-attr",
+   "sites": [
+    "coach"
+   ],
+   "reason": "SVG <stop>のプレゼンテーション属性（スパークライン/リング用グラデ定義）"
+  },
+  {
+   "value": "#3b82f6",
+   "category": "svg-attr",
+   "sites": [
+    "coach",
+    "staff",
+    "trainer"
+   ],
+   "reason": "SVG <stop>のプレゼンテーション属性（スパークライン/リング用グラデ定義）"
+  },
+  {
+   "value": "#3df0a4",
+   "category": "parse-sink",
+   "sites": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "reason": "badgeColorの種別色。呼び出し側でdarkenForLight/hex連結アルファに流れる"
+  },
+  {
+   "value": "#4338ca",
+   "category": "chartjs",
+   "sites": [
+    "staff"
+   ],
+   "reason": "Chart.js専用パレット定数（painColors/romColors/barColors等）。canvas描画はvar()解決不可"
+  },
+  {
+   "value": "#534ab7",
+   "category": "chartjs",
+   "sites": [
+    "player"
+   ],
+   "reason": "switchPhysGraphの種目設定色。Chart.jsへ渡り、c.color+'22'のhex連結もあり"
+  },
+  {
+   "value": "#5fa8ff",
+   "category": "parse-sink",
+   "sites": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "reason": "badgeColorの種別色。呼び出し側でdarkenForLight/hex連結アルファに流れる"
+  },
+  {
+   "value": "#6d52d6",
+   "category": "parse-sink",
+   "sites": [
+    "player",
+    "staff"
+   ],
+   "reason": "RTP_LEVELS。staff/trainerでlv.color+'18'等のhex連結アルファあり（playerのstyle利用と定数を跨サイトで統一保守）"
+  },
+  {
+   "value": "#6e5a5c",
+   "category": "chartjs",
+   "sites": [
+    "player",
+    "staff"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "#6fe3e1",
+   "category": "firestore-seed",
+   "sites": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "reason": "ランク色=Firestore保存データ(std)のシード。darkenForLight(parseInt分解)とhex連結アルファの対象"
+  },
+  {
+   "value": "#854f0b",
+   "category": "chartjs",
+   "sites": [
+    "player"
+   ],
+   "reason": "switchPhysGraphの種目設定色。Chart.jsへ渡り、c.color+'22'のhex連結もあり"
+  },
+  {
+   "value": "#8a7578",
+   "category": "parse-sink",
+   "sites": [
+    "player"
+   ],
+   "reason": "ランク色フォールバック。darkenForLight(parseInt分解)へ流れる"
+  },
+  {
+   "value": "#8b5cf6",
+   "category": "parse-sink",
+   "sites": [
+    "coach",
+    "trainer"
+   ],
+   "reason": "RTP_LEVELS。staff/trainerでlv.color+'18'等のhex連結アルファあり（playerのstyle利用と定数を跨サイトで統一保守）"
+  },
+  {
+   "value": "#8d0000",
+   "category": "chartjs",
+   "sites": [
+    "staff"
+   ],
+   "reason": "Chart.js専用パレット定数（painColors/romColors/barColors等）。canvas描画はvar()解決不可"
+  },
+  {
+   "value": "#93a4bc",
+   "category": "chartjs",
+   "sites": [
+    "coach"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "#9a3412",
+   "category": "chartjs",
+   "sites": [
+    "staff"
+   ],
+   "reason": "Chart.js専用パレット定数（painColors/romColors/barColors等）。canvas描画はvar()解決不可"
+  },
+  {
+   "value": "#9daec7",
+   "category": "parse-sink",
+   "sites": [
+    "coach"
+   ],
+   "reason": "coach RTP_DARK/rtpC。hexA()がparseInt/sliceで分解しrgba生成"
+  },
+  {
+   "value": "#a16207",
+   "category": "parse-sink",
+   "sites": [
+    "player",
+    "staff"
+   ],
+   "reason": "RTP_LEVELS。staff/trainerでlv.color+'18'等のhex連結アルファあり（playerのstyle利用と定数を跨サイトで統一保守）"
+  },
+  {
+   "value": "#a32d2d",
+   "category": "chartjs",
+   "sites": [
+    "player"
+   ],
+   "reason": "switchPhysGraphの種目設定色。Chart.jsへ渡り、c.color+'22'のhex連結もあり"
+  },
+  {
+   "value": "#a78bfa",
+   "category": "svg-attr",
+   "sites": [
+    "staff",
+    "trainer"
+   ],
+   "reason": "SVG <stop>のプレゼンテーション属性（スパークライン/リング用グラデ定義）"
+  },
+  {
+   "value": "#b45309",
+   "category": "chartjs",
+   "sites": [
+    "player",
+    "staff"
+   ],
+   "reason": "Chart.js専用パレット定数（painColors/romColors/barColors等）。canvas描画はvar()解決不可"
+  },
+  {
+   "value": "#b91c1c",
+   "category": "parse-sink",
+   "sites": [
+    "player",
+    "staff"
+   ],
+   "reason": "RTP_LEVELS。staff/trainerでlv.color+'18'等のhex連結アルファあり（playerのstyle利用と定数を跨サイトで統一保守）"
+  },
+  {
+   "value": "#be185d",
+   "category": "chartjs",
+   "sites": [
+    "staff"
+   ],
+   "reason": "Chart.js専用パレット定数（painColors/romColors/barColors等）。canvas描画はvar()解決不可"
+  },
+  {
+   "value": "#c084fc",
+   "category": "firestore-seed",
+   "sites": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "reason": "ランク色=Firestore保存データ(std)のシード。darkenForLight(parseInt分解)とhex連結アルファの対象"
+  },
+  {
+   "value": "#c1121f",
+   "category": "chartjs",
+   "sites": [
+    "player"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "#c2410c",
+   "category": "parse-sink",
+   "sites": [
+    "player",
+    "staff"
+   ],
+   "reason": "RTP_LEVELS。staff/trainerでlv.color+'18'等のhex連結アルファあり（playerのstyle利用と定数を跨サイトで統一保守）"
+  },
+  {
+   "value": "#c7a4ff",
+   "category": "parse-sink",
+   "sites": [
+    "coach"
+   ],
+   "reason": "coach RTP_DARK/rtpC。hexA()がparseInt/sliceで分解しrgba生成"
+  },
+  {
+   "value": "#c9d4e4",
+   "category": "firestore-seed",
+   "sites": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "reason": "ランク色=Firestore保存データ(std)のシード。darkenForLight(parseInt分解)とhex連結アルファの対象"
+  },
+  {
+   "value": "#d85a30",
+   "category": "chartjs",
+   "sites": [
+    "player"
+   ],
+   "reason": "switchPhysGraphの種目設定色。Chart.jsへ渡り、c.color+'22'のhex連結もあり"
+  },
+  {
+   "value": "#dc2b2b",
+   "category": "parse-sink",
+   "sites": [
+    "coach",
+    "trainer"
+   ],
+   "reason": "RTP_LEVELS。staff/trainerでlv.color+'18'等のhex連結アルファあり（playerのstyle利用と定数を跨サイトで統一保守）"
+  },
+  {
+   "value": "#e8a05c",
+   "category": "firestore-seed",
+   "sites": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "reason": "ランク色=Firestore保存データ(std)のシード。darkenForLight(parseInt分解)とhex連結アルファの対象"
+  },
+  {
+   "value": "#f97316",
+   "category": "parse-sink",
+   "sites": [
+    "coach",
+    "trainer"
+   ],
+   "reason": "RTP_LEVELS。staff/trainerでlv.color+'18'等のhex連結アルファあり（playerのstyle利用と定数を跨サイトで統一保守）"
+  },
+  {
+   "value": "#fbbf24",
+   "category": "parse-sink",
+   "sites": [
+    "coach",
+    "trainer"
+   ],
+   "reason": "RTP_LEVELS。staff/trainerでlv.color+'18'等のhex連結アルファあり（playerのstyle利用と定数を跨サイトで統一保守）"
+  },
+  {
+   "value": "#ff7a9c",
+   "category": "parse-sink",
+   "sites": [
+    "player",
+    "staff"
+   ],
+   "reason": "badgeColorの種別色。呼び出し側でdarkenForLight/hex連結アルファに流れる"
+  },
+  {
+   "value": "#ff7b7b",
+   "category": "parse-sink",
+   "sites": [
+    "coach"
+   ],
+   "reason": "coach RTP_DARK/rtpC。hexA()がparseInt/sliceで分解しrgba生成"
+  },
+  {
+   "value": "#ffa45c",
+   "category": "parse-sink",
+   "sites": [
+    "coach"
+   ],
+   "reason": "coach RTP_DARK/rtpC。hexA()がparseInt/sliceで分解しrgba生成"
+  },
+  {
+   "value": "#ffc069",
+   "category": "parse-sink",
+   "sites": [
+    "coach"
+   ],
+   "reason": "coach RTP_DARK/rtpC。hexA()がparseInt/sliceで分解しrgba生成"
+  },
+  {
+   "value": "#ffd24a",
+   "category": "firestore-seed",
+   "sites": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "reason": "ランク色=Firestore保存データ(std)のシード。darkenForLight(parseInt分解)とhex連結アルファの対象"
+  },
+  {
+   "value": "rgba(109,82,214,0)",
+   "category": "chartjs",
+   "sites": [
+    "staff"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(109,82,214,0.10)",
+   "category": "chartjs",
+   "sites": [
+    "staff"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(109,82,214,0.18)",
+   "category": "chartjs",
+   "sites": [
+    "player"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(180,83,9,0)",
+   "category": "chartjs",
+   "sites": [
+    "player",
+    "staff"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(180,83,9,0.16)",
+   "category": "chartjs",
+   "sites": [
+    "staff"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(180,83,9,0.18)",
+   "category": "chartjs",
+   "sites": [
+    "player"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(180,83,9,0.20)",
+   "category": "chartjs",
+   "sites": [
+    "player"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(194,65,12,0.18)",
+   "category": "chartjs",
+   "sites": [
+    "player"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(255,192,105,.2)",
+   "category": "chartjs",
+   "sites": [
+    "coach"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(255,255,255,.06)",
+   "category": "chartjs",
+   "sites": [
+    "coach"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(29,78,216,0)",
+   "category": "chartjs",
+   "sites": [
+    "player",
+    "staff"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(29,78,216,0.16)",
+   "category": "chartjs",
+   "sites": [
+    "staff"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(29,78,216,0.18)",
+   "category": "chartjs",
+   "sites": [
+    "player"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(29,78,216,0.20)",
+   "category": "chartjs",
+   "sites": [
+    "player"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(4,108,72,0)",
+   "category": "chartjs",
+   "sites": [
+    "player",
+    "staff"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(4,108,72,0.16)",
+   "category": "chartjs",
+   "sites": [
+    "staff"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(4,108,72,0.18)",
+   "category": "chartjs",
+   "sites": [
+    "player"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(4,108,72,0.20)",
+   "category": "chartjs",
+   "sites": [
+    "player"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(60,10,12,0.08)",
+   "category": "chartjs",
+   "sites": [
+    "player",
+    "staff"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(61,240,164,.2)",
+   "category": "chartjs",
+   "sites": [
+    "coach"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  },
+  {
+   "value": "rgba(95,168,255,.2)",
+   "category": "chartjs",
+   "sites": [
+    "coach"
+   ],
+   "reason": "Chart.jsデータセット/軸設定に渡る色（mk/mkSetヘルパー引数・options）。var()解決不可"
+  }
+ ]
+}

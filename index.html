@@ -19,7 +19,8 @@
   --font-sans:'Zen Kaku Gothic New',-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans JP',sans-serif;
   --font-num:'Overpass',var(--font-sans);
   --radius-lg:16px;
-}
+  /* P9a: 生hex/rgba残渣一掃で新設したトークン */
+  --maroon-a16:rgba(141,0,0,.16);--white-a14:rgba(255,255,255,.14);--white-a80:rgba(255,255,255,.8);--white-a85:rgba(255,255,255,.85);--white-a90:rgba(255,255,255,.9);}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:var(--font-sans);background:var(--bg-app);color:var(--text-primary);-webkit-font-smoothing:antialiased}
 .kicker{font-family:var(--font-num);font-style:italic;font-weight:800;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-hot)}
@@ -33,16 +34,16 @@ body{font-family:var(--font-sans);background:var(--bg-app);color:var(--text-prim
    各レイヤーは幅2pxのno-repeatタイル→%配置が有効に効く(全幅タイルだと位相ゼロで無効化されるため) */
 .pitch-lines{position:absolute;inset:0;pointer-events:none;opacity:.16;
   background-image:
-    linear-gradient(90deg,rgba(255,255,255,.9),rgba(255,255,255,.9)),
-    linear-gradient(90deg,rgba(255,255,255,.85),rgba(255,255,255,.85)),
-    linear-gradient(90deg,rgba(255,255,255,.85),rgba(255,255,255,.85)),
-    repeating-linear-gradient(0deg,rgba(255,255,255,.8) 0 7px,transparent 7px 15px),
-    repeating-linear-gradient(0deg,rgba(255,255,255,.8) 0 7px,transparent 7px 15px);
+    linear-gradient(90deg,var(--white-a90),var(--white-a90)),
+    linear-gradient(90deg,var(--white-a85),var(--white-a85)),
+    linear-gradient(90deg,var(--white-a85),var(--white-a85)),
+    repeating-linear-gradient(0deg,var(--white-a80) 0 7px,transparent 7px 15px),
+    repeating-linear-gradient(0deg,var(--white-a80) 0 7px,transparent 7px 15px);
   background-size:2px 100%,2px 100%,2px 100%,2px 100%,2px 100%;
   background-position:50% 0,22% 0,78% 0,37% 0,63% 0;
   background-repeat:no-repeat;
 }
-.ghost-num{position:absolute;pointer-events:none;user-select:none;-webkit-user-select:none;z-index:0;font:italic 900 168px/1 var(--font-num);color:transparent;-webkit-text-stroke:2px rgba(255,255,255,.14);right:-18px;top:-6px;line-height:1}
+.ghost-num{position:absolute;pointer-events:none;user-select:none;-webkit-user-select:none;z-index:0;font:italic 900 168px/1 var(--font-num);color:transparent;-webkit-text-stroke:2px var(--white-a14);right:-18px;top:-6px;line-height:1}
 .hero>*{position:relative;z-index:1}
 .ball-ic{color:var(--pale);opacity:.9}
 .hero h1{font-size:24px;font-weight:900;letter-spacing:.01em;margin:14px 0 6px}
@@ -56,7 +57,7 @@ body{font-family:var(--font-sans);background:var(--bg-app);color:var(--text-prim
 .wrap{max-width:520px;margin:0 auto;padding:0 20px 48px}
 .gates{display:flex;flex-direction:column;gap:14px;margin-top:-28px}
 .gate{position:relative;display:flex;align-items:center;gap:16px;padding:20px;background:var(--bg-primary);border-radius:var(--radius-lg);text-decoration:none;color:var(--text-primary);box-shadow:var(--shadow-md);border:1px solid var(--border-tertiary);transition:transform .16s ease,box-shadow .16s ease}
-.gate:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(141,0,0,.16)}
+.gate:hover{transform:translateY(-2px);box-shadow:0 14px 30px var(--maroon-a16)}
 .gate:active{transform:translateY(0)}
 .gate .icon{flex-shrink:0;width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:var(--pale);color:var(--maroon)}
 .gate .info{flex:1;text-align:left}

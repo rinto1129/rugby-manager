@@ -189,24 +189,60 @@ def check(update=False):
     return 0
 
 HEX_RE = re.compile(r'#[0-9a-fA-F]{3,8}\b')
-RGBA_RE = re.compile(r'rgba?\([^)]*\)')
+# 先頭が数字/小数点のもののみ＝色リテラル（"rgba('+r+','+g+..." のような組み立てテンプレートを除外）
+RGBA_RE = re.compile(r'rgba?\(\s*[\d.][^)]*\)')
+# Chart.js/canvasの色はJS文字列で、var()を解決できない＝生値が唯一の書き方。
+# この文脈の行は違反に数えず情報表示のみ（新規チャート色の生値は許容仕様）。
+# (?<!style\.) = el.style.borderColor 等のDOM style代入はCSSシンク（var()可）なので免除しない
+CHART_CANVAS_CTX = re.compile(
+    r'(?<!style\.)backgroundColor|(?<!style\.)borderColor|pointBackground|Chart\.defaults|new Chart|datasets'
+    r'|titleColor|bodyColor'
+    r'|fillStyle|strokeStyle|addColorStop|createLinearGradient|createRadialGradient', re.I)
+
+def mask_root_block(src):
+    """:root{...}（トークン定義の正典）を残渣スキャンから除外する。"""
+    a = src.find(':root{')
+    if a < 0: return src
+    end = match_braces(src, src.find('{', a))
+    if end < 0: return src
+    return src[:a] + '\n' * src[a:end].count('\n') + src[end:]
 
 def residue():
-    allow = set()
+    # residue_allow.json: {"allow":[{"value":"#e8a05c","category":"...","reason":"..."}]}
+    # 旧形式（値文字列の配列）も受ける。
+    allow = {}
     if os.path.exists(RESIDUE_ALLOW):
-        allow = set(json.load(open(RESIDUE_ALLOW, encoding='utf-8')).get('allow', []))
-    total = 0
+        for e in json.load(open(RESIDUE_ALLOW, encoding='utf-8')).get('allow', []):
+            if isinstance(e, str):
+                allow[e.lower()] = 'allow'
+            else:
+                allow[e['value'].replace(' ', '').lower()] = e.get('category', 'allow')
+    total, chart_total = 0, 0
+    from collections import Counter
     for site in SITES:
-        src = read(site)
-        hexes = [h for h in HEX_RE.findall(src) if h.lower() not in allow]
-        rgbas = [r for r in RGBA_RE.findall(src) if r.replace(' ', '').lower() not in allow]
-        print('%-8s hex=%d rgba=%d' % (site, len(hexes), len(rgbas)))
-        from collections import Counter
-        for v, c in Counter(h.lower() for h in hexes).most_common(8):
+        src = mask_root_block(read(site))
+        viol, chart_ok, allowed = [], 0, 0
+        for line in src.split('\n'):
+            vals = [h.lower() for h in HEX_RE.findall(line)] + \
+                   [r.replace(' ', '').lower() for r in RGBA_RE.findall(line)]
+            if not vals: continue
+            if CHART_CANVAS_CTX.search(line):
+                chart_ok += len(vals)
+                continue
+            for v in vals:
+                if v in allow: allowed += 1
+                else: viol.append(v)
+        print('%-8s 違反=%d 許可済=%d chart/canvas文脈=%d' % (site, len(viol), allowed, chart_ok))
+        for v, c in Counter(viol).most_common(10):
             print('   %s x%d' % (v, c))
-        total += len(hexes) + len(rgbas)
-    print('--- residue total=%d %s' % (total, '(許可リスト未整備=基線報告モード)' if not allow else ''))
-    return 0
+        total += len(viol)
+        chart_total += chart_ok
+    if not allow:
+        print('--- residue total=%d (許可リスト未整備=基線報告モード)' % total)
+        return 0
+    print('--- residue total=%d (chart/canvas文脈%d箇所は対象外) %s' % (
+        total, chart_total, 'OK' if total == 0 else 'NG=生hex/rgba残渣あり'))
+    return 0 if total == 0 else 1
 
 if __name__ == '__main__':
     if '--residue' in sys.argv:

@@ -33,7 +33,7 @@ ok('メニュー名表示',has(h,'テストメニュー'));
 // 弱点=FOCUSバッジ数（本体+処方箋の2件のみ）
 var badgeCount=(h.match(/>FOCUS</g)||[]).length;
 ok('FOCUSバッジは2件（本体+処方箋）',badgeCount===2);
-ok('maroonの強調枠あり',has(h,'border-left:3px solid var(--maroon-vivid);box-shadow:0 0 14px rgba(141,0,0,.14);'));
+ok('maroonの強調枠あり',has(h,'border-left:3px solid var(--maroon-vivid);box-shadow:0 0 14px var(--maroon-a14);'));
 
 // カードごとの区切りで検証（tr-ex-card-N。style属性はid属性より前に出るので開始タグ<div class="card"から取る）
 function cardHtml(idx){

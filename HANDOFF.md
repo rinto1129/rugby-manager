@@ -7,8 +7,16 @@
 ---
 
 ## 最終更新
-- 日時: 2026-08-03（**🔴v2プラン: P8a〜P8e push済み（`2ae7860`）＋既存赤3件を相対日付化で解消。→ 次は P9a-c**）
+- 日時: 2026-08-03（**🔴v2プラン: P9a「生hex/rgba残渣一掃」実装完了・push前。→ ユーザー確認後push、次は P9b**）
 - 更新者: Claude
+- **✅ P9a実装完了（push前）**: 生hex/rgba残渣を**406箇所 var(--token) 化**（player/staff/trainer/coach/landing 5ファイル・新トークン約240個を各:rootに整列追加）＋dev基盤3点（`sync_check.py` residue v2・`dev/audit/residue_allow.json`新設67値・`test_train_weak.js`期待値1行をvar()追随）＋`hex_ledger.json`再生成＋変換台帳`dev/audit/p9a_mapping.json`新設。検証: `run_tests.py`=**72 run/0 fail**・`sync_check.py`=**ALL SYNC OK**（ppCardHtml/roleTagのidentical同期は3サイト同名トークン`--pull-bg`/`--white`で維持）・**`--residue`=total 0でexit 0のゲート化達成**・jsc全サイト緑・ブラウザ読み取り専用巡回5サイト目視OK（コンソールにCSS/JS起因エラー0）。実装詳細↓。
+  - **手法**: ①全920出現を文脈分類したインベントリ構築（css-block/inline-style/chartjs/canvas/svg-attr/other-js/:root定義・identical所属つき）→②ワークフロー5体（4サイト消費先分析＋横断ハザード掃引）でCONVERT/KEEP全数判定→③決定論的Pythonスクリプトで行指定置換（ドライラン置換数=期待数の完全一致を確認後に書込）→④置換後の全var()参照の定義存在＋全置換規則のトークン値一致を機械検証。
+  - **KEEP判定（=residue_allow.json 67値・理由つき）**: var()化すると壊れる経路のみ残置。(a)`darkenForLight`のparseInt分解＋`c+'66'`型hex連結アルファ（バッジ/ランク色） (b)**ランク色=Firestore'std'保存データのシード**（STD_DEFAULT） (c)Chart.js/canvasのJS色文字列（var()解決不可） (d)SVG `stop-color=`プレゼンテーション属性 (e)mask-imageのアルファ形状#000。**CHT(Chart用JSパレット)は不採用**＝ダーク撤回で再テーマ価値が消滅＋プロパティtypoがsilent failure化するリスクのため（P0台帳の旧計画から変更）。
+  - **residue v2（sync_check.py）**: `--residue`が①:root（トークン定義の正典）をマスク②Chart/canvas文脈行を違反算入から除外（**`el.style.borderColor`等のDOM style代入はlookbehindで除外しない**＝CSSシンクを見逃さない）③rgba正規表現に数字要求（`'rgba('+r+','+g+...'`組み立てテンプレートの誤検知排除）④理由・カテゴリつき許可リスト照合。**違反>0でexit 1**＝以後のフェーズで機械ゲートとして使える。
+  - **🔑 レビュー由来の既存バグ修正3件（P9a変換とは独立の未定義参照）**: ①staff `var(--border)`（未定義→currentColorフォールバックで濃い罫線）→`var(--border-tertiary)`（同ファイル内5対0のprecedent） ②coach RCAT_BG/RCAT_COLORの「オフ」と P8e週報の進捗バーが`var(--bg-tertiary)`/`var(--text-secondary)`を参照するがcoachに未定義（**チップ背景が透明・バー軌道が消えていた**）→coach :rootに互換エイリアス`--bg-tertiary:var(--bg-elev)`/`--text-secondary:var(--txt-2)`を新設（4サイト共有語彙の定数をcoachでも成立させる恒久策） ③player `el.style.color='#fff'`3箇所が行内の`borderColor`語でChart文脈と誤免除→`var(--white)`化＋正規表現をlookbehindで是正。
+  - **RCAT系の跨サイト統一**: player/staffは`--cyan`/`--emerald`系、trainer/coachは`--cyan-deep`/`--green-deep`/`--cyan-pale`/`--green-pale`（同名・同値）でRCAT_COLOR/RCAT_BGを完全var()化（trainerのフィットネス色`#0891B2`取り残しも解消）。
+  - **敵対的レビュー**: サブエージェント5体が**使用量上限で全滅（P8と同状況）→メインループで反証を代替実施**: hex連結アルファ全箇所のソース健全性（player L2908の`c.color+'22'`はswitchPhysGraph設定=生値維持で安全・staff/trainer `lv.color+'18'`はRTP_LEVELS生値維持で安全・playerのRTP_LEVELSはvar()化したが消費先は全てHTML style文字列と確認）／AVC消費先=avHのみ／`var(--x)'+'NN'`連結パターン0件／:root一意・CSS括弧バランス0／`==='#`色比較はcal-importのコメント記法のみ（色と無関係）／CSSブロック内のChart文脈語誤免除0件。
+  - **プレビュー基盤の修理**: `.claude/launch.json`（git外）が旧セッションの消滅したscratchpadパスを指し全404だった→本セッションのscratchpad配下に`previewroot`（リポジトリへのsymlink集）を再構築して復旧。**プレビューは本番Firestore直結のため読み取り専用巡回のみ**（保存操作なし）を厳守した。
 - **✅ 旧「直してはいけない既存赤」3件は相対日付化済み（2026-08-03解消）**: `test_dash.js`/`test_engine.js`/`test_mystatus.js` の固定日付フィクスチャ（2026-05〜07月）が `getCurrentWeightInfo` の直近30日窓から経年脱落してFAILしていた件は、**フィクスチャ日付を `daysAgo(n)`（`toDateStr(new Date(Date.now()-n*86400000))`）の相対日付に書き換えて解消**。プロダクションコードは無変更（当時のHEAD抽出比較どおりコード側は正しかった）。`run_tests.py`=**67 run/0 fail** に復帰。今後の新テストも固定日付でなく相対日付でフィクスチャを書くこと。
 - **✅ P8「IA再編＋新機能」push済み `2ae7860`**。**player/staff/coach 3ファイル変更（trainerは無変更=P8e対象が既存実装で充足）**＋新テスト5本（`test_dyn_tabs`/`test_home_p8b`/`test_measure_result`/`test_staff_ia_p8d`/`test_p8e_coach`）＋既存テスト6本を新IAへ追随（`test_cond`/`test_dash`/`test_msess_alert`/`test_tgroup_player`/`test_today_prog`/`test_badge_ui_player`）。検証: `run_tests.py`=**72 run/3 fail（3失敗は既存の日付環境依存赤のみ・P8起因ゼロ）**＋`sync_check.py`=ALL SYNC OK＋敵対的レビュー（ワークフロー4視点find→所見ごと反証verify。**使用量クレジット切れで11体が未完走→未検証8所見と未実行のhome視点はメインループで裏取り**）→**確定13件を全処置**。**push単位=1（player+staff+coach+dev/＋HANDOFF、15ファイル）**。実装内容↓。
   - **P8a player動的タブ**: 5タブ[ホーム/体調(condition)/トレーニング⇔リハビリ(injury)/マイデータ/マイページ]。`NAV_ICON`/`navSlots()`/`hasActiveInjury()`/`renderNav()`（go()と`i`のonSnapshotから呼ぶ・タブキーは既存のまま=go()互換）。**未resolved怪我（承認前含む）で3枠目がリハビリに切替**・回復で`noticeTabRestored()`一度きり案内（**localStorageキーは`rm_rehabtab_<pid>`で選手スコープ**・setItem失敗時はトーストも抑止・報告取消/Undoは`syncRehabTabState()`先行同期で偽回復トースト抑止）。conditionタブ=当日サマリ+フォーム+過去一覧（保存/修正/削除の着地は`go('condition')`）。injuryタブ=治療中はタブヘッダー（ROAD TO RETURN・戻る無し）/回復後は従来のmypage配下。リハ系サブ画面（カルテ/痛み/リハ記録/週次/報告/編集）のshowSub backTabと完了着地を`injury`へ統一。**リハタブにトレーニング導線カード常設**（レビュー(6): 怪我中はナビからトレーニングが消え、非ウエイト日に履歴/自主トレ/休養へ到達不能だった）。mystatusは詳細ページとして温存しback先をmydataへ（プランの「go('mydata')リダイレクト」は正典=NOW+詳細=mystatusの2層で対応）。
@@ -106,8 +114,8 @@
 | P7c | 復帰フロー＋coach根拠＋承認ルール明文化＋トレーナー新規登録チップ | ✅ push済み `bf58d90`（61 run/0 fail・sync OK・敵対的レビュー4次元11体→2確定(low)修正）。svSafeSeq不使用（更新はchartUpdate/svSafeUpdate逐次）。承認ルール=trainer/staff起票即approved+approvedBy／player/match要承認 |
 | P7d | 1フォーム化（受傷=軽量版・リハ1画面・選手側1シート・saveQuickEval廃止・pp編集staff集約・ブロンコ統合） | ✅ push済み `d1f8eaf`（67 run/3 fail＝**3失敗はHEADでもNG項目バイト一致の既存赤**・sync OK・敵対的レビュー4視点→7所見(high1/medium3/low3)全処置）。**受傷1フォームは軽量版**（登録→診断タブ自動遷移。injDetail前倒し＋旧画面リダイレクトはmedicalが受診後判明のため不成立）。**bySelf/0埋め/同日ソートの汚染3件を修正**（P7a・P7bと同型の再発） |
 | P8 | IA再編＋新機能（player動的タブ/ホーム7ブロック/NO SIDE測定シート/staff6グループ+キュー+マトリクス/coach週報+検索） | ✅ push済み `2ae7860`（敵対的レビュー確定13件全処置。trainer無変更）。既存赤3件は別コミット`cb0e9c3`で相対日付化して解消＝**現在67 run/0 fail** |
-| P9a | 生hex/rgba残渣一掃（P0台帳から変換済み分を差引いた残渣ゼロへ） | ⬜ 次はここから着手 |
-| P9b | モチーフ・アニメ仕上げ（pitchProgressHtml汎用化+RTPフィールドマップ+trainer移植） | ⬜ |
+| P9a | 生hex/rgba残渣一掃（P0台帳から変換済み分を差引いた残渣ゼロへ） | ✅ 実装完了・push前（406箇所var()化・residue=0ゲート化・既存未定義参照バグ3件修正・72 run/0 fail・sync OK。CHTは不採用＝Chart色は許可リスト管理） |
+| P9b | モチーフ・アニメ仕上げ（pitchProgressHtml汎用化+RTPフィールドマップ+trainer移植） | ⬜ 次はここ |
 | P9c | 総回帰（38+新規テストP0基線比較・sync全量照合・全サイト目視巡回・CLAUDE.md/HANDOFF最終更新） | ⬜ |
 
 ### P0で新設した検証基盤（以後の全フェーズで使う）
@@ -147,7 +155,7 @@
 - guardSubmit(二重送信ガード)はplayerに導入済み。新規フォームには必ず適用（雛形v2に含む）
 
 ## リポジトリの状態
-- ブランチ: main。origin/main=`cb0e9c3`（P8 `2ae7860` ＋ 既存赤3件の相対日付化 `cb0e9c3`＝ともにpush済み）。この上に積む。push前に`git diff --stat`で対象外変更ゼロ確認済み
+- ブランチ: main。origin/main=`db93eda`（HANDOFF更新まで押込済み）。**ワーキングツリーにP9a一式が未コミット**: player/staff/trainer/coach/index.html＋dev/sync_check.py＋dev/test_train_weak.js＋dev/audit/{hex_ledger.json再生成, residue_allow.json新設, p9a_mapping.json新設}＋HANDOFF.md。**push単位=1（ユーザー確認待ち）**
 - テスト用選手「テスト選手」(CTB/1年, note=動作確認用)が本番に1名存在（削除可）
 - ⚠️ 検証はjsc模擬実行で完結（本番Firestore直結のためブラウザで代理編集/削除の保存ボタンは押さない）。最終目視はユーザーのCmd+Shift+R確認に委ねる
 - **バックグラウンドタスク完了・統合済み**: 既存赤3本のフィクスチャ相対日付化（task_3f0c3890）は別worktree(`.claude/worktrees/keen-kowalevski-01e4c2`)で完了→本セッションでcherry-pick統合し`cb0e9c3`としてpush済み。**現在`run_tests.py`=67 run/0 fail（全緑）**。当該worktree/ブランチ(`claude/keen-kowalevski-01e4c2`)は統合済みにつき今後不要（次回整理時に`git worktree remove`で片付けてよい）

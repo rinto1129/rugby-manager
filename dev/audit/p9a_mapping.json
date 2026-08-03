@@ -1,0 +1,2329 @@
+{
+ "player": {
+  "tokens_add": {
+   "white": "#fff",
+   "pull-bg": "rgba(194,65,12,.10)",
+   "cyan": "#0891B2",
+   "cyan-bg": "#E0F2FE",
+   "emerald": "#059669",
+   "emerald-bg": "#D1FAE5",
+   "amber-vivid": "#A16207",
+   "red-bright": "#F87171",
+   "red-flash": "#F5CBCB",
+   "paper": "#FFFDF6",
+   "speed-orange": "#F5821F",
+   "speed-orange-a13": "rgba(245,130,31,.13)",
+   "speed-orange-a0": "rgba(245,130,31,0)",
+   "silver-lt": "#B9C2CE",
+   "bronze-lt": "#C79067",
+   "gold-neon": "#ffd24a",
+   "pink-neon": "#ff9ab8",
+   "pink-glow": "rgba(255,160,190,.5)",
+   "pink-soft": "#ffd7dd",
+   "wine-d": "#5b0f1f",
+   "wine-a55": "rgba(139,26,45,.55)",
+   "wine-a75": "rgba(139,26,45,.75)",
+   "badge-bg-1": "#2a0810",
+   "badge-bg-2": "#5a0f2a",
+   "badge-bg-3": "#7a1233",
+   "badge-border": "rgba(255,140,165,.28)",
+   "badge-shadow": "rgba(150,20,55,.4)",
+   "badge-glow": "rgba(255,100,140,.12)",
+   "badge-label": "rgba(255,205,218,.85)",
+   "badge-unit": "rgba(255,220,160,.92)",
+   "badge-sub": "rgba(255,222,232,.72)",
+   "pitch-green-1": "#EDF7F1",
+   "pitch-green-2": "#E3F2E9",
+   "pitch-dot": "#CBDFD3",
+   "shift-am-a25": "rgba(59,130,246,.25)",
+   "shift-am-a55": "rgba(59,130,246,.55)",
+   "shift-pm-a25": "rgba(168,85,247,.25)",
+   "shift-pm-a55": "rgba(168,85,247,.55)",
+   "av1-bg": "#B5D4F4",
+   "av1-fg": "#0C447C",
+   "av2-bg": "#9FE1CB",
+   "av2-fg": "#085041",
+   "av3-bg": "#F5C4B3",
+   "av3-fg": "#712B13",
+   "av4-bg": "#FAC775",
+   "av4-fg": "#633806",
+   "av5-bg": "#F4C0D1",
+   "av5-fg": "#72243E",
+   "av6-bg": "#C0DD97",
+   "av6-fg": "#27500A",
+   "av7-bg": "#CECBF6",
+   "av7-fg": "#3C3489",
+   "maroon-a0": "rgba(141,0,0,0)",
+   "maroon-a07": "rgba(141,0,0,.07)",
+   "maroon-a10": "rgba(141,0,0,.10)",
+   "maroon-a14": "rgba(141,0,0,.14)",
+   "maroon-a18": "rgba(141,0,0,.18)",
+   "maroon-a24": "rgba(141,0,0,.24)",
+   "maroon-a38": "rgba(141,0,0,.38)",
+   "maroon-vivid-a12": "rgba(193,18,31,.12)",
+   "maroon-vivid-a18": "rgba(193,18,31,.18)",
+   "maroon-vivid-a20": "rgba(193,18,31,.20)",
+   "rose-a14": "rgba(189,109,109,.14)",
+   "rose-l-a55": "rgba(222,182,182,.55)",
+   "pale-a08": "rgba(245,233,233,.08)",
+   "pale-a55": "rgba(245,233,233,.55)",
+   "white-a0": "rgba(255,255,255,0)",
+   "white-a055": "rgba(255,255,255,.055)",
+   "white-a16": "rgba(255,255,255,.16)",
+   "white-a18": "rgba(255,255,255,.18)",
+   "white-a20": "rgba(255,255,255,.2)",
+   "white-a30": "rgba(255,255,255,.30)",
+   "white-a55": "rgba(255,255,255,.55)",
+   "white-a72": "rgba(255,255,255,.72)",
+   "white-a82": "rgba(255,255,255,.82)",
+   "white-a90": "rgba(255,255,255,.9)",
+   "white-a95": "rgba(255,255,255,.95)",
+   "black-a20": "rgba(0,0,0,.2)",
+   "black-a22": "rgba(0,0,0,.22)",
+   "black-a35": "rgba(0,0,0,.35)",
+   "text-primary-a06": "rgba(35,20,22,.06)",
+   "text-primary-a07": "rgba(35,20,22,.07)",
+   "gold-a42": "rgba(201,162,39,.42)",
+   "gold-hot-a25": "rgba(242,196,61,.25)",
+   "gold-hot-a32": "rgba(242,196,61,.32)",
+   "gold-deep-a45": "rgba(143,111,20,.45)",
+   "silver-a34": "rgba(140,151,166,.34)",
+   "bronze-a30": "rgba(169,113,60,.30)",
+   "green-a18": "rgba(4,108,72,.18)",
+   "green-a20": "rgba(4,108,72,.2)",
+   "green-a25": "rgba(4,108,72,.25)",
+   "green-a38": "rgba(4,108,72,.38)",
+   "green-a42": "rgba(4,108,72,.42)",
+   "green-a50": "rgba(4,108,72,.5)"
+  },
+  "replace": [
+   {
+    "value": "#fff",
+    "token": "white",
+    "lines": [
+     36,
+     39,
+     64,
+     83,
+     90,
+     93,
+     95,
+     229,
+     262
+    ]
+   },
+   {
+    "value": "rgba(245,233,233,.08)",
+    "token": "pale-a08",
+    "lines": [
+     65
+    ]
+   },
+   {
+    "value": "rgba(245,233,233,.55)",
+    "token": "pale-a55",
+    "lines": [
+     66
+    ]
+   },
+   {
+    "value": "#F87171",
+    "token": "red-bright",
+    "lines": [
+     70
+    ]
+   },
+   {
+    "value": "rgba(141,0,0,.14)",
+    "token": "maroon-a14",
+    "lines": [
+     98
+    ]
+   },
+   {
+    "value": "rgba(141,0,0,0)",
+    "token": "maroon-a0",
+    "lines": [
+     98
+    ]
+   },
+   {
+    "value": "rgba(189,109,109,.14)",
+    "token": "rose-a14",
+    "lines": [
+     104
+    ]
+   },
+   {
+    "value": "rgba(141,0,0,.07)",
+    "token": "maroon-a07",
+    "lines": [
+     105
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.16)",
+    "token": "white-a16",
+    "lines": [
+     114
+    ]
+   },
+   {
+    "value": "rgba(141,0,0,.10)",
+    "token": "maroon-a10",
+    "lines": [
+     115
+    ]
+   },
+   {
+    "value": "#FFFDF6",
+    "token": "paper",
+    "lines": [
+     148
+    ]
+   },
+   {
+    "value": "rgba(35,20,22,.07)",
+    "token": "text-primary-a07",
+    "lines": [
+     148
+    ]
+   },
+   {
+    "value": "rgba(222,182,182,.55)",
+    "token": "rose-l-a55",
+    "lines": [
+     151
+    ]
+   },
+   {
+    "value": "rgba(35,20,22,.06)",
+    "token": "text-primary-a06",
+    "lines": [
+     151
+    ]
+   },
+   {
+    "value": "#F5CBCB",
+    "token": "red-flash",
+    "lines": [
+     159
+    ]
+   },
+   {
+    "value": "rgba(141,0,0,.18)",
+    "token": "maroon-a18",
+    "lines": [
+     197
+    ]
+   },
+   {
+    "value": "rgba(242,196,61,.25)",
+    "token": "gold-hot-a25",
+    "lines": [
+     197
+    ]
+   },
+   {
+    "value": "rgba(4,108,72,.25)",
+    "token": "green-a25",
+    "lines": [
+     202
+    ]
+   },
+   {
+    "value": "rgba(193,18,31,.18)",
+    "token": "maroon-vivid-a18",
+    "lines": [
+     204
+    ]
+   },
+   {
+    "value": "rgba(141,0,0,.38)",
+    "token": "maroon-a38",
+    "lines": [
+     215
+    ]
+   },
+   {
+    "value": "rgba(193,18,31,.12)",
+    "token": "maroon-vivid-a12",
+    "lines": [
+     215
+    ]
+   },
+   {
+    "value": "rgba(201,162,39,.42)",
+    "token": "gold-a42",
+    "lines": [
+     225
+    ]
+   },
+   {
+    "value": "rgba(242,196,61,.32)",
+    "token": "gold-hot-a32",
+    "lines": [
+     225
+    ]
+   },
+   {
+    "value": "rgba(140,151,166,.34)",
+    "token": "silver-a34",
+    "lines": [
+     226
+    ]
+   },
+   {
+    "value": "rgba(169,113,60,.30)",
+    "token": "bronze-a30",
+    "lines": [
+     227
+    ]
+   },
+   {
+    "value": "rgba(143,111,20,.45)",
+    "token": "gold-deep-a45",
+    "lines": [
+     228
+    ]
+   },
+   {
+    "value": "rgba(0,0,0,.2)",
+    "token": "black-a20",
+    "lines": [
+     229
+    ]
+   },
+   {
+    "value": "#B9C2CE",
+    "token": "silver-lt",
+    "lines": [
+     239
+    ]
+   },
+   {
+    "value": "#C79067",
+    "token": "bronze-lt",
+    "lines": [
+     240
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.30)",
+    "token": "white-a30",
+    "lines": [
+     241
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,0)",
+    "token": "white-a0",
+    "lines": [
+     241
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.95)",
+    "token": "white-a95",
+    "lines": [
+     242
+    ]
+   },
+   {
+    "value": "rgba(0,0,0,.22)",
+    "token": "black-a22",
+    "lines": [
+     242
+    ]
+   },
+   {
+    "value": "rgba(141,0,0,.24)",
+    "token": "maroon-a24",
+    "lines": [
+     244
+    ]
+   },
+   {
+    "value": "rgba(141,0,0,.22)",
+    "token": "accent-glow",
+    "lines": [
+     250
+    ]
+   },
+   {
+    "value": "rgba(193,18,31,.20)",
+    "token": "maroon-vivid-a20",
+    "lines": [
+     252
+    ]
+   },
+   {
+    "value": "rgba(245,130,31,.13)",
+    "token": "speed-orange-a13",
+    "lines": [
+     252
+    ]
+   },
+   {
+    "value": "rgba(245,130,31,0)",
+    "token": "speed-orange-a0",
+    "lines": [
+     252
+    ]
+   },
+   {
+    "value": "#F5821F",
+    "token": "speed-orange",
+    "lines": [
+     253,
+     260
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.55)",
+    "token": "white-a55",
+    "lines": [
+     254
+    ]
+   },
+   {
+    "value": "#c1121f",
+    "token": "maroon-vivid",
+    "lines": [
+     260
+    ]
+   },
+   {
+    "value": "#2a0810",
+    "token": "badge-bg-1",
+    "lines": [
+     262
+    ]
+   },
+   {
+    "value": "#5a0f2a",
+    "token": "badge-bg-2",
+    "lines": [
+     262
+    ]
+   },
+   {
+    "value": "#7a1233",
+    "token": "badge-bg-3",
+    "lines": [
+     262
+    ]
+   },
+   {
+    "value": "rgba(255,140,165,.28)",
+    "token": "badge-border",
+    "lines": [
+     262
+    ]
+   },
+   {
+    "value": "rgba(150,20,55,.4)",
+    "token": "badge-shadow",
+    "lines": [
+     262
+    ]
+   },
+   {
+    "value": "rgba(255,100,140,.12)",
+    "token": "badge-glow",
+    "lines": [
+     262
+    ]
+   },
+   {
+    "value": "rgba(255,205,218,.85)",
+    "token": "badge-label",
+    "lines": [
+     263
+    ]
+   },
+   {
+    "value": "#ffd24a",
+    "token": "gold-neon",
+    "lines": [
+     264
+    ]
+   },
+   {
+    "value": "#ff9ab8",
+    "token": "pink-neon",
+    "lines": [
+     264
+    ]
+   },
+   {
+    "value": "rgba(255,160,190,.5)",
+    "token": "pink-glow",
+    "lines": [
+     264
+    ]
+   },
+   {
+    "value": "rgba(255,220,160,.92)",
+    "token": "badge-unit",
+    "lines": [
+     265
+    ]
+   },
+   {
+    "value": "rgba(255,222,232,.72)",
+    "token": "badge-sub",
+    "lines": [
+     266
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.055)",
+    "token": "white-a055",
+    "lines": [
+     270
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.18)",
+    "token": "white-a18",
+    "lines": [
+     272
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.2)",
+    "token": "white-a20",
+    "lines": [
+     278
+    ]
+   },
+   {
+    "value": "rgba(194,65,12,.10)",
+    "token": "pull-bg",
+    "lines": [
+     1448
+    ]
+   },
+   {
+    "value": "#fff",
+    "token": "white",
+    "lines": [
+     1472
+    ]
+   },
+   {
+    "value": "#fff",
+    "token": "white",
+    "lines": [
+     1736,
+     2085,
+     2219,
+     2341,
+     4590,
+     4972,
+     6064,
+     6076,
+     6081,
+     6109,
+     6600
+    ]
+   },
+   {
+    "value": "rgba(4,108,72,.18)",
+    "token": "green-a18",
+    "lines": [
+     2296
+    ]
+   },
+   {
+    "value": "rgba(4,108,72,.42)",
+    "token": "green-a42",
+    "lines": [
+     2296
+    ]
+   },
+   {
+    "value": "#0891B2",
+    "token": "cyan",
+    "lines": [
+     2514
+    ]
+   },
+   {
+    "value": "#EDF7F1",
+    "token": "pitch-green-1",
+    "lines": [
+     3841
+    ]
+   },
+   {
+    "value": "#E3F2E9",
+    "token": "pitch-green-2",
+    "lines": [
+     3841
+    ]
+   },
+   {
+    "value": "rgba(4,108,72,.5)",
+    "token": "green-a50",
+    "lines": [
+     3844
+    ]
+   },
+   {
+    "value": "rgba(4,108,72,.38)",
+    "token": "green-a38",
+    "lines": [
+     3844
+    ]
+   },
+   {
+    "value": "rgba(4,108,72,.2)",
+    "token": "green-a20",
+    "lines": [
+     3844
+    ]
+   },
+   {
+    "value": "#CBDFD3",
+    "token": "pitch-dot",
+    "lines": [
+     3847
+    ]
+   },
+   {
+    "value": "rgba(141,0,0,.14)",
+    "token": "maroon-a14",
+    "lines": [
+     4971
+    ]
+   },
+   {
+    "value": "rgba(59,130,246,.25)",
+    "token": "shift-am-a25",
+    "lines": [
+     6064
+    ]
+   },
+   {
+    "value": "rgba(168,85,247,.25)",
+    "token": "shift-pm-a25",
+    "lines": [
+     6064
+    ]
+   },
+   {
+    "value": "rgba(59,130,246,.55)",
+    "token": "shift-am-a55",
+    "lines": [
+     6064
+    ]
+   },
+   {
+    "value": "rgba(168,85,247,.55)",
+    "token": "shift-pm-a55",
+    "lines": [
+     6064
+    ]
+   },
+   {
+    "value": "rgba(0,0,0,.35)",
+    "token": "black-a35",
+    "lines": [
+     6069
+    ]
+   },
+   {
+    "value": "#ffd7dd",
+    "token": "pink-soft",
+    "lines": [
+     6075
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.82)",
+    "token": "white-a82",
+    "lines": [
+     6075
+    ]
+   },
+   {
+    "value": "#5b0f1f",
+    "token": "wine-d",
+    "lines": [
+     6077
+    ]
+   },
+   {
+    "value": "rgba(139,26,45,.55)",
+    "token": "wine-a55",
+    "lines": [
+     6077
+    ]
+   },
+   {
+    "value": "rgba(139,26,45,.75)",
+    "token": "wine-a75",
+    "lines": [
+     6077
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.72)",
+    "token": "white-a72",
+    "lines": [
+     6079
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.9)",
+    "token": "white-a90",
+    "lines": [
+     6086
+    ]
+   },
+   {
+    "value": "#0891B2",
+    "token": "cyan",
+    "lines": [
+     392
+    ]
+   },
+   {
+    "value": "#059669",
+    "token": "emerald",
+    "lines": [
+     392
+    ]
+   },
+   {
+    "value": "#E0F2FE",
+    "token": "cyan-bg",
+    "lines": [
+     393
+    ]
+   },
+   {
+    "value": "#D1FAE5",
+    "token": "emerald-bg",
+    "lines": [
+     393
+    ]
+   },
+   {
+    "value": "#B91C1C",
+    "token": "red",
+    "lines": [
+     399
+    ]
+   },
+   {
+    "value": "#C2410C",
+    "token": "pull",
+    "lines": [
+     399
+    ]
+   },
+   {
+    "value": "#A16207",
+    "token": "amber-vivid",
+    "lines": [
+     399
+    ]
+   },
+   {
+    "value": "#1D4ED8",
+    "token": "blue",
+    "lines": [
+     399
+    ]
+   },
+   {
+    "value": "#6D52D6",
+    "token": "purple",
+    "lines": [
+     399
+    ]
+   },
+   {
+    "value": "#046C48",
+    "token": "green",
+    "lines": [
+     399
+    ]
+   },
+   {
+    "value": "#B5D4F4",
+    "token": "av1-bg",
+    "lines": [
+     933
+    ]
+   },
+   {
+    "value": "#0C447C",
+    "token": "av1-fg",
+    "lines": [
+     933
+    ]
+   },
+   {
+    "value": "#9FE1CB",
+    "token": "av2-bg",
+    "lines": [
+     933
+    ]
+   },
+   {
+    "value": "#085041",
+    "token": "av2-fg",
+    "lines": [
+     933
+    ]
+   },
+   {
+    "value": "#F5C4B3",
+    "token": "av3-bg",
+    "lines": [
+     933
+    ]
+   },
+   {
+    "value": "#712B13",
+    "token": "av3-fg",
+    "lines": [
+     933
+    ]
+   },
+   {
+    "value": "#FAC775",
+    "token": "av4-bg",
+    "lines": [
+     933
+    ]
+   },
+   {
+    "value": "#633806",
+    "token": "av4-fg",
+    "lines": [
+     933
+    ]
+   },
+   {
+    "value": "#F4C0D1",
+    "token": "av5-bg",
+    "lines": [
+     933
+    ]
+   },
+   {
+    "value": "#72243E",
+    "token": "av5-fg",
+    "lines": [
+     933
+    ]
+   },
+   {
+    "value": "#C0DD97",
+    "token": "av6-bg",
+    "lines": [
+     933
+    ]
+   },
+   {
+    "value": "#27500A",
+    "token": "av6-fg",
+    "lines": [
+     933
+    ]
+   },
+   {
+    "value": "#CECBF6",
+    "token": "av7-bg",
+    "lines": [
+     933
+    ]
+   },
+   {
+    "value": "#3C3489",
+    "token": "av7-fg",
+    "lines": [
+     933
+    ]
+   },
+   {
+    "value": "rgba(194,65,12,.10)",
+    "token": "pull-bg",
+    "lines": [
+     1453,
+     4583
+    ]
+   }
+  ]
+ },
+ "staff": {
+  "tokens_add": {
+   "white": "#fff",
+   "steel": "#A9B8CE",
+   "paper": "#FFFDF6",
+   "black-a15": "rgba(0,0,0,.15)",
+   "black-a25": "rgba(0,0,0,.25)",
+   "maroon-a0": "rgba(141,0,0,0)",
+   "maroon-a10": "rgba(141,0,0,.10)",
+   "maroon-a14": "rgba(141,0,0,.14)",
+   "maroon-a38": "rgba(141,0,0,.38)",
+   "maroon-vivid-a12": "rgba(193,18,31,.12)",
+   "maroon-vivid-a14": "rgba(193,18,31,.14)",
+   "rose-l-a55": "rgba(222,182,182,.55)",
+   "pale-a3": "rgba(245,233,233,.03)",
+   "pale-a10": "rgba(245,233,233,.10)",
+   "white-a6": "rgba(255,255,255,.06)",
+   "white-a12": "rgba(255,255,255,.12)",
+   "white-a16": "rgba(255,255,255,.16)",
+   "white-a20": "rgba(255,255,255,.2)",
+   "white-a50": "rgba(255,255,255,.5)",
+   "text-primary-a6": "rgba(35,20,22,.06)",
+   "text-primary-a7": "rgba(35,20,22,.07)",
+   "ink-a32": "rgba(42,10,12,.32)",
+   "gold-a22": "rgba(201,162,39,.22)",
+   "gold-a32": "rgba(201,162,39,.32)",
+   "cyan": "#0891B2",
+   "cyan-bg": "#E0F2FE",
+   "emerald": "#059669",
+   "emerald-bg": "#D1FAE5",
+   "blue-vivid": "#3B82F6",
+   "blue-vivid-d": "#2563EB",
+   "blue-vivid-a30": "rgba(59,130,246,.3)",
+   "blue-vivid-a60": "rgba(59,130,246,.6)",
+   "green-vivid": "#10B981",
+   "green-vivid-a30": "rgba(16,185,129,.3)",
+   "green-vivid-a60": "rgba(16,185,129,.6)",
+   "amber-vivid": "#F59E0B",
+   "amber-vivid-d": "#D97706",
+   "amber-vivid-a30": "rgba(245,158,11,.3)",
+   "amber-vivid-a60": "rgba(245,158,11,.6)",
+   "red-vivid": "#EF4444",
+   "red-vivid-a12": "rgba(239,68,68,.12)",
+   "red-vivid-a60": "rgba(239,68,68,.6)",
+   "purple-vivid": "#8B5CF6",
+   "purple-vivid-a60": "rgba(139,92,246,.6)",
+   "cyan-vivid": "#06B6D4",
+   "cyan-vivid-a60": "rgba(6,182,212,.6)",
+   "pink": "#EC4899",
+   "pink-a60": "rgba(236,72,153,.6)",
+   "jade": "#0E9F6E",
+   "amber-l": "#FBBF24",
+   "purple-l": "#A78BFA",
+   "pull-bg": "rgba(194,65,12,.10)",
+   "av1-bg": "#B5D4F4",
+   "av1-fg": "#0C447C",
+   "av2-bg": "#9FE1CB",
+   "av2-fg": "#085041",
+   "av3-bg": "#F5C4B3",
+   "av3-fg": "#712B13",
+   "av4-bg": "#FAC775",
+   "av4-fg": "#633806",
+   "av5-bg": "#F4C0D1",
+   "av5-fg": "#72243E",
+   "av6-bg": "#C0DD97",
+   "av6-fg": "#27500A",
+   "av7-bg": "#CECBF6",
+   "av7-fg": "#3C3489"
+  },
+  "replace": [
+   {
+    "value": "#a9b8ce",
+    "token": "steel",
+    "lines": [
+     69,
+     72
+    ]
+   },
+   {
+    "value": "#fff",
+    "token": "white",
+    "lines": [
+     37,
+     45,
+     65,
+     70,
+     78,
+     86,
+     98,
+     101,
+     103,
+     113,
+     126,
+     126,
+     141,
+     145,
+     209,
+     210
+    ]
+   },
+   {
+    "value": "#fffdf6",
+    "token": "paper",
+    "lines": [
+     186
+    ]
+   },
+   {
+    "value": "rgba(0,0,0,.25)",
+    "token": "black-a25",
+    "lines": [
+     88
+    ]
+   },
+   {
+    "value": "rgba(141,0,0,.10)",
+    "token": "maroon-a10",
+    "lines": [
+     161
+    ]
+   },
+   {
+    "value": "rgba(141,0,0,.14)",
+    "token": "maroon-a14",
+    "lines": [
+     106
+    ]
+   },
+   {
+    "value": "rgba(141,0,0,.38)",
+    "token": "maroon-a38",
+    "lines": [
+     108
+    ]
+   },
+   {
+    "value": "rgba(141,0,0,0)",
+    "token": "maroon-a0",
+    "lines": [
+     106
+    ]
+   },
+   {
+    "value": "rgba(193,18,31,.12)",
+    "token": "maroon-vivid-a12",
+    "lines": [
+     108
+    ]
+   },
+   {
+    "value": "rgba(193,18,31,.14)",
+    "token": "maroon-vivid-a14",
+    "lines": [
+     38
+    ]
+   },
+   {
+    "value": "rgba(222,182,182,.55)",
+    "token": "rose-l-a55",
+    "lines": [
+     189
+    ]
+   },
+   {
+    "value": "rgba(245,233,233,.03)",
+    "token": "pale-a3",
+    "lines": [
+     32
+    ]
+   },
+   {
+    "value": "rgba(245,233,233,.10)",
+    "token": "pale-a10",
+    "lines": [
+     32
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.06)",
+    "token": "white-a6",
+    "lines": [
+     83
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.12)",
+    "token": "white-a12",
+    "lines": [
+     73
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.16)",
+    "token": "white-a16",
+    "lines": [
+     160
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.2)",
+    "token": "white-a20",
+    "lines": [
+     66
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.5)",
+    "token": "white-a50",
+    "lines": [
+     229
+    ]
+   },
+   {
+    "value": "rgba(35,20,22,.06)",
+    "token": "text-primary-a6",
+    "lines": [
+     189
+    ]
+   },
+   {
+    "value": "rgba(35,20,22,.07)",
+    "token": "text-primary-a7",
+    "lines": [
+     186
+    ]
+   },
+   {
+    "value": "rgba(42,10,12,.32)",
+    "token": "ink-a32",
+    "lines": [
+     31
+    ]
+   },
+   {
+    "value": "rgba(59,130,246,.6)",
+    "token": "blue-vivid-a60",
+    "lines": [
+     85
+    ]
+   },
+   {
+    "value": "#059669",
+    "token": "emerald",
+    "lines": [
+     2460,
+     2969
+    ]
+   },
+   {
+    "value": "#0891b2",
+    "token": "cyan",
+    "lines": [
+     2275,
+     2276,
+     2459,
+     2460
+    ]
+   },
+   {
+    "value": "#0e9f6e",
+    "token": "jade",
+    "lines": [
+     3822,
+     3839
+    ]
+   },
+   {
+    "value": "#10b981",
+    "token": "green-vivid",
+    "lines": [
+     2969
+    ]
+   },
+   {
+    "value": "#2563eb",
+    "token": "blue-vivid-d",
+    "lines": [
+     2968
+    ]
+   },
+   {
+    "value": "#3b82f6",
+    "token": "blue-vivid",
+    "lines": [
+     2968,
+     3821,
+     3838
+    ]
+   },
+   {
+    "value": "#a78bfa",
+    "token": "purple-l",
+    "lines": [
+     3824,
+     3841
+    ]
+   },
+   {
+    "value": "#a9b8ce",
+    "token": "steel",
+    "lines": [
+     2830
+    ]
+   },
+   {
+    "value": "#b91c1c",
+    "token": "red",
+    "lines": [
+     8785
+    ]
+   },
+   {
+    "value": "#d97706",
+    "token": "amber-vivid-d",
+    "lines": [
+     2970
+    ]
+   },
+   {
+    "value": "#f59e0b",
+    "token": "amber-vivid",
+    "lines": [
+     2970
+    ]
+   },
+   {
+    "value": "#fbbf24",
+    "token": "amber-l",
+    "lines": [
+     3823,
+     3840
+    ]
+   },
+   {
+    "value": "#fff",
+    "token": "white",
+    "lines": [
+     2459,
+     2460,
+     2478,
+     2829,
+     2831,
+     2968,
+     2969,
+     2970,
+     3999,
+     4066,
+     4067,
+     4068,
+     4146,
+     4561,
+     4572,
+     4608,
+     5172,
+     5900,
+     5903,
+     6278,
+     6305,
+     6452,
+     6483,
+     6647,
+     6749,
+     7219,
+     7281
+    ]
+   },
+   {
+    "value": "rgba(0,0,0,.15)",
+    "token": "black-a15",
+    "lines": [
+     8891,
+     8897,
+     8904
+    ]
+   },
+   {
+    "value": "rgba(16,185,129,.3)",
+    "token": "green-vivid-a30",
+    "lines": [
+     2969
+    ]
+   },
+   {
+    "value": "rgba(194,65,12,.10)",
+    "token": "pull-bg",
+    "lines": [
+     5148
+    ]
+   },
+   {
+    "value": "rgba(201,162,39,.22)",
+    "token": "gold-a22",
+    "lines": [
+     2400
+    ]
+   },
+   {
+    "value": "rgba(201,162,39,.32)",
+    "token": "gold-a32",
+    "lines": [
+     2066
+    ]
+   },
+   {
+    "value": "rgba(239,68,68,.12)",
+    "token": "red-vivid-a12",
+    "lines": [
+     8785
+    ]
+   },
+   {
+    "value": "rgba(245,158,11,.3)",
+    "token": "amber-vivid-a30",
+    "lines": [
+     2970
+    ]
+   },
+   {
+    "value": "rgba(59,130,246,.3)",
+    "token": "blue-vivid-a30",
+    "lines": [
+     2968
+    ]
+   },
+   {
+    "value": "#059669",
+    "token": "emerald",
+    "lines": [
+     508,
+     2470
+    ]
+   },
+   {
+    "value": "#0891b2",
+    "token": "cyan",
+    "lines": [
+     508,
+     2470
+    ]
+   },
+   {
+    "value": "#06b6d4",
+    "token": "cyan-vivid",
+    "lines": [
+     2888
+    ]
+   },
+   {
+    "value": "#10b981",
+    "token": "green-vivid",
+    "lines": [
+     2888,
+     2912
+    ]
+   },
+   {
+    "value": "#3b82f6",
+    "token": "blue-vivid",
+    "lines": [
+     2888,
+     2976
+    ]
+   },
+   {
+    "value": "#8b5cf6",
+    "token": "purple-vivid",
+    "lines": [
+     2888
+    ]
+   },
+   {
+    "value": "#ec4899",
+    "token": "pink",
+    "lines": [
+     2888
+    ]
+   },
+   {
+    "value": "#ef4444",
+    "token": "red-vivid",
+    "lines": [
+     2888,
+     2912
+    ]
+   },
+   {
+    "value": "#f59e0b",
+    "token": "amber-vivid",
+    "lines": [
+     2888,
+     2912
+    ]
+   },
+   {
+    "value": "rgba(139,92,246,.6)",
+    "token": "purple-vivid-a60",
+    "lines": [
+     2889
+    ]
+   },
+   {
+    "value": "rgba(16,185,129,.6)",
+    "token": "green-vivid-a60",
+    "lines": [
+     2889
+    ]
+   },
+   {
+    "value": "rgba(236,72,153,.6)",
+    "token": "pink-a60",
+    "lines": [
+     2889
+    ]
+   },
+   {
+    "value": "rgba(239,68,68,.6)",
+    "token": "red-vivid-a60",
+    "lines": [
+     2889
+    ]
+   },
+   {
+    "value": "rgba(245,158,11,.6)",
+    "token": "amber-vivid-a60",
+    "lines": [
+     2889
+    ]
+   },
+   {
+    "value": "rgba(6,182,212,.6)",
+    "token": "cyan-vivid-a60",
+    "lines": [
+     2889
+    ]
+   },
+   {
+    "value": "rgba(59,130,246,.6)",
+    "token": "blue-vivid-a60",
+    "lines": [
+     2889,
+     2977
+    ]
+   },
+   {
+    "value": "#d1fae5",
+    "token": "emerald-bg",
+    "lines": [
+     509
+    ]
+   },
+   {
+    "value": "#e0f2fe",
+    "token": "cyan-bg",
+    "lines": [
+     509
+    ]
+   },
+   {
+    "value": "#8a7578",
+    "token": "text-tertiary",
+    "lines": [
+     4318
+    ]
+   },
+   {
+    "value": "rgba(194,65,12,.10)",
+    "token": "pull-bg",
+    "lines": [
+     5153
+    ]
+   },
+   {
+    "value": "#b5d4f4",
+    "token": "av1-bg",
+    "lines": [
+     1136
+    ]
+   },
+   {
+    "value": "#0c447c",
+    "token": "av1-fg",
+    "lines": [
+     1136
+    ]
+   },
+   {
+    "value": "#9fe1cb",
+    "token": "av2-bg",
+    "lines": [
+     1136
+    ]
+   },
+   {
+    "value": "#085041",
+    "token": "av2-fg",
+    "lines": [
+     1136
+    ]
+   },
+   {
+    "value": "#f5c4b3",
+    "token": "av3-bg",
+    "lines": [
+     1136
+    ]
+   },
+   {
+    "value": "#712b13",
+    "token": "av3-fg",
+    "lines": [
+     1136
+    ]
+   },
+   {
+    "value": "#fac775",
+    "token": "av4-bg",
+    "lines": [
+     1136
+    ]
+   },
+   {
+    "value": "#633806",
+    "token": "av4-fg",
+    "lines": [
+     1136
+    ]
+   },
+   {
+    "value": "#f4c0d1",
+    "token": "av5-bg",
+    "lines": [
+     1136
+    ]
+   },
+   {
+    "value": "#72243e",
+    "token": "av5-fg",
+    "lines": [
+     1136
+    ]
+   },
+   {
+    "value": "#c0dd97",
+    "token": "av6-bg",
+    "lines": [
+     1136
+    ]
+   },
+   {
+    "value": "#27500a",
+    "token": "av6-fg",
+    "lines": [
+     1136
+    ]
+   },
+   {
+    "value": "#cecbf6",
+    "token": "av7-bg",
+    "lines": [
+     1136
+    ]
+   },
+   {
+    "value": "#3c3489",
+    "token": "av7-fg",
+    "lines": [
+     1136
+    ]
+   }
+  ]
+ },
+ "trainer": {
+  "tokens_add": {
+   "white": "#fff",
+   "pull-bg": "rgba(194,65,12,.10)",
+   "white-a06": "rgba(255,255,255,.06)",
+   "white-a12": "rgba(255,255,255,0.12)",
+   "white-a25": "rgba(255,255,255,0.25)",
+   "black-a25": "rgba(0,0,0,.25)",
+   "blue-glow": "rgba(59,130,246,.6)",
+   "red-glow": "rgba(239,68,68,.6)",
+   "purple-glow": "rgba(139,92,246,.6)",
+   "green-glow": "rgba(16,185,129,.6)",
+   "amber-glow": "rgba(245,158,11,.6)",
+   "cyan-glow": "rgba(6,182,212,.6)",
+   "pink-glow": "rgba(236,72,153,.6)",
+   "slate-glow": "rgba(100,116,139,.6)",
+   "red-vivid": "#EF4444",
+   "green-vivid": "#10B981",
+   "amber-vivid": "#F59E0B",
+   "green-deep": "#059669",
+   "amber-deep": "#D97706",
+   "cyan": "#06B6D4",
+   "pink": "#EC4899",
+   "slate": "#64748B",
+   "cyan-deep": "#0891B2",
+   "cyan-pale": "#E0F2FE",
+   "green-pale": "#D1FAE5",
+   "soap-o": "#0E9F6E",
+   "hero-sub": "#A9B8CE",
+   "av1-bg": "#B5D4F4",
+   "av1-fg": "#0C447C",
+   "av2-bg": "#9FE1CB",
+   "av2-fg": "#085041",
+   "av3-bg": "#F5C4B3",
+   "av3-fg": "#712B13",
+   "av4-bg": "#FAC775",
+   "av4-fg": "#633806",
+   "av5-bg": "#F4C0D1",
+   "av5-fg": "#72243E",
+   "av6-bg": "#C0DD97",
+   "av6-fg": "#27500A",
+   "av7-bg": "#CECBF6",
+   "av7-fg": "#3C3489",
+   "blue-a30": "rgba(59,130,246,.3)",
+   "green-a30": "rgba(16,185,129,.3)",
+   "amber-a30": "rgba(245,158,11,.3)"
+  },
+  "replace": [
+   {
+    "value": "#fff",
+    "token": "white",
+    "lines": [
+     25,
+     35,
+     80,
+     88,
+     97
+    ]
+   },
+   {
+    "value": "#0f1b2d",
+    "token": "navy",
+    "lines": [
+     76
+    ]
+   },
+   {
+    "value": "#1e3251",
+    "token": "navy-3",
+    "lines": [
+     76
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.06)",
+    "token": "white-a06",
+    "lines": [
+     85
+    ]
+   },
+   {
+    "value": "rgba(59,130,246,.6)",
+    "token": "blue-glow",
+    "lines": [
+     87
+    ]
+   },
+   {
+    "value": "rgba(0,0,0,.25)",
+    "token": "black-a25",
+    "lines": [
+     90
+    ]
+   },
+   {
+    "value": "#b5d4f4",
+    "token": "av1-bg",
+    "lines": [
+     156
+    ]
+   },
+   {
+    "value": "#0c447c",
+    "token": "av1-fg",
+    "lines": [
+     156
+    ]
+   },
+   {
+    "value": "#9fe1cb",
+    "token": "av2-bg",
+    "lines": [
+     156
+    ]
+   },
+   {
+    "value": "#085041",
+    "token": "av2-fg",
+    "lines": [
+     156
+    ]
+   },
+   {
+    "value": "#f5c4b3",
+    "token": "av3-bg",
+    "lines": [
+     156
+    ]
+   },
+   {
+    "value": "#712b13",
+    "token": "av3-fg",
+    "lines": [
+     156
+    ]
+   },
+   {
+    "value": "#fac775",
+    "token": "av4-bg",
+    "lines": [
+     156
+    ]
+   },
+   {
+    "value": "#633806",
+    "token": "av4-fg",
+    "lines": [
+     156
+    ]
+   },
+   {
+    "value": "#f4c0d1",
+    "token": "av5-bg",
+    "lines": [
+     156
+    ]
+   },
+   {
+    "value": "#72243e",
+    "token": "av5-fg",
+    "lines": [
+     156
+    ]
+   },
+   {
+    "value": "#c0dd97",
+    "token": "av6-bg",
+    "lines": [
+     156
+    ]
+   },
+   {
+    "value": "#27500a",
+    "token": "av6-fg",
+    "lines": [
+     156
+    ]
+   },
+   {
+    "value": "#cecbf6",
+    "token": "av7-bg",
+    "lines": [
+     156
+    ]
+   },
+   {
+    "value": "#3c3489",
+    "token": "av7-fg",
+    "lines": [
+     156
+    ]
+   },
+   {
+    "value": "#059669",
+    "token": "green-deep",
+    "lines": [
+     160
+    ]
+   },
+   {
+    "value": "#e0f2fe",
+    "token": "cyan-pale",
+    "lines": [
+     161
+    ]
+   },
+   {
+    "value": "#d1fae5",
+    "token": "green-pale",
+    "lines": [
+     161
+    ]
+   },
+   {
+    "value": "#fff",
+    "token": "white",
+    "lines": [
+     899,
+     900,
+     901,
+     953,
+     1074,
+     1817,
+     1818,
+     1819,
+     2678,
+     2680,
+     2751,
+     3064
+    ]
+   },
+   {
+    "value": "rgba(194,65,12,.10)",
+    "token": "pull-bg",
+    "lines": [
+     1050
+    ]
+   },
+   {
+    "value": "rgba(194,65,12,.10)",
+    "token": "pull-bg",
+    "lines": [
+     1055
+    ]
+   },
+   {
+    "value": "#0891b2",
+    "token": "cyan-deep",
+    "lines": [
+     1412
+    ]
+   },
+   {
+    "value": "#ef4444",
+    "token": "red-vivid",
+    "lines": [
+     1732,
+     1761
+    ]
+   },
+   {
+    "value": "#10b981",
+    "token": "green-vivid",
+    "lines": [
+     1732,
+     1761
+    ]
+   },
+   {
+    "value": "#f59e0b",
+    "token": "amber-vivid",
+    "lines": [
+     1732,
+     1761
+    ]
+   },
+   {
+    "value": "#06b6d4",
+    "token": "cyan",
+    "lines": [
+     1732
+    ]
+   },
+   {
+    "value": "#ec4899",
+    "token": "pink",
+    "lines": [
+     1732
+    ]
+   },
+   {
+    "value": "#64748b",
+    "token": "slate",
+    "lines": [
+     1732
+    ]
+   },
+   {
+    "value": "rgba(239,68,68,.6)",
+    "token": "red-glow",
+    "lines": [
+     1733
+    ]
+   },
+   {
+    "value": "rgba(139,92,246,.6)",
+    "token": "purple-glow",
+    "lines": [
+     1733
+    ]
+   },
+   {
+    "value": "rgba(59,130,246,.6)",
+    "token": "blue-glow",
+    "lines": [
+     1733,
+     1826
+    ]
+   },
+   {
+    "value": "rgba(16,185,129,.6)",
+    "token": "green-glow",
+    "lines": [
+     1733
+    ]
+   },
+   {
+    "value": "rgba(245,158,11,.6)",
+    "token": "amber-glow",
+    "lines": [
+     1733
+    ]
+   },
+   {
+    "value": "rgba(6,182,212,.6)",
+    "token": "cyan-glow",
+    "lines": [
+     1733
+    ]
+   },
+   {
+    "value": "rgba(236,72,153,.6)",
+    "token": "pink-glow",
+    "lines": [
+     1733
+    ]
+   },
+   {
+    "value": "rgba(100,116,139,.6)",
+    "token": "slate-glow",
+    "lines": [
+     1733
+    ]
+   },
+   {
+    "value": "#3b82f6",
+    "token": "blue",
+    "lines": [
+     1817,
+     2455,
+     2473
+    ]
+   },
+   {
+    "value": "#2563eb",
+    "token": "accent-d",
+    "lines": [
+     1817
+    ]
+   },
+   {
+    "value": "rgba(59,130,246,.3)",
+    "token": "blue-a30",
+    "lines": [
+     1817
+    ]
+   },
+   {
+    "value": "#10b981",
+    "token": "green-vivid",
+    "lines": [
+     1818
+    ]
+   },
+   {
+    "value": "#059669",
+    "token": "green-deep",
+    "lines": [
+     1818
+    ]
+   },
+   {
+    "value": "rgba(16,185,129,.3)",
+    "token": "green-a30",
+    "lines": [
+     1818
+    ]
+   },
+   {
+    "value": "#f59e0b",
+    "token": "amber-vivid",
+    "lines": [
+     1819
+    ]
+   },
+   {
+    "value": "#d97706",
+    "token": "amber-deep",
+    "lines": [
+     1819
+    ]
+   },
+   {
+    "value": "rgba(245,158,11,.3)",
+    "token": "amber-a30",
+    "lines": [
+     1819
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,0.12)",
+    "token": "white-a12",
+    "lines": [
+     2150
+    ]
+   },
+   {
+    "value": "#fff",
+    "token": "white",
+    "lines": [
+     2192
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,0.25)",
+    "token": "white-a25",
+    "lines": [
+     2194
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,0.12)",
+    "token": "white-a12",
+    "lines": [
+     2194
+    ]
+   },
+   {
+    "value": "#0e9f6e",
+    "token": "soap-o",
+    "lines": [
+     2456,
+     2474
+    ]
+   },
+   {
+    "value": "#fbbf24",
+    "token": "amber",
+    "lines": [
+     2457,
+     2477
+    ]
+   },
+   {
+    "value": "#a78bfa",
+    "token": "purple",
+    "lines": [
+     2458,
+     2478
+    ]
+   },
+   {
+    "value": "#a9b8ce",
+    "token": "hero-sub",
+    "lines": [
+     2679
+    ]
+   }
+  ]
+ },
+ "coach": {
+  "tokens_add": {
+   "black": "#000",
+   "txt-on-accent": "#04140C",
+   "txt-on-blue": "#0A1019",
+   "brand-green": "#35E89C",
+   "brand-blue": "#1FA2FF",
+   "blue-2": "#6EC3FF",
+   "gold": "#FFC24A",
+   "orb-green": "rgba(20,184,125,.17)",
+   "orb-blue": "rgba(95,168,255,.11)",
+   "orb-purple": "rgba(199,164,255,.09)",
+   "amber-a12": "rgba(255,192,105,.12)",
+   "amber-a40": "rgba(255,192,105,.4)",
+   "white-a015": "rgba(255,255,255,.015)",
+   "white-a018": "rgba(255,255,255,.018)",
+   "white-a02": "rgba(255,255,255,.02)",
+   "white-a03": "rgba(255,255,255,.03)",
+   "white-a045": "rgba(255,255,255,.045)",
+   "white-a05": "rgba(255,255,255,.05)",
+   "white-a06": "rgba(255,255,255,.06)",
+   "white-a07": "rgba(255,255,255,.07)",
+   "bg-app-a72": "rgba(5,10,18,.72)",
+   "bg-app-a94": "rgba(5,10,18,.94)",
+   "bg-app-a0": "rgba(5,10,18,0)",
+   "accent-a10": "rgba(61,240,164,.1)",
+   "accent-a22": "rgba(61,240,164,.22)",
+   "accent-a32": "rgba(61,240,164,.32)",
+   "black-a50": "rgba(0,0,0,.5)"
+  },
+  "replace": [
+   {
+    "value": "#000",
+    "token": "black",
+    "lines": [
+     46,
+     46
+    ]
+   },
+   {
+    "value": "#04140c",
+    "token": "txt-on-accent",
+    "lines": [
+     50
+    ]
+   },
+   {
+    "value": "#1fa2ff",
+    "token": "brand-blue",
+    "lines": [
+     40,
+     50
+    ]
+   },
+   {
+    "value": "#35e89c",
+    "token": "brand-green",
+    "lines": [
+     40,
+     50
+    ]
+   },
+   {
+    "value": "#6ec3ff",
+    "token": "blue-2",
+    "lines": [
+     55
+    ]
+   },
+   {
+    "value": "rgba(199,164,255,.09)",
+    "token": "orb-purple",
+    "lines": [
+     33
+    ]
+   },
+   {
+    "value": "rgba(20,184,125,.17)",
+    "token": "orb-green",
+    "lines": [
+     31
+    ]
+   },
+   {
+    "value": "rgba(255,192,105,.12)",
+    "token": "amber-a12",
+    "lines": [
+     134,
+     134
+    ]
+   },
+   {
+    "value": "rgba(255,192,105,.4)",
+    "token": "amber-a40",
+    "lines": [
+     134
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.015)",
+    "token": "white-a015",
+    "lines": [
+     83,
+     131,
+     134
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.018)",
+    "token": "white-a018",
+    "lines": [
+     64
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.02)",
+    "token": "white-a02",
+    "lines": [
+     76
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.03)",
+    "token": "white-a03",
+    "lines": [
+     48
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.045)",
+    "token": "white-a045",
+    "lines": [
+     125
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.05)",
+    "token": "white-a05",
+    "lines": [
+     83
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.055)",
+    "token": "bg-panel-2",
+    "lines": [
+     64
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.06)",
+    "token": "white-a06",
+    "lines": [
+     76,
+     124,
+     131
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.07)",
+    "token": "white-a07",
+    "lines": [
+     103,
+     127
+    ]
+   },
+   {
+    "value": "rgba(5,10,18,.72)",
+    "token": "bg-app-a72",
+    "lines": [
+     38
+    ]
+   },
+   {
+    "value": "rgba(5,10,18,.94)",
+    "token": "bg-app-a94",
+    "lines": [
+     45
+    ]
+   },
+   {
+    "value": "rgba(5,10,18,0)",
+    "token": "bg-app-a0",
+    "lines": [
+     45
+    ]
+   },
+   {
+    "value": "rgba(61,240,164,.1)",
+    "token": "accent-a10",
+    "lines": [
+     43
+    ]
+   },
+   {
+    "value": "rgba(61,240,164,.32)",
+    "token": "accent-a32",
+    "lines": [
+     43
+    ]
+   },
+   {
+    "value": "rgba(95,168,255,.11)",
+    "token": "orb-blue",
+    "lines": [
+     32
+    ]
+   },
+   {
+    "value": "#0a1019",
+    "token": "txt-on-blue",
+    "lines": [
+     1314
+    ]
+   },
+   {
+    "value": "#3df0a4",
+    "token": "accent",
+    "lines": [
+     1807
+    ]
+   },
+   {
+    "value": "#ffc24a",
+    "token": "gold",
+    "lines": [
+     1807
+    ]
+   },
+   {
+    "value": "rgba(0,0,0,.5)",
+    "token": "black-a50",
+    "lines": [
+     168
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.02)",
+    "token": "white-a02",
+    "lines": [
+     2043
+    ]
+   },
+   {
+    "value": "rgba(61,240,164,.1)",
+    "token": "accent-a10",
+    "lines": [
+     2043
+    ]
+   },
+   {
+    "value": "rgba(61,240,164,.22)",
+    "token": "accent-a22",
+    "lines": [
+     2043
+    ]
+   },
+   {
+    "value": "#ffc24a",
+    "token": "gold",
+    "lines": [
+     1799
+    ]
+   }
+  ]
+ },
+ "landing": {
+  "tokens_add": {
+   "white-a90": "rgba(255,255,255,.9)",
+   "white-a85": "rgba(255,255,255,.85)",
+   "white-a80": "rgba(255,255,255,.8)",
+   "white-a14": "rgba(255,255,255,.14)",
+   "maroon-a16": "rgba(141,0,0,.16)"
+  },
+  "replace": [
+   {
+    "value": "rgba(255,255,255,.9)",
+    "token": "white-a90",
+    "lines": [
+     36
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.85)",
+    "token": "white-a85",
+    "lines": [
+     37,
+     38
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.8)",
+    "token": "white-a80",
+    "lines": [
+     39,
+     40
+    ]
+   },
+   {
+    "value": "rgba(255,255,255,.14)",
+    "token": "white-a14",
+    "lines": [
+     45
+    ]
+   },
+   {
+    "value": "rgba(141,0,0,.16)",
+    "token": "maroon-a16",
+    "lines": [
+     59
+    ]
+   }
+  ]
+ }
+}
