@@ -7,9 +7,9 @@
 ---
 
 ## 最終更新
-- 日時: 2026-08-03（**🔴v2プラン: P8a〜P8e 実装完了・push前（ユーザー確認待ち）。→ 残るは P9a-c**）
+- 日時: 2026-08-03（**🔴v2プラン: P8a〜P8e push済み（`2ae7860`）。→ 次は P9a-c**）
 - 更新者: Claude
-- **✅ P8「IA再編＋新機能」実装完了（push前）**。**player/staff/coach 3ファイル変更（trainerは無変更=P8e対象が既存実装で充足）**＋新テスト5本（`test_dyn_tabs`/`test_home_p8b`/`test_measure_result`/`test_staff_ia_p8d`/`test_p8e_coach`）＋既存テスト6本を新IAへ追随（`test_cond`/`test_dash`/`test_msess_alert`/`test_tgroup_player`/`test_today_prog`/`test_badge_ui_player`）。検証: `run_tests.py`=**72 run/3 fail（3失敗は既存の日付環境依存赤のみ・P8起因ゼロ）**＋`sync_check.py`=ALL SYNC OK＋敵対的レビュー（ワークフロー4視点find→所見ごと反証verify。**使用量クレジット切れで11体が未完走→未検証8所見と未実行のhome視点はメインループで裏取り**）→**確定13件を全処置**。**push単位=1（player+staff+coach+dev/＋HANDOFF）**。実装内容↓。
+- **✅ P8「IA再編＋新機能」push済み `2ae7860`**。**player/staff/coach 3ファイル変更（trainerは無変更=P8e対象が既存実装で充足）**＋新テスト5本（`test_dyn_tabs`/`test_home_p8b`/`test_measure_result`/`test_staff_ia_p8d`/`test_p8e_coach`）＋既存テスト6本を新IAへ追随（`test_cond`/`test_dash`/`test_msess_alert`/`test_tgroup_player`/`test_today_prog`/`test_badge_ui_player`）。検証: `run_tests.py`=**72 run/3 fail（3失敗は既存の日付環境依存赤のみ・P8起因ゼロ）**＋`sync_check.py`=ALL SYNC OK＋敵対的レビュー（ワークフロー4視点find→所見ごと反証verify。**使用量クレジット切れで11体が未完走→未検証8所見と未実行のhome視点はメインループで裏取り**）→**確定13件を全処置**。**push単位=1（player+staff+coach+dev/＋HANDOFF、15ファイル）**。実装内容↓。
   - **P8a player動的タブ**: 5タブ[ホーム/体調(condition)/トレーニング⇔リハビリ(injury)/マイデータ/マイページ]。`NAV_ICON`/`navSlots()`/`hasActiveInjury()`/`renderNav()`（go()と`i`のonSnapshotから呼ぶ・タブキーは既存のまま=go()互換）。**未resolved怪我（承認前含む）で3枠目がリハビリに切替**・回復で`noticeTabRestored()`一度きり案内（**localStorageキーは`rm_rehabtab_<pid>`で選手スコープ**・setItem失敗時はトーストも抑止・報告取消/Undoは`syncRehabTabState()`先行同期で偽回復トースト抑止）。conditionタブ=当日サマリ+フォーム+過去一覧（保存/修正/削除の着地は`go('condition')`）。injuryタブ=治療中はタブヘッダー（ROAD TO RETURN・戻る無し）/回復後は従来のmypage配下。リハ系サブ画面（カルテ/痛み/リハ記録/週次/報告/編集）のshowSub backTabと完了着地を`injury`へ統一。**リハタブにトレーニング導線カード常設**（レビュー(6): 怪我中はナビからトレーニングが消え、非ウエイト日に履歴/自主トレ/休養へ到達不能だった）。mystatusは詳細ページとして温存しback先をmydataへ（プランの「go('mydata')リダイレクト」は正典=NOW+詳細=mystatusの2層で対応）。
   - **P8b ホーム13→7ブロック**: ヒーロー（+🔥`condStreak`連続入力チップ）/今日やること/怪我クイック報告 or RTPカード/`weeklyReviewCardHtml()`週間振り返り（月曜のみ・getMyInsights上位3件）/個人未入力アラート/お知らせ/今週予定/ランキング・バッジリンク。**myPhysカード→mydata NOW・バッジ→mydata⑧・pp/グループカード→トレーニングタブ（`tpShown`で今日のプログラムと排他）・チーム系一覧（試合日未入力/あとN名）→staff管掌で撤去**。`myBadgeHomeHtml`削除。ヘッダーに`hdr-inj-btn`常設（`quickInjuryTap()`=0件→報告/1件→カルテ直行/複数→リハタブ。**表示はinitUI一本化=レビュー①でdoLogin経路の非表示バグ修正**）。mypage=数値ブロック撤去→マイデータ導線カード・怪我カードの本日メニューチップ撤去（リハタブのみ）。mydata=先頭NOW（myPhysCard+ベスト6種+BIG3合計+推定1RM+体組成）→期間セレクタ→推移（⑤の重複ランクgrid撤去）→⑧バッジ+ランキング入口。
   - **P8c NO SIDE測定結果シート**: `resultHero`/`resultStatRow`共通骨格を抽出し`showTrainingResult`(FULL TIME)をリファクタ（出力同一）。`doPhys`が保存前に`prevBest/prevRank/prevBrRank/prevB3`を捕捉→成功CBで`showMeasureResult()`（種目別前回比チップ・PB・ランク変動・BIG3 CLUB新規到達・復帰ブロンコ目標判定・back先はphysical）。**レビュー修正3件**: ③ヒーロー/CLUB判定に`b3Today`ゲート（チンニングのみの日に過去BIG3合計が出ていた）④PBフラッシュ判定を保存前prevBestに（保存後getBestは新記録自身を含み初回でも必ずPB＝シートの「初回」と矛盾）⑤ランク外への降格も`rankRowHtml`で表示（無言で消えていた）。プランの「開始ゲート初回のみ化」は該当ゲートが現存せず対象なし。
@@ -145,9 +145,10 @@
 - guardSubmit(二重送信ガード)はplayerに導入済み。新規フォームには必ず適用（雛形v2に含む）
 
 ## リポジトリの状態
-- ブランチ: main。origin/main=`6a34e5f`（P7b `ee08429` ＋ 別セッションの「レポート追加」`6a34e5f`＝ともにpush済み）。**P7cはこの上に1コミットでpush**（staff/coach/trainer＋dev/test_p7c.js＋dev/test_p7c_coach.js＋HANDOFF.md）。**⚠️ `reports/bronco-backs-2026-07.html` は別セッション（ユーザー）が作成・push済み＝P7cでは一切触らない**。push前に`git diff --stat`で対象外変更ゼロ確認済み
+- ブランチ: main。origin/main=`2ae7860`（P8 push済み。この上に積む）。push前に`git diff --stat`で対象外変更ゼロ確認済み
 - テスト用選手「テスト選手」(CTB/1年, note=動作確認用)が本番に1名存在（削除可）
 - ⚠️ 検証はjsc模擬実行で完結（本番Firestore直結のためブラウザで代理編集/削除の保存ボタンは押さない）。最終目視はユーザーのCmd+Shift+R確認に委ねる
+- **⏳ バックグラウンドタスク進行中（別worktree `.claude/worktrees/keen-kowalevski-01e4c2`）**: 既存赤3本（test_dash/test_engine/test_mystatus）のフィクスチャ相対日付化（task_3f0c3890・ユーザーが起動）。完了後にmainへマージが必要かもしれないので次セッションはまず状況確認
 
 ## 運用ルール（このプロジェクト固有）
 - データは「短いキー」で読む。保存は `svSafe` / `svSafeUpdate` を使う。
