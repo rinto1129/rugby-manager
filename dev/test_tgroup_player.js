@@ -167,7 +167,8 @@ T.training();
 ok('T.trainingにMY GROUP・A班',has(__els['main'].innerHTML,'MY GROUP')&&has(__els['main'].innerHTML,'A班'));
 subView=null;curTab='home';
 T.home();
-ok('T.homeにMY GROUP・A班',has(__els['main'].innerHTML,'MY GROUP')&&has(__els['main'].innerHTML,'A班'));
+// P8b: グループカードはトレーニングタブへ移設＝ホームには出ない
+ok('T.homeにMY GROUPは出ない(P8b)',!has(__els['main'].innerHTML,'MY GROUP'));
 // tgroup未設定なら両画面ともグループカードなし（クラッシュしない）
 D.tgroup=[];
 subView=null;T.training();

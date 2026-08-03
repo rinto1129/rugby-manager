@@ -42,7 +42,7 @@ body{font-family:var(--font-sans);background:var(--bg-app);color:var(--text-prim
 .ipt::placeholder{color:var(--text-tertiary)}
 select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 .bd{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600}
-.bd-g{background:var(--green-bg);color:var(--green)}.bd-r{background:var(--red-bg);color:var(--red)}.bd-a{background:var(--amber-bg);color:var(--amber)}.bd-b{background:var(--blue-bg);color:var(--blue)}.bd-p{background:var(--purple-bg);color:var(--purple)}
+.bd-g{background:var(--green-bg);color:var(--green)}.bd-r{background:var(--red-bg);color:var(--red)}.bd-a{background:var(--amber-bg);color:var(--amber)}.bd-b{background:var(--blue-bg);color:var(--blue)}.bd-p{background:var(--purple-bg);color:var(--purple)}.bd-n{background:var(--bg-tertiary);color:var(--text-secondary)}
 .card{background:var(--bg-primary);border:1px solid var(--border-tertiary);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:12px;box-shadow:var(--shadow-sm)}
 .card-click{cursor:pointer;transition:all .12s}
 @media(hover:hover){.card-click:hover{border-color:var(--blue);background:var(--bg-secondary)}}
@@ -367,14 +367,17 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 </svg>
 <div class="header">
 <div><h1><svg class="ic" width="18" height="18" style="vertical-align:-3px" aria-hidden="true"><use href="#i-ball" xlink:href="#i-ball"></use></svg> Rugby Manager</h1><div class="header-sub" id="hdr-name">選手を選択</div></div>
+<button class="btn-back" id="hdr-inj-btn" style="display:none;color:var(--red);padding:8px 6px" onclick="quickInjuryTap()" title="怪我・痛みを報告"><svg class="ic" width="19" height="19" style="vertical-align:-4px" aria-hidden="true"><use href="#i-bandage" xlink:href="#i-bandage"></use></svg></button>
 <button class="btn-back" id="logout-btn" style="display:none" onclick="logout()">ログアウト</button>
 </div>
 <div class="main" id="main"></div>
 <div id="loading-screen" style="position:fixed;inset:0;background:var(--maroon-d);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity .3s ease"><svg class="ld-ball" width="54" height="54" style="color:var(--pale)" aria-hidden="true"><use href="#i-ball" xlink:href="#i-ball"></use></svg><div style="font-family:var(--font-num);font-style:italic;font-weight:900;font-size:19px;letter-spacing:.05em;color:var(--pale);margin:14px 0 4px">RUGBY MANAGER</div><div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--rose-l)">FUKUOKA UNIV. RFC</div></div>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<!-- 下部ナビはP8aで動的生成（renderNav）。ここはJS到達前のフォールバック初期描画＝navSlots()の非怪我時と同じ5枠 -->
 <div class="nav-bottom" id="nav-bar">
 <div class="nav-btn ac" onclick="go('home')"><span class="nav-btn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>ホーム</div>
+<div class="nav-btn" onclick="go('condition')"><span class="nav-btn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 8c-1.4 0-2.7.8-3.3 2H7.8L6.5 7.5 4 14h2.2l.9-2.3L9 16l2.4-6 .9 2h2.2c.6 1.2 1.9 2 3.3 2 2.1 0 3.7-1.7 3.7-3.7S19.9 6.6 17.8 6.6c-1.4 0-2.7.8-3.3 2z"/></svg></span>体調</div>
 <div class="nav-btn" onclick="go('training')"><span class="nav-btn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z"/></svg></span>トレーニング</div>
 <div class="nav-btn" onclick="go('mydata')"><span class="nav-btn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 21h4v-9H4v9zm6 0h4V3h-4v18zm6 0h4v-13h-4v13z"/></svg></span>マイデータ</div>
 <div class="nav-btn" onclick="go('mypage')"><span class="nav-btn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span class="nav-dot" id="nav-badge-mypage"></span></span>マイページ</div>
@@ -1051,6 +1054,8 @@ function startListeners(){
           else if(k!=='p'&&Array.isArray(parsed))D[k]=parsed;
           // ナビの未読バッジは入力中でも構わず更新（入力欄の内容には触れないため）
           if(k==='ann'||k==='i')updateNavBadge();
+          // 怪我の増減で3枠目（トレーニング⇔リハビリ）が入れ替わる。入力中でもナビだけは更新して構わない
+          if(k==='i'&&myPid)renderNav();
           // 入力中フォーム判定：input/textarea/selectがactiveElementなら再描画しない
           var ae=document.activeElement;
           var isInputting=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT');
@@ -1887,14 +1892,12 @@ function checkPIN(pid){
 function doLogin(pid){
   myPid=pid;
   try{localStorage.setItem('rm_my_pid',String(pid));}catch(e){}
-  var p=D.p.find(function(x){return x.id===pid;});
-  document.getElementById('hdr-name').textContent=p?p.name+' ('+p.position+'/'+p.year+'年)':'';
-  document.getElementById('logout-btn').style.display='block';
+  initUI(); // ヘッダー表示（名前/ログアウト/怪我クイック報告ボタン）はinitUIに一本化（P8レビュー①: doLoginだけhdr-inj-btnが出なかった）
   kickTlogArch(); // 自分のtlogアーカイブをプリロード
   go('home');
 }
 
-function initUI(){var p=D.p.find(function(x){return x.id===myPid;});if(p){document.getElementById('hdr-name').textContent=p.name+' ('+p.position+'/'+p.year+'年)';document.getElementById('logout-btn').style.display='block';}}
+function initUI(){var p=D.p.find(function(x){return x.id===myPid;});if(p){document.getElementById('hdr-name').textContent=p.name+' ('+p.position+'/'+p.year+'年)';document.getElementById('logout-btn').style.display='block';var ib=document.getElementById('hdr-inj-btn');if(ib)ib.style.display='block';}}
 
 function logout(){
   if(!confirm('ログアウトしますか？\n次回ログインにはPINが必要です'))return;
@@ -1902,19 +1905,73 @@ function logout(){
   try{localStorage.removeItem('rm_my_pid');}catch(e){}
   document.getElementById('hdr-name').textContent='';
   document.getElementById('logout-btn').style.display='none';
+  var ibL=document.getElementById('hdr-inj-btn');if(ibL)ibL.style.display='none';
   showPlayerSelect();
 }
 function needsPlayer(tab){return tab!=='home';}
+// === P8a 動的ナビ ===
+// 5タブ[ホーム/体調/トレーニング(or リハビリ)/マイデータ/マイページ]。
+// 3枠目は「未resolvedの怪我があればリハビリ(=injury)」に自動で入れ替わる。
+// タブのキー('injury')は既存のまま＝go('injury')の既存呼び出し12箇所を1つも壊さない。
+var NAV_ICON={
+  home:'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+  condition:'M13.5 8c-1.4 0-2.7.8-3.3 2H7.8L6.5 7.5 4 14h2.2l.9-2.3L9 16l2.4-6 .9 2h2.2c.6 1.2 1.9 2 3.3 2 2.1 0 3.7-1.7 3.7-3.7S19.9 6.6 17.8 6.6c-1.4 0-2.7.8-3.3 2z',
+  training:'M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z',
+  injury:'M17.73 12.02l3.98-3.98c.39-.39.39-1.02 0-1.41l-4.34-4.34c-.39-.39-1.02-.39-1.41 0l-3.98 3.98L8 2.29c-.39-.39-1.02-.39-1.41 0L2.25 6.63c-.39.39-.39 1.02 0 1.41l3.98 3.98L2.25 16c-.39.39-.39 1.02 0 1.41l4.34 4.34c.39.39 1.02.39 1.41 0l3.98-3.98 3.98 3.98c.39.39 1.02.39 1.41 0l4.34-4.34c.39-.39.39-1.02 0-1.41l-3.98-3.98zM12 9c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 3c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm4 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1z',
+  mydata:'M4 21h4v-9H4v9zm6 0h4V3h-4v18zm6 0h4v-13h-4v13z',
+  mypage:'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'
+};
+// 未resolvedの怪我を持っているか（3枠目の切替条件・純粋判定）
+function hasActiveInjury(){
+  if(!myPid)return false;
+  return (D.i||[]).some(function(x){return idEq(x.pid,myPid)&&!x.resolved;});
+}
+// ナビ5枠の定義。3枠目だけが動的
+function navSlots(){
+  var rehab=hasActiveInjury();
+  return [
+    {tab:'home',label:'ホーム',icon:'home'},
+    {tab:'condition',label:'体調',icon:'condition'},
+    rehab?{tab:'injury',label:'リハビリ',icon:'injury'}:{tab:'training',label:'トレーニング',icon:'training'},
+    {tab:'mydata',label:'マイデータ',icon:'mydata'},
+    {tab:'mypage',label:'マイページ',icon:'mypage'}
+  ];
+}
+// 現在のタブに対応するナビ枠のキー（サブ的なタブ＝ナビに無いものはハイライトしない＝従来挙動）
+function navActiveKey(){return curTab;}
+function renderNav(){
+  var bar=document.getElementById('nav-bar');if(!bar)return;
+  var act=navActiveKey();
+  bar.innerHTML=navSlots().map(function(s){
+    return'<div class="nav-btn'+(myPid&&s.tab===act?' ac':'')+'" onclick="go(\''+s.tab+'\')"><span class="nav-btn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="'+NAV_ICON[s.icon]+'"/></svg>'+
+      (s.tab==='mypage'?'<span class="nav-dot" id="nav-badge-mypage"></span>':'')+'</span>'+s.label+'</div>';
+  }).join('');
+  updateNavBadge(); // バッジ要素はここで作り直されるので必ず貼り直す
+  noticeTabRestored();
+}
+// 「タブが戻った」一度きり案内。端末ローカルに直前の状態を持ち、リハビリ→トレーニングへ戻った瞬間だけ通知する。
+// myPid未設定（起動直後・ログイン前）は判定材料が無いので何もしない＝偽の「回復」通知を出さない。
+// キーは選手IDスコープ（P8レビュー②: 共有端末で選手を切り替えると他人の状態を引き継ぎ偽の回復トーストが出た）。
+// setItemに失敗したらトーストも出さない（保存できないと再描画のたびに再発するため）。
+function noticeTabRestored(){
+  if(!myPid)return;
+  var key='rm_rehabtab_'+myPid;
+  var now=hasActiveInjury()?'1':'0',prev=null;
+  try{prev=localStorage.getItem(key);}catch(e){return;}
+  if(prev===now)return;
+  try{localStorage.setItem(key,now);}catch(e){return;}
+  if(prev==='1'&&now==='0'&&typeof toast==='function')setTimeout(function(){toast('回復おつかれさま！ 3つ目のタブが「トレーニング」に戻りました');},400);
+}
+// 報告取消などの「回復ではない」怪我消滅時に、遷移検知を先回りで同期して誤トーストを抑制する
+function syncRehabTabState(){
+  if(!myPid)return;
+  try{localStorage.setItem('rm_rehabtab_'+myPid,hasActiveInjury()?'1':'0');}catch(e){}
+}
 function go(tab){
   if(needsPlayer(tab)&&!myPid){showPlayerSelect();return;}
   curTab=tab;subView=null;dCA();
   _navAnim=true; // クラスA遷移演出: 直後のT[tab]()描画のmutationをobserverが消費する
-  // onclick属性からタブ名を読み取って判定（順序依存をなくす）
-  document.querySelectorAll('.nav-btn').forEach(function(e){
-    var onclickAttr=e.getAttribute('onclick')||'';
-    var m=onclickAttr.match(/go\(['"]([^'"]+)['"]\)/);
-    e.classList.toggle('ac',m&&m[1]===tab);
-  });
+  renderNav(); // 枠の入れ替え（怪我の有無）とハイライトを一度に反映
   T[tab]&&T[tab]();
   updateNavBadge();
 }
@@ -1931,12 +1988,43 @@ function updateNavBadge(){
 // ホームの折りたたみ（今週の予定・お知らせ）。状態はwindowフラグで再描画をまたいで維持し、クラスをその場でtoggle（再描画しない＝revealが再発火しない）
 function homeWeekToggle(){window._homeWeekOpen=window._homeWeekOpen!==true;var c=document.getElementById('home-week-clp'),hd=document.getElementById('home-week-hd');if(c)c.classList.toggle('open',window._homeWeekOpen);if(hd)hd.classList.toggle('open',window._homeWeekOpen);}
 function homeAnnToggle(){window._homeAnnOpen=window._homeAnnOpen!==true;var c=document.getElementById('home-ann-clp'),hd=document.getElementById('home-ann-hd');if(c)c.classList.toggle('open',window._homeAnnOpen);if(hd)hd.classList.toggle('open',window._homeAnnOpen);}
+// === P8b ホーム再構成ヘルパー ===
+// コンディション連続入力日数（🔥ストリーク）。今日未入力なら昨日から遡る＝朝入力前に0へ落とさない
+function condStreak(pid){
+  if(!pid)return 0;
+  var days={};(D.f||[]).forEach(function(r){if(idEq(r.pid,pid)&&r.date)days[r.date]=1;});
+  var d=new Date(todayStr()+'T00:00:00');
+  if(!days[toDateStr(d)])d.setDate(d.getDate()-1);
+  var n=0;
+  while(days[toDateStr(d)]){n++;d.setDate(d.getDate()-1);}
+  return n;
+}
+// 週間振り返りカード（週初=月曜のみ）。getMyInsightsの計算済み上位3件を1枚に集約しマイデータへ誘導
+function weeklyReviewCardHtml(){
+  if(!myPid)return'';
+  if(new Date(todayStr()+'T00:00:00').getDay()!==1)return'';
+  var ins;
+  try{ins=getMyInsights('30')||[];}catch(e){return'';}
+  if(!ins.length)return'';
+  var C={good:'var(--green)',info:'var(--blue)',warn:'var(--amber)',bad:'var(--red)'};
+  return '<div class="card card-click rv" onclick="go(\'mydata\')" style="margin-bottom:14px">'+
+    '<div class="kicker" style="margin-bottom:2px">WEEKLY REVIEW</div>'+
+    '<div style="font-weight:800;font-size:14px;margin-bottom:6px">今週の振り返り</div>'+
+    ins.slice(0,3).map(function(x){return '<div style="display:flex;gap:8px;align-items:flex-start;padding:3px 0"><span style="flex:none;width:7px;height:7px;border-radius:50%;background:'+(C[x.lv]||C.info)+';margin-top:5px"></span><div style="font-size:12px;font-weight:600;line-height:1.5">'+x.t+'</div></div>';}).join('')+
+    '<div style="text-align:right;font-size:11px;font-weight:600;color:var(--accent);margin-top:4px">マイデータで詳しく →</div></div>';
+}
+// 怪我クイック報告（ヘッダー常設アイコン=全タブ2タップ以内）。既存の未resolved怪我持ちはカルテ/リハタブ直行に切替
+function quickInjuryTap(){
+  if(!myPid){showPlayerSelect();return;}
+  var act=(D.i||[]).filter(function(x){return idEq(x.pid,myPid)&&!x.resolved;});
+  if(act.length===1){showMyChart(act[0].id);return;}
+  if(act.length>1){go('injury');return;}
+  showInjuryReport();
+}
 function showPlayerSelect(){
   dCA();
-  // 全てのnav-btnのハイライトを解除（ログイン画面）
-  document.querySelectorAll('.nav-btn').forEach(function(e){
-    e.classList.remove('ac');
-  });
+  // ログイン画面では枠を既定（非怪我）へ戻しハイライトも解除（renderNavはmyPid未設定なら.acを付けない）
+  renderNav();
   var q=(document.getElementById('psel-s')?document.getElementById('psel-s').value:'').toLowerCase();
   var list=D.p.filter(function(p){return!q||p.name.toLowerCase().indexOf(q)>=0;});
   var gh=list.map(function(p){return'<div class="select-card" onclick="selectPlayer('+p.id+')">'+avH(p,36)+'<div style="font-size:13px;font-weight:600;margin-top:4px">'+escapeHtml(p.name)+'</div><div style="font-size:11px;color:var(--text-secondary)">'+p.position+'/'+p.year+'年</div></div>';}).join('');
@@ -1960,15 +2048,7 @@ home:function(){
   var sunDt=new Date(monDt);sunDt.setDate(monDt.getDate()+6);
   var monS=toDateStr(monDt),sunS=toDateStr(sunDt);
   var weekEvts=(D.cal||[]).filter(function(e){return e.date>=monS&&e.date<=sunS;}).sort(function(a,b){return a.date.localeCompare(b.date);});
-  var selectedForMatch=D.matchsel||[];
-  var yesterday2=new Date();yesterday2.setDate(yesterday2.getDate()-1);
-  var yesterdayS2=toDateStr(yesterday2);
-  // 昨日が試合日（カレンダーにmatchがある）かチェック
-  var wasMatchYesterday=(D.cal||[]).some(function(e){return e.date===yesterdayS2&&e.type==='match';});
-  // 全体の未入力者（昨日の試合）
-  var matchMissedAll=wasMatchYesterday?D.p.filter(function(p){
-    return selectedForMatch.indexOf(p.id)>=0&&!D.md.some(function(m){return m.pid===p.id&&m.date===yesterdayS2;});
-  }):[];
+  // P8b: 試合日チェック未入力者一覧（チーム系）はstaff管掌へ撤去＝関連計算も削除
   // 測定会アラート: 未締切セッション（測定会当日〜終了+14日の猶予窓・締切済は除外）を対象。
   // 記録なし(phskip)申告済みは「済み扱い」で未入力から除外される（staff側の記録なし設定が反映される）。
   var todayH=todayStr();
@@ -2004,9 +2084,12 @@ home:function(){
       '<div style="flex:1;min-width:0"><div class="kicker kicker--gold">'+kick+'</div>'+
       '<div style="font-size:17px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(me.name)+'</div>'+
       '<div style="font-size:11px;color:var(--rose-l)">'+(pnum?'<span class="num" style="font-size:12px">'+pnum+'</span> ':'')+me.position+' / '+me.year+'年</div></div>'+
+      (function(){var sk=condStreak(myPid);return sk>=2?'<span class="bd" style="background:var(--amber-bg);color:var(--amber);font-weight:800;display:inline-flex;align-items:center;gap:2px;margin-right:2px" title="コンディション連続入力">'+ic('i-fire',12)+' '+sk+'</span>':'';})()+
       (totalUnreadH?'<span class="bd" style="background:var(--gold-hot);color:var(--ink);cursor:pointer;font-weight:800;display:inline-flex;align-items:center;gap:3px" onclick="event.stopPropagation();go(\'mypage\')">'+ic('i-bell',12)+' '+totalUnreadH+'</span>':'')+
       '</div></div>';
     h+=todayTodoHtml();
+    // 怪我クイック報告（P8b・常設赤ボタン）。怪我持ちには直下のRTPカードがカルテ直行を担うため報告ボタンは出さない
+    if(!myInjH.length)h+='<button class="btn rv" style="width:100%;margin-bottom:14px;border-color:var(--red);color:var(--red);font-weight:700" onclick="showInjuryReport()">'+ic('i-bandage',14)+' 怪我・痛みを報告する</button>';
     // RTP進捗カード（怪我離脱中のみ出し分け）
     if(myInjH.length){
       var inj0=myInjH[0];var ch0=getChart(inj0.id);
@@ -2021,6 +2104,8 @@ home:function(){
         '<div style="display:flex;gap:4px">'+RTP_LEVELS.map(function(r,i){return'<span style="width:8px;height:8px;border-radius:50%;background:'+(i<=rtpIdx0?rtp0.color:'var(--bg-tertiary)')+'"></span>';}).join('')+'</div>'+
         '</div><div style="text-align:right;font-size:11px;font-weight:600;color:var(--accent);margin-top:6px">カルテを見る →</div></div>';
     }
+    // 週間振り返りサマリ（P8b・週初のみ1枚）
+    h+=weeklyReviewCardHtml();
   }else{
     h+='<div style="text-align:center;margin-bottom:16px">'+ic('i-ball',30,'var(--maroon)')+'<div style="font-size:18px;font-weight:900;margin-top:4px">福岡大学ラグビー部</div><div class="kicker">FUKUOKA UNIV. RFC</div></div>';
   }
@@ -2044,13 +2129,7 @@ home:function(){
     }
     h+='</div>';
   }
-  if(me)h+=myPhysCardHtml();
-  if(me)h+=myBadgeHomeHtml();
-  // ppカードはタップでトレーニング画面へ直行（従来はタップしても何も起きなかった）
-  var ppCardH=ppCardHtml(false);
-  if(ppCardH)h+='<div onclick="go(\'training\')" style="cursor:pointer">'+ppCardH+'</div>';
-  // 自分のグループ（午前/午後・強度班。Phase 7・未設定時は非表示）
-  h+=myGroupCardHtml();
+  // P8b: myPhysカード→マイデータNOW／バッジ→マイデータ⑧／pp・グループカード→トレーニングタブへ移設（ホーム13→7ブロック）
   // 今週のスケジュール（今日＋次の予定を表示・残りは折りたたみ。試合日からの日数差=MD-xチップ）
   if(weekEvts.length){
     var weekMatches=weekEvts.filter(function(e){return e.type==='match';}).map(function(e){return e.date;}).sort();
@@ -2083,25 +2162,16 @@ home:function(){
     }
     h+='</div>';
   }
-  // チーム系: 昨日の未入力者一覧（試合日チェック・フィジカル・ブロンコ）
-  if(matchMissedAll.length){h+='<div class="card rv" style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:8px;color:var(--red);display:flex;align-items:center;gap:6px">'+ic('i-ball',15)+' 試合日チェック未入力 <span style="font-size:12px;font-weight:400">'+matchMissedAll.length+'名</span></div>'+matchMissedAll.map(function(p){return'<div class="log-row">'+avH(p,22)+'<span style="font-weight:600;flex:1;font-size:12px">'+escapeHtml(p.name)+'</span></div>';}).join('')+'</div>';}
-  // 測定会ごとの未入力者一覧（未締切セッション・記録なし申告済みは除外＝staffの記録なしが反映される）
-  // 名前一覧を廃止し「あとN名」の1行チップに圧縮（試合日チェック未入力・個人アラートは従来通り）
-  openMSessStatus.forEach(function(o){
-    var n=o.st.missedPids.length;
-    if(!n)return;
-    var isBr=o.st.isBronco;
-    h+='<div class="alert-card alert-warn rv" style="margin-bottom:8px;display:flex;align-items:center;gap:7px"><span style="display:flex">'+ic(isBr?'i-run':'i-chart',15)+'</span><div style="flex:1;font-size:12px">『'+escapeHtml(o.s.name)+'』'+(isBr?'ブロンコ':'フィジカル')+'未入力 <b>あと'+n+'名</b></div></div>';
-  });
-  // ランキングは専用ページへ（ホームからはリンクのみ）
-  h+='<div class="card card-click rv" onclick="go(\'ranking\')" style="margin-bottom:12px;display:flex;align-items:center;gap:10px">'+ic('i-trophy',20,'var(--gold-deep)')+'<div style="flex:1"><div style="font-weight:800;font-size:14px">ランキング</div><div style="font-size:11px;color:var(--text-secondary)">BIG3・スクワット・ブロンコなどの順位を見る</div></div>'+ic('i-chevron-r',16,'var(--text-tertiary)')+'</div>';
+  // P8b: チーム系一覧（試合日チェック未入力者・測定会あとN名）はstaffの管掌へ＝playerホームから撤去
+  // ランキング・バッジリンク（7ブロック目。バッジ本体はマイデータ⑧）
+  h+='<div class="card card-click rv" onclick="go(\'ranking\')" style="margin-bottom:12px;display:flex;align-items:center;gap:10px">'+ic('i-trophy',20,'var(--gold-deep)')+'<div style="flex:1"><div style="font-weight:800;font-size:14px">ランキング・バッジ</div><div style="font-size:11px;color:var(--text-secondary)">BIG3・ブロンコなどの順位を見る（獲得バッジはマイデータ）</div></div>'+ic('i-chevron-r',16,'var(--text-tertiary)')+'</div>';
   $m().innerHTML=h;
 },
 mystatus:function(){
   var p=D.p.find(function(x){return x.id===myPid;});if(!p)return;
   var cfg=getStdCfg();
   var pn=POS_NUM[p.position]||'';
-  var h='<button class="btn-back" onclick="go(\'home\')">'+ic('i-back',14)+' ホーム</button>'+
+  var h='<button class="btn-back" onclick="go(\'mydata\')">'+ic('i-back',14)+' マイデータ</button>'+ // P8a: 見る系はマイデータ配下へ
     '<div class="kicker" style="margin-top:4px">MY PHYSICAL</div>'+
     '<div style="font-size:18px;font-weight:900;margin:0 0 2px;display:flex;align-items:baseline;gap:8px">マイフィジカル詳細'+(pn?'<span style="font-size:11px;color:var(--text-secondary);font-weight:700"><span class="num" style="font-size:13px">'+pn+'</span> '+escapeHtml(p.position)+'</span>':'')+'</div>';
   if(!p.position||!cfg.pos[p.position]){
@@ -2261,8 +2331,7 @@ mypage:function(){
   var isOff=(D.offday||[]).indexOf(todayStr())>=0;
   var pickup=isOff?[]:getTodayPickup();var isPickup=(pickup||[]).indexOf(myPid)>=0;
   var bcDone=D.bc.some(function(r){return r.pid===myPid&&r.date===todayStr();});
-  var bSQ=getBest(myPid,'squat'),bBP=getBest(myPid,'bench'),bDL=getBest(myPid,'deadlift'),bBR=getBest(myPid,'bronco');
-  var lastPhysRec=D.ph.filter(function(r){return r.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
+  // P8a: ベスト値・体組成・最新コンディションの数値はマイデータNOWへ移設（ここでは計算しない）
   var myAnns=D.ann.filter(function(a){return a.targetPid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,5);
   // 未読カウント
   var unreadAnns=D.ann.filter(function(a){return a.targetPid===myPid&&(!a.readBy||a.readBy.indexOf(myPid)<0);}).length;
@@ -2338,8 +2407,7 @@ mypage:function(){
     h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--red)"><div style="font-weight:600;color:var(--red);margin-bottom:8px">現在の怪我・リハビリ</div>';
     pInj.forEach(function(inj){
       var rh=D.r.find(function(x){return x.injId===inj.id;});
-      var plan=(D.rplan||[]).find(function(x){return x.injId===inj.id;});
-      var tomorrowCats=plan?plan.tomorrowCats||[]:[];
+      // P8b: 「本日のメニュー」チップはリハビリタブのみに表示（重複解消）。ここは段階＋カルテ導線だけ
       h+='<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid var(--border-tertiary)">'+
       '<div style="font-weight:600">'+(inj.side||'')+inj.part+' '+inj.type+'</div>';
       if(rh){
@@ -2347,10 +2415,6 @@ mypage:function(){
         h+='<div style="display:flex;gap:4px;margin-top:4px">'+STG.map(function(s,si){
           return'<div style="width:20px;height:8px;border-radius:4px;background:'+(si<rh.stage?'var(--green)':si===rh.stage?'var(--blue)':'var(--border-secondary)')+'"></div>';
         }).join('')+'</div>';
-      }
-      if(tomorrowCats.length){
-        h+='<div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-top:6px;margin-bottom:3px">本日のメニュー</div>'+
-        '<div style="display:flex;flex-wrap:wrap;gap:3px">'+tomorrowCats.map(function(c){return'<span style="background:'+RCAT_BG[c]+';color:'+RCAT_COLOR[c]+';padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600">'+c+'</span>';}).join('')+'</div>';
       }
       h+='<button class="btn btn-p btn-sm" style="margin-top:8px" onclick="showMyChart('+inj.id+')">'+ic('i-clipboard',13)+' カルテを見る・痛みを記録</button>';
       h+='</div>';
@@ -2381,45 +2445,13 @@ mypage:function(){
   var myAbsToday=!!myAbsEntry;
   h+='<div class="card card-click" onclick="showAbsenceForm()" style="text-align:center;padding:16px"><div style="margin-bottom:8px">'+navIcon('absence')+'</div><div style="font-weight:600;font-size:13px">欠席・遅刻申告</div>'+(myAbsToday?'<div style="font-size:11px;color:var(--amber);margin-top:4px">本日申告済み</div><div style="display:flex;gap:4px;justify-content:center;margin-top:6px">'+(myAbsEntry.source==='player'?'<button class="btn btn-sm" onclick="event.stopPropagation();showEditAbsence()">修正</button>':'')+'<button class="btn btn-sm btn-d" onclick="event.stopPropagation();cancelAbsence()">取り消す</button></div>':'')+'</div>';
   h+='</div>';
-  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px"><span style="font-weight:600">'+ic('i-chart',15,'var(--maroon)')+' フィジカルベスト</span>'+(lastPhysRec?'<span style="font-size:11px;color:var(--text-secondary)">前回: '+fmt(lastPhysRec.date)+'</span>':'')+'</div>'+
-  '<div class="grid3">'+
-  '<div class="mc"><div class="v" style="font-size:15px">'+(bSQ||'-')+'</div><div class="l">SQ</div></div>'+
-  '<div class="mc"><div class="v" style="font-size:15px">'+(bBP||'-')+'</div><div class="l">BP</div></div>'+
-  '<div class="mc"><div class="v" style="font-size:15px">'+(bDL||'-')+'</div><div class="l">DL</div></div>'+
-  '<div class="mc"><div class="v" style="font-size:15px">'+(getBest(myPid,'chinning')||'-')+'</div><div class="l">チンニング</div></div>'+
-  '<div class="mc"><div class="v" style="font-size:15px">'+(getBest(myPid,'clean')||'-')+'</div><div class="l">クリーン</div></div>'+
-  '<div class="mc"><div class="v" style="font-size:13px">'+broncoFmt(bBR)+'</div><div class="l">Bronco</div></div>'+
-  '</div>'+
-  '<div class="mc" style="margin-top:8px"><div class="v" style="font-size:16px">'+(getBestBIG3(myPid)||'-')+'</div><div class="l">BIG3合計(各ベスト)</div></div>';
-  // 推定1RM（参考値）
-  var myE1rm=getLatestE1RM(myPid);var e1k=Object.keys(myE1rm);
-  if(e1k.length){
-    h+='<div style="margin-top:10px;padding:10px 12px;background:var(--blue-bg);border-radius:var(--radius)"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">'+ic('i-trend-up',13)+' 推定1RM（トレーニングからの参考値）</div><div style="display:flex;gap:8px;flex-wrap:wrap">'+
-    e1k.map(function(k){var label=(EST_BASES.find(function(b){return b.k===k;})||{}).label||k;return'<div style="flex:1;min-width:70px;text-align:center"><div style="font-size:10px;color:var(--text-secondary)">'+label+'</div><div style="font-size:15px;font-weight:700;color:var(--blue)">'+myE1rm[k].e1rm+'<span style="font-size:9px">kg</span></div></div>';}).join('')+
-    '</div></div>';
-  }
-  // Latest condition
-  // 現在の体重
-  var latestBC=D.bc.filter(function(r){return r.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
-  if(latestBC&&latestBC.weight){
-    h+='<div style="font-weight:600;margin:12px 0 6px">'+ic('i-scale',15,'var(--maroon)')+' 体組成 <span style="font-weight:400;color:var(--text-secondary);font-size:12px">'+fmt(latestBC.date)+'</span></div>'+
-    '<div class="grid3" style="margin-bottom:8px">'+
-    '<div class="mc"><div class="v" style="font-size:16px">'+(latestBC.weight||'-')+'</div><div class="l">体重(kg)</div></div>'+
-    '<div class="mc"><div class="v" style="font-size:16px">'+(latestBC.fat||'-')+'</div><div class="l">体脂肪(%)</div></div>'+
-    '<div class="mc"><div class="v" style="font-size:16px">'+(latestBC.muscle||'-')+'</div><div class="l">筋量(kg)</div></div>'+
-    '</div>';
-  }
-  if(latestF){
-    h+='<div style="font-weight:600;margin:12px 0 8px">最新コンディション <span style="font-weight:400;color:var(--text-secondary);font-size:12px">'+fmt(latestF.date)+'</span></div><div class="grid3"><div class="mc"><div class="v" style="color:'+rc(latestF.rpe)+'">'+latestF.rpe+'</div><div class="l">RPE</div></div><div class="mc"><div class="v" style="color:'+sc(latestF.sleep)+'">'+latestF.sleep+'h</div><div class="l">睡眠</div></div><div class="mc"><div class="v" style="color:var(--purple)">'+sLoad(latestF)+'</div><div class="l">セッションロード(AU)</div></div></div>';
-    // 拡張項目（あるものだけ表示）
-    var fx=[];
-    if(latestF.weight)fx.push('<div class="mc"><div class="v" style="font-size:15px">'+latestF.weight+'</div><div class="l">体重(kg)</div></div>');
-    if(latestF.mood)fx.push('<div class="mc"><div class="v" style="font-size:15px">'+MOOD_EMO[latestF.mood-1]+' '+latestF.mood+'</div><div class="l">気分</div></div>');
-    if(latestF.stress)fx.push('<div class="mc"><div class="v" style="font-size:15px">'+STRESS_EMO[latestF.stress-1]+' '+latestF.stress+'</div><div class="l">ストレス</div></div>');
-    if(latestF.soreness)fx.push('<div class="mc"><div class="v" style="font-size:15px">'+SORE_EMO[latestF.soreness-1]+' '+latestF.soreness+'</div><div class="l">筋肉痛</div></div>');
-    if(fx.length)h+='<div class="grid3" style="margin-top:8px">'+fx.join('')+'</div>';
-    if(latestF.soreness&&latestF.sorenessParts&&latestF.sorenessParts.length)h+='<div style="font-size:11px;color:var(--amber);margin-top:6px">筋肉痛の部位: '+latestF.sorenessParts.map(escapeHtml).join('・')+'</div>';
-  }
+  // P8a: フィジカルベスト/BIG3合計/推定1RM/体組成/最新コンディションの数値ブロックはマイデータNOWへ移設（正典の一本化）。導線のみ残置
+  h+='<div class="card card-click" onclick="go(\'mydata\')" style="display:flex;align-items:center;gap:12px;cursor:pointer">'+
+    ic('i-chart',18,'var(--maroon)')+
+    '<div style="flex:1;min-width:0"><div class="kicker" style="margin-bottom:2px">MY DATA</div><div style="font-weight:800;font-size:14px">フィジカル・体組成・コンディションの数値</div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-top:3px">ベスト記録・ランク・推定1RM・推移はマイデータへ</div></div>'+
+    ic('i-chevron-r',18,'var(--text-tertiary)')+
+  '</div>';
   // ヘルプボタン
   h+='<div style="margin-top:24px;padding-top:16px;border-top:0.5px solid var(--border-tertiary);text-align:center"><button class="btn" style="font-size:13px;color:var(--text-secondary)" onclick="T.help()">'+ic('i-book',14)+' 使い方ガイド</button></div>';
   $m().innerHTML=h;
@@ -2433,6 +2465,7 @@ help:function(){
   '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-moon',14,'var(--blue)')+' 毎日やること</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '<b>1. コンディション入力（毎日朝）</b><br>'+
+  '・下の「体調」タブから入力<br>'+
   '・RPE：昨日の練習がきつかったか1〜10で<br>'+
   '・睡眠時間：何時間寝たか<br>'+
   '・TR時間：練習や試合の時間（分）<br><br>'+
@@ -2453,9 +2486,11 @@ help:function(){
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--red)">'+
   '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-bandage',14,'var(--red)')+' 怪我中のとき</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
-  '・「リハビリログ」を記録（痛み・ROM・実施内容）<br>'+
+  '・怪我中は下の3つ目のタブが「リハビリ」に変わる<br>'+
+  '・「今日のリハビリを記録」（実施内容と痛みを1画面で）<br>'+
   '・週1回「週次怪我チェック」を提出<br>'+
   '・復帰目標タイム・本日のメニューを確認できる<br>'+
+  '・回復するとタブは「トレーニング」に戻る<br>'+
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--green)">'+
@@ -2498,8 +2533,18 @@ condition:function(){
   subView=true; // 入力フォームなので、他端末の保存によるリアルタイム再描画から保護（go('mypage')で解除）
   var lf=D.f.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
   var todayDone=lf.length&&lf[0].date===todayStr();var td=todayStr();
-  $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">'+ic('i-back',14)+' マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">コンディション入力</div>'+
-  (todayDone?'<div class="alert-card alert-info">'+ic('i-check-c',14)+' 本日入力済み (RPE:'+lf[0].rpe+' / 睡眠:'+lf[0].sleep+'h)</div>':'')+
+  // P8a: 下部ナビ2枠目の常設タブ。戻るボタンは持たない（タブ間はナビで移動する）
+  var tdRec=todayDone?lf[0]:null;
+  $m().innerHTML='<div class="kicker" style="margin-top:2px">CONDITION</div>'+
+  '<div style="font-size:20px;font-weight:900;letter-spacing:-.01em;margin:0 0 12px">コンディション</div>'+
+  (tdRec?'<div class="card" style="margin-bottom:12px;border-left:3px solid var(--green)">'+
+    '<div style="display:flex;align-items:center;gap:7px;font-weight:700;font-size:13px;color:var(--green);margin-bottom:8px">'+ic('i-check-c',14)+' 本日入力済み <span style="font-weight:400;color:var(--text-secondary);font-size:11px;margin-left:auto">'+fmt(tdRec.date)+'</span></div>'+
+    '<div class="grid3"><div class="mc"><div class="v" style="color:'+rc(tdRec.rpe)+'">'+tdRec.rpe+'</div><div class="l">RPE</div></div>'+
+    '<div class="mc"><div class="v" style="color:'+sc(tdRec.sleep)+'">'+tdRec.sleep+'h</div><div class="l">睡眠</div></div>'+
+    '<div class="mc"><div class="v" style="color:var(--purple)">'+sLoad(tdRec)+'</div><div class="l">セッションロード(AU)</div></div></div>'+
+    '<div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-sm" onclick="showEditCondition(\''+tdRec.id+'\')">'+ic('i-edit',12)+' 修正</button><button class="btn btn-sm btn-d" onclick="delCondition(\''+tdRec.id+'\')">削除</button></div>'+
+    '<div style="font-size:10px;color:var(--text-tertiary);margin-top:6px">別の日の記録は下のフォームで日付を変えて入力できます</div>'+
+  '</div>':'')+
   '<div class="form-box"><div class="form-title">今日のコンディション</div>'+
   '<div class="fl"><label>日付</label><input class="ipt" type="date" id="cf-date" value="'+td+'"></div>'+
   '<div class="fl"><label>RPE（1-10）</label>'+numStepHTML('cf-rpe',1,10,'updSrpe()')+'</div>'+
@@ -2597,13 +2642,13 @@ injury:function(){
         else if(diff<=3){overdueInfo='<div style="font-size:11px;color:var(--amber);margin-bottom:6px">'+ic('i-target',12)+' あと'+diff+'日で「'+STG[rh.stage+1]+'」へ目標</div>';}
         else{overdueInfo='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">'+ic('i-target',12)+' 「'+STG[rh.stage+1]+'」目標: '+fmt(stageTarget)+'</div>';}
       }
-      return'<div style="font-size:13px;color:var(--blue);font-weight:600;margin-bottom:6px">現在: '+STG[rh.stage]+'</div>'+
+      return'<div style="font-size:13px;color:var(--blue);font-weight:600;margin-bottom:2px">現在: '+STG[rh.stage]+'</div>'+
       overdueInfo+
-      '<div class="stage-mini" style="justify-content:flex-start;gap:6px;margin-bottom:10px">'+
-      STG.map(function(s,si){return'<div style="display:flex;flex-direction:column;align-items:center"><div class="stage-mini-dot'+(si<rh.stage?' done':si===rh.stage?' cur':'')+'"></div></div>';}).join('')+
-      '</div><button class="btn" style="margin-bottom:6px" onclick="showRehabForm('+rh.id+')">リハビリログを記録</button>';
+      rtpPitchHtml(rh.stage)+ // P8a: リハビリタブ昇格に合わせ、段階ドットをRTPピッチ図（ROAD TO RETURN）へ
+      '<button class="btn btn-p" style="margin:10px 0 6px" onclick="showRehabForm('+rh.id+')">'+ic('i-edit',13)+' 今日のリハビリを記録</button>';
     })():'')+
     '<button class="btn btn-s" onclick="showWeekCheck('+inj.id+')">'+ic('i-clipboard',12)+' 週次怪我チェック</button>'+
+    '<button class="btn" style="margin-top:6px" onclick="showMyChart('+inj.id+')">'+ic('i-clipboard',12)+' カルテ・痛み推移を見る</button>'+
     '<button class="btn" style="margin-top:6px;background:var(--purple-bg);color:var(--purple);border-color:var(--purple)" onclick="showInjCommentDialog(\''+inj.id+'\')">'+ic('i-note',12)+' コメント'+(commentCount?' ('+commentCount+')':'')+'</button>'+
     ((inj.source==='player'||inj.source==='match')&&(inj.approved==null)?
       '<div style="display:flex;gap:4px;margin-top:8px"><button class="btn btn-sm" style="width:auto" onclick="editInjury(\''+inj.id+'\')">'+ic('i-edit',12)+' 報告を修正</button><button class="btn btn-sm btn-d" style="width:auto" onclick="cancelInjury(\''+inj.id+'\')">報告を取消</button></div><div style="font-size:10px;color:var(--text-tertiary);margin-top:3px">スタッフ承認前のみ修正・取消できます</div>'
@@ -2645,11 +2690,17 @@ injury:function(){
   '</div></div>':'';
 
   var pendingInj=D.i.filter(function(x){return x.pid===myPid&&x.source&&(x.approved===null||x.approved===undefined)&&!x.resolved;});
-  $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button>'+
-  '<div style="font-size:18px;font-weight:600;margin-bottom:14px">怪我・リハビリ</div>'+
+  // P8a: 治療中はナビ3枠目の常設タブ（戻るボタン無し・kickerヘッダー）。回復後はマイページ配下のサブ画面（従来どおり）
+  var isNavTab=active.length>0;
+  // P8レビュー(6): 怪我中はナビからトレーニングが消えるため、リハビリタブに導線を常設
+  // （痛みスキップ・代替種目・自主トレ・休養記録は怪我中こそ使う機能＝入口を絶やさない）
+  var trainLinkH=isNavTab?'<div class="card card-click" onclick="go(\'training\')" style="margin-top:14px;display:flex;align-items:center;gap:10px">'+ic('i-dumbbell',18,'var(--blue)')+'<div style="flex:1"><div style="font-weight:800;font-size:14px">トレーニング</div><div style="font-size:11px;color:var(--text-secondary)">できる範囲の実施・自主トレ・休養記録・履歴はこちら</div></div>'+ic('i-chevron-r',16,'var(--text-tertiary)')+'</div>':'';
+  $m().innerHTML=(isNavTab
+    ?'<div class="kicker" style="margin-top:2px">ROAD TO RETURN</div><div style="font-size:20px;font-weight:900;letter-spacing:-.01em;margin:0 0 12px">リハビリ</div>'
+    :'<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">怪我・リハビリ</div>')+
   (pendingInj.length?'<div class="alert-card alert-warn" style="margin-bottom:10px">'+ic('i-clock',13)+' 怪我報告 '+pendingInj.length+'件がスタッフ確認待ちです</div>':'')+
   '<button class="btn" style="margin-bottom:14px;border-color:var(--red);color:var(--red)" onclick="showInjuryReport()">'+ic('i-bandage',14)+' 痛み・違和感を伝える</button>'+
-  rtestH+menuH+activeH+wcH+rlogH+pastH;
+  rtestH+menuH+activeH+trainLinkH+wcH+rlogH+pastH;
 },
 match:function(){
   var mds=D.md.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
@@ -2763,7 +2814,7 @@ function doCondition(btnEl){
   if(sore){rec.soreness=sore;if(parts.length)rec.sorenessParts=parts;}
   // svSafeSeqで成否を捕捉（svSafeは失敗時に内部alert＋ボタン固着するため使わない）
   svSafeSeq([{k:'f',rec:rec}],function(){
-    go('mypage');toast('記録しました');
+    go('condition');toast('記録しました'); // P8a: コンディションは常設タブ＝保存後はタブに戻る（当日サマリが見える）
   },function(){
     // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
@@ -2909,7 +2960,7 @@ function showEditCondition(fid){
   '<div class="fl"><label>メモ</label><textarea class="ipt" id="ef-note">'+escapeHtml(rec.note||'')+'</textarea></div>'+
   '<div id="esrpe-pv" style="margin-top:8px"></div>'+
   '</div>'+
-  '<button class="btn btn-p" style="width:100%" onclick="doEditCondition(\''+fid+'\',this)">修正する</button>');
+  '<button class="btn btn-p" style="width:100%" onclick="doEditCondition(\''+fid+'\',this)">修正する</button>','condition','コンディションに戻る');
   bindSorePartsToggle('ef-sore','ef-parts-wrap','ef-parts');
   setTimeout(function(){
     var el=document.getElementById('ef-rpe');if(el){el.value=rec.rpe||0;updESrpe();}
@@ -2953,7 +3004,7 @@ function doEditCondition(fid,btnEl){
     else{delete latest[idx].soreness;delete latest[idx].sorenessParts;}
     latest[idx].editedAt=new Date().toISOString();
     return latest;
-  },function(){go('mypage');toast('修正しました');},function(){
+  },function(){go('condition');toast('修正しました');},function(){
     // 失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
     alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
@@ -3051,7 +3102,7 @@ function delCondition(fid){
     var nx=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(fid);});
     if(nx.length===before){notFound=true;return latest;}
     return nx;
-  },function(){if(notFound){alert('記録が見つかりませんでした');return;}go('mypage');toast('削除しました');});
+  },function(){if(notFound){alert('記録が見つかりませんでした');return;}go('condition');toast('削除しました');});
 }
 
 function delBC(bcid){
@@ -3667,21 +3718,118 @@ function doPhys(btnEl,mode){
   }
   if(!guardSubmit(btnEl,'記録中…'))return; // 二重送信ガード
   var prevBR=getBest(myPid,'bronco'); // 保存前のブロンコ・ベスト（getBestは保存後にnewRecを含むため事前に捕捉）
+  // P8c: 結果シート用に保存前の状態を捕捉（ベスト/ランク/BIG3合計。保存後の値と比較して変動を演出する）
+  var prevBest={squat:getBest(myPid,'squat'),bench:getBest(myPid,'bench'),deadlift:getBest(myPid,'deadlift'),chinning:getBest(myPid,'chinning'),clean:getBest(myPid,'clean'),bronco:prevBR};
+  var prevRank={};STD_LIFTS.forEach(function(l){var _pi=getLiftRankInfo(myPid,l.k);prevRank[l.k]=(_pi&&_pi.rank)?_pi.rank.label:null;});
+  var _pbi=getBroncoRankInfo(myPid);var prevBrRank=(_pbi&&_pbi.rank)?_pbi.rank.label:null;
+  var prevB3=getBestBIG3(myPid);
   var curSess=getCurrentMSess(isBronco?'bronco':undefined); // ブロンコ回はブロンコ測定会のみに紐付け（フィジカル回同時開催時の誤紐づけ防止）
   var newRec={id:newId(),pid:myPid,date:dateV,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br,msessId:curSess?curSess.id:null,inputAt:new Date().toISOString()};
   svSafeSeq([{k:'ph',rec:newRec}],function(){
-    var m=[];var pSQ=getBest(myPid,'squat'),pBP=getBest(myPid,'bench'),pDL=getBest(myPid,'deadlift');
-    if(sq&&pSQ&&sq>=pSQ)m.push('SQ');if(bp&&pBP&&bp>=pBP)m.push('BP');if(dl&&pDL&&dl>=pDL)m.push('DL');
+    // PB判定は保存前捕捉のprevBestで行う（P8レビュー④: 保存後getBestは新記録自身を含み初回でも必ずPB扱い＝シートの「初回」表示と矛盾していた）
+    var m=[];
+    if(sq&&prevBest.squat!=null&&sq>=prevBest.squat)m.push('SQ');
+    if(bp&&prevBest.bench!=null&&bp>=prevBest.bench)m.push('BP');
+    if(dl&&prevBest.deadlift!=null&&dl>=prevBest.deadlift)m.push('DL');
     var broncoPB=(br&&prevBR&&br<prevBR); // 過去ベストを更新した時のみ演出（初回はtoast）
-    go('mypage');
-    if(m.length)pbFlash(m.join('・')+' 自己ベスト更新！');
-    else if(broncoPB)pbFlash('ブロンコ自己ベスト更新！ '+broncoFmt(prevBR)+' → '+broncoFmt(br));
+    // P8c: NO SIDE結果シート（前回比チップ・ランク変動・CLUB到達・復帰目標）。PBフラッシュはシートの上に重ねる
+    showMeasureResult({vals:{squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br},prevBest:prevBest,prevRank:prevRank,prevBrRank:prevBrRank,prevB3:prevB3});
+    if(m.length)setTimeout(function(){pbFlash(m.join('・')+' 自己ベスト更新！');},350);
+    else if(broncoPB)setTimeout(function(){pbFlash('ブロンコ自己ベスト更新！ '+broncoFmt(prevBR)+' → '+broncoFmt(br));},350);
     else toast('記録しました');
   },function(){
     // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
     alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
   });
+}
+
+// P8c: 「NO SIDE」測定結果シート（FULL TIME=showTrainingResultと対・resultHero/resultStatRow共通骨格）
+// ctx={vals:{squat..bronco},prevBest:{同キー},prevRank:{sq/bp/dl:ランク名},prevBrRank,prevB3}
+// 保存完了後に呼ぶ（getBest/getLiftRankInfoは新記録込みの「今」を返す＝prevと比較して変動を演出）
+function showMeasureResult(ctx){
+  var v=(ctx&&ctx.vals)||{};
+  var entered=[];
+  [['squat','スクワット'],['bench','ベンチプレス'],['deadlift','デッドリフト'],['chinning','チンニング'],['clean','クリーン']].forEach(function(l){
+    if(v[l[0]]!=null)entered.push({k:l[0],label:l[1]});
+  });
+  var hasBr=v.bronco!=null;
+  var b3=getBestBIG3(myPid);
+  // 今日BIG3種目を測った時だけBIG3合計をヒーローにする（P8レビュー③: チンニングのみの日に過去のBIG3合計が「記録完了」として出ていた）
+  var b3Today=(v.squat!=null||v.bench!=null||v.deadlift!=null);
+  var h;
+  if(hasBr&&!entered.length)h=resultHero('NO SIDE',broncoFmt(v.bronco),'',ic('i-check',12)+' ブロンコテスト・記録完了');
+  else if(b3&&b3Today)h=resultHero('NO SIDE',b3,'kg',ic('i-check',12)+' BIG3合計（自己ベスト）・記録完了');
+  else h=resultHero('NO SIDE',String(entered.length+(hasBr?1:0)),'種目',ic('i-check',12)+' 測定・記録完了');
+  // 種目別: 今回値＋前回ベスト比チップ＋PB
+  h+='<div class="card" style="margin-bottom:12px;padding:6px 14px 10px"><div class="kicker" style="margin:8px 0 1px">MEASURE STATS</div><div style="font-size:12px;font-weight:700;margin-bottom:4px">種目別（前回ベスト比）</div>';
+  var pbChip=' <span class="bd" style="background:var(--gold-hot);color:var(--ink);font-size:9px">PB</span>';
+  entered.forEach(function(e){
+    var prev=ctx.prevBest?ctx.prevBest[e.k]:null;
+    var val=v[e.k];var chip;
+    if(prev==null)chip='<span style="color:var(--text-secondary);font-size:11px">初回</span>';
+    else{
+      var diff=Math.round((val-prev)*10)/10;
+      if(diff>0)chip='<span style="color:var(--green);font-weight:700">'+ic('i-up',10)+'+'+diff+'kg</span>';
+      else if(diff<0)chip='<span style="color:var(--red);font-weight:700">'+ic('i-down',10)+diff+'kg</span>';
+      else chip='<span style="color:var(--text-secondary)">±0</span>';
+    }
+    h+=resultStatRow(escapeHtml(e.label),val+'kg '+chip+((prev!=null&&val>=prev)?pbChip:''));
+  });
+  if(hasBr){
+    var pbr=ctx.prevBest?ctx.prevBest.bronco:null;var chipB;
+    if(pbr==null)chipB='<span style="color:var(--text-secondary);font-size:11px">初回</span>';
+    else{
+      var dB=v.bronco-pbr; // 秒差。負=速くなった=良
+      if(dB<0)chipB='<span style="color:var(--green);font-weight:700">'+ic('i-up',10)+'-'+Math.abs(dB)+'秒</span>';
+      else if(dB>0)chipB='<span style="color:var(--red);font-weight:700">'+ic('i-down',10)+'+'+dB+'秒</span>';
+      else chipB='<span style="color:var(--text-secondary)">±0</span>';
+    }
+    h+=resultStatRow('ブロンコ',broncoFmt(v.bronco)+' '+chipB+((pbr!=null&&v.bronco<=pbr)?pbChip:''));
+  }
+  h+='</div>';
+  // ランク変動（ランク=最新記録基準。昇格も降格もそのまま見せる）
+  var rankRows='';
+  // ランク行の共通整形。now=nullは「ランク外」（P8レビュー⑤: ランク外への降格が無言で消えていた）。
+  // 旧も新も無い（一度もランク到達なし）は行を出さない
+  function rankRowHtml(label,was,now){
+    var nowHtml=now?'<b style="color:var(--maroon)">'+escapeHtml(now)+'</b>':'<b style="color:var(--text-secondary)">ランク外</b>';
+    if(was&&was!==(now||'ランク外'))return resultStatRow(label,'<span style="color:var(--text-secondary)">'+escapeHtml(was)+'</span> → '+nowHtml);
+    if(now||was)return resultStatRow(label,nowHtml);
+    return '';
+  }
+  STD_LIFTS.forEach(function(l){
+    if(v[l.ph]==null)return;
+    var inf=getLiftRankInfo(myPid,l.k);
+    if(!inf||inf.noWeight)return; // 体重未登録などで判定不能なら行を出さない
+    var now=inf.rank?inf.rank.label:null;
+    var was=ctx.prevRank?ctx.prevRank[l.k]:null;
+    rankRows+=rankRowHtml(l.short+' ランク',was,now);
+  });
+  if(hasBr){
+    var bi=getBroncoRankInfo(myPid);
+    var nowB=(bi&&bi.rank)?bi.rank.label:null;
+    rankRows+=rankRowHtml('ブロンコ ランク',ctx.prevBrRank,nowB);
+  }
+  if(rankRows)h+='<div class="card" style="margin-bottom:12px;padding:6px 14px 10px"><div class="kicker" style="margin:8px 0 1px">RANK</div><div style="font-size:12px;font-weight:700;margin-bottom:4px">ランク変動</div>'+rankRows+'</div>';
+  // BIG3 CLUB 新規到達（今日BIG3を測った時のみ判定＝ヒーローと条件を揃える）
+  if(b3&&b3Today){
+    var clubNow=null,clubWas=null;
+    BIG3_CLUBS.forEach(function(c){if(b3>=c)clubNow=c;if(ctx.prevB3&&ctx.prevB3>=c)clubWas=c;});
+    if(clubNow&&clubNow!==clubWas){
+      h+='<div class="card rv" style="margin-bottom:12px;border:2px solid var(--gold-hot);text-align:center"><div class="kicker">BIG3 CLUB</div><div style="font-size:22px;font-weight:900;font-family:var(--font-num);font-style:italic;color:var(--gold-deep)">'+clubNow+' CLUB 到達！</div><div style="font-size:11px;color:var(--text-secondary);margin-top:2px">BIG3合計 '+b3+'kg</div></div>';
+    }
+  }
+  // 復帰中: ブロンコ目標タイムとの比較（達成/残り秒数）
+  if(hasBr){
+    (D.i||[]).filter(function(x){return idEq(x.pid,myPid)&&!x.resolved&&x.broncoTarget;}).forEach(function(inj){
+      if(v.bronco<=inj.broncoTarget)h+='<div class="alert-card alert-up" style="margin-bottom:10px">'+ic('i-trophy',14)+' 復帰目標タイム '+broncoFmt(inj.broncoTarget)+' をクリア！</div>';
+      else h+='<div class="card" style="margin-bottom:10px;border-left:3px solid var(--blue)"><div style="font-size:12px;color:var(--text-secondary)">'+ic('i-flag',12)+' 復帰目標 '+broncoFmt(inj.broncoTarget)+' まで あと'+(v.bronco-inj.broncoTarget)+'秒</div></div>';
+    });
+  }
+  h+='<button class="btn btn-p" style="width:100%;margin-top:12px" onclick="go(\'physical\')">完了</button>';
+  h+='<button class="btn" style="width:100%;margin-top:8px" onclick="go(\'mystatus\')">'+ic('i-dumbbell',13)+' マイフィジカル詳細（ランク・基準）</button>';
+  showSub(h,'physical','フィジカル測定に戻る');
 }
 
 // ===== 選手向け 電子カルテ閲覧画面 =====
@@ -3772,7 +3920,7 @@ function showMyChart(iid){
       '</div>';
     });
   }
-  showSub(h);
+  showSub(h,'injury','怪我・リハビリに戻る');
   setTimeout(function(){drawMyPainChart(iid);},50);
 }
 function drawMyPainChart(iid){
@@ -3800,7 +3948,7 @@ function showPainSelfForm(iid){
   h+='</div>';
   h+='<div class="form-box"><div class="form-title">メモ（任意）</div><textarea class="ipt" id="self-note" placeholder="気になること、調子など" style="min-height:60px"></textarea></div>';
   h+='<button class="btn btn-p" style="width:100%" onclick="savePainSelf('+iid+',this)">記録する</button>';
-  showSub(h);
+  showSub(h,'injury','怪我・リハビリに戻る');
 }
 function savePainSelf(iid,btnEl){
   if(!guardSubmit(btnEl,'記録中…'))return;
@@ -3842,7 +3990,7 @@ function showEditPainSelf(iid,evalId){
   var memo=(ev.note||'').replace('[選手記録] ','').replace('[選手記録]','');
   h+='<div class="form-box"><div class="form-title">メモ（任意）</div><textarea class="ipt" id="self-note" placeholder="気になること、調子など" style="min-height:60px">'+escapeHtml(memo)+'</textarea></div>';
   h+='<button class="btn btn-p" style="width:100%" onclick="doEditPainSelf('+iid+',\''+evalId+'\',this)">修正する</button>';
-  showSub(h);
+  showSub(h,'injury','怪我・リハビリに戻る');
 }
 function doEditPainSelf(iid,evalId,btnEl){
   if(!guardSubmit(btnEl,'修正中…'))return; // 二重送信ガード
@@ -3911,7 +4059,7 @@ function showRehabForm(rid){
     h+='</div>';
   }
   h+='<button class="btn btn-p" style="width:100%" onclick="doRehab('+rid+',this)">記録する</button>';
-  showSub(h);
+  showSub(h,'injury','怪我・リハビリに戻る');
 }
 function doRehab(rid,btnEl){
   if(!guardSubmit(btnEl,'記録中…'))return;
@@ -3944,10 +4092,10 @@ function doRehab(rid,btnEl){
     var newLog={id:newId(),injId:injId,date:dateV,content:content,implementer:me?me.name:'選手',by:'player',inputAt:new Date().toISOString()};
     // rlogを先に追記→成功後に痛みをupsert。別キー2ストアのため単一txにはできない（svSafeSeqは追記専用）
     svSafeSeq([{k:'rlog',rec:newLog}],function(){
-      if(!hasPain){go('mypage');toast('記録しました');return;}
-      savePain(function(){go('mypage');toast('記録しました');},function(){
+      if(!hasPain){go('injury');toast('記録しました');return;}
+      savePain(function(){go('injury');toast('記録しました');},function(){
         // rlogは保存済み・痛みのみ失敗 → 部分成功を明示（rlogの巻き戻しはしない）
-        go('mypage');alert('リハビリは記録しましたが、痛みの記録に失敗しました。痛みはカルテから再度お試しください。');
+        go('injury');alert('リハビリは記録しましたが、痛みの記録に失敗しました。痛みはカルテから再度お試しください。');
       });
     },function(){
       releaseSubmit(btnEl);
@@ -3955,7 +4103,7 @@ function doRehab(rid,btnEl){
     });
   }else{
     // 痛みのみ
-    savePain(function(){go('mypage');toast('記録しました');},function(){
+    savePain(function(){go('injury');toast('記録しました');},function(){
       releaseSubmit(btnEl);
       alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
     });
@@ -3970,7 +4118,7 @@ function showEditRlog(rid){
   '<div class="form-box"><div class="form-title">'+fmt(rec.date)+'の記録</div>'+
   '<div class="fl"><label>実施内容</label><textarea class="ipt" id="erl-ct" style="min-height:90px">'+escapeHtml(rec.content||'')+'</textarea></div>'+
   '</div>'+
-  '<button class="btn btn-p" style="width:100%" onclick="doEditRlog(\''+rid+'\',this)">修正する</button>');
+  '<button class="btn btn-p" style="width:100%" onclick="doEditRlog(\''+rid+'\',this)">修正する</button>','injury','怪我・リハビリに戻る');
 }
 function doEditRlog(rid,btnEl){
   if(!guardSubmit(btnEl,'修正中…'))return; // 二重送信ガード
@@ -4009,12 +4157,12 @@ function undoDelRlog(rec){
 }
 
 // Weekly injury check
-function showWeekCheck(injId){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px;display:flex;align-items:center;gap:7px">'+ic('i-clipboard',17,'var(--maroon)')+'週次怪我チェック</div><div class="form-box"><div class="form-title">今週の状態を教えてください</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="wc-date" value="'+td+'"></div><div class="fl"><label>現在の痛み（1-10）</label>'+numStepHTML('wc-pain',1,10,'')+'</div><div class="fl"><label>いつ復帰できそう？</label><select class="ipt" id="wc-ret"><option value="今週中">今週中</option><option value="来週中">来週中（約1週間）</option><option value="2週間以内">2週間以内</option><option value="3週間以内">3週間以内</option><option value="1ヶ月以内">1ヶ月以内</option><option value="1.5ヶ月以内">1.5ヶ月以内</option><option value="2ヶ月以内">2ヶ月以内</option><option value="3ヶ月以内">3ヶ月以内</option><option value="3ヶ月以上">3ヶ月以上かかりそう</option><option value="わからない">わからない</option></select></div><div class="fl"><label>今週練習に参加できる？</label><select class="ipt" id="wc-prac"><option>部分的に参加できる</option><option>全体練習に参加できる</option><option>参加できない</option></select></div><div class="fl"><label>メモ（状態の変化など）</label><textarea class="ipt" id="wc-note" placeholder="先週からの変化..."></textarea></div><button class="btn btn-p" onclick="doWeekCheck('+injId+',this)">送信する</button></div>');}
+function showWeekCheck(injId){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px;display:flex;align-items:center;gap:7px">'+ic('i-clipboard',17,'var(--maroon)')+'週次怪我チェック</div><div class="form-box"><div class="form-title">今週の状態を教えてください</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="wc-date" value="'+td+'"></div><div class="fl"><label>現在の痛み（1-10）</label>'+numStepHTML('wc-pain',1,10,'')+'</div><div class="fl"><label>いつ復帰できそう？</label><select class="ipt" id="wc-ret"><option value="今週中">今週中</option><option value="来週中">来週中（約1週間）</option><option value="2週間以内">2週間以内</option><option value="3週間以内">3週間以内</option><option value="1ヶ月以内">1ヶ月以内</option><option value="1.5ヶ月以内">1.5ヶ月以内</option><option value="2ヶ月以内">2ヶ月以内</option><option value="3ヶ月以内">3ヶ月以内</option><option value="3ヶ月以上">3ヶ月以上かかりそう</option><option value="わからない">わからない</option></select></div><div class="fl"><label>今週練習に参加できる？</label><select class="ipt" id="wc-prac"><option>部分的に参加できる</option><option>全体練習に参加できる</option><option>参加できない</option></select></div><div class="fl"><label>メモ（状態の変化など）</label><textarea class="ipt" id="wc-note" placeholder="先週からの変化..."></textarea></div><button class="btn btn-p" onclick="doWeekCheck('+injId+',this)">送信する</button></div>','injury','怪我・リハビリに戻る');}
 function doWeekCheck(injId,btnEl){
   if(!guardSubmit(btnEl,'送信中…'))return;
   var rec={id:newId(),pid:myPid,injId:injId,date:document.getElementById('wc-date').value,inputAt:new Date().toISOString(),pain:parseInt(document.getElementById('wc-pain').value)||5,returnEst:document.getElementById('wc-ret').value,practiceStatus:document.getElementById('wc-prac').value,note:document.getElementById('wc-note').value};
   svSafeSeq([{k:'wc',rec:rec}],function(){
-    go('mypage');toast('送信しました');
+    go('injury');toast('送信しました');
   },function(){
     releaseSubmit(btnEl);
     alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
@@ -4031,7 +4179,7 @@ function showEditWeekCheck(wid){
   '<div class="fl"><label>今週練習に参加できる？</label><select class="ipt" id="ewc-prac"><option>部分的に参加できる</option><option>全体練習に参加できる</option><option>参加できない</option></select></div>'+
   '<div class="fl"><label>メモ（状態の変化など）</label><textarea class="ipt" id="ewc-note">'+escapeHtml(rec.note||'')+'</textarea></div>'+
   '</div>'+
-  '<button class="btn btn-p" style="width:100%" onclick="doEditWeekCheck(\''+wid+'\',this)">修正する</button>');
+  '<button class="btn btn-p" style="width:100%" onclick="doEditWeekCheck(\''+wid+'\',this)">修正する</button>','injury','怪我・リハビリに戻る');
   setTimeout(function(){
     var pe=document.getElementById('ewc-pain');if(pe)pe.value=rec.pain||5;
     var re=document.getElementById('ewc-ret');if(re)re.value=rec.returnEst||'今週中';
@@ -4243,7 +4391,7 @@ function showInjuryReport(){var td=todayStr();showSub('<div style="font-size:18p
 '<div class="fl"><label>来週の練習に参加できるか</label><select class="ipt" id="ir-canprac"><option>参加できる</option><option>参加できない</option><option>わからない</option></select></div>'+
 '<div class="fl"><label>メモ</label><textarea class="ipt" id="ir-note" placeholder="その他気になること..."></textarea></div>'+
 '<button class="btn btn-p" onclick="doInjuryReport(this)">報告を送信する</button></div>'+
-'<div class="card" style="margin-top:12px"><div class="kicker" style="margin-bottom:4px">この後の流れ</div><div style="font-size:12px;color:var(--text-secondary);line-height:1.9">1. スタッフが報告内容を確認します<br>2. 承認されるとリハビリが始まり、マイページに「カルテ」ができます<br>3. カルテから毎日の痛み記録・復帰までの進行が確認できます</div></div>');}
+'<div class="card" style="margin-top:12px"><div class="kicker" style="margin-bottom:4px">この後の流れ</div><div style="font-size:12px;color:var(--text-secondary);line-height:1.9">1. スタッフが報告内容を確認します<br>2. 承認されるとリハビリが始まり、下のタブに「リハビリ」が現れます<br>3. カルテから毎日の痛み記録・復帰までの進行が確認できます</div></div>','injury','怪我・リハビリに戻る');}
 
 function doInjuryReport(btnEl){
   // 痛みは1〜10の必須項目（isFilledで空のみ未入力扱い→範囲チェックで範囲外を弾く。素の!painは0や空を区別できず誤検知するため不可）
@@ -4257,7 +4405,7 @@ function doInjuryReport(btnEl){
   var rehabRec={id:newId(),injId:injId,pid:myPid,stage:0,logs:[],stageDates:[]};
   // i(怪我)→r(リハビリ)を順次安全保存。svSafeSeqで成否を捕捉（svSafeは失敗時に内部alert＋ボタン固着するため使わない）
   svSafeSeq([{k:'i',rec:injRec},{k:'r',rec:rehabRec}],function(){
-    go('mypage');toast('報告しました。スタッフが確認します');
+    go('injury');toast('報告しました。スタッフが確認します');
   },function(){
     // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
     releaseSubmit(btnEl);
@@ -4284,7 +4432,7 @@ function editInjury(iid){
   '<div class="fl"><label>来週の練習に参加できるか</label><select class="ipt" id="ei-canprac"><option>参加できる</option><option>参加できない</option><option>わからない</option></select></div>'+
   '<div class="fl"><label>状況・メモ</label><textarea class="ipt" id="ei-note" placeholder="どのように怪我をしたか、その他気になること...">'+escapeHtml(memo)+'</textarea></div>'+
   '</div>'+
-  '<button class="btn btn-p" onclick="doEditInjury(\''+iid+'\',this)">修正を保存</button>');
+  '<button class="btn btn-p" onclick="doEditInjury(\''+iid+'\',this)">修正を保存</button>','injury','怪我・リハビリに戻る');
   setTimeout(function(){
     var sd=document.getElementById('ei-side');if(sd)sd.value=rec.side||'';
     var pt=document.getElementById('ei-part');if(pt&&rec.part)pt.value=rec.part;
@@ -4345,9 +4493,10 @@ function cancelInjury(iid){
       removedR=latest.filter(function(r){return idEq(r.injId,iid);});
       return latest.filter(function(r){return!idEq(r.injId,iid);});
     },function(){
+      syncRehabTabState(); // 取消は「回復」ではない＝タブ復帰トーストを出させない（P8レビュー②）
       go('injury');
       toast('報告を取り消しました','元に戻す',function(){undoCancelInjury(removedI,removedR);});
-    },function(){go('injury');toast('報告を取り消しました');});
+    },function(){syncRehabTabState();go('injury');toast('報告を取り消しました');});
   },function(){alert('取り消しに失敗しました。もう一度お試しください');});
 }
 function undoCancelInjury(injRec,rehabRecs){
@@ -4360,7 +4509,7 @@ function undoCancelInjury(injRec,rehabRecs){
     svSafeUpdate('r',function(latest){
       (rehabRecs||[]).forEach(function(rr){if(!latest.some(function(r){return idEq(r.id,rr.id);}))latest.push(rr);});
       return latest;
-    },function(){go('injury');toast('元に戻しました');},function(){go('injury');});
+    },function(){syncRehabTabState();go('injury');toast('元に戻しました');},function(){syncRehabTabState();go('injury');});
   },function(){alert('復元に失敗しました。もう一度お試しください');});
 }
 
@@ -4424,10 +4573,12 @@ T.training=function(){
   // 今日のプログラム（本日weight日 ∧ pp初期化済み → 今日のタイプのスロットメニューを1タップ開始）
   var tpType=ppNext();
   var tpWeightToday=(D.cal||[]).some(function(e){return e&&e.type==='weight'&&e.date===todayStr();});
+  var tpShown=false; // 今日のプログラムカードを出したか（P8b: 出した日はppカードを重ねない）
   if(tpWeightToday&&tpType){
     var slotMn=getSlotMenu(tpType);
     if(slotMn&&!(slotMn.scope==='all'||idEq(slotMn.scope,myPid)))slotMn=null; // 念のため配布対象外は出さない
     if(slotMn){
+      tpShown=true;
       var tpColor=tpType==='push'?'var(--blue)':'var(--pull)';
       var tpBg=tpType==='push'?'var(--blue-bg)':'rgba(194,65,12,.10)';
       var tpDone=tlogAll().some(function(l){return idEq(l.pid,myPid)&&idEq(l.menuId,slotMn.id)&&l.date===todayStr();});
@@ -4441,6 +4592,10 @@ T.training=function(){
         '</div>';
     }
   }
+
+  // ppカード（P8b: ホームから移設。表示のみ＝flip/undoはstaff集約・実施時はppAutoFlipが自動送り）
+  // 「今日のプログラム」カードが出ている日は同じ情報の二重掲示になるため出さない
+  if(!tpShown){var ppCardH=ppCardHtml(false);if(ppCardH)h+=ppCardH;}
 
   // 自分のグループ（午前/午後・強度班。Phase 7・未設定時は非表示）
   h+=myGroupCardHtml();
@@ -5471,20 +5626,28 @@ function finishTraining(btnEl){
     }
   });
 }
+// ===== 結果シート共通骨格（P8c）: FULL TIME=トレーニング／NO SIDE=測定 で共用 =====
+function resultHero(kicker,big,unit,caption){
+  return '<div class="hero"><div class="ghost-num">'+big+'</div>'+
+    '<div class="kicker" style="color:var(--rose-l)">'+kicker+'</div>'+
+    '<div style="font-size:30px;font-weight:900;font-family:var(--font-num);font-style:italic;line-height:1.15">'+big+(unit?'<span style="font-size:13px;font-weight:700"> '+unit+'</span>':'')+'</div>'+
+    (caption?'<div style="font-size:11px;opacity:.85">'+caption+'</div>':'')+
+  '</div>';
+}
+function resultStatRow(label,value,opts){
+  opts=opts||{};
+  return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--border-tertiary)'+(opts.dim?';opacity:.65':'')+'"><span style="font-size:13px;font-weight:600">'+label+'</span><span style="font-size:13px;font-variant-numeric:tabular-nums">'+value+'</span></div>';
+}
 function showTrainingResult(log,alerts,injurySkips,e1rmRecorded){
   // FULL TIMEスタットシート（maroonヒーロー帯+ghost数字。保存フローは呼び出し元で完了済み＝ここは表示のみ）
-  var h='<div class="hero"><div class="ghost-num">'+log.totalVolume.toLocaleString()+'</div>'+
-    '<div class="kicker" style="color:var(--rose-l)">FULL TIME</div>'+
-    '<div style="font-size:30px;font-weight:900;font-family:var(--font-num);font-style:italic;line-height:1.15">'+log.totalVolume.toLocaleString()+'<span style="font-size:13px;font-weight:700"> kg</span></div>'+
-    '<div style="font-size:11px;opacity:.85">'+ic('i-check',12)+' 総ボリューム・記録完了</div>'+
-  '</div>';
+  var h=resultHero('FULL TIME',log.totalVolume.toLocaleString(),'kg',ic('i-check',12)+' 総ボリューム・記録完了');
 
   // 種目ごとの前回比（罫線テーブル=マッチスタッツ様式）
   var cmpLabel=(window._trCompareMode==='week')?'先週比':'前回比';
   h+='<div class="card" style="margin-bottom:12px;padding:6px 14px 10px"><div class="kicker" style="margin:8px 0 1px">MATCH STATS</div><div style="font-size:12px;font-weight:700;margin-bottom:4px">種目別ボリューム（'+cmpLabel+'）</div>';
   log.results.forEach(function(r){
     if(r.skipped){
-      h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--border-tertiary);opacity:.65"><span style="font-size:13px;font-weight:600">'+escapeHtml(r.exName)+'</span><span class="bd '+(r.skipReason==='痛み・怪我'?'bd-r':'bd-n')+'" style="font-size:10px">'+escapeHtml(r.skipReason||'スキップ')+'</span></div>';
+      h+=resultStatRow(escapeHtml(r.exName),'<span class="bd '+(r.skipReason==='痛み・怪我'?'bd-r':'bd-n')+'" style="font-size:10px">'+escapeHtml(r.skipReason||'スキップ')+'</span>',{dim:true});
       return;
     }
     var diff=r.lastVolume>0?r.volume-r.lastVolume:null;
@@ -5494,7 +5657,7 @@ function showTrainingResult(log,alerts,injurySkips,e1rmRecorded){
       else if(diff<0)diffStr='<span style="color:var(--red);font-weight:700">'+ic('i-down',10)+Math.abs(diff).toLocaleString()+'kg</span>';
       else diffStr='<span style="color:var(--text-secondary)">±0</span>';
     }else{diffStr='<span style="color:var(--text-secondary);font-size:11px">初回</span>';}
-    h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--border-tertiary)"><span style="font-size:13px;font-weight:600">'+escapeHtml(r.exName)+'</span><span style="font-size:13px;font-variant-numeric:tabular-nums">'+r.volume.toLocaleString()+'kg '+diffStr+'</span></div>';
+    h+=resultStatRow(escapeHtml(r.exName),r.volume.toLocaleString()+'kg '+diffStr);
   });
   h+='</div>';
 
@@ -6265,22 +6428,7 @@ function renderMyBadgesHtml(){
 }
 function toggleMdBadge(key){if(!window._mdBadgeOpen)window._mdBadgeOpen={};window._mdBadgeOpen[key]=(window._mdBadgeOpen[key]===false);if(curTab==='mydata'&&!subView)T.mydata();}
 // ホームの控えめバッジハイライト（合計Pt>0のみ・直近確定会のバッジ2-3個・タップでマイデータ）。0件は非表示。
-function myBadgeHomeHtml(){
-  if(!myPid)return'';
-  var all=computeAllBadges();
-  var mine=all.byPid[String(myPid)]||[];
-  var total=all.totalPts[String(myPid)]||0;
-  if(!mine.length||total<=0)return'';
-  var recent=null;
-  for(var i=all.sessions.length-1;i>=0;i--){var sid=all.sessions[i].id;var got=mine.filter(function(b){return b.sessId===sid;});if(got.length){recent={name:all.sessions[i].name,badges:got};break;}}
-  var cfg=getStdCfg();var rankColor={};cfg.ranks.forEach(function(r){rankColor[r.k]=r.color;});
-  var chips=recent?recent.badges.slice(0,3).map(function(b){var col=badgeColor(b,rankColor);return '<span class="badge-chip" style="border-color:'+col+'55;box-shadow:0 0 8px '+col+'33;background:'+col+'18;font-size:10px;padding:3px 8px">'+escapeHtml(b.label)+'</span>';}).join(''):'';
-  return '<div class="card card-click" onclick="go(\'mydata\')" style="margin-bottom:14px;display:flex;align-items:center;gap:11px;background:linear-gradient(135deg,rgba(90,15,42,.14),rgba(255,90,130,.05));border:1px solid rgba(255,140,165,.25)">'+
-    ic('i-medal',22,'var(--gold-deep)')+
-    '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800">獲得バッジ <span style="color:var(--maroon)">'+total+'pt</span></div>'+
-    (chips?'<div class="badge-wrap" style="margin-top:5px">'+chips+'</div>':'<div style="font-size:11px;color:var(--text-secondary);margin-top:2px">'+mine.length+'個のバッジを獲得</div>')+
-    '</div><span style="font-size:11px;font-weight:700;color:var(--accent);white-space:nowrap">詳しく →</span></div>';
-}
+// myBadgeHomeHtml は P8b で撤去（バッジ表示はマイデータ⑧renderMyBadgesHtmlへ一本化。ホームは「ランキング・バッジ」リンクのみ）
 // ===== マイデータ（Phase 5）: 期間別の推移＋自動考察。読み取り専用。 =====
 // n日前の日付文字列（player未定義のため新設。coachのagoStrと同義）。
 function agoStr(n){return toDateStr(new Date(Date.now()-n*86400000));}
@@ -6415,6 +6563,36 @@ T.mydata=function(){
 
   var h='<div class="kicker" style="margin-top:2px">MY DATA</div>'+
     '<div style="font-size:20px;font-weight:900;letter-spacing:-.01em;margin:0 0 12px">マイデータ</div>';
+  // === NOW: 現在の正典値（ランク/ベスト/推定1RM/体組成）。P8aでマイページの数値ブロックをここに集約 ===
+  h+='<div id="md-now">'+myPhysCardHtml();
+  var bSQ=getBest(myPid,'squat'),bBP=getBest(myPid,'bench'),bDL=getBest(myPid,'deadlift'),bBR=getBest(myPid,'bronco');
+  var lastPh=D.ph.filter(function(r){return idEq(r.pid,myPid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');})[0];
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin:2px 0 8px"><span style="font-weight:600">'+ic('i-chart',15,'var(--maroon)')+' フィジカルベスト</span>'+(lastPh?'<span style="font-size:11px;color:var(--text-secondary)">前回: '+fmt(lastPh.date)+'</span>':'')+'</div>'+
+    '<div class="grid3">'+
+    '<div class="mc"><div class="v" style="font-size:15px">'+(bSQ||'-')+'</div><div class="l">SQ</div></div>'+
+    '<div class="mc"><div class="v" style="font-size:15px">'+(bBP||'-')+'</div><div class="l">BP</div></div>'+
+    '<div class="mc"><div class="v" style="font-size:15px">'+(bDL||'-')+'</div><div class="l">DL</div></div>'+
+    '<div class="mc"><div class="v" style="font-size:15px">'+(getBest(myPid,'chinning')||'-')+'</div><div class="l">チンニング</div></div>'+
+    '<div class="mc"><div class="v" style="font-size:15px">'+(getBest(myPid,'clean')||'-')+'</div><div class="l">クリーン</div></div>'+
+    '<div class="mc"><div class="v" style="font-size:13px">'+broncoFmt(bBR)+'</div><div class="l">Bronco</div></div>'+
+    '</div>'+
+    '<div class="mc" style="margin-top:8px"><div class="v" style="font-size:16px">'+(getBestBIG3(myPid)||'-')+'</div><div class="l">BIG3合計(各ベスト)</div></div>';
+  var nowE1rm=getLatestE1RM(myPid);var nowE1k=Object.keys(nowE1rm);
+  if(nowE1k.length){
+    h+='<div style="margin-top:10px;padding:10px 12px;background:var(--blue-bg);border-radius:var(--radius)"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">'+ic('i-trend-up',13)+' 推定1RM（トレーニングからの参考値）</div><div style="display:flex;gap:8px;flex-wrap:wrap">'+
+    nowE1k.map(function(k){var label=(EST_BASES.find(function(b){return b.k===k;})||{}).label||k;return'<div style="flex:1;min-width:70px;text-align:center"><div style="font-size:10px;color:var(--text-secondary)">'+label+'</div><div style="font-size:15px;font-weight:700;color:var(--blue)">'+nowE1rm[k].e1rm+'<span style="font-size:9px">kg</span></div></div>';}).join('')+
+    '</div></div>';
+  }
+  var nowBC=D.bc.filter(function(r){return idEq(r.pid,myPid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');})[0];
+  if(nowBC&&nowBC.weight){
+    h+='<div style="font-weight:600;margin:12px 0 6px">'+ic('i-scale',15,'var(--maroon)')+' 体組成 <span style="font-weight:400;color:var(--text-secondary);font-size:12px">'+fmt(nowBC.date)+'</span></div>'+
+    '<div class="grid3">'+
+    '<div class="mc"><div class="v" style="font-size:16px">'+(nowBC.weight||'-')+'</div><div class="l">体重(kg)</div></div>'+
+    '<div class="mc"><div class="v" style="font-size:16px">'+(nowBC.fat||'-')+'</div><div class="l">体脂肪(%)</div></div>'+
+    '<div class="mc"><div class="v" style="font-size:16px">'+(nowBC.muscle||'-')+'</div><div class="l">筋量(kg)</div></div>'+
+    '</div>';
+  }
+  h+='</div>';
   // 期間セレクタ
   var ranges=[['30','30日'],['90','90日'],['all','全期間']];
   h+='<div style="display:flex;gap:6px;margin-bottom:6px">'+ranges.map(function(r){
@@ -6438,8 +6616,7 @@ T.mydata=function(){
   if(ins.length)h+=ins.map(insHtml).join('');
   else h+='<div class="card"><div style="font-size:12px;color:var(--text-secondary);line-height:1.6">記録が増えると、ここに自動で気づき・アドバイスが表示されます。まずはコンディションやトレーニングを記録してみよう。</div></div>';
 
-  // ①' 獲得バッジ
-  h+=renderMyBadgesHtml();
+  // ①' 獲得バッジ → P8aで末尾「⑧バッジ・ランキング」へ移設
 
   // ② コンディション
   h+=secHead('コンディション','i-heart');
@@ -6515,17 +6692,8 @@ T.mydata=function(){
     h+='<div class="card" style="margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px"><div style="font-size:12px;font-weight:700">種目別の推移</div><select class="ipt" style="width:auto;max-width:60%;padding:4px 8px;font-size:12px" onchange="selectMdEx(this.value)">'+allEx.map(function(e){return '<option'+(e===selEx?' selected':'')+'>'+escapeHtml(e)+'</option>';}).join('')+'</select></div><div style="position:relative;height:180px"><canvas id="md-tex-chart"></canvas></div></div>';
   }
 
-  // ⑤ フィジカル
+  // ⑤ フィジカル（現在値ランクは先頭NOWのmyPhysCardに集約済み＝ここは推移チャートのみ。P8a重複解消）
   h+=secHead('フィジカル','i-chart');
-  h+='<div class="grid3" style="margin-bottom:8px">'+STD_LIFTS.map(function(l){
-    var inf=getLiftRankInfo(myPid,l.k);
-    var has=inf&&!inf.noWeight&&inf.oneRM;
-    var col=(inf&&inf.rank)?inf.rank.color:'var(--border-secondary)';
-    var rk=has?(inf.rank?inf.rank.label:'ランク外'):(inf&&inf.noWeight?'体重待ち':'—');
-    return '<div class="mc"><div style="font-size:10px;color:var(--text-secondary);font-weight:700">'+l.short+'</div>'+
-      '<div class="num" style="font-size:20px">'+(has?inf.oneRM+'<span class="unit">kg</span>':'—')+'</div>'+
-      '<div class="bd" style="background:'+col+';color:var(--ink);font-size:9px;margin-top:2px">'+escapeHtml(rk)+'</div></div>';
-  }).join('')+'</div>';
   if(phRecs.length>=2){
     h+='<div class="card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:700;margin-bottom:8px">1RM・記録の推移</div><div style="position:relative;height:200px"><canvas id="md-ph-chart"></canvas></div></div>';
   }
@@ -6639,6 +6807,10 @@ T.mydata=function(){
       }).join('')+'</div>';
     }
   }
+
+  // ⑧ バッジ・ランキング入口（P8a: 考察直下から末尾へ移設＋ランキング導線を集約）
+  h+=renderMyBadgesHtml();
+  h+='<button class="btn" style="width:100%;margin-top:6px" onclick="go(\'ranking\')">'+ic('i-trophy',14,'var(--gold-deep)')+' チームランキングを見る</button>';
 
   h+='<div style="height:20px"></div>';
   $m().innerHTML=h;

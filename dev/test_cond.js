@@ -139,20 +139,33 @@ ok('soreness削除',!('soreness' in ed));
 ok('sorenessParts削除',!('sorenessParts' in ed));
 eqn('stressは維持',ed.stress,2);
 
-print('--- mypage最新コンディションに拡張項目 ---');
+print('--- P8a: mypageは数値ブロックを撤去しマイデータ導線のみ ---');
 D.f=[{id:'f2',pid:1,date:'2026-07-06',rpe:5,sleep:8,duration:60,weight:92.6,mood:4,stress:2,soreness:3,sorenessParts:['膝','腰'],inputAt:'2026-07-06T08:00:00'}];
 T.mypage();
 var mp=document.getElementById('main').innerHTML;
-ok('体重表示',has(mp,'>92.6<'));
-ok('気分表示',has(mp,'気分'));
-ok('筋肉痛部位表示',has(mp,'筋肉痛の部位: 膝・腰'));
-ok('最新コンディションはセッションロード(AU)表記',has(mp,'セッションロード(AU)'));
+ok('最新コンディション数値はmypageに出ない',!has(mp,'>92.6<'));
+ok('マイデータへの導線カードあり',has(mp,"go('mydata')")&&has(mp,'マイデータへ'));
 
-print('--- 過去の記録行のAU表記 ---');
+print('--- 過去の記録行の拡張項目とAU表記（conditionタブ） ---');
 T.condition(); // D.f=f2(rpe5×60分)の1件
 var cpast=document.getElementById('main').innerHTML;
+ok('体重表示',has(cpast,'92.6kg'));
+ok('気分表示',has(cpast,'title="気分"'));
+ok('筋肉痛部位表示',has(cpast,'膝・腰'));
 ok('過去の記録は「300 AU」',has(cpast,'300 AU'));
 ok('sRPE表記が残っていない',!has(cpast,'sRPE'));
+
+print('--- P8a: mydata NOWに数値の正典（体組成・ベスト） ---');
+D.bc=[{id:'bc1',pid:1,date:'2026-07-05',weight:93.1,fat:15.2,muscle:42.0,inputAt:'2026-07-05T08:00:00'}];
+D.ph=[{id:701,pid:1,date:'2026-07-01',squat:150,bench:100,deadlift:180,inputAt:'2026-07-01T08:00:00'}];
+subView=null;curTab='mydata';
+T.mydata();
+var mdh=document.getElementById('main').innerHTML;
+ok('NOWセクションあり',has(mdh,'md-now'));
+ok('体組成の体重93.1',has(mdh,'>93.1<'));
+ok('フィジカルベストSQ150',has(mdh,'>150<'));
+ok('BIG3合計430',has(mdh,'>430<'));
+D.bc=[];D.ph=[];
 
 print(__fail===0?'ALL COND TESTS PASSED':'FAILED: '+__fail+' test(s)');
 if(__fail>0)throw new Error('cond tests failed');

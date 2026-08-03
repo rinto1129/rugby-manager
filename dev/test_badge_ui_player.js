@@ -49,14 +49,20 @@ var h3=renderMyBadgesHtml();
 ok('S2を閉じたら▼表示',has(h3,'▼'));
 window._mdBadgeOpen={};
 
-print('--- ホーム控えめハイライト myBadgeHomeHtml ---');
+print('--- P8b: ホームのバッジカードは撤去（マイデータへ一本化） ---');
 myPid=1;
-var hm=myBadgeHomeHtml();
-ok('ホーム: 獲得バッジ＋pt表示',has(hm,'獲得バッジ')&&has(hm,'pt'));
-ok('ホーム: タップでマイデータ',has(hm,"go('mydata')"));
-ok('ホーム: チップ or 個数表示',has(hm,'badge-chip')||has(hm,'個のバッジ'));
+ok('myBadgeHomeHtmlは存在しない',typeof myBadgeHomeHtml==='undefined');
+// ホームには「ランキング・バッジ」リンクだけが残る（描画スモーク）
+D.f=[];D.i=[];D.ann=[];D.cal=[];D.tmenu=[];D.tlog=[];D.wc=[];D.md=[];D.matchsel=[];D.offday=[];D.pp=[];D.a=[];
+var __els2={};var __og=document.getElementById;
+document.getElementById=function(id){if(!__els2[id]){__els2[id]=mkEl();__els2[id].id=id;}return __els2[id];};
+curTab='home';subView=null;
+T.home();
+var homeH=document.getElementById('main').innerHTML;
+ok('ホームにランキング・バッジリンク',has(homeH,'ランキング・バッジ'));
+ok('ホームに獲得バッジカードは無い',!has(homeH,'badge-chip')&&!has(homeH,'個のバッジ'));
+document.getElementById=__og;
 D.msess=[];D.ph=[];
-ok('ホーム: 0件は空文字(非表示)',myBadgeHomeHtml()==='');
 
 print(__fail===0?'ALL BADGE-UI-PLAYER TESTS PASSED':'FAILED: '+__fail+' test(s)');
 if(__fail>0)throw new Error('badge ui player tests failed');

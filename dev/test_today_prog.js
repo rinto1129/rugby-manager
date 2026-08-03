@@ -74,17 +74,30 @@ var hh=__els['main'].innerHTML;
 ok('ヒーローkickがTODAY: PUSH DAY',has(hh,'TODAY: PUSH DAY'));
 ok("ヒーローにgo('training')導線",has(hh,'hero tex-noise rv" onclick="go(\'training\')"'));
 ok('ベルバッジはstopPropagationでマイページ維持',has(hh,'event.stopPropagation();go(\'mypage\')'));
-ok("ppカードがgo('training')ラップ",has(hh,'<div onclick="go(\'training\')" style="cursor:pointer"><div class="card"'));
+// P8b: ppカードはホームからトレーニングタブへ移設
+ok('ppカードはホームに出ない(P8b)',!has(hh,'次のウエイト'));
 // 非weight日はヒーロー導線なし
 D.cal=[{id:1,date:TODAY,type:'practice'}];
 T.home();
 hh=__els['main'].innerHTML;
 ok('非weight日: ヒーローに導線なし',!has(hh,'hero tex-noise rv" onclick'));
-ok('非weight日でもppカード導線は維持',has(hh,'<div onclick="go(\'training\')" style="cursor:pointer">'));
-// pp空: ppCardHtml(false)は'' → 空ラップdivを出さない
-D.pp=[];
-T.home();
-hh=__els['main'].innerHTML;
-ok('pp空: 空のラップdivを出さない',!has(hh,'<div onclick="go(\'training\')" style="cursor:pointer"></div>'));
+// トレーニングタブ側: 非weight日（今日のプログラム非表示）ではppカードが出る
+subView=null;curTab='training';
+T.training();
+var th=__els['main'].innerHTML;
+ok('非weight日: トレーニングタブにppカード',has(th,'次のウエイト'));
+ok('ppカードは表示のみ(flip/undo無し)',!has(th,'ppFlip')&&!has(th,'ppUndo'));
+// weight日（今日のプログラムが出る日）はppカードを重ねない
+D.cal=[{id:1,date:TODAY,type:'weight'}];
+subView=null;
+T.training();
+th=__els['main'].innerHTML;
+ok('weight日: 今日のプログラムが出てppカードは重ねない',has(th,'TODAY: PUSH DAY')&&!has(th,'次のウエイト'));
+// pp空: トレーニングタブにもppカードなし
+D.pp=[];D.cal=[{id:1,date:TODAY,type:'practice'}];
+subView=null;
+T.training();
+ok('pp空: ppカードなし',!has(__els['main'].innerHTML,'次のウエイト'));
+subView=null;curTab='home';
 
 if(__fail===0)print('ALL TODAY-PROG TESTS PASSED');else print(__fail+' TESTS FAILED');

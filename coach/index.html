@@ -162,6 +162,11 @@ select.sel{background:var(--bg-elev);color:var(--txt);border:1px solid var(--lin
     <div class="brand-logo">🏉</div>
     <div class="brand-txt"><h1>福岡大学ラグビー部</h1><p>COACH DASHBOARD</p></div>
     <span class="view-badge">閲覧専用</span>
+    <!-- P8e: 選手名検索（常設。名前/ポジション部分一致→個人レポート直行） -->
+    <div style="position:relative;margin-left:auto" id="csearch-wrap">
+      <input id="csearch" placeholder="選手検索" oninput="coachSearch()" autocomplete="off" style="width:104px;padding:6px 10px;font-size:11px;font-family:inherit;color:var(--txt);background:var(--bg-elev);border:1px solid var(--line-2);border-radius:9px;outline:none">
+      <div id="csearch-dd" style="display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:80;background:var(--bg-app);border:1px solid var(--line-2);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.5);min-width:220px;max-height:280px;overflow:auto"></div>
+    </div>
     <span id="sync-time" style="margin-left:8px;font-size:9.5px;font-weight:700;color:var(--txt-3);white-space:nowrap"></span>
   </div>
   <div id="sync-err"></div>
@@ -1454,6 +1459,86 @@ function rtpOrder(k){var i=RTP_LEVELS.findIndex(function(x){return x.k===k;});re
 var RTP_DARK={rest:'#FF7B7B',rehab:'#FFA45C',partial_nocontact:'#FFC069',full_nocontact:'#5FA8FF',full_limited:'#C7A4FF',full:'#3DF0A4'};
 function rtpC(k){return RTP_DARK[k]||'#9DAEC7';}
 function openPlayer(pid){window._trEx=null;window._trMetric='top';_detailPid=pid;try{history.pushState({pid:pid},'','#p'+pid);}catch(e){}render();window.scrollTo(0,0);}
+// ===== P8e 選手名検索（topbar常設。名前/ポジション部分一致→個人レポート） =====
+function coachSearch(){
+  var inp=document.getElementById('csearch'),dd=document.getElementById('csearch-dd');
+  if(!inp||!dd)return;
+  var q=(inp.value||'').trim().toLowerCase();
+  if(!q){dd.style.display='none';dd.innerHTML='';return;}
+  var hits=D.p.filter(function(p){return ((p.name||'').toLowerCase().indexOf(q)>=0)||((p.position||'').toLowerCase().indexOf(q)>=0);}).slice(0,8);
+  dd.innerHTML=hits.length?hits.map(function(p){
+    return '<div class="row row-click" style="padding:9px 12px;margin:0" onclick="coachSearchGo('+p.id+')">'+ava(p,24)+'<span style="font-weight:700;font-size:12.5px;flex:1;color:var(--txt)">'+escapeHtml(p.name)+'</span><span style="font-size:10.5px;color:var(--txt-2)">'+escapeHtml(p.position||'')+'/'+(p.year||'?')+'年</span></div>';
+  }).join(''):'<div style="padding:10px 12px;font-size:11.5px;color:var(--txt-2)">該当なし</div>';
+  dd.style.display='block';
+}
+function coachSearchGo(pid){
+  var inp=document.getElementById('csearch'),dd=document.getElementById('csearch-dd');
+  if(inp)inp.value='';
+  if(dd){dd.style.display='none';dd.innerHTML='';}
+  openPlayer(pid);
+}
+// 検索ドロップダウンは外側タップで閉じる（P8レビュー(13)）
+document.addEventListener('click',function(ev){
+  var wrap=document.getElementById('csearch-wrap'),dd=document.getElementById('csearch-dd');
+  if(!wrap||!dd||dd.style.display==='none')return;
+  if(wrap.contains&&wrap.contains(ev.target))return;
+  dd.style.display='none';
+});
+// ===== P8e coach週報: 今週vs先週（月曜起点。稼働=チーム練習参加のべ／新規怪我／提出率(のべ÷選手数×日数)／今週測定BIG3平均） =====
+function weeklyDeltaData(){
+  var now=new Date(todayStr()+'T00:00:00');var dow=(now.getDay()+6)%7; // 月曜=0
+  var mon=new Date(now);mon.setDate(now.getDate()-dow);var monS=toDateStr(mon);
+  var lastMon=new Date(mon);lastMon.setDate(mon.getDate()-7);var lastMonS=toDateStr(lastMon);
+  var lastSun=new Date(mon);lastSun.setDate(mon.getDate()-1);var lastSunS=toDateStr(lastSun);
+  var todayS=todayStr();
+  function inThis(d){return !!d&&d>=monS&&d<=todayS;}
+  function inLast(d){return !!d&&d>=lastMonS&&d<=lastSunS;}
+  var tl=tlogAll();
+  var trThis=tl.filter(function(l){return !l.absent&&l.kind!=='self'&&inThis(l.date);}).length;
+  var trLast=tl.filter(function(l){return !l.absent&&l.kind!=='self'&&inLast(l.date);}).length;
+  // 却下済み(approved===false)の誤報告は「新規の怪我」に数えない（P8レビュー(9)。承認待ちは実怪我の可能性が高いので含める）
+  var injThis=D.i.filter(function(x){return inThis(x.date)&&x.approved!==false;}).length;
+  var injLast=D.i.filter(function(x){return inLast(x.date)&&x.approved!==false;}).length;
+  var tot=D.p.length||1;var daysThis=dow+1;
+  var subThis=Math.round(D.f.filter(function(r){return inThis(r.date);}).length/(tot*daysThis)*100);
+  var subLast=Math.round(D.f.filter(function(r){return inLast(r.date);}).length/(tot*7)*100);
+  // その週に測定したBIG3（週内ベストの3種完備者のみ）の平均。週内に測定が無ければnull
+  function big3avg(inFn){
+    var by={};
+    D.ph.forEach(function(r){
+      if(!inFn(r.date))return;
+      var k=String(r.pid);if(!by[k])by[k]={};
+      ['squat','bench','deadlift'].forEach(function(f){if(r[f]!=null&&(by[k][f]==null||r[f]>by[k][f]))by[k][f]=r[f];});
+    });
+    var sums=[];
+    Object.keys(by).forEach(function(k){var v=by[k];if(v.squat!=null&&v.bench!=null&&v.deadlift!=null)sums.push(v.squat+v.bench+v.deadlift);});
+    if(!sums.length)return null;
+    return Math.round(sums.reduce(function(s,x){return s+x;},0)/sums.length);
+  }
+  return {range:[monS,lastMonS,lastSunS],tr:[trThis,trLast],inj:[injThis,injLast],sub:[subThis,subLast],big3:[big3avg(inThis),big3avg(inLast)]};
+}
+function weeklyReportCard(){
+  var w=weeklyDeltaData();
+  function dchip(cur,prev,goodUp,unit){
+    if(cur==null||prev==null)return '<span class="bd bd-n">比較なし</span>';
+    var d=cur-prev;
+    if(!d)return '<span class="bd bd-n">±0</span>';
+    var good=goodUp?d>0:d<0;
+    return '<span class="bd '+(good?'bd-g':'bd-r')+'">'+(d>0?'+':'')+d+(unit||'')+'</span>';
+  }
+  function wrow(label,cur,prev,goodUp,unit){
+    return '<div class="row" style="justify-content:space-between"><div style="font-size:12.5px;font-weight:700">'+label+'</div>'+
+      '<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:15px;font-weight:800">'+(cur==null?'—':cur+(unit||''))+'</span>'+
+      '<span style="font-size:10.5px;color:var(--txt-3)">先週 '+(prev==null?'—':prev+(unit||''))+'</span>'+dchip(cur,prev,goodUp,unit)+'</div></div>';
+  }
+  return '<div class="card">'+
+    wrow('ウエイト・トレ実施（のべ）',w.tr[0],w.tr[1],true,'件')+ // P8レビュー(10): データ源はトレーニング実施記録＝グラウンド練習の出欠ではない
+    wrow('新規の怪我',w.inj[0],w.inj[1],false,'件')+
+    wrow('コンディション提出率',w.sub[0],w.sub[1],true,'%')+
+    wrow('今週測定のBIG3平均',w.big3[0],w.big3[1],true,'kg')+
+    '<div style="font-size:10px;color:var(--txt-3);margin-top:6px">今週は月曜〜今日まで（提出率は経過日数で補正）。実施のべ数はウエイト/フィットネスの実施記録・BIG3平均はその週に測定した選手のみの平均</div>'+
+    '</div>';
+}
 function getLatestPhys(pid){
   return D.ph.filter(function(x){return idEq(x.pid,pid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');})[0];
 }
@@ -1486,12 +1571,21 @@ function ringChart(pct,label){
     '</svg><div class="ring-center"><div class="ring-v"><span class="cv" data-cnt="'+pct+'">0</span><span class="unit">%</span></div><div class="ring-l">'+label+'</div></div></div>';
 }
 // ポジション別頭数×稼働マトリクスのHTML
+// P8e: 行タップでポジションの選手一覧を展開→選手タップで個人レポートへ。開閉はwindow._posMxOpenで再描画をまたいで維持
+function togglePosMx(pos){
+  if(!window._posMxOpen)window._posMxOpen={};
+  window._posMxOpen[pos]=!window._posMxOpen[pos];
+  var e=document.getElementById('posmx-'+pos);
+  if(e)e.style.display=window._posMxOpen[pos]?'block':'none';
+}
 function renderPosMatrix(){
   var rows=positionMatrix();
+  var m=injuryStatusMaps();
   var h='<div class="card">';
   h+=rows.map(function(r){
     var rowBg=r.crit?'background:var(--red-bg);':r.warn?'background:var(--amber-bg);':'';
-    var h2='<div class="row" style="'+rowBg+(rowBg?'margin:0 -9px;padding-left:9px;padding-right:9px;border-radius:10px':'')+'">';
+    var open=!!(window._posMxOpen&&window._posMxOpen[r.pos]);
+    var h2='<div class="row row-click" onclick="togglePosMx(\''+r.pos+'\')" style="'+rowBg+(rowBg?'margin:0 -9px;padding-left:9px;padding-right:9px;border-radius:10px':'')+'">';
     h2+='<div style="width:48px;font-weight:800;font-size:13px'+(r.crit?';color:var(--red)':'')+'">'+r.pos+'</div>';
     h2+='<div style="flex:1;min-width:0;font-size:10.5px;color:var(--txt-3)">登録 '+r.total+'名</div>';
     h2+='<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+
@@ -1499,11 +1593,22 @@ function renderPosMatrix(){
       '<span class="bd '+(r.lim>0?'bd-a':'bd-n')+'">制限 '+r.lim+'</span>'+
       '<span class="bd '+(r.out>0?'bd-r':'bd-n')+'">離脱 '+r.out+'</span>'+
       '</div></div>';
+    // 展開: このポジションの選手（離脱→制限→フルの順）＋タップで個人レポート
+    var members=D.p.filter(function(p){return p.position===r.pos;}).map(function(p){
+      var st=m.outP[p.id]?2:(m.limP[p.id]?1:0);
+      return {p:p,st:st};
+    }).sort(function(a,b){return b.st-a.st||String(a.p.name||'').localeCompare(String(b.p.name||''));});
+    h2+='<div id="posmx-'+r.pos+'" style="display:'+(open?'block':'none')+';padding:2px 0 8px">'+
+      (members.length?members.map(function(mb){
+        var stBd=mb.st===2?'<span class="bd bd-r">離脱</span>':mb.st===1?'<span class="bd bd-a">制限</span>':'<span class="bd bd-g">フル</span>';
+        return '<div class="row row-click" style="padding:6px 0 6px 12px" onclick="event.stopPropagation();openPlayer('+mb.p.id+')">'+ava(mb.p,26)+'<span style="flex:1;font-weight:700;font-size:12.5px">'+escapeHtml(mb.p.name)+'</span><span style="font-size:10px;color:var(--txt-3)">'+(mb.p.year||'?')+'年</span>'+stBd+'</div>';
+      }).join(''):'<div style="font-size:11px;color:var(--txt-3);padding:4px 12px">登録選手なし</div>')+
+      '</div>';
     if(r.crit)h2+='<div style="font-size:10.5px;color:var(--red);font-weight:700;padding:0 0 10px">⚠ フル稼働が'+POS_CRIT_MIN[r.pos]+'名未満です</div>';
     else if(r.warn)h2+='<div style="font-size:10.5px;color:var(--amber);font-weight:700;padding:0 0 10px">⚠ フル稼働できる選手がいません</div>';
     return h2;
   }).join('');
-  return h+'</div>';
+  return h+'<div style="font-size:10px;color:var(--txt-3);margin-top:4px">行をタップすると選手一覧 → 選手タップで個人レポート</div></div>';
 }
 // ========================================================
 // ⓪ 概況（ホーム）
@@ -1541,6 +1646,8 @@ function renderHomeView(){
     rv(kpiTile(inputToday,'本日のコンディション入力','var(--blue)','名'),2)+
     rv(kpiTile(trained14,'トレーニング記録（14日）','var(--green)','件'),3)+
     '</div></div>';
+  // P8e: 週報カード（今週vs先週）
+  h+='<div class="sec">'+secH('WEEKLY REPORT','今週 vs 先週','月曜起点の増減')+rv(weeklyReportCard(),1)+'</div>';
   // 考察ダイジェスト
   h+=insightSec(insHome(),'チーム全体のハイライト');
   // 復帰間近

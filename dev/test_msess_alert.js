@@ -27,8 +27,8 @@ resetD();
 D.msess=[{id:'m1',name:'ブロンコ測定会',fromCalType:'bronco_measure',startDate:'2026-06-30',endDate:'2026-07-02'}];
 var h1=renderHome();
 ok('個人アラート表示',has(h1,'『ブロンコ測定会』のブロンコ測定が未入力です'));
-ok('チーム未入力一覧表示',has(h1,'『ブロンコ測定会』ブロンコ未入力'));
-ok('チーム未入力=あと2名(名前一覧廃止)',has(h1,'あと2名'));
+// P8b: チーム未入力（あとN名）はstaff管掌＝playerホームから撤去
+ok('チーム未入力チップは出ない(P8b)',!has(h1,'あと2名'));
 ok('チーム一覧に他選手名を出さない',!has(h1,'選手2'));
 
 print('--- ② 本人が入力済 → 個人アラート消える・チームは残り1名 ---');
@@ -37,7 +37,7 @@ D.msess=[{id:'m1',name:'ブロンコ測定会',fromCalType:'bronco_measure',star
 D.ph=[{id:1,pid:1,date:'2026-07-01',msessId:'m1',bronco:300}];
 var h2=renderHome();
 ok('入力済→個人アラート消える',!has(h2,'『ブロンコ測定会』のブロンコ測定が未入力です'));
-ok('入力済→チームはあと1名',has(h2,'『ブロンコ測定会』ブロンコ未入力')&&has(h2,'あと1名'));
+ok('チームチップは出ない(P8b)',!has(h2,'あと1名'));
 
 print('--- ③ 記録なし(phskip)申告済 → 個人アラート消える（バグ修正の要） ---');
 resetD();
@@ -45,7 +45,7 @@ D.msess=[{id:'m1',name:'ブロンコ測定会',fromCalType:'bronco_measure',star
 D.phskip=[{pid:1,date:'2026-07-01',msessId:'m1',by:'staff'}];
 var h3=renderHome();
 ok('記録なし申告済→個人アラート消える',!has(h3,'『ブロンコ測定会』のブロンコ測定が未入力です'));
-ok('記録なし→チームはあと1名',has(h3,'あと1名'));
+ok('記録なし→チームチップも出ない(P8b)',!has(h3,'あと1名'));
 
 print('--- ④ 締切後 → アラート・一覧とも消える ---');
 resetD();

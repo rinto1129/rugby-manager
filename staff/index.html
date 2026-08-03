@@ -51,7 +51,7 @@ body{font-family:var(--font-sans);background:var(--bg-app);color:var(--text-prim
 .ipt:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
 select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 .bd{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600}
-.bd-g{background:var(--green-bg);color:var(--green)}.bd-r{background:var(--red-bg);color:var(--red)}.bd-a{background:var(--amber-bg);color:var(--amber)}.bd-b{background:var(--blue-bg);color:var(--blue)}.bd-p{background:var(--purple-bg);color:var(--purple)}
+.bd-g{background:var(--green-bg);color:var(--green)}.bd-r{background:var(--red-bg);color:var(--red)}.bd-a{background:var(--amber-bg);color:var(--amber)}.bd-b{background:var(--blue-bg);color:var(--blue)}.bd-p{background:var(--purple-bg);color:var(--purple)}.bd-n{background:var(--bg-tertiary);color:var(--text-secondary)}
 .grid{display:grid;gap:12px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}.g4{grid-template-columns:repeat(auto-fill,minmax(155px,1fr))}
 .card{background:var(--bg-primary);border:1px solid var(--border-tertiary);border-radius:var(--radius-lg);padding:1.25rem;box-shadow:var(--shadow-sm);transition:all .15s}.card:hover{border-color:var(--border-secondary);box-shadow:var(--shadow-md)}
 .card-click{cursor:pointer}.card-click:hover{border-color:var(--blue)}
@@ -319,36 +319,47 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 <div class="app">
 <div class="sb">
 <div class="sb-hd"><h1><svg class="ic" width="22" height="22" style="color:var(--gold-hot)" aria-hidden="true"><use href="#i-ball" xlink:href="#i-ball"></use></svg> RUGBY MANAGER</h1><p>FUKUOKA UNIV. RFC</p></div>
+<!-- P8d: サイドバー6+1グループ再編（nav(pg)キー・項目名・アイコンは温存。見出しと並びのみ変更） -->
 <div style="padding:.5rem 0">
-<div class="ni-group">日々の確認</div>
+<div class="ni-group">今日</div>
 <div class="ni ac" onclick="nav('dash')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-home" xlink:href="#i-home"></use></svg></span><span>ダッシュボード</span></div>
-<div class="ni" onclick="nav('players')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-users" xlink:href="#i-users"></use></svg></span><span>選手一覧</span></div>
 <div class="ni" onclick="nav('calendar')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-calendar" xlink:href="#i-calendar"></use></svg></span><span>カレンダー</span></div>
-<div class="ni-group">怪我・リハビリ</div>
+<div class="ni-group">選手</div>
+<div class="ni" onclick="nav('players')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-users" xlink:href="#i-users"></use></svg></span><span>選手一覧</span></div>
+<div class="ni" onclick="nav('rank')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-trophy" xlink:href="#i-trophy"></use></svg></span><span>ランキング</span></div>
+<div class="ni-group">メディカル</div>
 <div class="ni" onclick="nav('injury')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-bandage" xlink:href="#i-bandage"></use></svg></span><span>怪我管理</span></div>
 <div class="ni" onclick="nav('rehab')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-run" xlink:href="#i-run"></use></svg></span><span>リハビリ管理</span></div>
-<div class="ni" onclick="nav('training')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-dumbbell" xlink:href="#i-dumbbell"></use></svg></span><span>トレーニング</span></div>
-<div class="ni" onclick="nav('tgroup')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-users" xlink:href="#i-users"></use></svg></span><span>グループ分け</span></div>
-<div class="ni" onclick="nav('injstats')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-chart-line" xlink:href="#i-chart-line"></use></svg></span><span>ケガ分析</span></div>
 <div class="ni" onclick="nav('rtest')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-flag" xlink:href="#i-flag"></use></svg></span><span>復帰テスト</span></div>
 <div class="ni" onclick="nav('tape')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-tape" xlink:href="#i-tape"></use></svg></span><span>テーピング予約</span></div>
-<div class="ni-group">コンディション・記録</div>
+<div class="ni" onclick="nav('injstats')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-chart-line" xlink:href="#i-chart-line"></use></svg></span><span>ケガ分析</span></div>
+<div class="ni" onclick="nav('trainer')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-user" xlink:href="#i-user"></use></svg></span><span>トレーナー管理</span></div>
+<div class="ni-group">トレーニング</div>
+<div class="ni" onclick="nav('training')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-dumbbell" xlink:href="#i-dumbbell"></use></svg></span><span>トレーニング</span></div>
+<div class="ni" onclick="nav('tgroup')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-users" xlink:href="#i-users"></use></svg></span><span>グループ分け</span></div>
+<div class="ni-group">コンディション・出欠</div>
 <div class="ni" onclick="nav('fatigue')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-moon" xlink:href="#i-moon"></use></svg></span><span>疲労度管理</span></div>
 <div class="ni" onclick="nav('absence')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-x-c" xlink:href="#i-x-c"></use></svg></span><span>欠席管理</span></div>
+<div class="ni" onclick="nav('matchview')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-ball" xlink:href="#i-ball"></use></svg></span><span>試合日レポート</span></div>
+<div class="ni-group">測定・分析</div>
 <div class="ni" onclick="nav('physical')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-chart" xlink:href="#i-chart"></use></svg></span><span>フィジカル</span></div>
 <div class="ni" onclick="nav('msess')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-ruler" xlink:href="#i-ruler"></use></svg></span><span>測定会管理</span></div>
 <div class="ni" onclick="nav('bodycomp')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-scale" xlink:href="#i-scale"></use></svg></span><span>体組成</span></div>
-<div class="ni" onclick="nav('matchview')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-ball" xlink:href="#i-ball"></use></svg></span><span>試合日レポート</span></div>
 <div class="ni" onclick="nav('gps')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-bolt" xlink:href="#i-bolt"></use></svg></span><span>GPS・スタッツ</span></div>
-<div class="ni-group">その他</div>
-<div class="ni" onclick="nav('rank')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-trophy" xlink:href="#i-trophy"></use></svg></span><span>ランキング</span></div>
-<div class="ni" onclick="nav('trainer')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-user" xlink:href="#i-user"></use></svg></span><span>トレーナー管理</span></div>
+<div class="ni-group">運用</div>
 <div class="ni" onclick="nav('standards')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-target" xlink:href="#i-target"></use></svg></span><span>基準設定</span></div>
 <div class="ni" onclick="nav('export')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-download" xlink:href="#i-download"></use></svg></span><span>CSV出力</span></div>
 <div class="ni" onclick="nav('help')"><span class="ni-ic"><svg width="19" height="19" aria-hidden="true"><use href="#i-book" xlink:href="#i-book"></use></svg></span><span>使い方ガイド</span></div>
 </div></div>
 <div class="mn">
-<div class="tb"><h2 id="pg-title">ダッシュボード</h2><div id="tb-act"></div></div>
+<!-- P8d: ヘッダーに要対応バッジ（タップでダッシュボードの要対応キューへ）＋選手名検索を常設 -->
+<div class="tb"><h2 id="pg-title" style="flex:1;min-width:0">ダッシュボード</h2>
+<span class="bd bd-r" id="queue-badge" style="display:none;cursor:pointer;margin-right:8px;font-size:11px;padding:4px 10px" onclick="nav('dash')"></span>
+<div style="position:relative;margin-right:8px" id="psearch-wrap">
+<input class="ipt" id="psearch" placeholder="選手検索…" oninput="hdrPlayerSearch()" autocomplete="off" style="width:140px;padding:7px 10px;font-size:12px">
+<div id="psearch-dd" style="display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:60;background:var(--bg-primary);border:1px solid var(--border-secondary);border-radius:10px;box-shadow:var(--shadow-md);min-width:230px;max-height:290px;overflow:auto"></div>
+</div>
+<div id="tb-act"></div></div>
 <div class="ct" id="main-ct"></div>
 </div></div>
 <div id="loading-screen" style="position:fixed;inset:0;background:var(--maroon-d);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity .3s ease"><svg class="ld-ball" width="54" height="54" style="color:var(--pale)" aria-hidden="true"><use href="#i-ball" xlink:href="#i-ball"></use></svg><div style="font-family:var(--font-num);font-style:italic;font-weight:900;font-size:19px;letter-spacing:.05em;color:var(--pale);margin:14px 0 4px">RUGBY MANAGER</div><div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--rose-l)">FUKUOKA UNIV. RFC</div></div>
@@ -1506,6 +1517,8 @@ function startListeners(){
           var parsed=JSON.parse(raw);
           if(k==='p'&&Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
           else if(k!=='p'&&Array.isArray(parsed))D[k]=parsed;
+          // P8d: 要対応バッジは入力中でも更新して構わない（入力欄には触れない）
+          if(k==='i'||k==='rtest'||k==='f')updateQueueBadge();
           // 入力中フォーム判定：input/textarea/selectがactiveElementなら再描画しない
           var ae=document.activeElement;
           var isInputting=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT');
@@ -1573,6 +1586,89 @@ function filterPSearch(id){var q=document.getElementById(id+'-search').value.toL
 function selectPSearch(id,pid){var p=D.p.find(function(x){return x.id===pid;});document.getElementById(id+'-search').value=p?p.name:'';document.getElementById(id+'-val').value=pid;document.getElementById(id+'-list').classList.remove('open');}
 document.addEventListener('click',function(e){document.querySelectorAll('.p-search-list.open').forEach(function(el){if(!el.parentElement.contains(e.target))el.classList.remove('open');});});
 
+// ===== P8d 要対応キュー: 怪我承認＋rtest承認＋レッドフラグ（当日RPE>=8/睡眠<=5h）＋提出督促（2日以上）を一元集計 =====
+function reqQueue(){
+  var todayS=todayStr();
+  var pendingInj=(D.i||[]).filter(function(x){return!x.resolved&&x.source&&!x.approved;});
+  // 復帰テスト承認待ち: 直近結果が患部・フィット両方クリアで未承認（goRTestDetailの承認ボタン条件と同一）
+  var rtestPend=[];
+  (D.i||[]).filter(function(x){return!x.resolved&&!x.rtestApproved;}).forEach(function(inj){
+    var results=(D.rtest||[]).filter(function(r){return idEq(r.injId,inj.id);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+    var last=results[0];
+    if(last&&last.physPassed&&last.fitPassed)rtestPend.push(inj);
+  });
+  var red=[];
+  D.p.forEach(function(p){var lf=getLatestFatigue(p.id);if(lf&&lf.date===todayS){if(lf.rpe>=8)red.push({pid:p.id,txt:p.name+': RPE '+lf.rpe+'/10'});if(lf.sleep<=5)red.push({pid:p.id,txt:p.name+': 睡眠 '+lf.sleep+'h'});}});
+  var yd=new Date();yd.setDate(yd.getDate()-1);var ydS=toDateStr(yd);
+  var late=[];
+  D.p.forEach(function(p){
+    var hasY=D.f.some(function(r){return idEq(r.pid,p.id)&&r.date===ydS;});
+    var hasT=D.f.some(function(r){return idEq(r.pid,p.id)&&r.date===todayS;});
+    if(hasY||hasT)return;
+    var lastRec=D.f.filter(function(r){return idEq(r.pid,p.id);}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
+    var ds=lastRec?Math.floor((new Date(todayS)-new Date(lastRec.date))/86400000):null;
+    if(ds===null||ds>=2)late.push({pid:p.id,name:p.name,daysSince:ds,lastDate:lastRec?lastRec.date:null});
+  });
+  return{pendingInj:pendingInj,rtestPend:rtestPend,red:red,late:late,
+    // urgentCount=即応系のみ（P8レビュー(8): lateは新入部員等で恒常的に膨らみ、怪我承認+1が「45→46」に埋もれてバッジの警報機能が死ぬ）
+    urgentCount:pendingInj.length+rtestPend.length+red.length,
+    count:pendingInj.length+rtestPend.length+red.length+late.length};
+}
+// ヘッダーの要対応バッジ（全ページ常設・タップでダッシュボードへ）。件数は即応系のみ＝督促(late)はdashの提出パネルが担う
+function updateQueueBadge(){
+  var e=document.getElementById('queue-badge');if(!e)return;
+  var n=reqQueue().urgentCount;
+  e.style.display=n?'inline-flex':'none';
+  if(n)e.textContent='要対応 '+n;
+}
+// ===== P8d ヘッダー選手名検索（全ページ常設。名前/ポジション部分一致→選手詳細へ） =====
+function hdrPlayerSearch(){
+  var inp=document.getElementById('psearch'),dd=document.getElementById('psearch-dd');
+  if(!inp||!dd)return;
+  var q=(inp.value||'').trim().toLowerCase();
+  if(!q){dd.style.display='none';dd.innerHTML='';return;}
+  var hits=D.p.filter(function(p){return ((p.name||'').toLowerCase().indexOf(q)>=0)||((p.position||'').toLowerCase().indexOf(q)>=0);}).slice(0,8);
+  dd.innerHTML=hits.length?hits.map(function(p){
+    return'<div class="log-row" style="cursor:pointer;padding:8px 12px;margin:0" onclick="hdrSearchGo('+p.id+')">'+avH(p,24)+'<span style="font-weight:600;font-size:13px;flex:1">'+escapeHtml(p.name)+'</span><span style="font-size:11px;color:var(--text-secondary)">'+escapeHtml(p.position||'')+'/'+(p.year||'?')+'年</span></div>';
+  }).join(''):'<div style="padding:10px 12px;font-size:12px;color:var(--text-secondary)">該当なし</div>';
+  dd.style.display='block';
+}
+function hdrSearchGo(pid){
+  var inp=document.getElementById('psearch'),dd=document.getElementById('psearch-dd');
+  if(inp)inp.value='';
+  if(dd){dd.style.display='none';dd.innerHTML='';}
+  goPlayerDetail(pid);
+}
+// 検索ドロップダウンは外側クリックで閉じる（P8レビュー(13): 開きっぱなしでコンテンツに被り続けていた）
+document.addEventListener('click',function(ev){
+  var wrap=document.getElementById('psearch-wrap'),dd=document.getElementById('psearch-dd');
+  if(!wrap||!dd||dd.style.display==='none')return;
+  if(wrap.contains&&wrap.contains(ev.target))return;
+  dd.style.display='none';
+});
+// ===== P8d 今週の伸びデータ（renderPhysAlertsの比較ロジックを共通化。sinceDate指定で「最新記録が今週」の分だけに絞る） =====
+function physAlertsData(sinceDate){
+  var al=[];
+  D.p.forEach(function(p){
+    var recs=D.ph.filter(function(x){return x.pid===p.id;}).sort(function(a,b){return a.date.localeCompare(b.date);});
+    if(recs.length<2)return;
+    var l=recs[recs.length-1],pv=recs[recs.length-2];
+    if(sinceDate&&(!l.date||l.date<sinceDate))return;
+    ['squat','bench','deadlift','chinning','clean'].forEach(function(f){
+      if(!l[f]||!pv[f])return;
+      var d=l[f]-pv[f],pct=Math.round(d/pv[f]*100);
+      var fname={squat:'SQ',bench:'BP',deadlift:'DL',chinning:'チンニング',clean:'クリーン'}[f]||f;
+      if(d>0)al.push({t:'up',pid:p.id,txt:p.name+': '+fname+' '+pv[f]+'→'+l[f]+'kg (+'+pct+'%) '+ic('i-trend-up',12)});
+      else if(pct<=-5)al.push({t:'down',pid:p.id,txt:p.name+': '+fname+' '+pv[f]+'→'+l[f]+'kg ('+pct+'%) '+ic('i-trend-down',12)});
+    });
+    if(l.bronco&&pv.bronco){
+      var d2=l.bronco-pv.bronco,pct2=Math.round(d2/pv.bronco*100);
+      if(d2<0)al.push({t:'up',pid:p.id,txt:p.name+': ブロンコ '+broncoFmt(pv.bronco)+'→'+broncoFmt(l.bronco)+' '+ic('i-trend-up',12)});
+      else if(pct2>=5)al.push({t:'down',pid:p.id,txt:p.name+': ブロンコ '+broncoFmt(pv.bronco)+'→'+broncoFmt(l.bronco)+' '+ic('i-trend-down',12)});
+    }
+  });
+  return al;
+}
 function nav(pg){
   curPage=pg;viewStack=[];dCA();
   // HTML順序とpages配列のズレを防ぐため、各.niのonclick属性からページ名を取得して比較
@@ -1587,6 +1683,7 @@ function nav(pg){
   document.getElementById('tb-act').innerHTML=(acts[pg]||'')+(pg==='dash'?'<button class="btn" style="margin-left:6px" onclick="checkYearUpdate()">'+ic('i-calendar',13)+' 学年更新</button>':'');
   _navAnim=true; // クラスA遷移演出: 直後のV[pg]()描画のmutationをobserverが消費する
   V[pg]&&V[pg]();
+  updateQueueBadge(); // P8d: ヘッダー要対応バッジは全ページで更新
 }
 function pushView(title,html,fn){viewStack.push(curPage);dCA();document.getElementById('pg-title').innerHTML='<span class="btn-back" onclick="popView()">'+ic('i-back',14)+' 戻る</span> '+title;document.getElementById('tb-act').innerHTML='';$m().innerHTML=html;if(fn)setTimeout(fn,80);}
 function popView(){dCA();nav(viewStack.pop()||curPage);}
@@ -1740,6 +1837,14 @@ dash:function(){
       return'<div class="alert-card alert-down" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><span style="flex:1">'+escapeHtml(p.name)+' — '+(x.side||'')+x.part+' '+x.type+' ('+fmt(x.date)+') '+(x.source==='match'?'【試合】':'【練習/その他】')+'</span><div style="display:flex;gap:6px"><button class="btn btn-sm btn-s" onclick="approveInjury('+x.id+')">怪我人に追加</button><button class="btn btn-sm btn-d" onclick="rejectInjury('+x.id+')">却下</button><button class="btn btn-sm" onclick="goInjuryDetail('+x.id+')">詳細</button></div></div>';
     }).join(''));
   }
+  // 緊急: 復帰テスト承認待ち（P8d 要対応キュー: 全テストクリア済み＝スタッフの承認判断だけが残っている）
+  var rtestPendQ=reqQueue().rtestPend;
+  if(rtestPendQ.length){
+    urgentItems.push('<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.5rem">'+ic('i-flag',15,'var(--blue)')+'復帰テスト承認待ち<span class="bd bd-b">'+rtestPendQ.length+'</span><span style="font-size:11px;font-weight:600;color:var(--text-secondary)">全テストクリア済み</span></div>'+
+    rtestPendQ.map(function(x){var p=D.p.find(function(pp){return idEq(pp.id,x.pid);});
+      return'<div class="alert-card alert-info" style="cursor:pointer;justify-content:space-between;flex-wrap:wrap;gap:6px" onclick="goRTestDetail('+x.id+')"><span style="flex:1">'+escapeHtml(p?p.name:'?')+' — '+(x.side||'')+x.part+' '+x.type+'</span><span class="bd bd-b" style="white-space:nowrap;align-self:center">承認判断へ</span></div>';
+    }).join(''));
+  }
   // 緊急: リハビリ遅延中
   if(rehabOverdue.length){
     urgentItems.push('<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.5rem">'+ic('i-clock',15,'var(--red)')+'リハビリ遅延中<span class="bd bd-r">'+rehabOverdue.length+'</span><span style="font-size:11px;font-weight:600;color:var(--text-secondary)">進捗確認が必要</span></div>'+
@@ -1816,6 +1921,20 @@ dash:function(){
     (curMSess&&bcNotSubmitted.length?'<div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--text-secondary);margin:12px 0 6px">'+ic('i-scale',13)+'体組成未測定 ('+escapeHtml(curMSess.name)+' / '+bcNotSubmitted.length+'名)</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:5px">'+bcNotSubmitted.map(function(p){return'<span class="chip-late" onclick="goPlayerDetail('+p.id+')" style="cursor:pointer">'+escapeHtml(p.name)+'</span>';}).join('')+'</div>':'')+
     '</div>';
+
+  // P8d: 今週の伸びサマリ（physAlertsData=フィジカル面の共通比較ロジック。最新記録が今週の分だけ）
+  // 月曜は(getDay()+6)%7で導出（P8レビュー(7): thisWeekMonSは日曜に翌週月曜=未来日になり、日曜だけパネルが空になる）
+  var _gd=new Date(today);_gd.setDate(today.getDate()-((today.getDay()+6)%7));
+  var growth=physAlertsData(toDateStr(_gd));
+  var growthPanel='';
+  if(growth.length){
+    var gUp=growth.filter(function(a){return a.t==='up';}).length;
+    growthPanel='<div class="card rv" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem">'+
+      '<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:10px">'+ic('i-trend-up',15,'var(--green)')+'今週の伸び <span class="bd bd-g">'+gUp+'件</span><span style="font-size:11px;color:var(--text-secondary);font-weight:400">今週測定した選手の前回比</span></div>'+
+      growth.slice(0,8).map(function(a){return'<div class="alert-card '+(a.t==='up'?'alert-up':'alert-down')+'" style="cursor:pointer" onclick="goPlayerDetail('+a.pid+')">'+a.txt+'</div>';}).join('')+
+      (growth.length>8?'<div style="font-size:11px;color:var(--text-secondary);margin-top:4px;cursor:pointer" onclick="nav(\'physical\')">他 '+(growth.length-8)+' 件はフィジカルページへ →</div>':'')+
+      '</div>';
+  }
 
   // 提出遅延パネル（2日以上出していない選手）
   var bigLate=lateSubmitters.filter(function(l){return l.daysSince===null||l.daysSince>=2;});
@@ -1905,6 +2024,7 @@ dash:function(){
   prioritySection+
   todayPlanPanel+
   submissionPanel+
+  growthPanel+
   latePanel+
   '<div class="grid g3 rv"><div class="card"><div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.75rem">'+ic('i-bandage',15,'var(--red)')+'怪我中の選手</div>'+(ai.length?ai.map(function(i){var p=D.p.find(function(x){return x.id===i.pid;});if(!p)return'';return'<div class="log-row card-click" onclick="goInjuryDetail('+i.id+')">'+avH(p,26)+'<span style="font-weight:600;flex:1">'+escapeHtml(p.name)+'</span><span style="color:var(--text-secondary);font-size:11px">'+injLabel(i)+'</span><span class="bd '+(i.hospitalVisited?'bd-g':'bd-a')+'" style="font-size:9px">'+(i.hospitalVisited?'受診済':'未受診')+'</span></div>';}).join(''):'<div class="no">なし</div>')+'</div><div class="card"><div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.75rem">'+ic('i-x-c',15,'var(--amber)')+'欠席アラート</div>'+(aa.length?aa.map(function(a){return'<div class="alert-card alert-warn" style="cursor:pointer" onclick="goPlayerDetail('+a.pid+')">'+a.n+': '+a.c+'回</div>';}).join(''):'<div class="no">該当なし</div>')+'</div><div class="card"><div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.75rem">'+ic('i-moon',15,'var(--purple)')+'疲労度アラート</div>'+(fa.length?fa.map(function(f){return'<div class="alert-card alert-down" style="cursor:pointer" onclick="goPlayerDetail('+f.pid+')">'+f.txt+'</div>';}).join(''):'<div class="no">該当なし</div>')+'</div></div>';
   // Add body comp missed alerts
@@ -4226,7 +4346,8 @@ function phBroncoBoardHtml(){
   body+='</div>';
   return head+body;
 }
-function renderPhysAlerts(){var e=document.getElementById('ph-alerts');if(!e)return;var al=[];D.p.forEach(function(p){var recs=D.ph.filter(function(x){return x.pid===p.id;}).sort(function(a,b){return a.date.localeCompare(b.date);});if(recs.length<2)return;var l=recs[recs.length-1],pv=recs[recs.length-2];['squat','bench','deadlift','chinning','clean'].forEach(function(f){if(!l[f]||!pv[f])return;var d=l[f]-pv[f],pct=Math.round(d/pv[f]*100);var fname={squat:'SQ',bench:'BP',deadlift:'DL',chinning:'チンニング',clean:'クリーン'}[f]||f;if(d>0)al.push({t:'up',txt:p.name+': '+fname+' '+pv[f]+'→'+l[f]+'kg (+'+pct+'%) '+ic('i-trend-up',12)});else if(pct<=-5)al.push({t:'down',txt:p.name+': '+fname+' '+pv[f]+'→'+l[f]+'kg ('+pct+'%) '+ic('i-trend-down',12)});});if(l.bronco&&pv.bronco){var d2=l.bronco-pv.bronco,pct2=Math.round(d2/pv.bronco*100);if(d2<0)al.push({t:'up',txt:p.name+': ブロンコ '+broncoFmt(pv.bronco)+'→'+broncoFmt(l.bronco)+' '+ic('i-trend-up',12)});else if(pct2>=5)al.push({t:'down',txt:p.name+': ブロンコ '+broncoFmt(pv.bronco)+'→'+broncoFmt(l.bronco)+' '+ic('i-trend-down',12)});}});e.innerHTML=al.map(function(a){return'<div class="alert-card '+(a.t==='up'?'alert-up':'alert-down')+'">'+a.txt+'</div>';}).join('');}
+// P8d: 比較ロジックはphysAlertsData()へ共通化（dashの「今週の伸び」と同一データ源）。ここは描画のみ
+function renderPhysAlerts(){var e=document.getElementById('ph-alerts');if(!e)return;var al=physAlertsData();e.innerHTML=al.map(function(a){return'<div class="alert-card '+(a.t==='up'?'alert-up':'alert-down')+'">'+a.txt+'</div>';}).join('');}
 
 // === ADD INJURY (with search, side, other) ===
 function goAddInjury(pid){var td=todayStr();pushView('怪我登録','<div style="max-width:520px"><div class="form-box"><div class="form-title">怪我情報</div><div class="grid g2" style="gap:14px">'+
@@ -6660,9 +6781,49 @@ function goFitProgDetail(menuId){
   pushView(mn.name,h);
 }
 // 実施状況（後のステップで充実させる）
+// P8d: 当日メニューの実施/未実施マトリクス（行=選手。実施=✓メニュー名/休養・欠席=バッジ/未実施=赤セル→選手詳細のトレーニングへ）
+// ウエイト予定日（cal type:'weight'）のみ表示。新規の代理入力面は未実装（P6残）のため、未実施セルは選手詳細(トレーニングタブ)へ直行する
+function todayTrainingMatrixHtml(){
+  var todayS=todayStr();
+  var isWeightDay=(D.cal||[]).some(function(e){return e&&e.type==='weight'&&e.date===todayS;});
+  if(!isWeightDay)return '<div class="card" style="margin:12px 0"><div style="font-size:13px;font-weight:700;margin-bottom:4px">'+ic('i-calendar',14,'var(--maroon)')+' 本日の実施状況</div><div style="font-size:12px;color:var(--text-secondary)">本日はウエイト予定日ではありません（カレンダーにweight予定がある日にマトリクスを表示します）</div></div>';
+  var tType=ppNext();
+  var slotMn=tType?getSlotMenu(tType):null;
+  var todayLogs=tlogAll().filter(function(l){return l.date===todayS;});
+  // P8レビュー(11): 自主トレだけの選手は「チームメニュー実施」と区別する（実施カウントの過大化と督促漏れを防ぐ）
+  var done=0,selfOnly=0,rest=0,none=0;
+  var rows=D.p.map(function(p){
+    var lg=todayLogs.filter(function(l){return idEq(l.pid,p.id);});
+    var absent=lg.find(function(l){return l.absent;});
+    var didTeam=lg.find(function(l){return !l.absent&&l.kind!=='self';});
+    var didSelf=lg.find(function(l){return !l.absent&&l.kind==='self';});
+    var cellHtml;
+    if(didTeam){
+      done++;
+      var mn=(D.tmenu||[]).find(function(m){return idEq(m.id,didTeam.menuId);});
+      cellHtml='<span class="bd bd-g" style="font-size:10px">'+ic('i-check',10)+' '+escapeHtml(mn?mn.name:'実施')+'</span>';
+    }else if(didSelf){
+      selfOnly++;
+      cellHtml='<span class="bd bd-b" style="font-size:10px">自主のみ</span>';
+    }else if(absent){
+      rest++;
+      var rc=absent.absentReason==='痛み・怪我'?'bd-r':'bd-n';
+      cellHtml='<span class="bd '+rc+'" style="font-size:10px">休 '+escapeHtml(absent.absentReason||'')+'</span>';
+    }else{
+      none++;
+      cellHtml='<span class="bd bd-r" style="font-size:10px;cursor:pointer">未実施 →</span>';
+    }
+    return'<div class="log-row" style="cursor:pointer;padding:6px 0" onclick="goPlayerDetail('+p.id+',5)">'+avH(p,24)+'<span style="font-weight:600;flex:1;font-size:13px">'+escapeHtml(p.name)+'</span>'+cellHtml+'</div>';
+  });
+  return '<div class="card" style="margin:12px 0"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+
+    '<div style="font-size:14px;font-weight:700">'+ic('i-dumbbell',15,'var(--maroon)')+' 本日の実施状況'+(slotMn?' <span class="bd bd-b" style="font-size:10px">'+escapeHtml(slotMn.name)+(tType?' ('+tType.toUpperCase()+')':'')+'</span>':'')+'</div>'+
+    '<span style="margin-left:auto;font-size:11px;color:var(--text-secondary)">実施 <b style="color:var(--green)">'+done+'</b>'+(selfOnly?' ・ 自主のみ <b style="color:var(--blue)">'+selfOnly+'</b>':'')+' ・ 休養/欠席 <b>'+rest+'</b> ・ 未実施 <b style="color:var(--red)">'+none+'</b> / '+D.p.length+'名</span></div>'+
+    rows.join('')+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-top:6px">未実施の行をタップ → 選手詳細（トレーニング）で確認・代理修正</div></div>';
+}
 function renderTrainingStatus(){
   var logs=tlogAll().slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
-  var h='';
+  var h=todayTrainingMatrixHtml(); // P8d: フィードの前に当日マトリクス
   // 怪我でできなかった種目の通知（直近14日）
   var cutoff=new Date();cutoff.setDate(cutoff.getDate()-14);var cutoffStr=toDateStr(cutoff);
   var injuryNotices=[];

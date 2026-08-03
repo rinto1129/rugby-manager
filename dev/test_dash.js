@@ -118,7 +118,7 @@ T.home();
 var home1=document.getElementById('main').innerHTML;
 ok('あいさつに名前',has(home1,'テストPR'));
 ok('今日やること統合',has(home1,'今日やること'));
-ok('マイフィジカルカード',has(home1,'myphys-card'));
+ok('マイフィジカルカードはホームに出ない(P8bでマイデータNOWへ)',!has(home1,'myphys-card'));
 ok('チーム用ヘッダーは出ない',!has(home1,'福岡大学ラグビー部'));
 ok('ランキングはリンク行に集約（TOP3カードは撤去）',has(home1,'ランキング')&&has(home1,"go('ranking')")&&!has(home1,'ランキング TOP3'));
 
@@ -136,7 +136,9 @@ T.mypage();
 var mp=document.getElementById('main').innerHTML;
 ok('今日やることは出ない',!has(mp,'今日やること'));
 ok('入力・記録メニューは残る',has(mp,'入力・記録'));
-ok('フィジカルベストは残る',has(mp,'フィジカルベスト'));
+// P8a: フィジカルベスト数値ブロックはマイデータNOWへ移設＝mypageは導線のみ
+ok('フィジカルベスト数値は出ない(P8aでマイデータへ)',!has(mp,'フィジカルベスト'));
+ok('マイデータ導線は残る',has(mp,"go('mydata')"));
 ok('試合日翌日アラートは出ない',!has(mp,'試合日チェックが未入力です'));
 
 print(__fail===0?'ALL DASH TESTS PASSED':'FAILED: '+__fail+' test(s)');
