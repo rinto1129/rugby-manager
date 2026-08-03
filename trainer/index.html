@@ -1076,31 +1076,7 @@ function ppCardHtml(showCtrl){
     ctrlHtml+
     '</div>';
 }
-function ppFlip(expected){
-  svSafeUpdate('pp',function(latest){
-    if(!Array.isArray(latest))latest=[];
-    var last=latest.length?latest[latest.length-1]:null;
-    if(!last||(last.type!=='push'&&last.type!=='pull'))return latest;
-    if(expected&&last.type!==expected)return latest;
-    latest.push({id:Date.now(),type:last.type==='push'?'pull':'push',date:todayStr(),by:'trainer'});
-    if(latest.length>100)latest=latest.slice(-100);
-    return latest;
-  },function(){if(curTab==='home')T.home();});
-}
-function ppUndo(){
-  svSafeUpdate('pp',function(latest){
-    if(!Array.isArray(latest)||!latest.length)return latest;
-    latest.pop();
-    return latest;
-  },function(){if(curTab==='home')T.home();});
-}
-function ppStart(type){
-  if(type!=='push'&&type!=='pull')return;
-  svSafeUpdate('pp',function(latest){
-    if(Array.isArray(latest)&&latest.length)return latest;
-    return[{id:Date.now(),type:type,date:todayStr(),by:'trainer'}];
-  },function(){if(curTab==='home')T.home();});
-}
+// pp編集(ppFlip/ppUndo/ppStart)はstaffに集約（P7d）。trainerはppCardHtml(false)で表示のみ＝playerと同構造
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
 // 注: player/staff の getCurrentMSess は「締切除外＋終了後14日の猶予窓」版に更新済み。
 // trainer はリハビリログの当日判定用途のみで記録の自動紐付けをしないため、期間中のみの単純版を意図的に維持する。
@@ -1299,7 +1275,9 @@ function trTodoBadge(inj){
   if(lastComm&&lastComm.role==='trainer'&&lastComm.text&&lastComm.text.indexOf('⚠️【要確認・実施前チェック】')===0){
     return{rank:0,cls:'bd-r',emoji:'🚨',label:'レッドフラグ連絡中・要対応',action:'rehab'};
   }
-  var evalDates=(ch.evals||[]).map(function(e){return e.date;}).filter(Boolean).sort();
+  // 「臨床評価の間隔」を測るバッジ＝選手の自己申告(bySelf)は除外する。
+  // 除外しないと1シート化(P7d)で選手がリハ記録するたびに間隔がリセットされ、このバッジが二度と出なくなる
+  var evalDates=(ch.evals||[]).filter(function(e){return !e.bySelf;}).map(function(e){return e.date;}).filter(Boolean).sort();
   var lastEvalDate=evalDates[evalDates.length-1];
   var refDate=lastEvalDate||inj.date;
   var gapDays=Math.floor((new Date(today)-new Date(refDate))/86400000);
@@ -1340,7 +1318,8 @@ home:function(){
   '<div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="showChangePINT()" style="font-size:11px">🔑 PIN変更</button><button class="btn btn-sm" onclick="go(\'help\')" style="font-size:11px">📖 ガイド</button></div>'+
   '</div>'+
   '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">'+fmt(today)+'</div>';
-  h+=ppCardHtml(true);
+  h+=ppCardHtml(false); // PUSH/PULL編集はstaffに集約（P7d）。trainerは表示のみ
+
   // 今日のテーピング
   h+='<div class="card"><div style="font-weight:600;margin-bottom:10px">🩻 今日のテーピング予約</div>';
   if(mySlots.length){
@@ -1867,8 +1846,8 @@ function renderChartOverview(iid){
   var rh=D.r.find(function(x){return idEq(x.injId,iid);});
   var ch=getChart(iid);
   var daysSince=Math.floor((new Date(todayStr())-new Date(inj.date))/86400000);
-  // 最新評価
-  var lastEval=ch.evals.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');})[0];
+  // 最新評価（同日2件は inputAt で決着。date単独ソートは安定ソートで“その日の最初の1件”を拾ってしまう）
+  var lastEval=ch.evals.slice().sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d!==0)return d;return (b.inputAt||'').localeCompare(a.inputAt||'');})[0];
   // 最新痛み
   var lastPain=lastEval&&lastEval.pain?lastEval.pain:{};
   var h='<div class="grid g3" style="margin-bottom:16px">'+
@@ -2311,8 +2290,66 @@ function showEvalSavedBanner(html){
   setTimeout(function(){if(d&&d.parentNode){d.style.transition='opacity .5s';d.style.opacity='0';setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d);},520);}},4500);
 }
 
-function saveEval(iid,evalId,btn){
+// quick=真 で「クイック評価」（ch.metrics駆動）。旧saveQuickEvalを統合＝roleGuard/stampWhoを通す1本化（P7d）。
+// フル評価パス（下記）は無変更。クイック分岐は q接頭辞の局所変数で完結させフル側と非干渉。
+function saveEval(iid,evalId,btn,quick){
   if(!roleGuard('eval'))return;
+  if(quick){
+    var qch=getChart(iid);
+    var qmetrics=(qch.metrics||[]);
+    var qdate=(document.getElementById('qe-date')||{}).value||todayStr();
+    var qnote=(document.getElementById('qe-note')||{}).value||'';
+    var qpainEl=document.getElementById('qe-pain');
+    var qpainVal=null;
+    if(qpainEl&&qpainEl.getAttribute('data-moved')==='1'){var qpv=parseInt(qpainEl.value);if(!isNaN(qpv))qpainVal=qpv;}
+    var qrom={},qcirc={},qfit={},qromH={},qcircH={},qfitH={};
+    var qfilled=0;var qsummary=[];
+    qmetrics.forEach(function(m){
+      var ref=metricEvalRef(m);
+      var pel=document.getElementById('qe-m-'+m.id);
+      var hel=document.getElementById('qe-mH-'+m.id);
+      if(pel&&pel.value.trim()!==''){
+        var raw=pel.value.trim();var pn=parseFloat(raw);
+        if(!isNaN(pn)){
+          if(ref.f==='rom')qrom[ref.k]=raw;else if(ref.f==='circ')qcirc[ref.k]=pn;else qfit[ref.k]=pn;
+          qfilled++;
+          var prev=latestEvalForMetric(qch.evals||[],m);
+          qsummary.push({name:m.name,unit:m.unit||'',cur:pn,prev:prev?prev.patient:null,dir:m.direction||'up'});
+        }
+      }
+      if(m.lsi&&hel&&hel.value.trim()!==''){
+        var hn=parseFloat(hel.value);
+        if(!isNaN(hn)){if(ref.hf==='romH')qromH[ref.k]=String(hn);else if(ref.hf==='circH')qcircH[ref.k]=hn;else qfitH[ref.k]=hn;}
+      }
+    });
+    if(qpainVal==null&&qfilled===0){alert('記録する項目がありません。痛みスライダーを動かすか、指標を入力してください。');return;}
+    if(!guardSubmit(btn,'保存中…'))return;
+    var qISO=new Date().toISOString();
+    svSafeUpdate('chart',function(latest){
+      var i=_chartIdx(latest,iid);
+      if(!latest[i].evals)latest[i].evals=[];
+      var rec={id:Date.now()+'_'+Math.floor(Math.random()*1000),date:qdate,inputAt:qISO,source:'quick'};
+      var painObj={};if(qpainVal!=null)painObj.motion=qpainVal;
+      rec.pain=painObj;
+      if(Object.keys(qrom).length)rec.rom=qrom;
+      if(Object.keys(qcirc).length)rec.circ=qcirc;
+      if(Object.keys(qfit).length)rec.fit=qfit;
+      if(Object.keys(qromH).length)rec.romH=qromH;
+      if(Object.keys(qcircH).length)rec.circH=qcircH;
+      if(Object.keys(qfitH).length)rec.fitH=qfitH;
+      if(qnote)rec.note=qnote;
+      stampWho(rec); // P7d: クイックにも記録者スタンプ（旧saveQuickEvalは欠落）
+      latest[i].evals.push(rec);
+      return latest;
+    },function(){
+      qeShowResult(iid,qpainVal,qsummary,btn);
+      try{localStorage.removeItem('rm_qe_'+iid);}catch(e){}
+    },function(){
+      releaseSubmit(btn);
+      alert('保存に失敗しました。通信状況を確認してもう一度お試しください。入力内容は残っています。');
+    });
+    return;
+  }
   var pain={},rom={},mmt={},circ={},ortho={},special=[];
   var fit={},romH={},mmtH={},circH={},fitH={};
   document.querySelectorAll('.ev-pain').forEach(function(e){if(e.value!=='')pain[e.dataset.k]=parseFloat(e.value);});
@@ -2472,7 +2509,8 @@ function delSOAP(iid,soapId){
 function buildSOAPObjectiveDraft(iid){
   var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return '';
   var ch=getChart(iid);var em=EVAL_MASTER[inj.part]||EVAL_MASTER['その他'];
-  var evals=(ch.evals||[]).slice().sort(function(a,b){
+  // O欄=客観的所見。選手の自己申告(bySelf)は主観なので下書きに混ぜない
+  var evals=(ch.evals||[]).filter(function(e){return !e.bySelf;}).slice().sort(function(a,b){
     var d=(b.date||'').localeCompare(a.date||'');
     if(d!==0)return d;
     return (b.inputAt||'').localeCompare(a.inputAt||'');
@@ -2595,7 +2633,7 @@ function trShowAddInjury(){window._subViewActive=true;
     '</div>';
   h+='<div class="fl" style="margin-bottom:12px"><label>メモ</label><textarea class="ipt" id="tri-note" placeholder="受傷状況など"></textarea></div>';
   h+='</div>';
-  h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">登録すると同時にリハビリ管理が開始されます（段階：ウォーキングから）。受傷機転や診断など詳しい情報は、登録後に電子カルテから入力できます。</div>';
+  h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">登録すると同時にリハビリ管理が開始されます（段階：ウォーキングから）。受傷機転や診断など詳しい情報は、登録後そのまま続けて入力できます。</div>';
   h+='<button class="btn btn-p" style="width:100%" onclick="trDoAddInjury(this)">登録する</button>';
   $m().innerHTML=h;
 }
@@ -2619,15 +2657,17 @@ function trDoAddInjury(btnEl){
   var inj={id:injId,pid:pid,side:document.getElementById('tri-side').value,part:part,partOther:part==='その他'?document.getElementById('tri-partOther').value:'',type:type,typeOther:type==='その他'?document.getElementById('tri-typeOther').value:'',date:document.getElementById('tri-date').value,returnDate:document.getElementById('tri-ret').value,note:document.getElementById('tri-note').value,resolved:false,source:'trainer',approved:true,approvedBy:getCurrentUserName(MY_ROLE),approvedByRole:MY_ROLE};
   // i(怪我)→r(リハビリ)を順次安全保存。svSafeSeqで成否を捕捉（svSafeは失敗時に内部alert＋ボタン固着するため使わない）
   svSafeSeq([{k:'i',rec:inj},{k:'r',rec:{id:injId+1,injId:injId,pid:pid,stage:0,logs:[],stageDates:[]}}],function(){
-    alert('ケガを登録しました。リハビリ管理を開始します。');
-    openChart(injId);
+    // P7d: 登録→受傷・診断入力を1つの流れに（カルテを受傷・診断タブで開く）
+    alert('ケガを登録しました。続けて受傷機転・診断を入力できます。');
+    openChart(injId,'diagnosis');
   },function(){
     releaseSubmit(btnEl);
     alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
   });
 }
 
-function openChart(iid){window._subViewActive=true;
+// initTab: 開いた直後に表示するタブ（省略時='overview'）。受傷登録直後は'diagnosis'を渡して受傷・診断入力へ直行（P7d）
+function openChart(iid,initTab){window._subViewActive=true;
   var inj=(D.i||[]).find(function(x){return idEq(x.id,iid);});if(!inj)return;
   var p=D.p.find(function(x){return idEq(x.id,inj.pid);});if(!p)return;
   curChartTab='overview';
@@ -2651,7 +2691,10 @@ function openChart(iid){window._subViewActive=true;
     '</div>';
   var backBtn='<button class="btn btn-sm" style="margin-bottom:10px" onclick="goRehabPlayer('+iid+')">← リハビリ画面に戻る</button>';
   $m().innerHTML=backBtn+hero+tabs+'<div id="chart-body"></div>';
-  setTimeout(function(){renderChartTab();},30);
+  setTimeout(function(){
+    if(initTab&&initTab!=='overview')chartTab(initTab); // chartTabがcurChartTab更新＋タブの'ac'付替え＋描画を担う
+    else renderChartTab();
+  },30);
 }
 function chartTab(t){
   curChartTab=t;
@@ -3510,7 +3553,7 @@ function renderQuickEvalCard(injId){
   }
   h+='<div class="fl" style="margin-bottom:12px"><label>メモ（任意）</label><textarea class="ipt" id="qe-note" style="min-height:50px" placeholder="気づき・選手の感覚など..." oninput="qeSaveDraft(window._qeInjId)">'+escapeHtml(draft&&draft.note?draft.note:'')+'</textarea></div>';
   h+='<div id="qe-result"></div>';
-  h+='<button class="btn btn-p" id="qe-save-btn" style="width:100%" onclick="saveQuickEval('+injId+',this)">💾 評価を保存</button>';
+  h+='<button class="btn btn-p" id="qe-save-btn" style="width:100%" onclick="saveEval('+injId+',null,this,1)">💾 評価を保存</button>';
   h+='</div>';
   return h;
 }
@@ -3576,62 +3619,7 @@ function qeSaveDraft(injId){
     localStorage.setItem('rm_qe_'+injId,JSON.stringify(d));
   }catch(e){}
 }
-function saveQuickEval(injId,btn){
-  var ch=getChart(injId);
-  var metrics=(ch.metrics||[]);
-  var date=(document.getElementById('qe-date')||{}).value||todayStr();
-  var note=(document.getElementById('qe-note')||{}).value||'';
-  // 痛み：スライダーを動かした時だけ記録（前回値の複製事故防止）
-  var painEl=document.getElementById('qe-pain');
-  var painVal=null;
-  if(painEl&&painEl.getAttribute('data-moved')==='1'){var pv=parseInt(painEl.value);if(!isNaN(pv))painVal=pv;}
-  // 指標
-  var rom={},circ={},fit={},romH={},circH={},fitH={};
-  var filledCount=0;var summary=[];
-  metrics.forEach(function(m){
-    var ref=metricEvalRef(m);
-    var pel=document.getElementById('qe-m-'+m.id);
-    var hel=document.getElementById('qe-mH-'+m.id);
-    if(pel&&pel.value.trim()!==''){
-      var raw=pel.value.trim();var pn=parseFloat(raw);
-      if(!isNaN(pn)){
-        if(ref.f==='rom')rom[ref.k]=raw;else if(ref.f==='circ')circ[ref.k]=pn;else fit[ref.k]=pn;
-        filledCount++;
-        var prev=latestEvalForMetric(ch.evals||[],m);
-        summary.push({name:m.name,unit:m.unit||'',cur:pn,prev:prev?prev.patient:null,dir:m.direction||'up'});
-      }
-    }
-    if(m.lsi&&hel&&hel.value.trim()!==''){
-      var hn=parseFloat(hel.value);
-      if(!isNaN(hn)){if(ref.hf==='romH')romH[ref.k]=String(hn);else if(ref.hf==='circH')circH[ref.k]=hn;else fitH[ref.k]=hn;}
-    }
-  });
-  if(painVal==null&&filledCount===0){alert('記録する項目がありません。痛みスライダーを動かすか、指標を入力してください。');return;}
-  if(!guardSubmit(btn,'保存中…'))return;
-  var nowISO=new Date().toISOString();
-  svSafeUpdate('chart',function(latest){
-    var i=_chartIdx(latest,injId);
-    if(!latest[i].evals)latest[i].evals=[];
-    var rec={id:Date.now()+'_'+Math.floor(Math.random()*1000),date:date,inputAt:nowISO,source:'quick'};
-    var painObj={};if(painVal!=null)painObj.motion=painVal;
-    rec.pain=painObj;
-    if(Object.keys(rom).length)rec.rom=rom;
-    if(Object.keys(circ).length)rec.circ=circ;
-    if(Object.keys(fit).length)rec.fit=fit;
-    if(Object.keys(romH).length)rec.romH=romH;
-    if(Object.keys(circH).length)rec.circH=circH;
-    if(Object.keys(fitH).length)rec.fitH=fitH;
-    if(note)rec.note=note;
-    latest[i].evals.push(rec);
-    return latest;
-  },function(){
-    qeShowResult(injId,painVal,summary,btn);
-    try{localStorage.removeItem('rm_qe_'+injId);}catch(e){}
-  },function(){
-    releaseSubmit(btn);
-    alert('保存に失敗しました。通信状況を確認してもう一度お試しください。入力内容は残っています。');
-  });
-}
+// saveQuickEval は saveEval(iid,null,btn,quick=1) のクイック分岐へ統合し廃止（P7d）。
 function qeShowResult(injId,painVal,summary,btn){
   var improved=summary.filter(function(s){return s.prev!=null&&(s.dir==='down'?s.cur<s.prev:s.cur>s.prev);}).length;
   var lines=[];

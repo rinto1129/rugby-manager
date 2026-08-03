@@ -200,6 +200,13 @@
    ],
    "kind": "function"
   },
+  "chartTab": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
+  },
   "_chartIdx": {
    "files": [
     "staff",

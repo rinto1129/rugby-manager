@@ -2488,7 +2488,7 @@ function injStats(){
       var p=D.p.find(function(x){return idEq(x.id,inj.pid);});if(!p)return;
       var ch=D.chart.find(function(c){return idEq(c.injId,inj.id);});
       var rtp=ch&&ch.rtpLevel?RTP_LEVELS.find(function(x){return x.k===ch.rtpLevel;}):null;
-      var lastEval=ch&&ch.evals&&ch.evals.length?ch.evals.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');})[0]:null;
+      var lastEval=ch&&ch.evals&&ch.evals.length?ch.evals.slice().sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d!==0)return d;return (b.inputAt||'').localeCompare(a.inputAt||'');})[0]:null; // 同日2件はinputAtで決着（date単独=安定ソートでその日の最初が残る）
       var painStr='-';var painColor='var(--text-secondary)';var lastDate='-';
       if(lastEval){
         lastDate=fmt(lastEval.date);
@@ -2697,7 +2697,8 @@ var PAIN_TYPES=[{k:'rest',label:'安静時痛'},{k:'motion',label:'運動時痛'
 
 // ===== 新・電子カルテ メイン画面（タブ式） =====
 var curChartTab='overview';
-function goInjuryDetail(iid){
+// initTab: 開いた直後に表示するタブ（省略時='overview'）。受傷登録直後は'diagnosis'を渡して受傷・診断入力へ直行（P7d）
+function goInjuryDetail(iid,initTab){
   var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return;
   var p=D.p.find(function(x){return idEq(x.id,inj.pid);});if(!p)return;
   curChartTab='overview';
@@ -2720,7 +2721,10 @@ function goInjuryDetail(iid){
     '<div class="chart-tab" onclick="chartTab(\'comment\')">'+ic('i-note',13)+' コメント</div>'+
     '</div>';
   pushView(escapeHtml(p.name)+' カルテ',hero+tabs+'<div id="chart-body"></div>');
-  setTimeout(function(){renderChartTab();},30);
+  setTimeout(function(){
+    if(initTab&&initTab!=='overview')chartTab(initTab); // chartTabがcurChartTab更新＋タブの'ac'付替え＋描画を担う
+    else renderChartTab();
+  },30);
 }
 function chartTab(t){
   curChartTab=t;
@@ -2873,8 +2877,8 @@ function renderChartOverview(iid){
   var rh=D.r.find(function(x){return idEq(x.injId,iid);});
   var ch=getChart(iid);
   var daysSince=Math.floor((new Date(todayStr())-new Date(inj.date))/86400000);
-  // 最新評価
-  var lastEval=ch.evals.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');})[0];
+  // 最新評価（同日2件は inputAt で決着。date単独ソートは安定ソートで“その日の最初の1件”を拾ってしまう）
+  var lastEval=ch.evals.slice().sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d!==0)return d;return (b.inputAt||'').localeCompare(a.inputAt||'');})[0];
   // 最新痛み
   var lastPain=lastEval&&lastEval.pain?lastEval.pain:{};
   var h='<div class="grid g3" style="margin-bottom:16px">'+
@@ -4242,7 +4246,12 @@ function doAddInjury(){var pid=parseInt(document.getElementById('ni-p-val').valu
 var part=document.getElementById('ni-part').value,type=document.getElementById('ni-type').value;
 // P7c 承認ルール明文化: staff起票=即approved（source:'staff'を明示・approvedByで記録者を残す）。選手/試合起票のみ要承認。
 var inj={id:Date.now(),pid:pid,side:document.getElementById('ni-side').value,part:part,partOther:part==='その他'?document.getElementById('ni-partOther').value:'',type:type,typeOther:type==='その他'?document.getElementById('ni-typeOther').value:'',date:document.getElementById('ni-date').value,returnDate:document.getElementById('ni-ret').value,hospitalVisited:document.getElementById('ni-hv').value==='1',hospitalDate:document.getElementById('ni-hd').value,note:document.getElementById('ni-note').value,resolved:false,source:'staff',approved:true,approvedBy:getCurrentUserName(MY_ROLE),approvedByRole:MY_ROLE};
-var rhRec={id:Date.now()+1,injId:inj.id,pid:pid,stage:0,logs:[],stageDates:[]};svSafe('i',inj,function(){svSafe('r',rhRec,function(){popView();});});}
+var rhRec={id:Date.now()+1,injId:inj.id,pid:pid,stage:0,logs:[],stageDates:[]};svSafe('i',inj,function(){svSafe('r',rhRec,function(){
+  // P7d: 登録→受傷・診断入力を1つの流れに。カルテを受傷・診断タブで開く（chartは診断保存時に遅延生成＝先行生成しない）
+  popView();
+  goInjuryDetail(inj.id,'diagnosis');
+  setTimeout(function(){toast('登録しました。続けて受傷機転・診断を入力できます');},300);
+});});}
 
 // === ADD PHYSICAL (with search) ===
 function goAddPhys(){var td=todayStr();pushView('フィジカル記録','<div style="max-width:520px"><div class="form-box"><div class="form-title">測定データ</div><div class="grid g2" style="gap:14px">'+
@@ -7760,6 +7769,17 @@ function goRPlanDetail(injId){
   '<div class="fl" style="margin-bottom:10px"><label>実施者（専門学生名 or スタッフ名）</label><input class="ipt" id="srl-implementer" placeholder="例: 森翔太 / 中山"></div>'+
   '</div>';
 
+  // 臨床評価も記録（任意・折りたたみ）: 痛み中心の簡易評価をリハ記録と同一画面で（1保存でrlog+chart.evals）。
+  // 詳細ROM/MMTはカルテ評価タブ。staffにクイック評価カードは無いため二重面にならない（P7d）
+  var _painSliders=PAIN_TYPES.map(function(pt){
+    return '<div class="fl" style="margin-bottom:12px"><label>'+pt.label+'</label>'+
+      '<div style="display:flex;align-items:center;gap:10px"><input type="range" class="srl-pain" data-k="'+pt.k+'" min="0" max="10" value="0" style="flex:1" oninput="var _s=document.getElementById(\'srlp-'+pt.k+'\');if(_s)_s.textContent=this.value">'+
+      '<span id="srlp-'+pt.k+'" style="font-weight:700;min-width:24px;text-align:center">0</span></div></div>';
+  }).join('');
+  var evalFold='<details class="form-box" style="margin-bottom:14px"><summary style="cursor:pointer;font-weight:600;font-size:13px">'+ic('i-pain-3',14,'var(--maroon)')+' 臨床評価も記録（任意）</summary>'+
+    '<div style="margin-top:12px"><div class="form-title">痛みレベル（0:なし〜10:最大）</div>'+_painSliders+
+    '<div class="fl"><label>評価メモ</label><textarea class="ipt" id="srl-eval-note" placeholder="痛みの所見や気づき。ROM/MMTなど詳細はカルテの評価タブへ" style="min-height:50px"></textarea></div></div></details>';
+
   if(tpl&&tpl.exercises&&tpl.exercises.length){
     // テンプレありの場合：種目ごとにチェック・回数変更・コメント
     h+='<div class="form-box"><div class="form-title">種目ごとの実施記録</div>'+
@@ -7776,13 +7796,15 @@ function goRPlanDetail(injId){
       '</div>';
     }).join('')+'</div>';
     h+='<div class="fl" style="margin-bottom:14px"><label>全体コメント</label><textarea class="ipt" id="srl-comment" placeholder="今日全体の状況..."></textarea></div>';
+    h+=evalFold;
     h+='<button class="btn btn-p" style="width:100%" onclick="doSaveRehabLogStaff('+injId+',true,'+tpl.exercises.length+')">リハビリ終了・保存</button>';
   } else {
     // テンプレなし：カスタム記録
     h+='<div id="srl-custom-items"></div>'+
     '<button class="btn" style="width:100%;margin-bottom:10px" onclick="addCustomRehabItem()">+ 種目を追加</button>'+
-    '<div class="fl" style="margin-bottom:14px"><label>全体コメント</label><textarea class="ipt" id="srl-comment" placeholder="今日全体の状況..."></textarea></div>'+
-    '<button class="btn btn-p" style="width:100%" onclick="doSaveRehabLogStaff('+injId+',false,0)">リハビリ終了・保存</button>';
+    '<div class="fl" style="margin-bottom:14px"><label>全体コメント</label><textarea class="ipt" id="srl-comment" placeholder="今日全体の状況..."></textarea></div>';
+    h+=evalFold;
+    h+='<button class="btn btn-p" style="width:100%" onclick="doSaveRehabLogStaff('+injId+',false,0)">リハビリ終了・保存</button>';
   }
 
   // 記録履歴
@@ -7869,16 +7891,38 @@ function doSaveRehabLogStaff(injId,hasTpl,exCount){
   }
 
   var comment=(document.getElementById('srl-comment')||{}).value||'';
-  var logRec={id:Date.now(),injId:injId,date:date,implementer:implementer,by:implementer,cats:cats,exercises:exercises,comment:comment};
+  // 臨床評価（任意・折りたたみ）: 痛みスライダ>0 か 評価メモ非空の時だけ chart.evals へ1件追記（0埋め空評価で臨床評価ストリームを汚さない）
+  var evPain={},anyPain=false;
+  document.querySelectorAll('.srl-pain').forEach(function(e){var v=parseFloat(e.value)||0;evPain[e.dataset.k]=v;if(v>0)anyPain=true;});
+  var evNoteEl=document.getElementById('srl-eval-note');var evNote=evNoteEl?(evNoteEl.value||'').trim():'';
+  var hasEval=anyPain||!!evNote;
+  // 評価が担当ロール外なら「評価だけスキップ」してリハビリ記録は保存する（returnするとrlogの入力まで消える）
+  if(hasEval&&!roleGate('eval')){hasEval=false;alert('臨床評価は担当ロール外のためスキップします（リハビリ記録は保存します）');}
+  // 痛みスライダを1つも動かしていない場合は pain を空にする。0埋めすると「最新の痛み0/10（緑）」となり
+  // 前日までの痛みを塗り替えて“痛み消失”を誤って主張してしまう（フル評価saveEvalが空値を書かないのと同じ扱い）
+  var evalRec=hasEval?{id:Date.now()+'_'+Math.floor(Math.random()*1000),date:date,pain:(anyPain?evPain:{}),rom:{},mmt:{},circ:{},ortho:{},special:[],note:evNote,inputAt:new Date().toISOString()}:null;
+  if(hasEval)stampWho(evalRec);
 
+  var logRec={id:Date.now(),injId:injId,date:date,implementer:implementer,by:implementer,cats:cats,exercises:exercises,comment:comment};
   stampWho(logRec);
-  svSafe('rlog',logRec,function(){
+  var afterRlog=function(){
     // カスタムの場合：テンプレ化を提案（confirm+promptを1フォームに統合。保存/スキップはフォーム内で選択）
-    if(!hasTpl&&exercises.length){
-      goSaveAsTemplate(injId,exercises,cats);return;
-    }
-    // 次回メニュー設定へ
-    goSetNextMenu(injId);
+    if(!hasTpl&&exercises.length){goSaveAsTemplate(injId,exercises,cats);return;}
+    goSetNextMenu(injId); // 次回メニュー設定へ
+  };
+  // rlog(追記)→成功後に臨床評価(chart.evals upsert)を逐次チェーン。別キー2ストアのため単一txにはできない（staffにsvSafeSeqは無い）
+  svSafe('rlog',logRec,function(){
+    if(!hasEval){afterRlog();return;}
+    svSafeUpdate('chart',function(latest){
+      var i=_chartIdx(latest,injId);
+      if(!latest[i].evals)latest[i].evals=[];
+      latest[i].evals.push(evalRec);
+      return latest;
+    },function(){afterRlog();},function(){
+      // rlogは保存済み・評価のみ失敗 → 二重保存を避けるため画面を進め、失敗を明示（評価はカルテ評価タブで再試行可）
+      afterRlog();
+      alert('リハビリ記録は保存しましたが、臨床評価の保存に失敗しました。評価はカルテの評価タブから再度お試しください。');
+    });
   });
 }
 

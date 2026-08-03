@@ -1567,7 +1567,7 @@ function broncoRankCardHtml(binf,cfg){
   }else{
     h+='<div class="num" style="font-size:28px;color:var(--text-tertiary)">—</div>'+
       '<div style="margin-top:8px;font-size:12px;color:var(--text-secondary)">ブロンコを記録するとランクが判定されます</div>'+
-      '<button class="btn btn-sm" style="margin-top:6px" onclick="showBroncoFormDirect()">タイムを記録する</button>';
+      '<button class="btn btn-sm" style="margin-top:6px" onclick="showPhysForm(\'bronco\')">タイムを記録する</button>';
   }
   h+='</div>';
   return h;
@@ -2772,27 +2772,32 @@ function doCondition(btnEl){
 }
 
 // 統合フォーム（BIG3＋チンニング＋クリーン＋ブロンコ）
-function showPhysForm(){
+// mode==='bronco' でブロンコ単独入力（マイページのランクカードから）。それ以外は全種目フォーム。
+// 旧 showBroncoForm/showBroncoFormDirect/doBronco はこの mode 統合で撤去（P7d）。保存先は両モードとも 'ph'。
+function showPhysForm(mode){
   var td=todayStr();
   var today=td;
+  var isBronco=(mode==='bronco');
   var skipped=(D.phskip||[]).find(function(s){return s.pid===myPid&&s.date===today;});
   var skipBtn=skipped?
     '<div class="alert-card alert-info" style="margin-bottom:12px">'+ic('i-check-c',14)+' 本日は測定なしとして申告済みです <button class="btn btn-sm" onclick="cancelPhysSkip()" style="margin-left:8px">取消</button></div>':
     '<button class="btn" style="width:100%;margin-bottom:12px;color:var(--text-secondary)" onclick="markPhysSkip()">'+ic('i-x-c',13)+' 本日は測定なしとして申告する</button>';
+  var weightBox=isBronco?'':
+    '<div class="form-box"><div class="form-title">ウエイトトレーニング（kg）</div>'+
+    '<div class="fl" style="margin-bottom:10px"><label>スクワット MAX</label><input class="ipt" type="number" id="pf-sq" placeholder="例: 150"></div>'+
+    '<div class="fl" style="margin-bottom:10px"><label>ベンチプレス MAX</label><input class="ipt" type="number" id="pf-bp" placeholder="例: 100"></div>'+
+    '<div class="fl" style="margin-bottom:10px"><label>デッドリフト MAX</label><input class="ipt" type="number" id="pf-dl" placeholder="例: 180"></div>'+
+    '<div class="fl" style="margin-bottom:10px"><label>チンニング MAX</label><input class="ipt" type="number" id="pf-cn" placeholder="例: 80"></div>'+
+    '<div class="fl"><label>クリーン MAX</label><input class="ipt" type="number" id="pf-cl" placeholder="例: 90"></div>'+
+    '</div>';
   showSub(
-  '<div style="font-size:18px;font-weight:600;margin:12px 0 4px">'+ic('i-edit',16,'var(--maroon)')+' 記録入力</div>'+
-  '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">入力した項目だけ保存されます。空欄はスキップされます。</div>'+
+  '<div style="font-size:18px;font-weight:600;margin:12px 0 4px">'+ic(isBronco?'i-run':'i-edit',16,'var(--maroon)')+' '+(isBronco?'ブロンコを記録':'記録入力')+'</div>'+
+  '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">'+(isBronco?'ブロンコテストのタイムを記録します。':'入力した項目だけ保存されます。空欄はスキップされます。')+'</div>'+
   skipBtn+
   '<div class="form-box"><div class="form-title">測定日</div>'+
   '<input class="ipt" type="date" id="pf-date" value="'+td+'">'+
   '</div>'+
-  '<div class="form-box"><div class="form-title">ウエイトトレーニング（kg）</div>'+
-  '<div class="fl" style="margin-bottom:10px"><label>スクワット MAX</label><input class="ipt" type="number" id="pf-sq" placeholder="例: 150"></div>'+
-  '<div class="fl" style="margin-bottom:10px"><label>ベンチプレス MAX</label><input class="ipt" type="number" id="pf-bp" placeholder="例: 100"></div>'+
-  '<div class="fl" style="margin-bottom:10px"><label>デッドリフト MAX</label><input class="ipt" type="number" id="pf-dl" placeholder="例: 180"></div>'+
-  '<div class="fl" style="margin-bottom:10px"><label>チンニング MAX</label><input class="ipt" type="number" id="pf-cn" placeholder="例: 80"></div>'+
-  '<div class="fl"><label>クリーン MAX</label><input class="ipt" type="number" id="pf-cl" placeholder="例: 90"></div>'+
-  '</div>'+
+  weightBox+
   '<div class="form-box"><div class="form-title">ブロンコテスト</div>'+
   '<div style="display:flex;align-items:center;gap:8px">'+
   '<input class="ipt" type="number" id="pf-br-m" placeholder="分" min="0" style="width:80px">'+
@@ -2800,55 +2805,8 @@ function showPhysForm(){
   '<input class="ipt" type="number" id="pf-br-s" placeholder="秒" min="0" max="59" style="width:80px">'+
   '<span style="font-weight:600">秒</span></div>'+
   '</div>'+
-  '<button class="btn btn-p" style="width:100%" onclick="doPhys(this)">記録する</button>'
+  '<button class="btn btn-p" style="width:100%" onclick="doPhys(this,\''+(isBronco?'bronco':'')+'\')">記録する</button>'
   );
-}
-
-// ブロンコ専用フォーム（physical画面から）
-function showBroncoForm(){
-  var td=todayStr();
-  showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px;display:flex;align-items:center;gap:7px">'+ic('i-run',17,'var(--maroon)')+'ブロンコを記録</div>'+
-  '<div class="form-box"><div class="form-title">測定データ</div>'+
-  '<div class="fl"><label>測定日</label><input class="ipt" type="date" id="br-date" value="'+td+'"></div>'+
-  '<div class="fl"><label>ブロンコテスト</label>'+
-  '<div style="display:flex;align-items:center;gap:8px"><input class="ipt" type="number" id="br-m" placeholder="分" min="0" style="width:90px"><span style="font-weight:600">分</span><input class="ipt" type="number" id="br-s" placeholder="秒" min="0" max="59" style="width:90px"><span style="font-weight:600">秒</span></div></div>'+
-  '<button class="btn btn-p" onclick="doBronco(this)">記録する</button>'+
-  '<button class="btn" style="margin-left:8px" onclick="markPhysSkip()">本日は測定なし</button>'+
-  '</div>');
-}
-
-// マイページから直接ブロンコフォームを開く
-function showBroncoFormDirect(){
-  var td=todayStr();
-  $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button>'+
-  '<div style="font-size:18px;font-weight:600;margin:10px 0 14px">'+ic('i-run',16,'var(--maroon)')+' ブロンコを記録</div>'+
-  '<div class="form-box"><div class="form-title">測定データ</div>'+
-  '<div class="fl"><label>測定日</label><input class="ipt" type="date" id="br-date" value="'+td+'"></div>'+
-  '<div class="fl"><label>ブロンコテスト</label>'+
-  '<div style="display:flex;align-items:center;gap:8px"><input class="ipt" type="number" id="br-m" placeholder="分" min="0" style="width:90px"><span style="font-weight:600">分</span><input class="ipt" type="number" id="br-s" placeholder="秒" min="0" max="59" style="width:90px"><span style="font-weight:600">秒</span></div></div>'+
-  '<button class="btn btn-p" onclick="doBronco(this)">記録する</button>'+
-  '<button class="btn" style="margin-left:8px" onclick="markPhysSkip()">本日は測定なし</button>'+
-  '</div>';
-}
-
-function doBronco(btnEl){
-  var br=broncoFromInputs('br-m','br-s');
-  if(!br)return alert('タイムを入力してください');
-  if(!guardSubmit(btnEl,'記録中…'))return; // 二重送信ガード
-  var date=document.getElementById('br-date').value;
-  var curSess=getCurrentMSess('bronco'); // ブロンコ回のみ対象（フィジカル回同時開催時の誤紐づけ防止）
-  var newRec={id:newId(),pid:myPid,date:date,squat:null,bench:null,deadlift:null,bronco:br,msessId:curSess?curSess.id:null};
-  svSafeSeq([{k:'ph',rec:newRec}],function(){
-    var pBR=getBest(myPid,'bronco');
-    var isPB=pBR&&br<pBR;
-    go('mypage');
-    if(isPB)pbFlash('ブロンコ自己ベスト更新！ '+broncoFmt(pBR)+' → '+broncoFmt(br));
-    else toast('記録しました '+broncoFmt(br));
-  },function(){
-    // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
-    releaseSubmit(btnEl);
-    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
-  });
 }
 
 // グラフ切り替え
@@ -3690,25 +3648,34 @@ T.ranking=function(){
 };
 
 
-function doPhys(btnEl){
-  var sq=parseFloat(document.getElementById('pf-sq').value)||null,bp=parseFloat(document.getElementById('pf-bp').value)||null,dl=parseFloat(document.getElementById('pf-dl').value)||null,br=broncoFromInputs('pf-br-m','pf-br-s');
-  var cn=parseFloat(document.getElementById('pf-cn').value)||null,cl=parseFloat(document.getElementById('pf-cl').value)||null;
-  if(!sq&&!bp&&!dl&&!cn&&!cl&&!br)return alert('少なくとも1つ入力してください');
-  var dateV=document.getElementById('pf-date').value;
-  // 同日重複防止：同じ日付の記録が既にあれば新規作成せず修正画面へ誘導する
+// mode==='bronco' 時はウエイト欄(pf-sq等)がDOMに無い → 直読みは null クラッシュ。pfv() で null安全に読む。
+function doPhys(btnEl,mode){
+  var isBronco=(mode==='bronco');
+  function pfv(id){var e=document.getElementById(id);return e?e.value:'';}
+  var sq=parseFloat(pfv('pf-sq'))||null,bp=parseFloat(pfv('pf-bp'))||null,dl=parseFloat(pfv('pf-dl'))||null,br=broncoFromInputs('pf-br-m','pf-br-s');
+  var cn=parseFloat(pfv('pf-cn'))||null,cl=parseFloat(pfv('pf-cl'))||null;
+  if(!sq&&!bp&&!dl&&!cn&&!cl&&!br)return alert(isBronco?'タイムを入力してください':'少なくとも1つ入力してください');
+  var dateV=pfv('pf-date');
+  // 同日重複防止：同じ日付の記録が既にあれば新規作成せず修正画面へ誘導する（ブロンコもshowEditPhysRecのeph-br欄で追記可）
   var dupPh=D.ph.find(function(r){return idEq(r.pid,myPid)&&r.date===dateV;});
+  // ブロンコ単独モードは「同日に既にブロンコ値がある時」だけ重複扱い。ウエイトのみの同日記録へ統合すると
+  // msessIdがフィジカル回のまま固定され、ブロンコ測定会の参加判定(phInMSess)から漏れて未実施扱いになる
+  if(isBronco&&dupPh&&dupPh.bronco==null)dupPh=null;
   if(dupPh){
     if(confirm(fmt(dateV)+'の記録は既に入力済みです。\n新規に記録すると重複します。修正画面を開きますか？'))showEditPhysRec(dupPh.id);
     return;
   }
   if(!guardSubmit(btnEl,'記録中…'))return; // 二重送信ガード
-  var curSess=getCurrentMSess();
+  var prevBR=getBest(myPid,'bronco'); // 保存前のブロンコ・ベスト（getBestは保存後にnewRecを含むため事前に捕捉）
+  var curSess=getCurrentMSess(isBronco?'bronco':undefined); // ブロンコ回はブロンコ測定会のみに紐付け（フィジカル回同時開催時の誤紐づけ防止）
   var newRec={id:newId(),pid:myPid,date:dateV,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br,msessId:curSess?curSess.id:null,inputAt:new Date().toISOString()};
   svSafeSeq([{k:'ph',rec:newRec}],function(){
     var m=[];var pSQ=getBest(myPid,'squat'),pBP=getBest(myPid,'bench'),pDL=getBest(myPid,'deadlift');
     if(sq&&pSQ&&sq>=pSQ)m.push('SQ');if(bp&&pBP&&bp>=pBP)m.push('BP');if(dl&&pDL&&dl>=pDL)m.push('DL');
+    var broncoPB=(br&&prevBR&&br<prevBR); // 過去ベストを更新した時のみ演出（初回はtoast）
     go('mypage');
     if(m.length)pbFlash(m.join('・')+' 自己ベスト更新！');
+    else if(broncoPB)pbFlash('ブロンコ自己ベスト更新！ '+broncoFmt(prevBR)+' → '+broncoFmt(br));
     else toast('記録しました');
   },function(){
     // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
@@ -3747,7 +3714,7 @@ function showMyChart(iid){
   var ch=getChart(iid);
   var rh=D.r.find(function(x){return idEq(x.injId,iid);});
   var daysSince=Math.floor((new Date(todayStr())-new Date(inj.date))/86400000);
-  var evals=ch.evals.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var evals=ch.evals.slice().sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d!==0)return d;return (b.inputAt||'').localeCompare(a.inputAt||'');}); // 同日2件はinputAtで決着
   var soaps=ch.soaps.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
   var h='<div style="font-size:18px;font-weight:700;margin:12px 0 14px;display:flex;align-items:center;gap:7px">'+ic('i-clipboard',17,'var(--maroon)')+(inj.side||'')+inj.part+' のカルテ</div>';
   h+='<div class="card"><div style="display:flex;gap:8px;margin-bottom:12px">'+
@@ -3922,29 +3889,77 @@ function undoDelPainSelf(iid,ev){
 }
 
 // Rehab log
-function showRehabForm(rid){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">リハビリログ</div><div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">今日やったリハビリ内容を記録します。痛みは「カルテを見る・痛みを記録」から記録してください。</div><div class="form-box"><div class="form-title">今日のリハビリ</div><div class="fl"><label>日付</label><input class="ipt" type="date" id="rl-date" value="'+td+'"></div><div class="fl"><label>実施内容</label><textarea class="ipt" id="rl-ct" placeholder="今日のリハビリ内容..." style="min-height:90px"></textarea></div><button class="btn btn-p" onclick="doRehab('+rid+',this)">記録する</button></div>');}
+// リハビリ内容＋痛みを1画面で記録（P7d 1シート化）。痛みは savePainSelf と同一の .self-pain/self-note マークアップを再利用し、
+// doRehab が rlog(追記) と chart.evals(bySelf upsert) の2ストアへ振り分ける。どちらか一方だけの入力でも可。
+function showRehabForm(rid){
+  var td=todayStr();
+  var r=D.r.find(function(x){return x.id===rid;});
+  var iid=r?r.injId:null;
+  var h='<div style="font-size:18px;font-weight:600;margin:12px 0 14px">リハビリログ</div>'+
+    '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">今日のリハビリ内容と痛みを1画面で記録できます。どちらか一方だけでもOKです。</div>'+
+    '<div class="form-box"><div class="form-title">今日のリハビリ</div>'+
+    '<div class="fl"><label>日付</label><input class="ipt" type="date" id="rl-date" value="'+td+'"></div>'+
+    '<div class="fl"><label>実施内容</label><textarea class="ipt" id="rl-ct" placeholder="今日のリハビリ内容...（任意）" style="min-height:90px"></textarea></div></div>';
+  if(iid){
+    h+='<div class="form-box"><div class="form-title">'+ic('i-pain-3',14,'var(--maroon)')+' 痛みの記録（任意・0:なし〜10:最大）</div>';
+    PAIN_TYPES.forEach(function(pt){
+      h+='<div class="fl" style="margin-bottom:14px"><label>'+pt.label+'</label>'+
+        '<div style="display:flex;align-items:center;gap:10px"><input type="range" class="self-pain" data-k="'+pt.k+'" min="0" max="10" value="0" style="flex:1" oninput="document.getElementById(\'sp-'+pt.k+'\').textContent=this.value">'+
+        '<span id="sp-'+pt.k+'" style="font-weight:700;min-width:24px;text-align:center">0</span></div></div>';
+    });
+    h+='<div class="fl" style="margin-top:4px"><label>痛みメモ</label><textarea class="ipt" id="self-note" placeholder="気になること、調子など（任意）" style="min-height:50px"></textarea></div>';
+    h+='</div>';
+  }
+  h+='<button class="btn btn-p" style="width:100%" onclick="doRehab('+rid+',this)">記録する</button>';
+  showSub(h);
+}
 function doRehab(rid,btnEl){
   if(!guardSubmit(btnEl,'記録中…'))return;
-  var r=D.r.find(function(x){return x.id===rid;});if(!r){releaseSubmit(btnEl);return;}
+  var r=D.r.find(function(x){return x.id===rid;});if(!r){releaseSubmit(btnEl);alert('記録が見つかりませんでした');return;}
   var injId=r.injId;
   var me=D.p.find(function(x){return x.id===myPid;});
-  var newLog={
-    id:newId(),
-    injId:injId,
-    date:document.getElementById('rl-date').value,
-    content:document.getElementById('rl-ct').value,
-    implementer:me?me.name:'選手',
-    by:'player',
-    inputAt:new Date().toISOString()
-  };
-  // D.rlog（新式）に保存。svSafeSeqで成否を捕捉（svSafeは失敗時に内部alert＋ボタン固着するため使わない）
-  svSafeSeq([{k:'rlog',rec:newLog}],function(){
-    go('mypage');
-    toast('記録しました');
-  },function(){
-    releaseSubmit(btnEl);
-    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
-  });
+  var dateV=document.getElementById('rl-date').value;
+  var content=(document.getElementById('rl-ct').value||'').trim();
+  // 痛み（任意）: スライダ>0 か メモ非空の時だけ eval を生成（0埋め空evalで臨床評価ストリームを汚さない）
+  var pain={},anyPain=false;
+  document.querySelectorAll('.self-pain').forEach(function(e){var v=parseFloat(e.value)||0;pain[e.dataset.k]=v;if(v>0)anyPain=true;});
+  var pnEl=document.getElementById('self-note');var pnote=pnEl?(pnEl.value||'').trim():'';
+  var hasRehab=!!content,hasPain=anyPain||!!pnote;
+  if(!hasRehab&&!hasPain){releaseSubmit(btnEl);alert('リハビリ内容か痛みのどちらかを入力してください');return;}
+  // 痛み自己記録の修正/削除は「当日のみ」（P5のゲート）。過去日で作ると選手が二度と直せない記録になるため入口で止める
+  if(hasPain&&dateV!==todayStr()){releaseSubmit(btnEl);alert('痛みの記録は当日分のみです。日付を今日に戻すか、痛みの入力を空にしてください。');return;}
+  // 痛みを chart.evals(bySelf) へupsert（playerにchartUpdateは無いのでsvSafeUpdate('chart')直呼び＝savePainSelfと同経路）
+  function savePain(onOk,onErr){
+    // スライダを1つも動かしていない場合は pain を空に（0埋めすると「最新の痛み0/10」で前日までの痛みを塗り替える）
+    var newEval={id:Date.now()+'_'+Math.floor(Math.random()*1000),date:dateV,pain:(anyPain?pain:{}),rom:{},mmt:{},circ:{},ortho:{},special:[],note:pnote?'[選手記録] '+pnote:'[選手記録]',bySelf:true,inputAt:new Date().toISOString()};
+    svSafeUpdate('chart',function(latest){
+      var ch=latest.find(function(x){return idEq(x.injId,injId);});
+      if(!ch){ch={injId:injId,injDetail:{},medical:{},evals:[],soaps:[],returnCriteria:{},images:[]};latest.push(ch);}
+      if(!ch.evals)ch.evals=[];
+      ch.evals.push(newEval);
+      return latest;
+    },onOk,onErr);
+  }
+  if(hasRehab){
+    var newLog={id:newId(),injId:injId,date:dateV,content:content,implementer:me?me.name:'選手',by:'player',inputAt:new Date().toISOString()};
+    // rlogを先に追記→成功後に痛みをupsert。別キー2ストアのため単一txにはできない（svSafeSeqは追記専用）
+    svSafeSeq([{k:'rlog',rec:newLog}],function(){
+      if(!hasPain){go('mypage');toast('記録しました');return;}
+      savePain(function(){go('mypage');toast('記録しました');},function(){
+        // rlogは保存済み・痛みのみ失敗 → 部分成功を明示（rlogの巻き戻しはしない）
+        go('mypage');alert('リハビリは記録しましたが、痛みの記録に失敗しました。痛みはカルテから再度お試しください。');
+      });
+    },function(){
+      releaseSubmit(btnEl);
+      alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+    });
+  }else{
+    // 痛みのみ
+    savePain(function(){go('mypage');toast('記録しました');},function(){
+      releaseSubmit(btnEl);
+      alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+    });
+  }
 }
 
 // リハビリログ（選手記録）の当日編集/削除。所有者ゲート(by==='player')＋当日ゲートは描画側(editable)で担保し、入口でも再確認。

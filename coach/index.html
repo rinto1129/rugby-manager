@@ -591,13 +591,17 @@ function evalSummary(ev){
   if(ev.pain){var mp=Math.max(ev.pain.rest||0,ev.pain.motion||0,ev.pain.night||0,ev.pain.press||0);if(mp>0)parts.push('痛み'+mp+'/10');}
   if(ev.rom){var rk=Object.keys(ev.rom)[0];if(rk!=null&&ev.rom[rk]!=null&&ev.rom[rk]!=='')parts.push('ROM '+escapeHtml(rk)+' '+escapeHtml(String(ev.rom[rk]))+'°');} // ROM値は自由記述入力＝必ずエスケープ(注入/レイアウト破壊防止)
   if(ev.mmt){var mk=Object.keys(ev.mmt)[0];if(mk!=null&&ev.mmt[mk]!=null&&ev.mmt[mk]!=='')parts.push('MMT '+escapeHtml(mk)+' '+escapeHtml(String(ev.mmt[mk])));}
+  // 痛み/ROM/MMTが全て空（メモだけの評価）でも所見メモを出す。空文字を返すと呼び出し側で「最新評価」行ごと消え、
+  // 評価が一度も行われていないように見えてしまう
+  if(!parts.length&&ev.note){var nt=String(ev.note).trim();if(nt)parts.push(escapeHtml(nt.length>40?nt.slice(0,40)+'…':nt));}
   return parts.join(' / ');
 }
 function injEvidence(ch){
   ch=ch||{};
   var rc=ch.returnCriteria||{},med=ch.medical||{},det=ch.injDetail||{};
   var critDone=RETURN_CRITERIA.filter(function(c){return rc[c];}).length;
-  var evs=(ch.evals||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  // 「最新評価」は復帰判断の根拠＝臨床評価。選手の自己申告(bySelf)は除外し、同日2件はinputAtで決着させる
+  var evs=(ch.evals||[]).filter(function(e){return !e.bySelf;}).sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d!==0)return d;return (b.inputAt||'').localeCompare(a.inputAt||'');});
   var soaps=(ch.soaps||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
   var imgTypes=med.imgTypes||[];
   return {
