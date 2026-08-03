@@ -7,11 +7,11 @@
 ---
 
 ## 最終更新
-- 日時: 2026-07-21（**🔴v2プラン: P0・P1・P2a・P2b・P4・P5・P6・P7a・P7b・P7c完了/push済み（P7c=`bf58d90`）。P3不採用。P7d=実装完了・敵対的レビュー4視点→7所見(high1/medium3/low3)全処置・全検証緑＝push前。次はP8**）
+- 日時: 2026-07-21（**🔴v2プラン: P0〜P7d 完了/push済み（P7d=`d1f8eaf`）。P3のみ不採用。→ 次は P8「IA再編＋新機能」から着手**）
 - 更新者: Claude
 - **⚠️ `run_tests.py` の3件の赤は「直してはいけない既存赤」（2026-07-21確認）**: `test_dash.js`/`test_engine.js`/`test_mystatus.js` が失敗するが、**`git show HEAD:player/index.html` を抽出して同じテストを流すとNG項目がバイト単位で一致**＝コード側のバグではない。原因は**システム日付の移動で「直近30日の体重平均」の窓から記録が外れた**こと（`30日平均体重 got=101 want=101.5` → 連動して `goldTarget 156.6 vs 157.3` 等のランク目標値がずれる）。テスト側の固定値が特定日付前提で書かれているのが実体。**コードを触って直そうとしないこと**（直すならテストの体重データを相対日付にする）。切り分け手順=上記のHEAD抽出比較。
 - **⚠️ 並行セッション事故の記録（2026-07-15）**: 本セッションのP7c作業中に**別セッション（ユーザー=中山凛人）が `6a34e5f`「レポート追加: バックス ブロンコタイム2026-07」をコミット＆push**（origin/main=`6a34e5f`）。**内容は `reports/bronco-backs-2026-07.html`（310行）のみ・staff/coach/trainer は無変更＝私のP7cと非衝突**。P7cは `6a34e5f` の上に1コミットで乗せる。着手前の`git log`確認を徹底（メモリ`project_concurrent_session_race`）。
-- **✅ P7d「1フォーム化」実装完了（ライトのまま・push前）**。**player/staff/trainer/coach 4ファイル変更**＋新テスト6本（`test_rehab_oneform`/`test_quick_eval`/`test_staff_rehab_eval`/`test_injury_diag_nav`/`test_p7d_bronco`/`test_p7d_coach`）＋sync_manifestに`chartTab`登録。検証: `run_tests.py`=**67 run/3 fail（3失敗はHEADでもNG項目がバイト一致＝日付環境依存の既存赤。P7d起因ゼロ）**＋`sync_check.py`=ALL SYNC OK＋敵対的レビュー4視点→**7所見(high1/medium3/low3)を全処置**。**push単位=1（4ファイル＋新テスト6本＋manifest＋HANDOFF）**。実装内容↓。
+- **✅ P7d「1フォーム化」push済み `d1f8eaf`**。**player/staff/trainer/coach 4ファイル変更**＋新テスト6本（`test_rehab_oneform`/`test_quick_eval`/`test_staff_rehab_eval`/`test_injury_diag_nav`/`test_p7d_bronco`/`test_p7d_coach`）＋sync_manifestに`chartTab`登録。検証: `run_tests.py`=**67 run/3 fail（3失敗はHEADでもNG項目がバイト一致＝日付環境依存の既存赤。P7d起因ゼロ）**＋`sync_check.py`=ALL SYNC OK＋敵対的レビュー4視点→**7所見(high1/medium3/low3)を全処置**。**push単位=1（4ファイル＋新テスト6本＋manifest＋HANDOFF）**。実装内容↓。
   - **F ブロンコ統合（player）**: `showPhysForm(mode)`／`doPhys(btnEl,mode)`。mode='bronco'でウエイト5種を描画せず、`pfv()`で**null安全読み**（旧コードのままだとpf-sq不在で即例外＝ボタン無反応）。`getCurrentMSess('bronco')`で測定会を分岐。旧`showBroncoForm`/`showBroncoFormDirect`/`doBronco`を削除。**PB演出のバグ修正**=旧`doBronco`は保存後の`getBest`（新記録自身を含む）と比較していたため自己ベスト時に演出が出なかった → 保存前に`prevBR`を捕捉。
   - **🔑 P7dレビュー確定修正①(medium・統合による新規退行)**: 同日に「朝ウエイト→夕方ブロンコ」で**同日重複ガードが効いて修正画面へ誘導**されるが、修正画面は`msessId`を再設定しないためブロンコ値がフィジカル回のmsessIdを持つレコードに入り、**ブロンコ測定会の参加判定(`phInMSess`)から漏れて未実施扱い**になっていた。→ ブロンコモードは**「同日に既にブロンコ値がある時だけ」重複扱い**（`if(isBronco&&dupPh&&dupPh.bronco==null)dupPh=null`）。真の重複防止は維持。`test_p7d_bronco.js`で固定。
   - **C 選手リハビリ1シート化（player）**: `showRehabForm`にPAIN_TYPES痛みスライダ＋痛みメモを追加し「痛みは別画面で」の注記を削除。`doRehab`が rlog(svSafeSeq追記)と痛み自己記録(svSafeUpdate('chart')でchart.evals bySelf upsert)の**2ストアへ振り分け**（別キーゆえ単一txにできない＝rlog成功後にchainし、chart失敗時は部分成功メッセージ）。痛みは**スライダ>0 or メモ非空の時だけ**eval生成（0埋め空evalで臨床評価を汚さない）。
@@ -97,7 +97,7 @@
 | P7a | 体重dedup＋sRPE実測化（durMin/effDur/sLoad） | ✅ push済み `6aa9713`（57 run/0 fail・sync OK・敵対的レビュー4次元→6所見全処置）。**cond-bc materializeは不採用**（体組成汚染回避・ユーザー選択）。effDurは**duration手動優先>durMin実測>tlog** |
 | P7b | 欠席統一（今日は休む↔欠席a・coach追加読み） | ✅ push済み `ee08429`（59 run/0 fail・sync OK・敵対的レビュー2巡）。**休むはtlogのみ保持＝aに書かない（汚染回避・cond-bcと同型）**。coachは`aAbsenceEvents`で正式欠席申告を追加読み。取消=ハード削除+Undo。staff無変更 |
 | P7c | 復帰フロー＋coach根拠＋承認ルール明文化＋トレーナー新規登録チップ | ✅ push済み `bf58d90`（61 run/0 fail・sync OK・敵対的レビュー4次元11体→2確定(low)修正）。svSafeSeq不使用（更新はchartUpdate/svSafeUpdate逐次）。承認ルール=trainer/staff起票即approved+approvedBy／player/match要承認 |
-| P7d | 1フォーム化（受傷=軽量版・リハ1画面・選手側1シート・saveQuickEval廃止・pp編集staff集約・ブロンコ統合） | 🟩 実装完了・**push前**（67 run/3 fail＝**3失敗はHEADでもNG項目バイト一致の既存赤**・sync OK・敵対的レビュー4視点→7所見(high1/medium3/low3)全処置）。**受傷1フォームは軽量版**（登録→診断タブ自動遷移。injDetail前倒し＋旧画面リダイレクトはmedicalが受診後判明のため不成立）。**bySelf/0埋め/同日ソートの汚染3件を修正**（P7a・P7bと同型の再発） |
+| P7d | 1フォーム化（受傷=軽量版・リハ1画面・選手側1シート・saveQuickEval廃止・pp編集staff集約・ブロンコ統合） | ✅ push済み `d1f8eaf`（67 run/3 fail＝**3失敗はHEADでもNG項目バイト一致の既存赤**・sync OK・敵対的レビュー4視点→7所見(high1/medium3/low3)全処置）。**受傷1フォームは軽量版**（登録→診断タブ自動遷移。injDetail前倒し＋旧画面リダイレクトはmedicalが受診後判明のため不成立）。**bySelf/0埋め/同日ソートの汚染3件を修正**（P7a・P7bと同型の再発） |
 | P8 | IA再編＋新機能（player動的タブ/ホーム7ブロック/NO SIDE測定シート/staff6グループ+キュー+マトリクス/coach週報+検索） | ⬜ |
 | P9a-c | 生hex残渣一掃→モチーフ仕上げ（pitchProgressHtml汎用化+RTPフィールドマップ）→総回帰 | ⬜ |
 
