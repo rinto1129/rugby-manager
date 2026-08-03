@@ -105,8 +105,10 @@
 | P7b | 欠席統一（今日は休む↔欠席a・coach追加読み） | ✅ push済み `ee08429`（59 run/0 fail・sync OK・敵対的レビュー2巡）。**休むはtlogのみ保持＝aに書かない（汚染回避・cond-bcと同型）**。coachは`aAbsenceEvents`で正式欠席申告を追加読み。取消=ハード削除+Undo。staff無変更 |
 | P7c | 復帰フロー＋coach根拠＋承認ルール明文化＋トレーナー新規登録チップ | ✅ push済み `bf58d90`（61 run/0 fail・sync OK・敵対的レビュー4次元11体→2確定(low)修正）。svSafeSeq不使用（更新はchartUpdate/svSafeUpdate逐次）。承認ルール=trainer/staff起票即approved+approvedBy／player/match要承認 |
 | P7d | 1フォーム化（受傷=軽量版・リハ1画面・選手側1シート・saveQuickEval廃止・pp編集staff集約・ブロンコ統合） | ✅ push済み `d1f8eaf`（67 run/3 fail＝**3失敗はHEADでもNG項目バイト一致の既存赤**・sync OK・敵対的レビュー4視点→7所見(high1/medium3/low3)全処置）。**受傷1フォームは軽量版**（登録→診断タブ自動遷移。injDetail前倒し＋旧画面リダイレクトはmedicalが受診後判明のため不成立）。**bySelf/0埋め/同日ソートの汚染3件を修正**（P7a・P7bと同型の再発） |
-| P8 | IA再編＋新機能（player動的タブ/ホーム7ブロック/NO SIDE測定シート/staff6グループ+キュー+マトリクス/coach週報+検索） | ✅ 実装完了・push前（72 run/3 fail=既存赤のみ・sync OK・敵対的レビュー確定13件全処置。trainer無変更） |
-| P9a-c | 生hex残渣一掃→モチーフ仕上げ（pitchProgressHtml汎用化+RTPフィールドマップ）→総回帰 | ⬜ |
+| P8 | IA再編＋新機能（player動的タブ/ホーム7ブロック/NO SIDE測定シート/staff6グループ+キュー+マトリクス/coach週報+検索） | ✅ push済み `2ae7860`（敵対的レビュー確定13件全処置。trainer無変更）。既存赤3件は別コミット`cb0e9c3`で相対日付化して解消＝**現在67 run/0 fail** |
+| P9a | 生hex/rgba残渣一掃（P0台帳から変換済み分を差引いた残渣ゼロへ） | ⬜ 次はここから着手 |
+| P9b | モチーフ・アニメ仕上げ（pitchProgressHtml汎用化+RTPフィールドマップ+trainer移植） | ⬜ |
+| P9c | 総回帰（38+新規テストP0基線比較・sync全量照合・全サイト目視巡回・CLAUDE.md/HANDOFF最終更新） | ⬜ |
 
 ### P0で新設した検証基盤（以後の全フェーズで使う）
 
@@ -145,10 +147,10 @@
 - guardSubmit(二重送信ガード)はplayerに導入済み。新規フォームには必ず適用（雛形v2に含む）
 
 ## リポジトリの状態
-- ブランチ: main。origin/main=`2ae7860`（P8 push済み。この上に積む）。push前に`git diff --stat`で対象外変更ゼロ確認済み
+- ブランチ: main。origin/main=`cb0e9c3`（P8 `2ae7860` ＋ 既存赤3件の相対日付化 `cb0e9c3`＝ともにpush済み）。この上に積む。push前に`git diff --stat`で対象外変更ゼロ確認済み
 - テスト用選手「テスト選手」(CTB/1年, note=動作確認用)が本番に1名存在（削除可）
 - ⚠️ 検証はjsc模擬実行で完結（本番Firestore直結のためブラウザで代理編集/削除の保存ボタンは押さない）。最終目視はユーザーのCmd+Shift+R確認に委ねる
-- **⏳ バックグラウンドタスク進行中（別worktree `.claude/worktrees/keen-kowalevski-01e4c2`）**: 既存赤3本（test_dash/test_engine/test_mystatus）のフィクスチャ相対日付化（task_3f0c3890・ユーザーが起動）。完了後にmainへマージが必要かもしれないので次セッションはまず状況確認
+- **バックグラウンドタスク完了・統合済み**: 既存赤3本のフィクスチャ相対日付化（task_3f0c3890）は別worktree(`.claude/worktrees/keen-kowalevski-01e4c2`)で完了→本セッションでcherry-pick統合し`cb0e9c3`としてpush済み。**現在`run_tests.py`=67 run/0 fail（全緑）**。当該worktree/ブランチ(`claude/keen-kowalevski-01e4c2`)は統合済みにつき今後不要（次回整理時に`git worktree remove`で片付けてよい）
 
 ## 運用ルール（このプロジェクト固有）
 - データは「短いキー」で読む。保存は `svSafe` / `svSafeUpdate` を使う。
