@@ -7,9 +7,9 @@
 ---
 
 ## 最終更新
-- 日時: 2026-08-04（**🔴v2プラン: P9b実装完了・全検証緑・push待ち。→ push後は P9c（総回帰）**）
+- 日時: 2026-08-04（**🔴v2プラン: P9b push済み `c4de533`。→ 次は P9c（総回帰）**）
 - 更新者: Claude
-- **✅ P9b「モチーフ・アニメ仕上げ」実装完了（push前・ユーザー確認待ち）**: **player/staff/trainer/coach 4ファイル＋sync_manifest変更（+481/-115行）＋新テスト2本**（`dev/test_pitch.js`=3サイト実行47/39/39アサーション・`dev/test_fieldmap_coach.js`=26アサーション）。検証: `run_tests.py`=**76 run/0 fail**・`sync_check.py`=**ALL SYNC OK**・`--residue`=**0でexit 0**・jsc全サイト緑・読み取り専用ブラウザ巡回4サイト目視OK（coachフィールドマップ=本番13名で描画確認・playerランクピッチ=シルバー到達点にボール・staff提出率ピッチ・trainerログインpitch-lines）。実装内容↓。
+- **✅ P9b push済み `c4de533`**: **player/staff/trainer/coach 4ファイル＋sync_manifest変更（+481/-115行）＋新テスト2本**（`dev/test_pitch.js`=3サイト実行47/39/39アサーション・`dev/test_fieldmap_coach.js`=26アサーション）。検証: `run_tests.py`=**76 run/0 fail**・`sync_check.py`=**ALL SYNC OK**・`--residue`=**0でexit 0**・jsc全サイト緑・読み取り専用ブラウザ巡回4サイト目視OK（coachフィールドマップ=本番13名で描画確認・playerランクピッチ=シルバー到達点にボール・staff提出率ピッチ・trainerログインpitch-lines）。実装内容↓。
   - **pitchProgressHtml(idx,total,labels,opts)汎用化（identical: player/staff/coach）**: rtpPitchHtml(player)のpos配列を`Math.round((3+94*i/(n-1))*10)/10`で動的生成（total=7で旧配列[3,18.7,34.3,50,65.7,81.3,97]とバイト一致＝test_pitchでロック）。**小数idx対応**（ボール線形補間・整数時のみ現在ドット強調）・opts={h,ball,caption,dots,inner,still}・`data-pitch`属性（staffクラスAフック用）。**色は--pitch-*中立トークンのみ参照**（--pitch-green-1/2・--pitch-dot・--pitch-line-strong/mid/weak・--pitch-label・--pitch-done・--pitch-cur・--pitch-cur-ring・--pitch-accent）＝同名トークン別値方式でplayerは旧値エイリアス（描画不変）・coachはナイター芝(#0F2318→#132B1E・プラン指定値)。**ボールはopts.ball注入**（ic依存を関数から排除）。rtpPitchHtmlは薄いラッパ温存（player専用・呼出2箇所無改変）。rtp系CSS(player 220-229)は--pitch-cur系に中立化しstaffへ移植。
   - **player適用3箇所**: ①mystatus処方箋カード=弱点種目のランク前進ピッチ（`rankPitchIdx`/`rankPitchLabels`新設・スタート線+5ランク線=6本・現ランク→次ランク閾値の内分）②showMeasureResult=ランクが動いた最初のBIG3種目の現在地ピッチ（変動なしの日は非表示）③mydata週間ボリューム=直近7日vs前7日のボール前進（先週比100%=トライ・**100%キャップ**=急増を煽らない・wPrev=0はガード）。
   - **🔑 レビュー確定修正①(medium)**: player新設2箇所が`still`無しのクラスB直書きでメインタブのonSnapshot再描画のたびボールが走る（staffはstill:true+_pitchRun・coachはstill:!!_noAnimで回避済み＝playerだけ抜け）→ **`still:!!_visitedTabs[curTab]`**（初回タブ表示のみアニメ・rv機構のクラスA意味論と同一・ブラウザで初回=アニメ/再描画=静止を実機確認）。**なお同種の既存問題がリハビリタブのrtpPitchHtml(P8a由来)にも残置**（showMyChartはクラスB=表示のたび1回が意図仕様のためラッパは触らず。リハタブ側はP9c以降の別対応）。
@@ -125,8 +125,8 @@
 | P7d | 1フォーム化（受傷=軽量版・リハ1画面・選手側1シート・saveQuickEval廃止・pp編集staff集約・ブロンコ統合） | ✅ push済み `d1f8eaf`（67 run/3 fail＝**3失敗はHEADでもNG項目バイト一致の既存赤**・sync OK・敵対的レビュー4視点→7所見(high1/medium3/low3)全処置）。**受傷1フォームは軽量版**（登録→診断タブ自動遷移。injDetail前倒し＋旧画面リダイレクトはmedicalが受診後判明のため不成立）。**bySelf/0埋め/同日ソートの汚染3件を修正**（P7a・P7bと同型の再発） |
 | P8 | IA再編＋新機能（player動的タブ/ホーム7ブロック/NO SIDE測定シート/staff6グループ+キュー+マトリクス/coach週報+検索） | ✅ push済み `2ae7860`（敵対的レビュー確定13件全処置。trainer無変更）。既存赤3件は別コミット`cb0e9c3`で相対日付化して解消＝**現在67 run/0 fail** |
 | P9a | 生hex/rgba残渣一掃（P0台帳から変換済み分を差引いた残渣ゼロへ） | ✅ push済み `a7ef001`（406箇所var()化・residue=0ゲート化・既存未定義参照バグ3件修正・72 run/0 fail・sync OK。CHTは不採用＝Chart色は許可リスト管理） |
-| P9b | モチーフ・アニメ仕上げ（pitchProgressHtml汎用化+RTPフィールドマップ+trainer移植） | ✅ 実装完了・**push待ち（ユーザー確認）**（76 run/0 fail・sync OK・residue 0・敵対的レビュー12体→確定1件修正済み） |
-| P9c | 総回帰（38+新規テストP0基線比較・sync全量照合・全サイト目視巡回・CLAUDE.md/HANDOFF最終更新） | ⬜ 次はここ（P9b push後） |
+| P9b | モチーフ・アニメ仕上げ（pitchProgressHtml汎用化+RTPフィールドマップ+trainer移植） | ✅ push済み `c4de533`（76 run/0 fail・sync OK・residue 0・敵対的レビュー12体→確定1件修正済み） |
+| P9c | 総回帰（38+新規テストP0基線比較・sync全量照合・全サイト目視巡回・CLAUDE.md/HANDOFF最終更新） | ⬜ 次はここ |
 
 ### P0で新設した検証基盤（以後の全フェーズで使う）
 
