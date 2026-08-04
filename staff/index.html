@@ -37,7 +37,10 @@
   --maroon-vivid-a12:rgba(193,18,31,.12);--maroon-vivid-a14:rgba(193,18,31,.14);--pale-a10:rgba(245,233,233,.10);--pale-a3:rgba(245,233,233,.03);--paper:#FFFDF6;--pink:#EC4899;
   --pink-a60:rgba(236,72,153,.6);--pull-bg:rgba(194,65,12,.10);--purple-l:#A78BFA;--purple-vivid:#8B5CF6;--purple-vivid-a60:rgba(139,92,246,.6);--red-vivid:#EF4444;
   --red-vivid-a12:rgba(239,68,68,.12);--red-vivid-a60:rgba(239,68,68,.6);--rose-l-a55:rgba(222,182,182,.55);--steel:#A9B8CE;--text-primary-a6:rgba(35,20,22,.06);--text-primary-a7:rgba(35,20,22,.07);
-  --white:#fff;--white-a12:rgba(255,255,255,.12);--white-a16:rgba(255,255,255,.16);--white-a20:rgba(255,255,255,.2);--white-a50:rgba(255,255,255,.5);--white-a6:rgba(255,255,255,.06);}
+  --white:#fff;--white-a12:rgba(255,255,255,.12);--white-a16:rgba(255,255,255,.16);--white-a20:rgba(255,255,255,.2);--white-a50:rgba(255,255,255,.5);--white-a6:rgba(255,255,255,.06);
+  /* P9b: ピッチモチーフ（playerと同値・ライト芝。pitchProgressHtml=identicalが参照する語彙） */
+  --pitch-accent:var(--maroon);--pitch-cur:var(--maroon-vivid);--pitch-cur-ring:rgba(193,18,31,.18);--pitch-done:var(--maroon);--pitch-dot:#CBDFD3;--pitch-green-1:#EDF7F1;--pitch-green-2:#E3F2E9;
+  --pitch-label:var(--green);--pitch-line-mid:rgba(4,108,72,.38);--pitch-line-strong:rgba(4,108,72,.5);--pitch-line-weak:rgba(4,108,72,.2);}
 body{font-family:var(--font-sans);background:var(--bg-app);color:var(--text-primary);line-height:1.5;-webkit-font-smoothing:antialiased}
 .app{display:flex;height:100vh;height:100dvh}
 .sb{width:236px;flex-shrink:0;background:linear-gradient(180deg,var(--navy-2) 0%,var(--navy) 100%);color:var(--pale);display:flex;flex-direction:column;overflow-y:auto;box-shadow:2px 0 16px var(--ink-a32);position:relative;z-index:6}
@@ -214,6 +217,16 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
   .rv-armed.in .rk-bar{animation:barfill .7s cubic-bezier(.22,1,.36,1)}
 }
 @keyframes barfill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+/* RTPピッチ図（P9b: pitchProgressHtml共通CSS・playerと同一）。マーカー=ゴールラインからスライド・ドット=60ms staggerポップ・現在ドットのリングパルスは2回で停止 */
+.rtp-dot-cur{box-shadow:0 0 0 3px var(--pitch-cur-ring)}
+@media(prefers-reduced-motion:no-preference){
+  .rtp-anim .rtp-marker{animation:rtpslide .8s cubic-bezier(.22,1,.36,1)}
+  .rtp-anim .rtp-dot{animation:dotpop .3s cubic-bezier(.34,1.56,.64,1) backwards}
+  .rtp-anim .rtp-dot-cur::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--pitch-cur);animation:rtpring 1s ease-out .9s 2 backwards;opacity:0}
+}
+@keyframes rtpslide{from{left:3%}}
+@keyframes dotpop{from{transform:translateX(-50%) scale(.3)}}
+@keyframes rtpring{0%{transform:scale(.55);opacity:1}100%{transform:scale(1.5);opacity:0}}
 /* ===== GPS・スタッツ取込（Phase9）装飾モーション。リビール/カウントアップは既存.rv/data-cu基盤を再利用し、ここは装飾専用クラスのみ。「隠す/動かす」宣言はreduce時に無効化（画面消失防止） ===== */
 .gx-wiz-steps{display:flex;align-items:center;gap:0;margin:2px 0 20px}
 .gx-step{display:flex;align-items:center;gap:8px;flex:0 0 auto}
@@ -399,6 +412,37 @@ function roleBadgeHtml(role){
   var en=ROLE_EN[role];
   return'<span class="bd bd-p">'+escapeHtml(role||'')+(en?' <span style="font-family:var(--font-num);font-style:italic;font-weight:800;font-size:8px;letter-spacing:.06em">'+en+'</span>':'')+'</span>';
 }
+// P9b: 汎用ピッチ進捗図（player/staff/coachでidentical登録・バイト一致必須。色は--pitch-*系トークンのみ参照＝サイト別に:rootで値を差し替える）
+// idx: 現在位置（0〜total-1。小数可=ライン間をボールが進む。小数時は現在ドット強調なし）
+// total: ライン本数(>=2)。両端3%/97%で等間隔に動的生成
+// labels: ライン上の小ラベル配列(null=非表示)。信頼できる文字列のみ（エスケープは呼び出し側の責務）
+// opts: {h:高さpx(78) / ball:ボールマーカーHTML(無指定=非表示) / caption:[左,中,右](無指定=非表示。右は強調色)
+//        / dots:falseで進捗ドット非表示 / inner:ピッチ内末尾に追記する任意HTML(coachフィールドマップ用) / still:trueでアニメ無効}
+function pitchProgressHtml(idx,total,labels,opts){
+  opts=opts||{};
+  var n=Math.max(2,total|0);
+  var st=Math.max(0,Math.min(n-1,+idx||0));
+  var hgt=opts.h||78;
+  var half=(n-1)/2;
+  var h='<div'+(opts.still?'':' class="rtp-anim"')+' data-pitch="1" style="position:relative;height:'+hgt+'px;background:linear-gradient(180deg,var(--pitch-green-1),var(--pitch-green-2));border:1px solid var(--border-tertiary);border-radius:10px;margin:6px 0 3px;overflow:hidden">';
+  for(var i=0;i<n;i++){
+    var x=Math.round((3+94*i/(n-1))*10)/10;
+    var goal=(i===0||i===n-1);
+    h+='<div style="position:absolute;left:'+x+'%;top:9px;bottom:9px;width:'+(goal?'3px':'2px')+';margin-left:-1px;background:'+(goal?'var(--pitch-line-strong)':(i===half?'var(--pitch-line-mid)':'var(--pitch-line-weak)'))+'"></div>';
+    if(labels&&labels[i]!=null)h+='<div style="position:absolute;left:'+x+'%;top:1px;transform:translateX(-50%);font-size:7px;color:var(--pitch-label);opacity:.75;font-weight:700">'+labels[i]+'</div>';
+    if(opts.dots!==false){
+      var done=i<st,cur=i===st;
+      h+='<div class="rtp-dot'+(cur?' rtp-dot-cur':'')+'" style="position:absolute;left:'+x+'%;bottom:9px;transform:translateX(-50%);width:'+(cur?'11px':'8px')+';height:'+(cur?'11px':'8px')+';border-radius:50%;background:'+(done?'var(--pitch-done)':(cur?'var(--pitch-cur)':'var(--pitch-dot)'))+';animation-delay:'+(i*60)+'ms"></div>';
+    }
+  }
+  if(opts.ball){
+    var bx=Math.round((3+94*st/(n-1))*10)/10;
+    h+='<div class="rtp-marker" style="position:absolute;left:'+bx+'%;top:'+Math.round((hgt-20)/2)+'px;margin-left:-10px">'+opts.ball+'</div>';
+  }
+  h+=(opts.inner||'')+'</div>';
+  if(opts.caption)h+='<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-tertiary)"><span>'+(opts.caption[0]||'')+'</span><span>'+(opts.caption[1]||'')+'</span><span style="color:var(--pitch-accent);font-weight:700">'+(opts.caption[2]||'')+'</span></div>';
+  return h;
+}
 // 成功トースト（クラスB=毎回発火・2.2秒退場・右上）。失敗系alertは置換禁止（同期ブロッキング維持）
 function toast(msg,actionLabel,actionFn){
   try{
@@ -457,6 +501,11 @@ function _ringRun(root){
   var els=root.querySelectorAll('[data-ring]:not(.ring-go)');
   for(var i=0;i<els.length;i++)els[i].classList.add('ring-go');
 }
+// ピッチ図ボール前進（クラスA・P9b）: render文字列には.rtp-animを書かず（still:true）、初回訪問時にここで後付けする（rv規約準拠）
+function _pitchRun(root){
+  var els=root.querySelectorAll('[data-pitch]:not(.rtp-anim)');
+  for(var i=0;i<els.length;i++)els[i].classList.add('rtp-anim');
+}
 // Chartアニメ設定（S4）: reduce=無効 / V画面(vkey指定)=初回訪問700ms・再訪問/onSnapshot再描画は0 / ドリルダウン(vkey無し)=毎回400ms / stagger=棒のカスケード
 // 注: options.animationを書くとグローバルdefaultsのreduce設定を上書きするため、ここで必ずreduce判定を通す
 var _chartVisited={};
@@ -484,6 +533,7 @@ function _armReveal(){
   var root=$m();if(!root)return;
   _cuRun(root);   // クラスA: 初回訪問のみカウントアップ（reduce時は素の最終値のまま）
   _ringRun(root); // クラスA: 提出率リングdraw
+  _pitchRun(root); // クラスA: 提出率ピッチのボール前進（初回訪問のみ・reduceは上のゲートでreturn済み）
   var els=root.querySelectorAll('.rv');
   var armed=[],n=0;
   for(var i=0;i<els.length&&n<8;i++){ // 先頭8要素「だけをarm」する（armして打ち切るとopacity:0残留）
@@ -1765,6 +1815,7 @@ dash:function(){
     return !condSubmittedToday.some(function(sid){return idEq(sid,p.id);});
   });
   var condRate=tot>0?Math.round((tot-condNotSubmitted.length)/tot*100):0;
+  var condSubCnt=tot-condNotSubmitted.length; // P9b: 提出人数（ピッチのボール前進分子）
   // 体組成：測定会期間中のみ対象
   var curMSess=(D.msess||[]).find(function(s){return s.startDate<=todayS&&s.endDate>=todayS;});
   var bcNotSubmitted=[];
@@ -1921,12 +1972,14 @@ dash:function(){
 
   // ===== 提出状況パネル =====
   var submissionPanel='<div class="card rv" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem">'+
+    '<div class="kicker" style="margin-bottom:2px">TEAM CHECK-IN</div>'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">'+
     '<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700">'+ic('i-clipboard',15,'var(--maroon)')+'本日の提出状況 <span style="font-size:11px;color:var(--text-secondary);font-weight:400">'+fmt(todayS)+'</span></div>'+
-    '<div style="display:flex;gap:8px;align-items:center"><div style="font-size:12px;color:var(--text-secondary)">コンディション</div><div style="font-size:20px;font-weight:700;color:'+(condRate>=80?'var(--green)':condRate>=50?'var(--amber)':'var(--red)')+'">'+condRate+'%</div><div style="font-size:11px;color:var(--text-secondary)">('+(tot-condNotSubmitted.length)+'/'+tot+')</div></div>'+
+    '<div style="display:flex;gap:8px;align-items:center"><div style="font-size:12px;color:var(--text-secondary)">コンディション</div><div style="font-size:20px;font-weight:700;color:'+(condRate>=80?'var(--green)':condRate>=50?'var(--amber)':'var(--red)')+'">'+condRate+'%</div><div style="font-size:11px;color:var(--text-secondary)">('+condSubCnt+'/'+tot+')</div></div>'+
     '</div>'+
-    // プログレスバー
-    '<div style="height:8px;background:var(--bg-tertiary);border-radius:99px;overflow:hidden;margin-bottom:14px"><div style="height:100%;width:'+condRate+'%;background:'+(condRate>=80?'var(--green)':condRate>=50?'var(--amber)':'var(--red)')+';border-radius:99px;transition:width .4s"></div></div>'+
+    // P9b: 提出人数分ボール前進ピッチ（旧8pxバーの上位互換。1人提出ごとにボールが前進・全員提出=トライ。still:true+_pitchRun=クラスA）
+    '<div style="margin-bottom:14px">'+pitchProgressHtml((tot>0?condSubCnt/tot:0)*6,7,['G','22','10','HW','10','22','G'],{still:true,ball:ic('i-ball',20,'var(--pitch-accent)')})+
+    '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-tertiary)"><span>自陣ゴール 0人</span><span>HW '+Math.round(tot/2)+'人</span><span style="color:var(--pitch-accent);font-weight:700">トライ = 全員提出 '+tot+'人</span></div></div>'+
     (condNotSubmitted.length?'<div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">コンディション未提出 ('+condNotSubmitted.length+'名)</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:5px">'+condNotSubmitted.map(function(p){return'<span class="chip-late" onclick="goPlayerDetail('+p.id+')" style="cursor:pointer">'+escapeHtml(p.name)+'</span>';}).join('')+'</div>'
       :'<div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--green);font-weight:600">'+ic('i-check-c',14)+'全員提出済み</div>')+

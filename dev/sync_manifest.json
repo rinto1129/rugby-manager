@@ -189,7 +189,8 @@
    "files": [
     "player",
     "staff",
-    "trainer"
+    "trainer",
+    "coach"
    ],
    "kind": "function"
   },
@@ -342,6 +343,38 @@
   },
   "roleGuard": {
    "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
+  },
+  "pitchProgressHtml": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "POS_NUM": {
+   "files": [
+    "player",
+    "trainer",
+    "coach"
+   ],
+   "kind": "var"
+  },
+  "_reduceMotion": {
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function"
+  },
+  "_rvForceIn": {
+   "files": [
+    "player",
     "staff",
     "trainer"
    ],

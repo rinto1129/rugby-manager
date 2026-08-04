@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>福岡大学ラグビー部 コーチダッシュボード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Overpass:ital,wght@0,700;0,800;0,900;1,800;1,900&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg-app:#050A12;
@@ -29,7 +32,11 @@
   --white-a05:rgba(255,255,255,.05);--white-a06:rgba(255,255,255,.06);--white-a07:rgba(255,255,255,.07);
   /* RCAT共通定数の語彙（trainerと同名）＋他サイト共有語彙の互換エイリアス（未定義参照バグ修正） */
   --cyan-deep:#0891B2;--green-deep:#059669;--cyan-pale:#E0F2FE;--green-pale:#D1FAE5;
-  --bg-tertiary:var(--bg-elev);--text-secondary:var(--txt-2);}
+  --bg-tertiary:var(--bg-elev);--text-secondary:var(--txt-2);
+  /* P9b: ピッチモチーフ（ナイター芝=プラン指定値）・Overpassナンバー・pitchProgressHtml(identical)受け入れ語彙（同名トークン別値方式=--pull-bg前例） */
+  --pitch-accent:var(--accent);--pitch-cur:var(--accent);--pitch-cur-ring:rgba(61,240,164,.18);--pitch-done:var(--accent-2);--pitch-dot:#2E4C3E;--pitch-green-1:#0F2318;--pitch-green-2:#132B1E;
+  --pitch-label:var(--accent);--pitch-line-mid:rgba(61,240,164,.26);--pitch-line-strong:rgba(61,240,164,.4);--pitch-line-weak:rgba(61,240,164,.14);
+  --border-tertiary:var(--line);--text-tertiary:var(--txt-3);--font-num:'Overpass',var(--font);}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);background:var(--bg-app);color:var(--txt);min-height:100vh;-webkit-font-smoothing:antialiased;padding-bottom:calc(64px + env(safe-area-inset-bottom));overflow-x:hidden;font-variant-numeric:tabular-nums;-webkit-tap-highlight-color:transparent}
 /* ===== 背景エフェクト ===== */
@@ -157,6 +164,19 @@ select.sel{background:var(--bg-elev);color:var(--txt);border:1px solid var(--lin
 /* ===== スクロールリビール ===== */
 .rv{opacity:0;transform:translateY(14px);transition:opacity .5s cubic-bezier(.22,.65,.25,1),transform .5s cubic-bezier(.22,.65,.25,1);transition-delay:var(--d,0s)}
 .rv.in{opacity:1;transform:none}
+/* ===== P9b モチーフ共通（player:126-132系のcoach変種。kicker色とghostストロークのみテーマ差） ===== */
+.ic{display:inline-block;vertical-align:-.14em;flex-shrink:0}
+.num{font-family:var(--font-num);font-weight:900;font-style:italic;letter-spacing:-.03em;line-height:.95;font-variant-numeric:tabular-nums}
+.kicker{font-family:var(--font-num);font-style:italic;font-weight:800;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.ghost-num{position:absolute;pointer-events:none;user-select:none;-webkit-user-select:none;z-index:0;font:italic 900 120px/1 var(--font-num);color:transparent;-webkit-text-stroke:2px var(--line-2)}
+/* ===== P9b RTPフィールドマップ（ピッチ地はpitchProgressHtml基盤・ここはドット/ラベル装飾のみ） ===== */
+.fmap-lane-lab{position:absolute;bottom:4px;transform:translateX(-50%);font-family:var(--font-num);font-style:italic;font-weight:800;font-size:8px;letter-spacing:.08em;color:var(--accent);opacity:.6;white-space:nowrap}
+.fmap-dot{position:absolute;width:27px;height:27px;margin:-13.5px 0 0 -13.5px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-num);font-style:italic;font-weight:900;font-size:11.5px;color:var(--txt-on-accent);cursor:pointer;border:2px solid var(--bg-app);box-shadow:0 2px 10px var(--black-a50);z-index:1;transition:transform .15s}
+.fmap-dot:active{transform:scale(.9)}
+@media(hover:hover){.fmap-dot:hover{transform:scale(1.12);z-index:2}}
+.fmap-try{position:absolute;right:7px;top:7px;opacity:.85}
+@media(prefers-reduced-motion:no-preference){.rtp-anim .fmap-dot{animation:fdotpop .35s cubic-bezier(.34,1.56,.64,1) backwards}}
+@keyframes fdotpop{from{transform:scale(.3);opacity:0}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.rv{opacity:1;transform:none}}
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -164,10 +184,16 @@ select.sel{background:var(--bg-elev);color:var(--txt);border:1px solid var(--lin
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </head>
 <body>
+<!-- P9b SVGスプライト（最小構成。idはplayer/staffスプライトと完全一致を維持すること） -->
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+<defs>
+<symbol id="i-ball" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><g transform="rotate(-30 12 12)"><ellipse cx="12" cy="12" rx="9" ry="5.5"/><path d="M8.5 12h7M10.7 10.3v3.4M13.3 10.3v3.4"/></g></g></symbol>
+</defs>
+</svg>
 <div class="fx-bg"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
 <div class="topbar">
   <div class="topbar-inner">
-    <div class="brand-logo">🏉</div>
+    <div class="brand-logo"><svg class="ic" width="20" height="20" style="color:var(--txt-on-accent)" aria-hidden="true"><use href="#i-ball" xlink:href="#i-ball"></use></svg></div>
     <div class="brand-txt"><h1>福岡大学ラグビー部</h1><p>COACH DASHBOARD</p></div>
     <span class="view-badge">閲覧専用</span>
     <!-- P8e: 選手名検索（常設。名前/ポジション部分一致→個人レポート直行） -->
@@ -1451,6 +1477,38 @@ function drawTrChartC(pid,exName,metric){
 // ========================================================
 // 共通UI部品
 // ========================================================
+function ic(n,s,c){s=s||16;return'<svg class="ic" width="'+s+'" height="'+s+'" aria-hidden="true"'+(c?' style="color:'+c+'"':'')+'><use href="#'+n+'" xlink:href="#'+n+'"></use></svg>';}
+// P9b: 汎用ピッチ進捗図（player/staff/coachでidentical登録・バイト一致必須。色は--pitch-*系トークンのみ参照＝サイト別に:rootで値を差し替える）
+// idx: 現在位置（0〜total-1。小数可=ライン間をボールが進む。小数時は現在ドット強調なし）
+// total: ライン本数(>=2)。両端3%/97%で等間隔に動的生成
+// labels: ライン上の小ラベル配列(null=非表示)。信頼できる文字列のみ（エスケープは呼び出し側の責務）
+// opts: {h:高さpx(78) / ball:ボールマーカーHTML(無指定=非表示) / caption:[左,中,右](無指定=非表示。右は強調色)
+//        / dots:falseで進捗ドット非表示 / inner:ピッチ内末尾に追記する任意HTML(coachフィールドマップ用) / still:trueでアニメ無効}
+function pitchProgressHtml(idx,total,labels,opts){
+  opts=opts||{};
+  var n=Math.max(2,total|0);
+  var st=Math.max(0,Math.min(n-1,+idx||0));
+  var hgt=opts.h||78;
+  var half=(n-1)/2;
+  var h='<div'+(opts.still?'':' class="rtp-anim"')+' data-pitch="1" style="position:relative;height:'+hgt+'px;background:linear-gradient(180deg,var(--pitch-green-1),var(--pitch-green-2));border:1px solid var(--border-tertiary);border-radius:10px;margin:6px 0 3px;overflow:hidden">';
+  for(var i=0;i<n;i++){
+    var x=Math.round((3+94*i/(n-1))*10)/10;
+    var goal=(i===0||i===n-1);
+    h+='<div style="position:absolute;left:'+x+'%;top:9px;bottom:9px;width:'+(goal?'3px':'2px')+';margin-left:-1px;background:'+(goal?'var(--pitch-line-strong)':(i===half?'var(--pitch-line-mid)':'var(--pitch-line-weak)'))+'"></div>';
+    if(labels&&labels[i]!=null)h+='<div style="position:absolute;left:'+x+'%;top:1px;transform:translateX(-50%);font-size:7px;color:var(--pitch-label);opacity:.75;font-weight:700">'+labels[i]+'</div>';
+    if(opts.dots!==false){
+      var done=i<st,cur=i===st;
+      h+='<div class="rtp-dot'+(cur?' rtp-dot-cur':'')+'" style="position:absolute;left:'+x+'%;bottom:9px;transform:translateX(-50%);width:'+(cur?'11px':'8px')+';height:'+(cur?'11px':'8px')+';border-radius:50%;background:'+(done?'var(--pitch-done)':(cur?'var(--pitch-cur)':'var(--pitch-dot)'))+';animation-delay:'+(i*60)+'ms"></div>';
+    }
+  }
+  if(opts.ball){
+    var bx=Math.round((3+94*st/(n-1))*10)/10;
+    h+='<div class="rtp-marker" style="position:absolute;left:'+bx+'%;top:'+Math.round((hgt-20)/2)+'px;margin-left:-10px">'+opts.ball+'</div>';
+  }
+  h+=(opts.inner||'')+'</div>';
+  if(opts.caption)h+='<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-tertiary)"><span>'+(opts.caption[0]||'')+'</span><span>'+(opts.caption[1]||'')+'</span><span style="color:var(--pitch-accent);font-weight:700">'+(opts.caption[2]||'')+'</span></div>';
+  return h;
+}
 function ava(p,sz){
   var ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';
   var style='width:'+sz+'px;height:'+sz+'px;font-size:'+Math.round(sz*.36)+'px;';
@@ -1466,6 +1524,58 @@ function rtpOrder(k){var i=RTP_LEVELS.findIndex(function(x){return x.k===k;});re
 // RTPレベルのダークテーマ用表示色（共通定数RTP_LEVELSは4サイト一致の鉄則があるため触らずcoach側で変換）
 var RTP_DARK={rest:'#FF7B7B',rehab:'#FFA45C',partial_nocontact:'#FFC069',full_nocontact:'#5FA8FF',full_limited:'#C7A4FF',full:'#3DF0A4'};
 function rtpC(k){return RTP_DARK[k]||'#9DAEC7';}
+// ポジション代表背番号（playerと同一コピー。フィールドマップのドット表示用）
+var POS_NUM={PR:'1·3',HO:'2',LO:'4·5',FL:'6·7','No.8':'8',SH:'9',SO:'10',CTB:'12·13',WTB:'11·14',FB:'15'};
+// ========================================================
+// P9b RTPフィールドマップ（coach専用・閲覧のみ・目玉）
+// 1枚のナイターピッチ(pitchProgressHtml基盤・RTP6段階=6本線)に離脱中全選手を背番号ドットで配置。
+// ドット=ポジション代表背番号（将来p.numが入ればそれを優先）。タップで個人レポートへ。
+// 同一選手に複数の未解決怪我がある場合は最も重い(rtpOrder最小)段階1つに代表させる。
+// 却下済みの誤報告(approved===false)は載せない（weeklyDeltaDataと同基準）。
+// rtpLevel未設定は'rest'扱い（injuryStatusMapsと同基準)。full(完全復帰扱い)もトライラインに表示する。
+// ========================================================
+var FMAP_SHORT={rest:'REST',rehab:'REHAB',partial_nocontact:'PART',full_nocontact:'TEAM',full_limited:'LIMIT',full:'TRY'};
+function fieldMapData(){
+  var byPid={};
+  D.i.filter(function(x){return !x.resolved&&x.approved!==false;}).forEach(function(inj){
+    var p=D.p.find(function(x){return idEq(x.id,inj.pid);});if(!p)return;
+    var lv=getChart(inj.id).rtpLevel||'rest';
+    var cur=byPid[inj.pid];
+    if(!cur||rtpOrder(lv)<rtpOrder(cur.lv))byPid[inj.pid]={p:p,lv:lv,inj:inj};
+  });
+  return Object.keys(byPid).map(function(k){return byPid[k];});
+}
+function fmapNum(p){
+  var n=p.num!=null?String(p.num):(POS_NUM[p.position]||'').split('·')[0];
+  return n?escapeHtml(n):escapeHtml((p.name||'?').slice(0,1));
+}
+function rtpFieldMapHtml(){
+  var items=fieldMapData();
+  if(!items.length)return '<div class="card"><div class="no">現在、怪我で離脱している選手はいません</div></div>';
+  var n=RTP_LEVELS.length;
+  var laneX=RTP_LEVELS.map(function(_,i){return Math.round((3+94*i/(n-1))*10)/10;});
+  var inner='<span class="ghost-num" aria-hidden="true" style="right:10px;bottom:-30px;font-size:88px">RTP</span>';
+  inner+='<div class="fmap-try">'+ic('i-ball',18,'var(--gold)')+'</div>';
+  var counts={};
+  RTP_LEVELS.forEach(function(lv,i){
+    inner+='<div class="fmap-lane-lab" style="left:'+laneX[i]+'%">'+(FMAP_SHORT[lv.k]||lv.k.slice(0,5).toUpperCase())+'</div>';
+    var lane=items.filter(function(it){return it.lv===lv.k;});
+    counts[lv.k]=lane.length;
+    var m=lane.length;if(!m)return;
+    var gap=Math.min(24,64/Math.max(m-1,1)); // 縦%間隔（多人数レーンは自動圧縮）
+    lane.forEach(function(it,j){
+      var y=Math.round((46+(j-(m-1)/2)*gap)*10)/10;
+      inner+='<div class="fmap-dot" style="left:'+laneX[i]+'%;top:'+y+'%;background:'+rtpC(it.lv)+';animation-delay:'+(i*70+j*50)+'ms" title="'+escapeHtml(it.p.name)+'（'+lv.label+'）" onclick="openPlayer('+it.p.id+')">'+fmapNum(it.p)+'</div>';
+    });
+  });
+  var h=pitchProgressHtml(0,n,null,{h:172,dots:false,still:!!window._noAnim,inner:inner,
+    caption:['離脱（完全休養）','','トライ = 完全復帰']});
+  // 凡例（人数つき・既存バッジ流儀=hexA(rtpC(),α)と同型）
+  h+='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:9px">'+RTP_LEVELS.map(function(lv){
+    return '<span class="bd" style="background:'+hexA(rtpC(lv.k),.16)+';color:'+rtpC(lv.k)+'">'+lv.label+(counts[lv.k]?' '+counts[lv.k]:'')+'</span>';
+  }).join('')+'</div>';
+  return '<div class="card">'+h+'</div>';
+}
 function openPlayer(pid){window._trEx=null;window._trMetric='top';_detailPid=pid;try{history.pushState({pid:pid},'','#p'+pid);}catch(e){}render();window.scrollTo(0,0);}
 // ===== P8e 選手名検索（topbar常設。名前/ポジション部分一致→個人レポート） =====
 function coachSearch(){
@@ -1725,6 +1835,8 @@ function renderInjuryView(){
     rv(kpiTile(fullRehab,'リハビリ・部分参加中','var(--blue)','名'),2)+
     rv(kpiTile(recovered30,'過去30日で復帰','var(--green)','名'),3)+
     '</div></div>';
+  // P9b RTPフィールドマップ（目玉）
+  h+='<div class="sec">'+secH('FIELD MAP','RTPフィールドマップ','タップで個人レポート')+rv(rtpFieldMapHtml(),1)+'</div>';
   // 考察
   h+=insightSec(insInjury());
   // 復帰タイムライン
@@ -2060,15 +2172,15 @@ function renderPlayerReport(pid){
   // 現在の怪我
   var activeInj=D.i.filter(function(x){return idEq(x.pid,pid)&&!x.resolved;});
   if(activeInj.length){
-    var ic='<div style="font-size:13px;font-weight:800;color:var(--red);margin-bottom:10px">現在の怪我・リハビリ</div>';
+    var icd='<div style="font-size:13px;font-weight:800;color:var(--red);margin-bottom:10px">現在の怪我・リハビリ</div>';
     activeInj.forEach(function(inj){
       var ch=getChart(inj.id);var rh=D.r.find(function(x){return idEq(x.injId,inj.id);});
       var rtp=ch.rtpLevel?RTP_LEVELS.find(function(x){return x.k===ch.rtpLevel;}):null;
       var stage=rh?(rh.stage||0):0;var progPct=Math.round((stage/(STG.length-1))*100);
       var days=inj.returnDate?Math.ceil((new Date(inj.returnDate)-new Date(today))/86400000):null;
-      ic+='<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap"><span style="font-weight:700;font-size:14px">'+escapeHtml((inj.side||'')+inj.part+' '+inj.type)+'</span>'+(rtp?'<span class="bd" style="background:'+hexA(rtpC(rtp.k),.16)+';color:'+rtpC(rtp.k)+'">'+rtp.label+'</span>':'')+'</div>';
-      ic+='<div style="font-size:11px;color:var(--txt-2);margin-bottom:7px">受傷: '+fmt(inj.date)+(inj.returnDate?' ／ 復帰予定: '+fmt(inj.returnDate)+(days!=null?'（'+(days<0?(-days)+'日超過':days===0?'本日':'あと'+days+'日')+'）':''):'')+'</div>';
-      ic+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><span style="font-size:10px;color:var(--txt-2)">リハビリ進捗</span><span style="font-size:10px;color:var(--accent);font-weight:700">'+STG[stage]+'</span></div><div class="pbar"><div class="pbar-f" data-w="'+progPct+'"></div></div>';
+      icd+='<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap"><span style="font-weight:700;font-size:14px">'+escapeHtml((inj.side||'')+inj.part+' '+inj.type)+'</span>'+(rtp?'<span class="bd" style="background:'+hexA(rtpC(rtp.k),.16)+';color:'+rtpC(rtp.k)+'">'+rtp.label+'</span>':'')+'</div>';
+      icd+='<div style="font-size:11px;color:var(--txt-2);margin-bottom:7px">受傷: '+fmt(inj.date)+(inj.returnDate?' ／ 復帰予定: '+fmt(inj.returnDate)+(days!=null?'（'+(days<0?(-days)+'日超過':days===0?'本日':'あと'+days+'日')+'）':''):'')+'</div>';
+      icd+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><span style="font-size:10px;color:var(--txt-2)">リハビリ進捗</span><span style="font-size:10px;color:var(--accent);font-weight:700">'+STG[stage]+'</span></div><div class="pbar"><div class="pbar-f" data-w="'+progPct+'"></div></div>';
       // P7c 根拠: 診断/機転/復帰基準達成/最新評価/最新SOAP(A/P)/画像有無
       var ev7=injEvidence(ch),rows7=[];
       if(ev7.diagnosis)rows7.push(['診断',escapeHtml(ev7.diagnosis)]);
@@ -2078,11 +2190,11 @@ function renderPlayerReport(pid){
       if(es7)rows7.push(['最新評価',es7+(ev7.ev.date?' <span style="opacity:.55">'+fmt(ev7.ev.date)+'</span>':'')]);
       if(ev7.soap){var ap7=[];if(ev7.soap.a)ap7.push('<b>A:</b> '+escapeHtml(ev7.soap.a));if(ev7.soap.p)ap7.push('<b>P:</b> '+escapeHtml(ev7.soap.p));if(ap7.length)rows7.push(['最新SOAP',ap7.join('<br>')+(ev7.soap.date?' <span style="opacity:.55">'+fmt(ev7.soap.date)+'</span>':'')]);}
       rows7.push(['画像',ev7.hasImg?(ev7.imgTypes.length?escapeHtml(ev7.imgTypes.join('・')):'あり'):'なし']);
-      ic+='<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">'+rows7.map(function(r){
+      icd+='<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">'+rows7.map(function(r){
         return '<div style="display:flex;gap:8px;font-size:11px;margin-bottom:3px"><span style="color:var(--txt-2);min-width:56px;flex-shrink:0">'+r[0]+'</span><span style="color:var(--txt);flex:1">'+r[1]+'</span></div>';
       }).join('')+'</div></div>';
     });
-    h+=rv('<div class="card" style="border-left:3px solid var(--red);margin-top:14px">'+ic+'</div>',1);
+    h+=rv('<div class="card" style="border-left:3px solid var(--red);margin-top:14px">'+icd+'</div>',1);
   }else{
     h+=rv('<div class="card" style="margin-top:14px"><div style="font-size:13px;color:var(--green);font-weight:700">✓ 現在、怪我はありません</div></div>',1);
   }

@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rugby Manager - トレーナー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Overpass:ital,wght@0,700;0,800;0,900;1,800;1,900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -26,7 +29,7 @@
   --cyan-pale:#E0F2FE;--green-a30:rgba(16,185,129,.3);--green-deep:#059669;--green-glow:rgba(16,185,129,.6);--green-pale:#D1FAE5;--green-vivid:#10B981;
   --hero-sub:#A9B8CE;--pink:#EC4899;--pink-glow:rgba(236,72,153,.6);--pull-bg:rgba(194,65,12,.10);--purple-glow:rgba(139,92,246,.6);--red-glow:rgba(239,68,68,.6);
   --red-vivid:#EF4444;--slate:#64748B;--slate-glow:rgba(100,116,139,.6);--soap-o:#0E9F6E;--white:#fff;--white-a06:rgba(255,255,255,.06);
-  --white-a12:rgba(255,255,255,0.12);--white-a25:rgba(255,255,255,0.25);}
+  --white-a12:rgba(255,255,255,0.12);--white-a16:rgba(255,255,255,.16);--white-a25:rgba(255,255,255,0.25);}
 .ic{display:inline-block;vertical-align:-.14em;flex-shrink:0}
 .flag{display:inline-block;transform:skewX(-12deg);font-family:var(--font-num);font-style:italic;font-weight:800;letter-spacing:.05em;padding:2px 8px;border-radius:3px;font-size:10px}
 body{font-family:var(--font-sans);background:var(--bg-app);color:var(--text-primary);min-height:100vh;padding-bottom:80px;-webkit-font-smoothing:antialiased}
@@ -108,6 +111,27 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 .detail-label{color:var(--text-secondary)}.detail-value{font-weight:600;text-align:right}
 .chart-wrap{position:relative;height:200px;margin:12px 0}
 .g3{grid-template-columns:1fr 1fr 1fr}
+/* ===== P9b FUKUDAI v3ユーティリティ（player:126-131移植・kicker色のみtrainerテーマ=--accent） ===== */
+.num{font-family:var(--font-num);font-weight:900;font-style:italic;letter-spacing:-.03em;line-height:.95;font-variant-numeric:tabular-nums}
+.num .unit{font-size:.42em;font-style:normal;font-weight:700;letter-spacing:0}
+.kicker{font-family:var(--font-num);font-style:italic;font-weight:800;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.ghost-num{position:absolute;pointer-events:none;user-select:none;-webkit-user-select:none;z-index:0;font:italic 900 120px/1 var(--font-num);color:transparent;-webkit-text-stroke:2px var(--white-a16)}
+/* ghost-num実績パターン: relative+overflow:hidden+子z-index:1 をカードに付与する汎用ホスト */
+.ghost-host{position:relative;overflow:hidden}
+.ghost-host>:not(.ghost-num){position:relative;z-index:1}
+/* pitch-lines: ラグビーピッチ白線モチーフ（装飾のみ・pointer-events:none・線色は既存--white-a06） */
+.pitch-lines{position:relative;overflow:hidden}
+.pitch-lines::before{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,var(--white-a06) 0 2px,transparent 2px 72px)}
+.pitch-lines>*{position:relative;z-index:1}
+/* reveal（クラスA=遷移演出）。「隠す側」宣言はreduced-motion:no-preference内のみ（reduce設定者の画面消失防止） */
+@media(prefers-reduced-motion:no-preference){
+  .rv-armed{opacity:0;transform:translateY(14px)}
+  .rv-armed.in{opacity:1;transform:none;transition:opacity .5s cubic-bezier(.22,1,.36,1),transform .55s cubic-bezier(.22,1,.36,1)}
+}
+/* タップフィードバック（player .card-click:active と同型。モバイルは:hover不発のため:activeが主役） */
+.card-click:active{transform:scale(.98);background:var(--bg-secondary)}
+.btn:active,.trainer-btn:active{transform:scale(.97)}
+.chart-tab:active,.nav-btn:active,.select-card:active{opacity:.7}
 </style>
 </head>
 <body>
@@ -118,13 +142,39 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 <symbol id="i-dumbbell" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></g></symbol>
 <symbol id="i-push" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V8M8 12l4-4 4 4M5 20h14"/></g></symbol>
 <symbol id="i-pull" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M8 12l4 4 4-4M5 4h14"/></g></symbol>
+<symbol id="i-ball" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><g transform="rotate(-30 12 12)"><ellipse cx="12" cy="12" rx="9" ry="5.5"/><path d="M8.5 12h7M10.7 10.3v3.4M13.3 10.3v3.4"/></g></g></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5L2.5 20h19zM12 10v4.5M12 17.5h.01"/></g></symbol>
+<symbol id="i-clipboard" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2.5" width="6" height="3.5" rx="1"/><path d="M9 11.5h6M9 15.5h6"/></g></symbol>
+<symbol id="i-bandage" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><g transform="rotate(45 12 12)"><rect x="3.5" y="8.8" width="17" height="6.4" rx="3.2"/><path d="M10.6 12h.01M13.4 12h.01M12 10.6v.01M12 13.4v.01"/></g></g></symbol>
+<symbol id="i-tape" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7.5"/><circle cx="11" cy="11" r="3"/><path d="M17.5 16.5L21 20"/></g></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4c2-1.2 4-1.2 6 0s4 1.2 6 0v8c-2 1.2-4 1.2-6 0s-4-1.2-6 0"/></g></symbol>
+<symbol id="i-check-c" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.3 12.4l2.5 2.5 4.9-5.3"/></g></symbol>
+<symbol id="i-x-c" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M9 9l6 6M15 9l-6 6"/></g></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="7.5" r="4"/><path d="M4.5 20.5c0-4 3.3-6 7.5-6s7.5 2 7.5 6"/></g></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2.5H6.5A2.5 2.5 0 0 0 4 5zM4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></g></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5L12 3l8.5 7.5M5.5 9.5V21h13V9.5"/></g></symbol>
+<symbol id="i-megaphone" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 4L7 9H4a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h3l11 5zM8.5 15.5l1 4.5h2.5l-.8-4"/></g></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></g></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></g></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 20v-8M10 20V5M16 20v-5M21 20H3"/></g></symbol>
+<symbol id="i-chart-line" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5.5-6 4 4L20 7.5M3 21h18"/></g></symbol>
+<symbol id="i-note" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6zM15 3v4h4M9 12h6M9 16h6"/></g></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2.5"/></g></symbol>
+<symbol id="i-ruler" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17L17 3l4 4L7 21zM8.5 15.5l1.5 1.5M11.5 12.5l1.5 1.5M14.5 9.5l1.5 1.5"/></g></symbol>
+<symbol id="i-fire" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c-3.9 0-6.5-2.5-6.5-6 0-2.7 1.6-4.6 3-6.2C9.8 7.3 11 5.9 11 3.5c2.8 1.4 4.5 3.6 4.5 6 .8-.5 1.4-1.2 1.7-2.2 1.2 1.5 1.8 3.3 1.8 5.2 0 4.5-3 8.5-7 8.5z"/></g></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M13 2.5L4.5 14H11l-1 7.5L18.5 10H12z"/></g></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M8 2.8V7M16 2.8V7M3.5 10.5h17"/></g></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8.5a6 6 0 0 0-12 0c0 6.5-2.5 8-2.5 8h17S18 15 18 8.5M10.3 20.5a2 2 0 0 0 3.4 0"/></g></symbol>
+<symbol id="i-pain-4" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2" fill="currentColor"/><path d="M12 5.5V3M12 21v-2.5M5.5 12H3M21 12h-2.5M7.4 7.4L5.6 5.6M18.4 18.4l-1.8-1.8"/></g></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3.5l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6-5.1-2.8-5.1 2.8 1.1-5.6L3.8 9.4l5.7-.7z"/></g></symbol>
+<symbol id="i-trophy" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/></g></symbol>
 </defs>
 </svg>
 
 <!-- ログイン画面 -->
 <div id="login-screen">
-  <div class="login-wrap">
-    <div style="text-align:center;font-size:48px;margin-bottom:16px">🏉</div>
+  <div class="login-wrap pitch-lines">
+    <div style="text-align:center;margin-bottom:16px"><svg class="ic" width="48" height="48" style="color:var(--accent)" aria-hidden="true"><use href="#i-ball" xlink:href="#i-ball"></use></svg></div>
     <div class="login-title">トレーナーサイト</div>
     <div class="login-sub">あなたの名前を選んでください</div>
     <div id="trainer-list"></div>
@@ -133,13 +183,13 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 
 <!-- ローディング -->
 <div id="loading-screen" style="position:fixed;inset:0;background:var(--bg-primary);z-index:9998;display:flex;align-items:center;justify-content:center;flex-direction:column">
-  <div style="font-size:40px;margin-bottom:16px">🏉</div>
+  <div style="margin-bottom:16px"><svg class="ic" width="40" height="40" style="color:var(--accent)" aria-hidden="true"><use href="#i-ball" xlink:href="#i-ball"></use></svg></div>
   <div style="font-size:15px;font-weight:600;margin-bottom:6px">トレーナーサイト</div>
   <div style="color:var(--text-secondary);font-size:13px">データを読み込んでいます...</div>
 </div>
 
 <div class="header">
-  <div class="header-title">🏉 トレーナーサイト</div>
+  <div class="header-title"><svg class="ic" width="17" height="17" style="vertical-align:-3px" aria-hidden="true"><use href="#i-ball" xlink:href="#i-ball"></use></svg> トレーナーサイト</div>
   <div class="header-user" id="header-user" onclick="logout()">ログアウト</div>
 </div>
 
@@ -168,6 +218,8 @@ var myTrainer=null;
 var RCATS=['ケア','ROM改善','患部外トレーニング','トレーニング','アジリティ','フィットネス','サポート','オフ'];
 var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'var(--cyan-deep)',サポート:'var(--green-deep)',オフ:'var(--text-secondary)'};
 var RCAT_BG={ケア:'var(--blue-bg)',ROM改善:'var(--green-bg)',患部外トレーニング:'var(--amber-bg)',トレーニング:'var(--red-bg)',アジリティ:'var(--purple-bg)',フィットネス:'var(--cyan-pale)',サポート:'var(--green-pale)',オフ:'var(--bg-tertiary)'};
+// ポジション代表背番号（playerと同一コピー。ghost背番号表示用）
+var POS_NUM={PR:'1·3',HO:'2',LO:'4·5',FL:'6·7','No.8':'8',SH:'9',SO:'10',CTB:'12·13',WTB:'11·14',FB:'15'};
 var STG=['ウォーキング','ランニング','スプリント','ジャンプ','コンタクト以外の練習','フルコンタクト','完全復帰'];
 var PARTS=['頭部','頸部','肩','鎖骨','肘','手首','指','腰','股関節','大腿','膝','すね','足首','踵','アキレス腱','ふくらはぎ','足の甲','足趾','その他'];
 var INJ_TYPES=['捻挫','肉離れ','骨折','脱臼','打撲','靭帯損傷','半月板損傷','脳震盪','裂傷','腱炎','疲労骨折','その他'];
@@ -472,7 +524,7 @@ function goEditInjury(iid){
 function renderInjuryEditForm(iid){
   var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return'';
   var h='<div class="form-box"><div class="form-title">怪我の基本情報を編集</div>'+
-  '<div style="font-size:11.5px;color:var(--amber);background:var(--amber-bg);border-radius:8px;padding:8px 10px;margin-bottom:12px;line-height:1.5">📢 保存するとスタッフに自動で通知され、変更内容は「経過」タブの履歴に記録されます。</div>'+
+  '<div style="font-size:11.5px;color:var(--amber);background:var(--amber-bg);border-radius:8px;padding:8px 10px;margin-bottom:12px;line-height:1.5">'+ic('i-megaphone',13)+' 保存するとスタッフに自動で通知され、変更内容は「経過」タブの履歴に記録されます。</div>'+
   '<div class="grid g2" style="gap:12px;margin-bottom:12px">'+
     '<div class="fl"><label>左右</label><select class="ipt" id="ei-side"><option value=""'+(!inj.side?' selected':'')+'>指定なし</option><option value="右"'+(inj.side==='右'?' selected':'')+'>右</option><option value="左"'+(inj.side==='左'?' selected':'')+'>左</option><option value="両"'+(inj.side==='両'?' selected':'')+'>両方</option></select></div>'+
     '<div class="fl"><label>部位</label><select class="ipt" id="ei-part" onchange="eiToggleOther()">'+PARTS.map(function(x){return'<option'+(inj.part===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></div>'+
@@ -686,7 +738,7 @@ function renderInjHistoryBox(pid,excludeIid,currentPart){
     var isSamePart=currentPart&&x.part===currentPart;
     h+='<div class="log-row" style="cursor:pointer" onclick="openChart('+x.id+')">'+
       '<span style="min-width:64px;color:var(--text-secondary);font-size:11px">'+fmt(x.date)+'</span>'+
-      '<span style="flex:1;font-weight:'+(isSamePart?'700':'500')+';'+(isSamePart?'color:var(--amber)':'')+'">'+(x.side||'')+x.part+' '+x.type+(isSamePart?' ⚠️同部位':'')+'</span>'+
+      '<span style="flex:1;font-weight:'+(isSamePart?'700':'500')+';'+(isSamePart?'color:var(--amber)':'')+'">'+(x.side||'')+x.part+' '+x.type+(isSamePart?' '+ic('i-warn',11)+'同部位':'')+'</span>'+
       '<span class="bd '+(x.resolved?'bd-g':'bd-r')+'" style="font-size:9px">'+(x.resolved?'回復':'治療中')+'</span>'+
       '</div>';
   });
@@ -1110,7 +1162,7 @@ function showLogin(){
   var listEl=document.getElementById('trainer-list');
   var sorted=D.trainers.slice().sort(function(a,b){return a.name.localeCompare(b.name,'ja');});
   listEl.innerHTML=sorted.map(function(t){
-    return'<button class="trainer-btn" onclick="selectTrainer('+t.id+')">👤 '+escapeHtml(t.name)+'</button>';
+    return'<button class="trainer-btn" onclick="selectTrainer('+t.id+')">'+ic('i-user',13)+' '+escapeHtml(t.name)+'</button>';
   }).join('');
   document.getElementById('login-screen').style.display='flex';
 }
@@ -1226,11 +1278,11 @@ function showAutoLoginConfirmT(tid){
   if(!trainer)return showLogin();
   var listEl=document.getElementById('trainer-list');
   listEl.innerHTML='<div style="text-align:center;padding:20px">'+
-    '<div style="font-size:36px;margin-bottom:8px">👤</div>'+
+    '<div style="margin-bottom:8px">'+ic('i-user',36)+'</div>'+
     '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">あなたは下記のトレーナーですか？</div>'+
     '<div style="font-size:20px;font-weight:700;margin-bottom:16px">'+escapeHtml(trainer.name)+'さん</div>'+
-    '<button class="btn btn-p" style="width:200px;padding:14px;font-size:15px;margin-bottom:10px" onclick="confirmAutoLoginT('+tid+')">✅ はい、私です</button><br>'+
-    '<button class="btn" style="width:200px;padding:10px;font-size:13px" onclick="rejectAutoLoginT()">❌ 違うトレーナーで入る</button>'+
+    '<button class="btn btn-p" style="width:200px;padding:14px;font-size:15px;margin-bottom:10px" onclick="confirmAutoLoginT('+tid+')">'+ic('i-check-c',14)+' はい、私です</button><br>'+
+    '<button class="btn" style="width:200px;padding:10px;font-size:13px" onclick="rejectAutoLoginT()">'+ic('i-x-c',13)+' 違うトレーナーで入る</button>'+
     '</div>';
   document.getElementById('login-screen').style.display='flex';
 }
@@ -1254,6 +1306,56 @@ function logout(){
   showLogin();
 }
 
+// ===== reveal（クラスA=遷移演出）。go()経由のタブ初回表示だけ発火 =====
+// 規約: .rv-armedをrender文字列に直書き禁止（onSnapshot再描画で画面全体が透明化する事故になる）。
+// テンプレには素マーカー.rvのみ書き、armはMutationObserverコールバック内でだけ行う。
+var _navAnim=false;      // go()で立てる→observerが消費。この順序は固定（フラグ残留防止）
+var _visitedTabs={};     // クラスAはセッション中1回だけ
+var _rvInsurance=null;
+function _reduceMotion(){return typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;}
+function _rvForceIn(){
+  var rem=document.querySelectorAll('.rv-armed:not(.in)');
+  for(var i=0;i<rem.length;i++)rem[i].classList.add('in');
+}
+function _armReveal(){
+  if(!_navAnim)return;   // 規約2: この3行の順序を入れ替えない
+  _navAnim=false;
+  if(window._subViewActive)return; // playerのsubView相当（openChart等のサブ画面では発火させない）
+  var tab=curTab;
+  if(!tab)return;        // trainerの4タブ(home/tape/rehab/help)にフォーム本体タブは無い→_RV_FORM_TABS不要（staff方式）
+  if(_visitedTabs[tab])return;
+  _visitedTabs[tab]=true;
+  if(_reduceMotion())return;
+  var root=$m();if(!root)return;
+  var els=root.querySelectorAll('.rv');
+  var armed=[],n=0;
+  for(var i=0;i<els.length&&n<8;i++){ // 規約7: 先頭8要素「だけをarm」する（armして打ち切るとopacity:0残留）
+    if(els[i].offsetParent===null)continue; // 規約4: display:none中の要素はスキップ
+    els[i].classList.add('rv-armed');
+    els[i].style.transitionDelay=(n*45)+'ms';
+    armed.push(els[i]);n++;
+  }
+  if(!armed.length)return;
+  if(typeof IntersectionObserver==='function'){
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);} // 規約4: disconnectせず要素ごとにunobserve
+      });
+    },{threshold:.05});
+    armed.forEach(function(el){io.observe(el);});
+  }else{
+    requestAnimationFrame(function(){requestAnimationFrame(_rvForceIn);});
+  }
+  if(_rvInsurance)clearTimeout(_rvInsurance);
+  _rvInsurance=setTimeout(_rvForceIn,1500); // 規約5: 1.5秒で未revealを強制表示（全経路の最終防衛線）
+}
+if(typeof MutationObserver==='function'){ // jscモックにはObserver類が無いためtypeofガード必須
+  (function(){
+    var mainEl=document.getElementById('main-ct');
+    if(mainEl)new MutationObserver(_armReveal).observe(mainEl,{childList:true}); // #main-ct直下childListのみ
+  })();
+}
+
 // ===== NAVIGATION =====
 function go(tab){
   curTab=tab;
@@ -1264,6 +1366,7 @@ function go(tab){
     var m=onclickAttr.match(/go\(['"]([^'"]+)['"]\)/);
     e.classList.toggle('ac',m&&m[1]===tab);
   });
+  _navAnim=true; // クラスA遷移演出: 直後のT[tab]()描画のmutationをobserverが消費する（onSnapshot側には絶対に足さない）
   T[tab]&&T[tab]();
 }
 
@@ -1290,14 +1393,14 @@ function trTodoBadge(inj){
   var lastEvalDate=evalDates[evalDates.length-1];
   var refDate=lastEvalDate||inj.date;
   var gapDays=Math.floor((new Date(today)-new Date(refDate))/86400000);
-  if(gapDays>=14)return{rank:0,cls:'bd-r',emoji:'📊',label:'評価が'+gapDays+'日空いています',action:'rehab'};
+  if(gapDays>=14)return{rank:0,cls:'bd-r',emoji:ic('i-chart',12),label:'評価が'+gapDays+'日空いています',action:'rehab'};
   if(gapDays>=7)return{rank:1,cls:'bd-a',emoji:'🟡',label:'評価期限：前回から'+gapDays+'日',action:'rehab'};
   var tomorrowCats=plan?plan.tomorrowCats||[]:[];
-  if(!tomorrowCats.length)return{rank:2,cls:'bd-b',emoji:'📋',label:'本日のメニュー未設定',action:'menu'};
+  if(!tomorrowCats.length)return{rank:2,cls:'bd-b',emoji:ic('i-clipboard',12),label:'本日のメニュー未設定',action:'menu'};
   if(rh&&rh.stage===STG.length-2&&!(D.rtest||[]).some(function(r){return r.injId===inj.id;})){
-    return{rank:3,cls:'bd-p',emoji:'🏁',label:'復帰テスト目前',action:'rtest'};
+    return{rank:3,cls:'bd-p',emoji:ic('i-flag',12),label:'復帰テスト目前',action:'rtest'};
   }
-  if(lastLog&&lastLog.date===today)return{rank:4,cls:'bd-g',emoji:'✅',label:'今日は記録済み',action:'rehab'};
+  if(lastLog&&lastLog.date===today)return{rank:4,cls:'bd-g',emoji:ic('i-check-c',12),label:'今日は記録済み',action:'rehab'};
   return null;
 }
 // トップ画面のTo-Doバッジタップ時の遷移先ディスパッチ
@@ -1322,15 +1425,16 @@ home:function(){
   });
   // 今日の担当リハビリ選手（今後追加予定）
   var today=todayStr();
-  var h='<div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 4px">'+
+  var h='<div class="kicker">TRAINER ROOM</div>'+
+  '<div class="rv" style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 4px">'+
   '<div style="font-size:18px;font-weight:700">'+escapeHtml(myTrainer.name)+'さん 👋</div>'+
-  '<div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="showChangePINT()" style="font-size:11px">🔑 PIN変更</button><button class="btn btn-sm" onclick="go(\'help\')" style="font-size:11px">📖 ガイド</button></div>'+
+  '<div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="showChangePINT()" style="font-size:11px">🔑 PIN変更</button><button class="btn btn-sm" onclick="go(\'help\')" style="font-size:11px">'+ic('i-book',12)+' ガイド</button></div>'+
   '</div>'+
   '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">'+fmt(today)+'</div>';
-  h+=ppCardHtml(false); // PUSH/PULL編集はstaffに集約（P7d）。trainerは表示のみ
+  h+='<div class="rv">'+ppCardHtml(false)+'</div>'; // PUSH/PULL編集はstaffに集約（P7d）。trainerは表示のみ（ppCardHtmlはidentical＝本体不改変でラッパ包み）
 
   // 今日のテーピング
-  h+='<div class="card"><div style="font-weight:600;margin-bottom:10px">🩻 今日のテーピング予約</div>';
+  h+='<div class="card rv"><div style="font-weight:600;margin-bottom:10px">'+ic('i-tape',14)+' 今日のテーピング予約</div>';
   if(mySlots.length){
     h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">あなたの担当枠</div>';
     mySlots.sort(function(a,b){return a.startTime.localeCompare(b.startTime);}).forEach(function(s){
@@ -1361,19 +1465,19 @@ home:function(){
     return results.length>0;
   });
   if(myRtestInj.length){
-    h+='<div class="card" style="margin-bottom:10px;border-left:3px solid var(--purple)"><div style="font-weight:600;margin-bottom:8px;color:var(--purple)">🏁 復帰テスト状況</div>';
+    h+='<div class="card rv" style="margin-bottom:10px;border-left:3px solid var(--purple)"><div style="font-weight:600;margin-bottom:8px;color:var(--purple)">'+ic('i-flag',14)+' 復帰テスト状況</div>';
     myRtestInj.forEach(function(inj){
       var p=D.p.find(function(x){return x.id===inj.pid;});if(!p)return;
       var results=(D.rtest||[]).filter(function(r){return r.injId===inj.id;}).sort(function(a,b){return b.date.localeCompare(a.date);});
       var last=results[0];
-      var status=inj.rtestApproved?'🎉 承認済み':last.physPassed&&last.fitPassed?'✅ クリア（承認待ち）':'テスト中';
+      var status=inj.rtestApproved?ic('i-trophy',12)+' 承認済み':last.physPassed&&last.fitPassed?ic('i-check-c',12)+' クリア（承認待ち）':'テスト中';
       var color=inj.rtestApproved?'var(--green)':last.physPassed&&last.fitPassed?'var(--blue)':'var(--amber)';
       h+='<div class="log-row">'+avH(p,24)+'<span style="font-weight:600;flex:1">'+escapeHtml(p.name)+'</span>'+
       '<span style="font-size:12px;font-weight:600;color:'+color+'">'+status+'</span></div>';
     });
     h+='</div>';
   }
-  h+='<div class="card"><div style="font-weight:600;margin-bottom:10px">🩹 担当リハビリ選手</div>';
+  h+='<div class="card rv"><div style="font-weight:600;margin-bottom:10px">'+ic('i-bandage',14)+' 担当リハビリ選手</div>';
   if(myRehabInj.length){
     var rehabRows=myRehabInj.map(function(inj){return{inj:inj,badge:trTodoBadge(inj)};}).filter(function(row){return D.p.find(function(x){return x.id===row.inj.pid;});});
     rehabRows.sort(function(a,b){
@@ -1387,7 +1491,9 @@ home:function(){
       var plan=(D.rplan||[]).find(function(x){return x.injId===inj.id;});
       var lastLog=(D.rlog||[]).filter(function(l){return l.injId===inj.id;}).sort(function(a,b){return (b.date||"").localeCompare(a.date||"");})[0];
       var tomorrowCats=plan?plan.tomorrowCats||[]:[];
-      h+='<div class="card card-click" style="margin-bottom:8px" onclick="goRehabPlayer('+inj.id+')">'+
+      var pn=(POS_NUM[p.position]||'').split('·')[0]; // P9b: ghost背番号
+      h+='<div class="card card-click ghost-host" style="margin-bottom:8px" onclick="goRehabPlayer('+inj.id+')">'+
+      (pn?'<span class="ghost-num" aria-hidden="true" style="right:6px;top:-18px;font-size:64px">'+pn+'</span>':'')+
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'+avH(p,30)+
       '<div style="flex:1"><div style="font-weight:600">'+escapeHtml(p.name)+'</div>'+
       '<div style="font-size:12px;color:var(--text-secondary)">'+(inj.side||'')+inj.part+' '+inj.type+'</div></div>'+
@@ -1407,11 +1513,11 @@ home:function(){
 // 使い方ガイド
 help:function(){
   $m().innerHTML='<button class="btn-back" onclick="go(\'home\')">← ホーム</button>'+
-  '<div style="font-size:20px;font-weight:700;margin-bottom:6px">📖 使い方ガイド</div>'+
+  '<div style="font-size:20px;font-weight:700;margin-bottom:6px">'+ic('i-book',17)+' 使い方ガイド</div>'+
   '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">専門学生向けの操作ガイド</div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--blue)">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🏠 ホーム画面</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-home',14)+' ホーム画面</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '・今日のテーピング予約一覧<br>'+
   '・担当リハビリ選手（治療中の全選手）<br>'+
@@ -1419,7 +1525,7 @@ help:function(){
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--cyan-deep)">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🩻 テーピング</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-tape',14)+' テーピング</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '<b>枠を設定：</b>「+ 今日/来週の枠を設定」<br>'+
   '・日付・時間・部位を設定<br>'+
@@ -1429,7 +1535,7 @@ help:function(){
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--red)">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🩹 リハビリ記録</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-bandage',14)+' リハビリ記録</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '<b>1. 選手を選ぶ</b><br>'+
   '・治療中の全選手から選べる（担当外でもOK）<br>'+
@@ -1446,7 +1552,7 @@ help:function(){
   '</div></div>'+
   
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--purple)">'+
-  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">🏁 復帰テスト</div>'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-flag',14)+' 復帰テスト</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
   '・フィジカル基準テスト（ジャンプ、片足立ちなど）<br>'+
   '・ブロンコ目標タイム（スタッフが設定）<br>'+
@@ -1475,16 +1581,16 @@ tape:function(){
   var toS=nextSun.getFullYear()+'-'+String(nextSun.getMonth()+1).padStart(2,'0')+'-'+String(nextSun.getDate()).padStart(2,'0');
   // 自分の枠がある日
   var mySlotDates=[...new Set((D.tapeslot||[]).filter(function(s){return s.staff===myTrainer.name&&s.date>=fromS&&s.date<=toS;}).map(function(s){return s.date;}))].sort().reverse();
-  var h='<div style="font-size:18px;font-weight:700;margin:4px 0 16px">🩻 テーピング管理</div>';
+  var h='<div class="kicker">TAPING</div><div style="font-size:18px;font-weight:700;margin:4px 0 16px">'+ic('i-tape',16)+' テーピング管理</div>';
   h+='<button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="showTapeSetupForm()">+ 今日/来週の枠を設定する</button>';
-  h+='<button class="btn" style="width:100%;margin-bottom:14px" onclick="showTapeRecList()">📋 テーピング記録（引き継ぎ）を見る</button>';
+  h+='<button class="btn" style="width:100%;margin-bottom:14px" onclick="showTapeRecList()">'+ic('i-clipboard',13)+' テーピング記録（引き継ぎ）を見る</button>';
   h+='<div style="font-weight:600;margin-bottom:10px">あなたの担当枠（過去4週間〜来週）</div>';
   if(mySlotDates.length){
     mySlotDates.forEach(function(date){
       var slots=(D.tapeslot||[]).filter(function(s){return s.date===date&&s.staff===myTrainer.name;}).sort(function(a,b){return a.startTime.localeCompare(b.startTime);});
       var rsvs=(D.tape||[]).filter(function(t){return t.date===date;});
       var isPast=date<today;
-      h+='<div class="card'+(isPast?' card-past':'')+'">'+
+      h+='<div class="card rv'+(isPast?' card-past':'')+'">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
       '<div><div style="font-weight:600">'+fmt(date)+(isPast?' <span style="font-size:11px;color:var(--text-secondary)">（過去）</span>':'')+'</div>'+
       '<div style="font-size:11px;color:var(--text-secondary)">枠数: '+slots.length+' / 予約: '+rsvs.length+'件</div></div>'+
@@ -1514,7 +1620,7 @@ tape:function(){
 // リハビリ
 rehab:function(){
   var myRehabInj=(D.i||[]).filter(function(inj){return!inj.resolved&&(inj.approved===true||inj.source==='trainer'||(!inj.source));});
-  var h='<div style="font-size:18px;font-weight:700;margin:4px 0 12px">🩹 リハビリ管理</div>';
+  var h='<div class="kicker">REHAB</div><div style="font-size:18px;font-weight:700;margin:4px 0 12px">'+ic('i-bandage',16)+' リハビリ管理</div>';
   h+='<button class="btn btn-p" style="width:100%;margin-bottom:14px" onclick="trShowAddInjury()">＋ 新しいケガを登録</button>';
   if(!myRehabInj.length){
     h+='<div class="no" style="margin-top:20px">治療中の選手がいません<br><span style="font-size:12px">上のボタンからケガを登録できます</span></div>';
@@ -1532,7 +1638,7 @@ rehab:function(){
     var trainer=(D.trainers||[]).find(function(t){return t.id===inj.trainerId;});
     // 検索対象テキスト（data属性に入れる）
     var searchText=(p.name+' '+(p.position||'')+' '+(inj.side||'')+(inj.part||'')+' '+(inj.type||'')).toLowerCase();
-    h+='<div class="card card-click rehab-card" data-search="'+escapeHtml(searchText)+'" style="margin-bottom:10px" onclick="goRehabPlayer('+inj.id+')">'+
+    h+='<div class="card card-click rehab-card rv" data-search="'+escapeHtml(searchText)+'" style="margin-bottom:10px" onclick="goRehabPlayer('+inj.id+')">'+
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'+avH(p,34)+
     '<div style="flex:1"><div style="font-weight:600;font-size:15px">'+escapeHtml(p.name)+'</div>'+
     '<div style="font-size:12px;color:var(--text-secondary)">'+(inj.side||'')+inj.part+' '+inj.type+'</div>'+
@@ -1572,7 +1678,7 @@ function showTapeRecList(){window._subViewActive=true;
   var byPlayer={};
   recs.forEach(function(r){if(!byPlayer[r.pid])byPlayer[r.pid]=[];byPlayer[r.pid].push(r);});
   var h='<button class="btn btn-sm" style="margin-bottom:12px" onclick="go(\'tape\')">← 戻る</button>';
-  h+='<div style="font-size:18px;font-weight:700;margin-bottom:8px">📋 テーピング記録</div>';
+  h+='<div style="font-size:18px;font-weight:700;margin-bottom:8px">'+ic('i-clipboard',16)+' テーピング記録</div>';
   h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;line-height:1.5">選手ごとに「前回どう巻いたか」を確認できます。巻く人が変わっても引き継げます。</div>';
   h+='<input class="ipt" id="taperec-search" placeholder="🔍 選手名で検索..." oninput="filterTapeRecList()" style="margin-bottom:14px">';
   // 記録のある選手を新しい記録順に
@@ -1640,7 +1746,7 @@ function renderTapeRecCard(r,pid){
   // 巻き方
   if(r.method)h+='<div style="margin-bottom:8px"><div style="font-size:11px;color:var(--text-secondary);font-weight:600;margin-bottom:3px">巻き方・手順</div><div style="font-size:13px;white-space:pre-wrap;line-height:1.5">'+escapeHtml(r.method)+'</div></div>';
   // 注意点
-  if(r.caution)h+='<div style="margin-bottom:8px;padding:8px;background:var(--amber-bg);border-radius:6px"><div style="font-size:11px;color:var(--amber);font-weight:700;margin-bottom:3px">⚠️ 注意点・コツ</div><div style="font-size:13px;white-space:pre-wrap;line-height:1.5;color:var(--text-primary)">'+escapeHtml(r.caution)+'</div></div>';
+  if(r.caution)h+='<div style="margin-bottom:8px;padding:8px;background:var(--amber-bg);border-radius:6px"><div style="font-size:11px;color:var(--amber);font-weight:700;margin-bottom:3px">'+ic('i-warn',11)+' 注意点・コツ</div><div style="font-size:13px;white-space:pre-wrap;line-height:1.5;color:var(--text-primary)">'+escapeHtml(r.caution)+'</div></div>';
   // 動画リンク
   if(r.videoUrl)h+='<a href="'+escapeHtml(r.videoUrl)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--accent);text-decoration:none;font-weight:600">▶ 参考動画を開く</a>';
   h+='</div>';
@@ -1674,7 +1780,7 @@ function showTapeRecForm(recId,presetPid){window._subViewActive=true;
   // 巻き方
   h+='<div class="form-box"><div class="form-title">巻き方・手順</div><textarea class="ipt" id="tr-method" placeholder="例：アンカーを足首上部に2周→スターアップを内側から3本→ホースシューで固定..." style="min-height:90px">'+escapeHtml(rec.method||'')+'</textarea></div>';
   // 注意点
-  h+='<div class="form-box"><div class="form-title">⚠️ 注意点・コツ</div><textarea class="ipt" id="tr-caution" placeholder="例：内反を強く制限する／かかとに皺が寄りやすいので注意／きつく巻きすぎない" style="min-height:70px">'+escapeHtml(rec.caution||'')+'</textarea></div>';
+  h+='<div class="form-box"><div class="form-title">'+ic('i-warn',13)+' 注意点・コツ</div><textarea class="ipt" id="tr-caution" placeholder="例：内反を強く制限する／かかとに皺が寄りやすいので注意／きつく巻きすぎない" style="min-height:70px">'+escapeHtml(rec.caution||'')+'</textarea></div>';
   // 動画
   h+='<div class="form-box"><div class="form-title">参考動画・リンク（任意）</div><input class="ipt" id="tr-video" value="'+escapeHtml(rec.videoUrl||'')+'" placeholder="YouTube等のURL"></div>';
   // 記録者
@@ -1768,10 +1874,10 @@ function renderChartTimeline(iid){
     if(ev.pain){
       var maxP=Math.max(ev.pain.rest||0,ev.pain.motion||0,ev.pain.night||0,ev.pain.press||0);
       var pc=maxP>=7?'var(--red-vivid)':maxP>=4?'var(--amber-vivid)':'var(--green-vivid)';
-      metrics+='<span class="tl-metric" style="color:'+pc+'">😣 痛み '+maxP+'/10</span>';
+      metrics+='<span class="tl-metric" style="color:'+pc+'">'+ic('i-pain-4',11)+' 痛み '+maxP+'/10</span>';
     }
-    if(ev.rom){var romKeys=Object.keys(ev.rom);if(romKeys.length){var r0=ev.rom[romKeys[0]];if(r0)metrics+='<span class="tl-metric">📐 ROM '+r0+'°</span>';}}
-    if(ev.mmt){var mk=Object.keys(ev.mmt);if(mk.length){var m0=ev.mmt[mk[0]];if(m0)metrics+='<span class="tl-metric">💪 MMT '+m0+'</span>';}}
+    if(ev.rom){var romKeys=Object.keys(ev.rom);if(romKeys.length){var r0=ev.rom[romKeys[0]];if(r0)metrics+='<span class="tl-metric">'+ic('i-ruler',11)+' ROM '+r0+'°</span>';}}
+    if(ev.mmt){var mk=Object.keys(ev.mmt);if(mk.length){var m0=ev.mmt[mk[0]];if(m0)metrics+='<span class="tl-metric">'+ic('i-dumbbell',11)+' MMT '+m0+'</span>';}}
     events.push({date:ev.date,type:'eval',title:'評価',desc:(ev.note?escapeHtml(ev.note):'')+(metrics?'<div style="margin-top:2px">'+metrics+'</div>':'')});
   });
   // 4. SOAP
@@ -1807,7 +1913,7 @@ function renderChartTimeline(iid){
   }
   // 8. 回復済み
   if(inj.resolved){
-    events.push({date:inj.resolvedDate||todayStr(),type:'goal',title:'復帰・回復',desc:'競技復帰しました 🎉'});
+    events.push({date:inj.resolvedDate||todayStr(),type:'goal',title:'復帰・回復',desc:'競技復帰しました '+ic('i-trophy',12)});
   }
 
   // 日付順にソート（同日は受傷→診断→評価→SOAPの優先度）
@@ -1877,7 +1983,7 @@ function renderChartOverview(iid){
   if(ch.isConcussion){
     h+='<div style="font-size:12.5px;padding:12px;border-radius:10px;background:var(--amber-bg);color:var(--amber);line-height:1.6;margin-bottom:12px">🧠 <b>脳震盪</b>として登録されています。数値評価・整形外科的テストの対象外です。GRTP（症状ベース・24時間ルール）で管理してください。</div>';
   } else if(ch.injType&&INJ_TEMPLATES[ch.injType]&&INJ_TEMPLATES[ch.injType].contra){
-    h+='<div style="font-size:12px;padding:8px 10px;border-radius:8px;background:var(--amber-bg);color:var(--amber);line-height:1.5;margin-bottom:12px">⚠️ <b>禁忌:</b> '+escapeHtml(INJ_TEMPLATES[ch.injType].contra)+'</div>';
+    h+='<div style="font-size:12px;padding:8px 10px;border-radius:8px;background:var(--amber-bg);color:var(--amber);line-height:1.5;margin-bottom:12px">'+ic('i-warn',12)+' <b>禁忌:</b> '+escapeHtml(INJ_TEMPLATES[ch.injType].contra)+'</div>';
   }
   // リハビリ状況
   if(rh){
@@ -1888,7 +1994,7 @@ function renderChartOverview(iid){
   var rec=analyzeRecurrence(inj);
   if(rec.isRecurrent){
     h+='<div class="alert-card alert-warn" style="margin-bottom:12px">'+
-      '<div><div style="font-weight:700">⚠️ 再発の可能性 — 同じ部位（'+inj.part+'）のケガが過去に'+rec.samePartCount+'件</div>'+
+      '<div><div style="font-weight:700">'+ic('i-warn',13)+' 再発の可能性 — 同じ部位（'+inj.part+'）のケガが過去に'+rec.samePartCount+'件</div>'+
       (rec.lastSame?'<div style="font-size:11px;margin-top:3px;opacity:.85">直近: '+fmt(rec.lastSame.date)+' '+rec.lastSame.type+'</div>':'')+
       (rec.samePartCount>=2?'<div style="font-size:11px;margin-top:3px;opacity:.85;font-weight:600">繰り返し受傷しています。根本的な原因の評価を推奨</div>':'')+
       '</div></div>';
@@ -1914,7 +2020,7 @@ function renderChartOverview(iid){
       (!inj.resolved?'<button class="btn btn-s" onclick="resolveInj('+iid+')">回復済みにする</button>':'<button class="btn" onclick="unresolveInj('+iid+')">治療中に戻す</button>')+
       '<button class="btn btn-d" onclick="deleteInjury('+iid+')">削除</button>'
     :
-      (!inj.resolved?'<button class="btn btn-s" onclick="reqStaffAction('+iid+',\'resolve\',this)">🔔 回復済みをスタッフに依頼</button>':'<button class="btn" onclick="reqStaffAction('+iid+',\'unresolve\',this)">🔔 治療中に戻すよう依頼</button>')
+      (!inj.resolved?'<button class="btn btn-s" onclick="reqStaffAction('+iid+',\'resolve\',this)">'+ic('i-bell',12)+' 回復済みをスタッフに依頼</button>':'<button class="btn" onclick="reqStaffAction('+iid+',\'unresolve\',this)">'+ic('i-bell',12)+' 治療中に戻すよう依頼</button>')
     )+
     '</div>';
   return h;
@@ -1926,7 +2032,7 @@ function renderChartDiagnosis(iid){
   var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return'';
   var ch=getChart(iid);
   var d=ch.injDetail,m=ch.medical;
-  var h='<div class="form-box"><div class="form-title">🩹 受傷の詳細</div>';
+  var h='<div class="form-box"><div class="form-title">'+ic('i-bandage',13)+' 受傷の詳細</div>';
   h+='<div class="fl" style="margin-bottom:12px"><label>受傷機転</label><select class="ipt" id="cd-mech">'+
     '<option value="">選択</option>'+INJ_MECHANISM.map(function(x){return'<option'+(d.mechanism===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></div>';
   h+='<div class="fl" style="margin-bottom:12px"><label>受傷場面</label><select class="ipt" id="cd-scene">'+
@@ -1985,7 +2091,7 @@ function renderChartEval(iid){
   if(ch.isConcussion){
     h+='<div style="font-size:12.5px;padding:12px;border-radius:10px;background:var(--amber-bg);color:var(--amber);line-height:1.6;margin-bottom:12px">🧠 <b>脳震盪として登録</b>されています。数値評価の対象外です。<br>GRTP（症状ベース・24時間ルール・症状再燃で前段階へ後退）で管理してください。判断に迷う場合は必ずスタッフに相談してください。</div>';
   } else if(ch.injType&&INJ_TEMPLATES[ch.injType]&&INJ_TEMPLATES[ch.injType].contra){
-    h+='<div style="font-size:12px;padding:8px 10px;border-radius:8px;background:var(--amber-bg);color:var(--amber);line-height:1.5;margin-bottom:12px">⚠️ <b>禁忌:</b> '+escapeHtml(INJ_TEMPLATES[ch.injType].contra)+'</div>';
+    h+='<div style="font-size:12px;padding:8px 10px;border-radius:8px;background:var(--amber-bg);color:var(--amber);line-height:1.5;margin-bottom:12px">'+ic('i-warn',12)+' <b>禁忌:</b> '+escapeHtml(INJ_TEMPLATES[ch.injType].contra)+'</div>';
   }
   // 回復ゲージ（怪我×リハビリ連携 Phase2・読み取り＋描画のみ）
   h+=renderDeficitGauges(iid);
@@ -1993,10 +2099,10 @@ function renderChartEval(iid){
   h+='<button class="btn btn-p" style="width:100%;margin-bottom:14px" onclick="showEvalForm('+iid+')">＋ 新しい評価を記録する</button>';
   // 痛み推移グラフ
   if(evals.length>=1){
-    h+='<div class="form-box"><div class="form-title">📈 痛みの推移</div><div class="chart-wrap" style="height:200px"><canvas id="ev-pain-chart"></canvas></div></div>';
+    h+='<div class="form-box"><div class="form-title">'+ic('i-chart-line',13)+' 痛みの推移</div><div class="chart-wrap" style="height:200px"><canvas id="ev-pain-chart"></canvas></div></div>';
     // ROM推移グラフ（部位にROM項目がある場合）
     if(em.rom.length>0){
-      h+='<div class="form-box"><div class="form-title">📐 ROM（関節可動域）の推移</div><div class="chart-wrap" style="height:200px"><canvas id="ev-rom-chart"></canvas></div></div>';
+      h+='<div class="form-box"><div class="form-title">'+ic('i-ruler',13)+' ROM（関節可動域）の推移</div><div class="chart-wrap" style="height:200px"><canvas id="ev-rom-chart"></canvas></div></div>';
     }
   }
   // 評価記録一覧
@@ -2074,7 +2180,7 @@ function showEvalForm(iid,evalId){
       '<input type="number" class="ipt ev-pain" data-k="'+pt.k+'" data-prev="'+(pr?pr.v:'')+'" data-dir="down" data-unit="" data-diff="evd-pain-'+pi+'" min="0" max="10" value="'+v+'" placeholder="0-10" oninput="evLiveDiff(this)"></div>'+
       '<div style="display:flex;align-items:center;gap:8px;margin-top:3px"><span id="evd-pain-'+pi+'" style="font-size:11px;color:var(--text-secondary)"></span>'+(spk?'<div style="flex:1;min-width:0">'+spk+'</div>'+sparkCaption(ser,'down'):'')+'</div></div>';
   });
-  secs.push({key:'pain',icon:'😣',label:'痛み',body:pbody});
+  secs.push({key:'pain',icon:ic('i-pain-4',13),label:'痛み',body:pbody});
   // ② 周径（腫脹）— ROMより前（その日どこまで押してよいかの判断材料になるため）
   if(em.circ.length){
     var cbody='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">腫脹の指標。左右差の確認に使います。</div>';
@@ -2086,7 +2192,7 @@ function showEvalForm(iid,evalId){
         '<input type="number" step="0.1" class="ipt ev-circ" data-k="'+escapeHtml(c)+'" data-prev="'+(pr?pr.v:'')+'" data-dir="none" data-unit="cm" data-diff="evd-circ-'+ci+'" value="'+v+'" placeholder="cm" oninput="evLiveDiff(this)"></div>'+
         '<div style="display:flex;align-items:center;gap:8px;margin-top:3px"><span id="evd-circ-'+ci+'" style="font-size:11px;color:var(--text-secondary)"></span>'+(spk?'<div style="flex:1;min-width:0">'+spk+'</div>'+sparkCaption(ser,'none'):'')+'</div></div>';
     });
-    secs.push({key:'circ',icon:'📏',label:'周径',body:cbody});
+    secs.push({key:'circ',icon:ic('i-ruler',13),label:'周径',body:cbody});
   }
   // ③ ROM
   if(em.rom.length){
@@ -2099,7 +2205,7 @@ function showEvalForm(iid,evalId){
         '<input type="text" inputmode="decimal" class="ipt ev-rom" data-k="'+r.k+'" data-prev="'+(pr?escapeHtml(String(pr.v)):'')+'" data-dir="none" data-unit="'+r.unit+'" data-diff="evd-rom-'+ri+'" value="'+escapeHtml(v)+'" placeholder="'+r.unit+'" oninput="evLiveDiff(this)"></div>'+
         '<div style="display:flex;align-items:center;gap:8px;margin-top:3px"><span id="evd-rom-'+ri+'" style="font-size:11px;color:var(--text-secondary)"></span>'+(spk?'<div style="flex:1;min-width:0">'+spk+'</div>'+sparkCaption(ser,'none'):'')+'</div></div>';
     });
-    secs.push({key:'rom',icon:'📐',label:'ROM',body:rbody});
+    secs.push({key:'rom',icon:ic('i-ruler',13),label:'ROM',body:rbody});
   }
   // ④ 筋力 MMT
   if(em.mmt.length){
@@ -2113,15 +2219,15 @@ function showEvalForm(iid,evalId){
         ['5','4+','4','4-','3+','3','3-','2','1','0'].map(function(o){return'<option'+(String(v)===o?' selected':'')+'>'+o+'</option>';}).join('')+'</select></div>'+
         '<div style="display:flex;align-items:center;gap:8px;margin-top:3px"><span id="evd-mmt-'+mmi+'" style="font-size:11px;color:var(--text-secondary)"></span>'+(spk?'<div style="flex:1;min-width:0">'+spk+'</div>'+sparkCaption(ser,'up'):'')+'</div></div>';
     });
-    secs.push({key:'mmt',icon:'💪',label:'筋力',body:mbody});
+    secs.push({key:'mmt',icon:ic('i-dumbbell',13),label:'筋力',body:mbody});
   }
   // ⑤ 整形外科テスト（脳震盪は陰性/陽性の二値判定になじまないため対象外）
   if(em.ortho.length&&!ch.isConcussion){
-    var obody='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;line-height:1.6"><b style="color:var(--amber)">🔒 監督下</b>のテストは、有資格スタッフの立ち会いのもとで実施・判定してください。自信がなければ「未実施」のままでOK。判断に迷ったら必ずスタッフに相談を。</div>';
+    var obody='<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;line-height:1.6"><b style="color:var(--amber)">'+ic('i-lock',11)+' 監督下</b>のテストは、有資格スタッフの立ち会いのもとで実施・判定してください。自信がなければ「未実施」のままでOK。判断に迷ったら必ずスタッフに相談を。</div>';
     em.ortho.forEach(function(o){
       var v=ev.ortho&&ev.ortho[o]!=null?ev.ortho[o]:'';
       var sup=orthoIsSupervised(o); // 既定は全テストtrue（安全側）＝凛人がORTHO_SOLO_OKに登録すると外れる
-      obody+='<div class="fl" style="margin-bottom:10px"><label>'+escapeHtml(o)+(sup?' <span style="font-size:10px;font-weight:700;color:var(--amber);background:var(--amber-bg);border-radius:5px;padding:1px 6px;white-space:nowrap">🔒 監督下</span>':'')+'</label><select class="ipt ev-ortho" data-k="'+escapeHtml(o)+'"><option value="">未実施</option>'+
+      obody+='<div class="fl" style="margin-bottom:10px"><label>'+escapeHtml(o)+(sup?' <span style="font-size:10px;font-weight:700;color:var(--amber);background:var(--amber-bg);border-radius:5px;padding:1px 6px;white-space:nowrap">'+ic('i-lock',10)+' 監督下</span>':'')+'</label><select class="ipt ev-ortho" data-k="'+escapeHtml(o)+'"><option value="">未実施</option>'+
         ['陰性(-)','陽性(+)','疑陽性(±)'].map(function(opt){return'<option'+(v===opt?' selected':'')+'>'+opt+'</option>';}).join('')+'</select></div>';
     });
     secs.push({key:'ortho',icon:'🔬',label:'テスト',body:obody});
@@ -2134,10 +2240,10 @@ function showEvalForm(iid,evalId){
       sbody+='<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" class="ev-special" value="'+escapeHtml(s)+'"'+(checked?' checked':'')+'> '+escapeHtml(s)+'</label>';
     });
     sbody+='</div>';
-    secs.push({key:'special',icon:'⚠️',label:'症状',body:sbody});
+    secs.push({key:'special',icon:ic('i-warn',13),label:'症状',body:sbody});
   }
   // ⑦ 所見（全部位共通・最後）
-  secs.push({key:'note',icon:'📝',label:'所見',body:'<textarea class="ipt" id="ev-note" placeholder="気づいたこと、評価の総合所見など" style="min-height:80px">'+escapeHtml(ev.note||'')+'</textarea>'});
+  secs.push({key:'note',icon:ic('i-note',13),label:'所見',body:'<textarea class="ipt" id="ev-note" placeholder="気づいたこと、評価の総合所見など" style="min-height:80px">'+escapeHtml(ev.note||'')+'</textarea>'});
 
   window._evSecKeys=secs.map(function(s){return s.key;});
   window._evSec=0;
@@ -2149,7 +2255,7 @@ function showEvalForm(iid,evalId){
   if(ch.isConcussion){
     h+='<div style="font-size:12.5px;padding:12px;border-radius:10px;background:var(--amber-bg);color:var(--amber);line-height:1.6;margin-bottom:12px">🧠 <b>脳震盪として登録</b>されています。整形外科的テストの対象外です。以下の症状チェックとメモで記録してください。判断に迷う場合は必ずスタッフに相談してください。</div>';
   } else if(ch.injType&&INJ_TEMPLATES[ch.injType]&&INJ_TEMPLATES[ch.injType].contra){
-    h+='<div style="font-size:12px;padding:8px 10px;border-radius:8px;background:var(--amber-bg);color:var(--amber);line-height:1.5;margin-bottom:12px">⚠️ <b>禁忌:</b> '+escapeHtml(INJ_TEMPLATES[ch.injType].contra)+'</div>';
+    h+='<div style="font-size:12px;padding:8px 10px;border-radius:8px;background:var(--amber-bg);color:var(--amber);line-height:1.5;margin-bottom:12px">'+ic('i-warn',12)+' <b>禁忌:</b> '+escapeHtml(INJ_TEMPLATES[ch.injType].contra)+'</div>';
   }
   // 評価日（常時見える・設定して忘れる項目）
   h+='<div class="fl" style="margin-bottom:12px"><label>評価日</label><input type="date" class="ipt" id="ev-date" value="'+(ev.date||todayStr())+'"></div>';
@@ -2383,8 +2489,8 @@ function saveEval(iid,evalId,btn,quick){
   // ⑧-b 保存後の完了サマリー（今回入力を保存前の直近evalと比較。編集時は自身を除外）
   var _sch=getChart(iid);var _sevals=(_sch&&_sch.evals)?_sch.evals:[];
   var _sum=evImprovementSummary(_sevals,{pain:pain,mmt:mmt},evalId||null);
-  var _sumHtml='✅ 評価を保存しました';
-  if(_sum.improved>0)_sumHtml+='<br>痛み・筋力で '+_sum.improved+' 項目が前回より改善しています 🎉';
+  var _sumHtml=ic('i-check-c',13)+' 評価を保存しました';
+  if(_sum.improved>0)_sumHtml+='<br>痛み・筋力で '+_sum.improved+' 項目が前回より改善しています '+ic('i-trophy',12);
   if(!guardSubmit(btn,'保存中…'))return;
   svSafeUpdate('chart',function(latest){
     var i=_chartIdx(latest,iid);
@@ -2485,7 +2591,7 @@ function showSOAPForm(iid,soapId){
     '</div>';
   h+='<div class="form-box"><div class="form-title"><span class="soap-tag" style="background:var(--amber)">A</span> 評価（考察・判断）</div><textarea class="ipt" id="sp-a" placeholder="例：可動域改善傾向。炎症は鎮静化しつつある。" style="min-height:60px">'+escapeHtml(s.a||'')+'</textarea></div>';
   h+='<div class="form-box"><div class="form-title"><span class="soap-tag" style="background:var(--purple)">P</span> 計画（次の方針）</div><textarea class="ipt" id="sp-p" placeholder="例：来週からジョギング開始予定。可動域訓練継続。" style="min-height:60px">'+escapeHtml(s.p||'')+'</textarea></div>';
-  h+='<div class="form-box"><div class="form-title">🏋️ 実施したメニュー</div><textarea class="ipt" id="sp-menu" placeholder="例：温熱療法10分、可動域訓練、大腿四頭筋セッティング3×15" style="min-height:50px">'+escapeHtml(s.menu||'')+'</textarea></div>';
+  h+='<div class="form-box"><div class="form-title">'+ic('i-dumbbell',13)+' 実施したメニュー</div><textarea class="ipt" id="sp-menu" placeholder="例：温熱療法10分、可動域訓練、大腿四頭筋セッティング3×15" style="min-height:50px">'+escapeHtml(s.menu||'')+'</textarea></div>';
   h+='<div class="form-box"><div class="form-title">記録者</div><input class="ipt" id="sp-author" value="'+escapeHtml(s.author||'')+'" placeholder="記録した人の名前"></div>';
   h+='<div style="display:flex;gap:8px"><button class="btn btn-back" onclick="chartTab(\'soap\')">キャンセル</button><button class="btn btn-p" style="flex:1" onclick="saveSOAP('+iid+','+(isEdit?'\''+soapId+'\'':'null')+',this)">💾 保存</button></div>';
   h+='</div>';
@@ -2552,7 +2658,7 @@ function renderChartReturn(iid){
   // RTP 練習参加レベル
   var curRtp=ch.rtpLevel||'rest';
   var curRtpObj=RTP_LEVELS.find(function(x){return x.k===curRtp;})||RTP_LEVELS[0];
-  h+='<div class="form-box"><div class="form-title">🏉 現在の練習参加レベル（RTP）</div>';
+  h+='<div class="form-box"><div class="form-title">'+ic('i-ball',13)+' 現在の練習参加レベル（RTP）</div>';
   h+='<div style="text-align:center;padding:10px;border-radius:10px;background:'+curRtpObj.color+'22;margin-bottom:12px"><div style="font-size:18px;font-weight:800;color:'+curRtpObj.color+'">'+curRtpObj.label+'</div><div style="font-size:11px;color:var(--text-secondary);margin-top:3px">'+curRtpObj.desc+'</div></div>';
   h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">レベルを変更（選手・スタッフ全員に共有されます）</div>';
   h+='<div style="display:flex;flex-direction:column;gap:6px">';
@@ -2567,7 +2673,7 @@ function renderChartReturn(iid){
   h+='</div></div>';
   // リハビリ段階
   if(rh){
-    h+='<div class="form-box"><div class="form-title">📈 リハビリ段階</div>';
+    h+='<div class="form-box"><div class="form-title">'+ic('i-chart-line',13)+' リハビリ段階</div>';
     h+='<div style="text-align:center;margin-bottom:12px"><div style="font-size:20px;font-weight:800;color:var(--accent)">'+STG[rh.stage]+'</div><div style="font-size:11px;color:var(--text-secondary)">'+(rh.stage+1)+' / '+STG.length+' 段階</div></div>';
     // プログレスバー
     h+='<div style="height:8px;background:var(--bg-tertiary);border-radius:99px;overflow:hidden;margin-bottom:14px"><div style="height:100%;width:'+((rh.stage)/(STG.length-1)*100)+'%;background:var(--accent);border-radius:99px"></div></div>';
@@ -2575,7 +2681,7 @@ function renderChartReturn(iid){
     h+='</div>';
   }
   // 復帰判定チェックリスト
-  h+='<div class="form-box"><div class="form-title">✅ 復帰判定チェックリスト</div>';
+  h+='<div class="form-box"><div class="form-title">'+ic('i-check-c',13)+' 復帰判定チェックリスト</div>';
   var doneCount=RETURN_CRITERIA.filter(function(c){return rc[c];}).length;
   h+='<div style="font-size:13px;margin-bottom:10px">達成: <b style="color:var(--accent)">'+doneCount+'/'+RETURN_CRITERIA.length+'</b></div>';
   RETURN_CRITERIA.forEach(function(c){
@@ -2583,7 +2689,7 @@ function renderChartReturn(iid){
   });
   h+='</div>';
   // 復帰目標日
-  h+='<div class="form-box"><div class="form-title">🎯 復帰目標</div>'+
+  h+='<div class="form-box"><div class="form-title">'+ic('i-target',13)+' 復帰目標</div>'+
     '<div class="detail-row"><span class="detail-label">復帰予定日</span><span class="detail-value">'+(inj.returnDate?fmt(inj.returnDate):'未設定')+'</span></div>'+
     '<button class="btn btn-sm" style="margin-top:8px" onclick="goEditInjury('+iid+')">予定日を変更</button>'+
     '</div>';
@@ -2681,7 +2787,7 @@ function openChart(iid,initTab){window._subViewActive=true;
   var p=D.p.find(function(x){return idEq(x.id,inj.pid);});if(!p)return;
   curChartTab='overview';
   _chartIid=iid;
-  var hero='<div class="chart-hero">'+
+  var hero='<div class="chart-hero pitch-lines">'+
     '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
     avH(p,48)+
     '<div style="flex:1;min-width:140px"><div style="font-size:18px;font-weight:800;color:var(--white)">'+escapeHtml(p.name)+'</div>'+
@@ -2690,12 +2796,12 @@ function openChart(iid,initTab){window._subViewActive=true;
     '<div style="margin-top:4px"><span class="bd '+(inj.resolved?'bd-g':'bd-r')+'">'+(inj.resolved?'回復済':'治療中')+'</span></div></div>'+
     '</div></div>';
   var tabs='<div class="chart-tabs">'+
-    '<div class="chart-tab ac" onclick="chartTab(\'overview\')">📋 概要</div>'+
-    '<div class="chart-tab" onclick="chartTab(\'timeline\')">🕐 経過</div>'+
+    '<div class="chart-tab ac" onclick="chartTab(\'overview\')">'+ic('i-clipboard',12)+' 概要</div>'+
+    '<div class="chart-tab" onclick="chartTab(\'timeline\')">'+ic('i-clock',12)+' 経過</div>'+
     '<div class="chart-tab" onclick="chartTab(\'diagnosis\')">🩺 受傷・診断</div>'+
-    '<div class="chart-tab" onclick="chartTab(\'eval\')">📊 評価</div>'+
-    '<div class="chart-tab" onclick="chartTab(\'soap\')">📝 SOAP</div>'+
-    '<div class="chart-tab" onclick="chartTab(\'return\')">🎯 復帰</div>'+
+    '<div class="chart-tab" onclick="chartTab(\'eval\')">'+ic('i-chart',12)+' 評価</div>'+
+    '<div class="chart-tab" onclick="chartTab(\'soap\')">'+ic('i-note',12)+' SOAP</div>'+
+    '<div class="chart-tab" onclick="chartTab(\'return\')">'+ic('i-target',12)+' 復帰</div>'+
     '<div class="chart-tab" onclick="chartTab(\'comment\')">💬 コメント</div>'+
     '</div>';
   var backBtn='<button class="btn btn-sm" style="margin-bottom:10px" onclick="goRehabPlayer('+iid+')">← リハビリ画面に戻る</button>';
@@ -2743,7 +2849,7 @@ function goRehabPlayer(injId){window._subViewActive=true;
   (rh?'<div style="font-size:12px;color:var(--green);font-weight:600">段階: '+STG[rh.stage]+'</div>':'')+
   '</div></div>';
   // 電子カルテへの入口
-  h+='<button class="btn btn-p" style="width:100%;margin-bottom:14px" onclick="openChart('+injId+')">📋 電子カルテを開く（評価・診断・SOAP）</button>';
+  h+='<button class="btn btn-p" style="width:100%;margin-bottom:14px" onclick="openChart('+injId+')">'+ic('i-clipboard',13)+' 電子カルテを開く（評価・診断・SOAP）</button>';
 
   // 段階タイムライン
   if(rh){
@@ -2787,7 +2893,7 @@ function goRehabPlayer(injId){window._subViewActive=true;
   if(lastLog){
     h+='<div class="form-box" style="border-left:3px solid var(--amber)">';
     h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'+
-    '<div><div class="form-title" style="margin-bottom:2px">📋 前回の記録</div>'+
+    '<div><div class="form-title" style="margin-bottom:2px">'+ic('i-clipboard',13)+' 前回の記録</div>'+
     '<div style="font-size:12px;color:var(--text-secondary)">'+fmt(lastLog.date)+' / '+(lastLog.implementer||lastLog.by||'記録者不明')+'</div></div></div>';
     // 前回の評価（脳震盪=旧preCheck方式、非脳震盪=同日のクイック評価chart.evalsを参照）
     if(_qch.isConcussion){
@@ -2829,13 +2935,13 @@ function goRehabPlayer(injId){window._subViewActive=true;
     if(lastLog.comment)h+='<div style="font-size:12px;color:var(--text-secondary);margin-top:8px;padding-top:6px;border-top:0.5px solid var(--border-tertiary)">💬 '+escapeHtml(lastLog.comment)+'</div>';
     h+='</div>';
   } else {
-    h+='<div class="alert-card alert-info" style="margin-bottom:10px">📋 前回の記録はまだありません</div>';
+    h+='<div class="alert-card alert-info" style="margin-bottom:10px">'+ic('i-clipboard',13)+' 前回の記録はまだありません</div>';
   }
 
   // テンプレ・次回メニュー表示
   if(tpl||tomorrowCats.length){
     h+='<div class="form-box">';
-    if(tpl)h+='<div style="font-size:13px;font-weight:600;margin-bottom:6px">📋 '+escapeHtml(tpl.name)+'</div>';
+    if(tpl)h+='<div style="font-size:13px;font-weight:600;margin-bottom:6px">'+ic('i-clipboard',12)+' '+escapeHtml(tpl.name)+'</div>';
     if(tomorrowCats.length){
       h+='<div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">本日のメニュー</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:4px">'+
@@ -2902,13 +3008,13 @@ function goRehabPlayer(injId){window._subViewActive=true;
     }).join('')+'</div>';
     h+='<div class="fl" style="margin-bottom:14px"><label>全体コメント</label><textarea class="ipt" id="rl-comment" placeholder="今日全体の状況..."></textarea></div>'+
     '<button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="doSaveRehabLogTrainer('+injId+',true,'+tpl.exercises.length+',this)">リハビリ終了・保存</button>'+
-    '<button class="btn" style="width:100%;margin-bottom:10px;border-color:var(--purple);color:var(--purple)" onclick="goRTestRecord('+injId+')">🏁 復帰テストを実施する</button>';
+    '<button class="btn" style="width:100%;margin-bottom:10px;border-color:var(--purple);color:var(--purple)" onclick="goRTestRecord('+injId+')">'+ic('i-flag',13)+' 復帰テストを実施する</button>';
   } else {
     h+='<div id="rl-custom-items"></div>'+
     '<button class="btn" style="width:100%;margin-bottom:10px" onclick="addCustomRehabItemT()">+ 種目を追加</button>'+
     '<div class="fl" style="margin-bottom:14px"><label>全体コメント</label><textarea class="ipt" id="rl-comment" placeholder="今日全体の状況..."></textarea></div>'+
     '<button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="doSaveRehabLogTrainer('+injId+',false,0,this)">リハビリ終了・保存</button>'+
-    '<button class="btn" style="width:100%;margin-bottom:10px;border-color:var(--purple);color:var(--purple)" onclick="goRTestRecord('+injId+')">🏁 復帰テストを実施する</button>';
+    '<button class="btn" style="width:100%;margin-bottom:10px;border-color:var(--purple);color:var(--purple)" onclick="goRTestRecord('+injId+')">'+ic('i-flag',13)+' 復帰テストを実施する</button>';
   }
 
   // 記録履歴
@@ -3068,7 +3174,7 @@ function renderChgChkGate(injId){
     if(c.night)flags.push('夜間痛');
     if(c.swell)flags.push('腫れ・熱感の増加');
     return'<div style="background:var(--red-bg);border:1.5px solid var(--red);border-radius:var(--radius);padding:12px">'+
-    '<div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:6px">⚠️ 今日は中断してください</div>'+
+    '<div style="font-weight:700;color:var(--red);font-size:14px;margin-bottom:6px">'+ic('i-warn',13)+' 今日は中断してください</div>'+
     '<div style="font-size:12px;line-height:1.6;margin-bottom:10px">'+flags.join('・')+'があります。炎症や組織への負担が増えているサインかもしれません。<b>自己判断でリハビリを進めず、スタッフに連絡して指示を仰いでください。</b></div>'+
     '<button id="chgchk-esc-btn" onclick="escalateChgChk('+injId+',this)" style="width:100%;padding:10px;border-radius:var(--radius);border:1.5px solid var(--red);background:var(--red);color:var(--white);font-size:14px;font-weight:700;cursor:pointer">📤 この内容をスタッフに連絡する</button>'+
     '</div>';
@@ -3408,7 +3514,7 @@ function renderMMTDots(inj,evals){
     rows+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px"><span style="font-size:11px;min-width:64px;color:var(--text-secondary)">'+escapeHtml(mm)+'</span><span style="display:flex;gap:3px;align-items:center">'+dots+'</span><span style="font-size:11px;font-weight:700;margin-left:4px">'+escapeHtml(String(cur))+'</span>'+(hi>=0?'<span style="font-size:10px;color:var(--text-tertiary)">健:'+escapeHtml(String(ev.mmtH[mm]))+'</span>':'')+'</div>';
   });
   if(!rows)return'';
-  return '<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-tertiary)"><div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">💪 徒手筋力（MMT）'+fmt(ev.date)+'</div>'+rows+'</div>';
+  return '<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-tertiary)"><div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">'+ic('i-dumbbell',12)+' 徒手筋力（MMT）'+fmt(ev.date)+'</div>'+rows+'</div>';
 }
 // 1指標の不足ゲージカード（リング＋現状/基準＋あと◯◯＋出所ラベル＋LSI＋期限＋スパークライン）
 function deficitGaugeCard(ch,inj,m,mi){
@@ -3483,7 +3589,7 @@ function renderDeficitGauges(iid){
   if(!metrics.length)return'';
   var evals=ch.evals||[];
   var h='<div class="form-box" style="border:1px solid var(--border-secondary)">';
-  h+='<div class="form-title">🔥 回復ゲージ</div>';
+  h+='<div class="form-title">'+ic('i-fire',13)+' 回復ゲージ</div>';
   h+='<div style="font-size:11.5px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">各指標の達成率と「あと◯◯」。基準は 目標→健側→正常値→初回評価 の順で自動解決します。</div>';
   h+='<div style="display:flex;flex-wrap:wrap;gap:10px">';
   metrics.forEach(function(m,mi){h+=deficitGaugeCard(ch,inj,m,mi);});
@@ -3504,7 +3610,7 @@ function renderQuickEvalCard(injId){
   var draft=null;try{var ds=localStorage.getItem('rm_qe_'+injId);if(ds){var dobj=JSON.parse(ds);if(dobj&&dobj.date===todayStr())draft=dobj;}}catch(e){}
   var pp=latestPainVal(evals);
   var h='<div class="form-box" style="border-left:3px solid var(--blue)">';
-  h+='<div class="form-title">⚡ クイック評価</div>';
+  h+='<div class="form-title">'+ic('i-bolt',13)+' クイック評価</div>';
   h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">今日の痛みと重要指標をサッと記録します。カルテの「評価記録」に保存され、推移グラフに反映されます。</div>';
   h+='<div class="fl" style="margin-bottom:14px"><label>評価日</label><input class="ipt" type="date" id="qe-date" value="'+todayStr()+'"></div>';
   // 痛み（運動時）。前回値をスライダー初期値にするが、動かさない限り保存しない（前回値の複製事故防止）
@@ -3641,7 +3747,7 @@ function qeShowResult(injId,painVal,summary,btn){
   var h='<div style="background:var(--green-bg);border:1.5px solid var(--green);border-radius:var(--radius);padding:12px;margin-bottom:10px">'+
     '<div style="font-weight:700;color:var(--green);font-size:14px;margin-bottom:6px">✓ 評価を保存しました</div>'+
     '<div style="font-size:12px;line-height:1.8">'+(lines.length?lines.join(' ・ '):'（記録なし）')+'</div>'+
-    (improved>0?'<div style="font-size:12px;color:var(--green);font-weight:600;margin-top:6px">'+improved+'項目が前回より改善しています 🎉</div>':'')+
+    (improved>0?'<div style="font-size:12px;color:var(--green);font-weight:600;margin-top:6px">'+improved+'項目が前回より改善しています '+ic('i-trophy',12)+'</div>':'')+
     '<div style="font-size:11px;color:var(--text-secondary);margin-top:6px">カルテの「評価記録」に保存しました。続けて下で今日のリハビリ実施内容を記録できます。</div>'+
     '</div>';
   var res=document.getElementById('qe-result');if(res)res.innerHTML=h;
@@ -3654,7 +3760,7 @@ function goRTestRecord(injId){window._subViewActive=true;
   var tpl=(D.rtest_tpl||[]).find(function(t){return t.id===inj.rtestTplId;});
   var broncoTarget=inj.broncoTarget||null;
 
-  var h='<div style="font-size:17px;font-weight:600;margin-bottom:4px">🏁 復帰テスト</div>'+
+  var h='<div style="font-size:17px;font-weight:600;margin-bottom:4px">'+ic('i-flag',16)+' 復帰テスト</div>'+
   '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">'+escapeHtml(p.name)+' / '+(inj.side||'')+inj.part+'</div>';
 
   if(!tpl){
@@ -3868,7 +3974,7 @@ function goSetNextMenuT(injId){window._subViewActive=true;
   var p=D.p.find(function(x){return x.id===inj.pid;});if(!p)return;
   var plan=(D.rplan||[]).find(function(x){return x.injId===injId;});
   var cur=plan?plan.tomorrowCats||[]:[];
-  var h='<div style="font-size:17px;font-weight:600;margin-bottom:8px">📅 '+escapeHtml(p.name)+' の次回メニュー</div>'+
+  var h='<div style="font-size:17px;font-weight:600;margin-bottom:8px">'+ic('i-calendar',16)+' '+escapeHtml(p.name)+' の次回メニュー</div>'+
   '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">今日の状況を踏まえて次回のメニューを選択してください</div>'+
   '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">'+
   RCATS.map(function(c,ci){
@@ -4057,7 +4163,7 @@ ld().then(function(){
   showLogin();
 }).catch(function(e){
   console.error(e);
-  document.getElementById('loading-screen').innerHTML='<div style="text-align:center"><div style="font-size:40px;margin-bottom:16px">⚠️</div><div>読み込みエラー</div><button onclick="location.reload()" style="margin-top:12px;padding:8px 16px;cursor:pointer">再試行</button></div>';
+  document.getElementById('loading-screen').innerHTML='<div style="text-align:center"><div style="margin-bottom:16px">'+ic('i-warn',40,'var(--amber)')+'</div><div>読み込みエラー</div><button onclick="location.reload()" style="margin-top:12px;padding:8px 16px;cursor:pointer">再試行</button></div>';
 });
 </script>
 </body>
