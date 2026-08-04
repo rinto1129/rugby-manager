@@ -7,8 +7,24 @@
 ---
 
 ## 最終更新
-- 日時: 2026-08-04（**🔴v2プラン: P9b push済み `c4de533`。→ 次は P9c（総回帰）**）
+- 日時: 2026-08-04（**🔴v2プラン: P9c（総回帰）実装完了・push前。ユーザー確認→pushでv2プラン全フェーズ完了**）
 - 更新者: Claude
+- **✅ P9c 総回帰 実装完了（push前）**: player/staff/trainer 3ファイル＋CLAUDE.md＋sync_manifest＋test_pitch.js変更。検証: `run_tests.py`=**76 run/0 fail**・`sync_check.py`=**ALL SYNC OK（identical 123＋variant 15）**・`--residue`=0・jsc全サイト緑・読み取り専用ブラウザ巡回5サイト（coach全6タブ/staff全20ビュー/player全タブ＋mystatus/trainerログイン/landing・CSS/JS起因コンソールエラー0）。実装内容↓。
+  - **P0基線比較（全量）**: 基線47実行が全て現存・全PASS・消失0・基線ペアFAIL 0。新規29実行追加（計76）。new Chart数もP0と完全一致（14/12/2/4/0）。全var()参照の定義存在も5ファイル機械確認（staff/trainerの`var(--card-bg,transparent)`はrom-rom期からの意図的フォールバック＝非回帰）。
+  - **P9b残置修正**: リハビリタブのrtpPitchHtml（T.injury内2685）がonSnapshot再描画のたびボールが走る件を`still:!!_visitedTabs[curTab]`で解消（P9bレビュー確定①と同型）。`rtpPitchHtml(stage,opts)`にopts透過を追加（showMyChart=クラスB毎回アニメは無改変）。ブラウザ実挙動で確認済み（再描画→rtp-anim無し・showMyChart→有り）。test_pitch.jsに回帰3アサーション追加。
+  - **sync全量照合（プランのリスク7対応）**: 全4サイトの同名トップレベル関数を全数スキャン→**md5一致なのに未登録だった62件をidentical一括登録**＋**同名md5不一致71件をワークフローで全数トリアージ**（by-design 40/drift-bug 18/variant-lock 16）→**意図的per-site差15件をvariant台帳ロック**（saveEval/saveSOAP/delSOAP/drawEvalCharts/renderInjHistoryBox/getPlayerTapeRecs/filterTapeRecList/getChart/getCurrentMSess/svSafe/dC/dCA/_armReveal/retryPendingRebuild/numStepHTML(player)）。variantの意図的変更は`sync_check.py --update`で確定する運用。
+  - **🔑 確定ドリフト修正（反証を生き残った実バグ）**:
+    - **staff renderChartTimeline 二重エスケープ**（c845d66がtrainerのみ修正）: descは`<br>`/`tl-metric`/SVG入りのHTML組み立てなのにstaffだけ描画時escapeHtmlが残り、カルテ経過タブでSOAP/評価/RTPイベントがタグの生文字列表示になっていた→描画側エスケープ除去＋**inj.editLogイベント（基本情報編集履歴）もstaffタイムラインへ移植**（edit型のC/G/IC/typeOrder追加・`--steel-a60`トークン新設）。併せて**ROM/MMT値とimgFindings配列のエスケープをstaff/trainer両方に追加**（P7c evalSummary修正と同型＝自由記述入力）。
+    - **staff setRtpLevel が rtpLevelDate を書かない**（c845d66の片側欠落）: 全サイトのタイムラインが読む共有データで変更日が旧値のまま誤表示→`rtpLevelDate=todayStr()`＋`rtpLevelBy`追加（confirmはtrainer専用=見習いゲートのため足さない）。
+    - **staff saveTapeRec**: ①guardSubmit無し（連打で別ID重複登録）②編集時authorId消失（記録者表示がauthor文字列へ劣化）③失敗ハンドリング無し（無通知で保存誤認）→trainer版(c845d66/P6)と同期。
+    - **staff renderInjComments が旧インライン実装**（P6委譲化の漏れ）: 怪我詳細の初回表示でコメント「編集」ボタンが出ず、投稿/削除後の再描画でのみ出現→ListOnly委譲化（player/trainerと同構造）。
+    - **trainer startListeners/ld のリスナー堅牢化未受領**（7ccfc39系監査対応の漏れ）: 空配列拒否で「他端末の最終1件削除が反映されない幽霊レコード」→空配列受理（p/trainersのみ非空要求=全消し事故ガード）＋`_lastRaw`同一内容スキップ＋fromCache巻き戻しガードを移植。
+    - **sv層のreturn取りこぼし**（62dbe27の写しむら）: player svSafe/svSafeUpdate・staff svDel/svRec（+onError透過）にreturn追加→svSafeUpdate/svRec/svDelがidentical化。
+    - **avH/getCurrentUserName のnullガード非対称**: trainer版（`if(!p)return''`/`typeof myPid`ガード）をplayer/staffへ移植→3サイトidentical化（avH(undefined)の潜在描画クラッシュ根絶）。
+  - **化粧差の同一化（identical昇格）**: fmt（trainerのみ全角マイナス→ASCII）・deficitGaugeCard/resolveMetricBase（trainerの✓/🎯残渣→ic()/除去=282b43e掃討のtrainer未適用分）・timeOptions（引数名とコメントのみの差→統一）・sv（console.error大小文字）。**反証で却下4件は不処置**（renderTapeRecCard=trainerにi-play未定義／postInjComment=.catch差は実害なし等）。
+  - **敵対的レビュー**: ワークフロー24体（トリアージ4班＋文書監査＋横断回帰→drift主張18件を個別反証）。**横断回帰(P9a×P9b相互作用)の所見はmedium以上0件**。verify10体が使用量上限で未完走→**P8/P9aと同様メインループで反証を代替**（全10件をコード裏取りし、上記の実バグ確定/却下を判定）。
+  - **文書最終更新**: CLAUDE.md=データキー全量（SK36キー＋f実フィールド＋体重dedup注記）・保存層/雛形v2/表示系(P9)/rv機構/sRPE系の正典化・sync_manifest正典宣言・テスト64本/76実行・reports//dev/注記・ネオン嗜好のダークサイト限定注記・フィクスチャ相対日付ルール・実装済み機能リスト現状化・sv('p')行番号1235修正。
+  - **整理**: 統合済みworktree(keen-kowalevski)とブランチを`git worktree remove`+`branch -D`で削除。previewroot/launch.jsonを本セッションscratchpadに実コピー方式で再構築。
 - **✅ P9b push済み `c4de533`**: **player/staff/trainer/coach 4ファイル＋sync_manifest変更（+481/-115行）＋新テスト2本**（`dev/test_pitch.js`=3サイト実行47/39/39アサーション・`dev/test_fieldmap_coach.js`=26アサーション）。検証: `run_tests.py`=**76 run/0 fail**・`sync_check.py`=**ALL SYNC OK**・`--residue`=**0でexit 0**・jsc全サイト緑・読み取り専用ブラウザ巡回4サイト目視OK（coachフィールドマップ=本番13名で描画確認・playerランクピッチ=シルバー到達点にボール・staff提出率ピッチ・trainerログインpitch-lines）。実装内容↓。
   - **pitchProgressHtml(idx,total,labels,opts)汎用化（identical: player/staff/coach）**: rtpPitchHtml(player)のpos配列を`Math.round((3+94*i/(n-1))*10)/10`で動的生成（total=7で旧配列[3,18.7,34.3,50,65.7,81.3,97]とバイト一致＝test_pitchでロック）。**小数idx対応**（ボール線形補間・整数時のみ現在ドット強調）・opts={h,ball,caption,dots,inner,still}・`data-pitch`属性（staffクラスAフック用）。**色は--pitch-*中立トークンのみ参照**（--pitch-green-1/2・--pitch-dot・--pitch-line-strong/mid/weak・--pitch-label・--pitch-done・--pitch-cur・--pitch-cur-ring・--pitch-accent）＝同名トークン別値方式でplayerは旧値エイリアス（描画不変）・coachはナイター芝(#0F2318→#132B1E・プラン指定値)。**ボールはopts.ball注入**（ic依存を関数から排除）。rtpPitchHtmlは薄いラッパ温存（player専用・呼出2箇所無改変）。rtp系CSS(player 220-229)は--pitch-cur系に中立化しstaffへ移植。
   - **player適用3箇所**: ①mystatus処方箋カード=弱点種目のランク前進ピッチ（`rankPitchIdx`/`rankPitchLabels`新設・スタート線+5ランク線=6本・現ランク→次ランク閾値の内分）②showMeasureResult=ランクが動いた最初のBIG3種目の現在地ピッチ（変動なしの日は非表示）③mydata週間ボリューム=直近7日vs前7日のボール前進（先週比100%=トライ・**100%キャップ**=急増を煽らない・wPrev=0はガード）。
@@ -126,17 +142,17 @@
 | P8 | IA再編＋新機能（player動的タブ/ホーム7ブロック/NO SIDE測定シート/staff6グループ+キュー+マトリクス/coach週報+検索） | ✅ push済み `2ae7860`（敵対的レビュー確定13件全処置。trainer無変更）。既存赤3件は別コミット`cb0e9c3`で相対日付化して解消＝**現在67 run/0 fail** |
 | P9a | 生hex/rgba残渣一掃（P0台帳から変換済み分を差引いた残渣ゼロへ） | ✅ push済み `a7ef001`（406箇所var()化・residue=0ゲート化・既存未定義参照バグ3件修正・72 run/0 fail・sync OK。CHTは不採用＝Chart色は許可リスト管理） |
 | P9b | モチーフ・アニメ仕上げ（pitchProgressHtml汎用化+RTPフィールドマップ+trainer移植） | ✅ push済み `c4de533`（76 run/0 fail・sync OK・residue 0・敵対的レビュー12体→確定1件修正済み） |
-| P9c | 総回帰（38+新規テストP0基線比較・sync全量照合・全サイト目視巡回・CLAUDE.md/HANDOFF最終更新） | ⬜ 次はここ |
+| P9c | 総回帰（P0基線比較・sync全量照合＝identical123/variant15・確定ドリフト7群修正・全サイト目視巡回・文書最終更新） | ✅ 実装完了・push前（76 run/0 fail・sync OK・residue 0。ワークフロー24体＋メインループ反証代替） |
 
 ### P0で新設した検証基盤（以後の全フェーズで使う）
 
 | ツール | 用途 |
 |---|---|
-| `dev/run_tests.py` | 全38テスト一括実行（対象サイト自動判別。旧テストはLEGACY_TARGETS表、新テストは先頭に`// 実行: jsc ... /tmp/<site>.js`必須）。基線: `dev/audit/baseline_tests.json`（47実行・全PASS・2026-07-13） |
-| `dev/sync_check.py` | 4ファイル同期照合（`dev/sync_manifest.json`=台帳。identical/variant/chart_counts）。共通関数を触ったら毎回実行。`--update`=意図的変更の確定、`--residue`=生hex/rgba残渣レポート |
-| `dev/hex_ledger.py` | 生hex/rgba/グラデ台帳の再生成 → `dev/audit/hex_ledger.json`（現状: hex634箇所/rgba276箇所/グラデ76定義。P3の変換対象リスト） |
+| `dev/run_tests.py` | 全64テスト・76実行を一括（対象サイト自動判別。旧テストはLEGACY_TARGETS表、新テストは先頭に`// 実行: jsc ... /tmp/<site>.js`必須）。基線: `dev/audit/baseline_tests.json`（47実行・全PASS・2026-07-13。P9cで全ペア現存・全PASSを照合済み） |
+| `dev/sync_check.py` | 4ファイル同期照合（`dev/sync_manifest.json`=台帳。identical123/variant15/chart_counts）。共通関数を触ったら毎回実行。`--update`=variantの意図的変更の確定、`--residue`=生hex/rgba残渣ゲート（違反>0でexit 1・残渣0維持） |
+| `dev/hex_ledger.py` | 生hex/rgba/グラデ台帳の再生成 → `dev/audit/hex_ledger.json`（P9aで残渣一掃済み。許可リスト=dev/audit/residue_allow.json 67値） |
 
-- **既に検出済みの同期ズレ**: ppCardHtmlのtrainer版が旧絵文字版のまま（player/staffはSVGアイコン版に更新済み）。trainerに`ic()`とi-push/i-pull等シンボルが無いため、P1aで移植して同期→manifestでidenticalへ昇格する（台帳のvariant._todoに記録済み）
+- ~~既に検出済みの同期ズレ: ppCardHtmlのtrainer版が旧絵文字版のまま~~ → **解消済み**（P1でic移植・P9bでidentical登録。P9cの全量照合でも同期ズレは全数処置済み＝未登録の意図的差分はvariant台帳が正典）
 
 ### 検証テンプレ（毎フェーズ）
 1. `python3 dev/run_tests.py`（全回帰・新規失敗ゼロ）＋新規テスト追加
@@ -145,7 +161,7 @@
 4. push前に `git diff --stat` で対象外変更ゼロ確認→**ユーザー確認→push**→Cmd+Shift+R確認依頼
 
 ### 実装上の絶対制約（v2プランより）
-- 保存は svSafe/svSafeUpdate/svSafeSeq のみ。**staff:1135付近の初回シード `sv('p')` は不可侵**
+- 保存は svSafe/svSafeUpdate/svSafeSeq のみ。**staff:1235付近の初回シード `sv('p')` は不可侵**（素のsv呼出はリポジトリ全体でこの1箇所のみ＝メモリ`project_plain_sv_clobber`の掃討完了）
 - スキーマは**追加フィールドのみ**（editedAt/source/durMin/deleted等）。既存データの移行処理はしない
 - 単一HTMLファイル構成維持。共通関数・トークンは各ファイルへコピー＋sync_check.pyで照合
 - 新規マークアップは**生hex禁止・var()のみ**（P3以降のトークンで書く）
@@ -154,7 +170,7 @@
 
 ## 保留中の別プラン
 
-- **怪我×リハ連携の残り**（プラン `rom-rom-tender-sundae.md`）: Phase 0-2完了・push済み。残=Phase 3(提案+安全ゲート+医師clearance+脳震盪)/4(trainer pre/post)/5(やれてない検出)/6(player/coach薄く)。**v2プラン完了後に再開**。再開時はchartUpdate(P1b)+リハ1画面(P7d)+roleGate(P4)+承認ルール(P7c)を前提に書く
+- **怪我×リハ連携の残り**（旧プラン `rom-rom-tender-sundae.md` — **⚠️プランファイルは~/.claude/plans/に現存しない＝この節の記載が正典**）: Phase 0-2完了・push済み。残=Phase 3(提案+安全ゲート+医師clearance+脳震盪)/4(trainer pre/post)/5(やれてない検出)/6(player/coach薄く)。**v2プラン完了後に再開**。再開時はchartUpdate(P1b)+リハ1画面(P7d)+roleGate(P4)+承認ルール(P7c)を前提に書き直す
 - ~~TimeTree連携フェーズ1(pp)~~ → **実装済み・完了扱い**（ppCardHtml/ppFlip/ppUndo=staff:4431/trainer:923、ppAutoFlipもfinishTraining 4837に導入済み。旧HANDOFFの「未着手」は誤り）。残件の「pp編集をstaffに集約」はv2プランP7dで吸収
 
 ## 過去の重大事故と教訓（要点のみ・詳細はgit履歴の旧HANDOFF）
@@ -165,10 +181,10 @@
 - guardSubmit(二重送信ガード)はplayerに導入済み。新規フォームには必ず適用（雛形v2に含む）
 
 ## リポジトリの状態
-- ブランチ: main。origin/main=`a7ef001`（P9a一式=5サイトHTML＋dev基盤4点＋HANDOFF、11ファイル。ユーザー承認2026-08-03でpush済み）。この上に積む
+- ブランチ: main。origin/main=`731e998`（P9b `c4de533`＋HANDOFF更新まで push済み）。作業ツリーに**P9c一式が未コミット**（player/staff/trainer/CLAUDE.md/HANDOFF/sync_manifest/test_pitch.js）＝ユーザー確認→pushでv2プラン完了
 - テスト用選手「テスト選手」(CTB/1年, note=動作確認用)が本番に1名存在（削除可）
 - ⚠️ 検証はjsc模擬実行で完結（本番Firestore直結のためブラウザで代理編集/削除の保存ボタンは押さない）。最終目視はユーザーのCmd+Shift+R確認に委ねる
-- **バックグラウンドタスク完了・統合済み**: 既存赤3本のフィクスチャ相対日付化（task_3f0c3890）は別worktree(`.claude/worktrees/keen-kowalevski-01e4c2`)で完了→本セッションでcherry-pick統合し`cb0e9c3`としてpush済み。**現在`run_tests.py`=67 run/0 fail（全緑）**。当該worktree/ブランチ(`claude/keen-kowalevski-01e4c2`)は統合済みにつき今後不要（次回整理時に`git worktree remove`で片付けてよい）
+- **現在`run_tests.py`=76 run/0 fail（全緑）**。worktree/ブランチ(`claude/keen-kowalevski-01e4c2`)はP9cで`git worktree remove`+`branch -D`済み（内容はcb0e9c3としてmainに統合済みだった）
 
 ## 運用ルール（このプロジェクト固有）
 - データは「短いキー」で読む。保存は `svSafe` / `svSafeUpdate` を使う。

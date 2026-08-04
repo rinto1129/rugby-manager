@@ -379,9 +379,752 @@
     "trainer"
    ],
    "kind": "function"
+  },
+  "agoStr": {
+   "files": [
+    "coach",
+    "player"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "analyzeRecurrence": {
+   "files": [
+    "coach",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "avgOf": {
+   "files": [
+    "coach",
+    "player"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "badgeColor": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "bindInjCommSubmit": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "broncoFmt": {
+   "files": [
+    "coach",
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "broncoFromInputs": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "cancelEditInjComment": {
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "darkenForLight": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "daysBetween": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "delEval": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "doEditInjComment": {
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "editInjComment": {
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "estimateOneRM": {
+   "files": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "exMetrics": {
+   "files": [
+    "coach",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "fitTimeStr": {
+   "files": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "fmtDateTime": {
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "fmtNum": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "gaugeCalc": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "gaugeColor": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "gaugeSVG": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getAlloScore": {
+   "files": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getAlloTeamRank": {
+   "files": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getBestPh": {
+   "files": [
+    "coach",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getCompareEx": {
+   "files": [
+    "coach",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getCurrentFFMIInfo": {
+   "files": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getExEstBase": {
+   "files": [
+    "coach",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getExSeries": {
+   "files": [
+    "coach",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getFrequentInjuryPlayers": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getLatestE1RM": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getPlayer1RM": {
+   "files": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getPlayerInjHistory": {
+   "files": [
+    "coach",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getSamePartInjuries": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getSlotMenu": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getWeakLift": {
+   "files": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getWeakWeeklyVolume": {
+   "files": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "getWeightBandInfo": {
+   "files": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "latestEvalForMetric": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "latestHealthyForMetric": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "metricEvalRef": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "metricSeries": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "msessStatus": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "msessType": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "normalForMetric": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "numStep": {
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "oldestPatientForMetric": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "phInMSess": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "readEvalMetric": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "recorderName": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "renderMMTDots": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "roleBadgeHtml": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "sparkCaption": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "sparklineSVG": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "symPct": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "tapeSlotBooked": {
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "tlaHalf": {
+   "files": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "tlaHalves": {
+   "files": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "tlaKey": {
+   "files": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "tlogAll": {
+   "files": [
+    "coach",
+    "player",
+    "staff"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "todayStr": {
+   "files": [
+    "coach",
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "toggleReturnCriteria": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "unresolveInj": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "全量照合で一括登録(md5一致確認済み)"
+  },
+  "avH": {
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "総回帰でidentical昇格（ドリフト解消/化粧差統一）"
+  },
+  "getCurrentUserName": {
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "総回帰でidentical昇格（ドリフト解消/化粧差統一）"
+  },
+  "svSafeUpdate": {
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "総回帰でidentical昇格（ドリフト解消/化粧差統一）"
+  },
+  "svRec": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "総回帰でidentical昇格（ドリフト解消/化粧差統一）"
+  },
+  "svDel": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "総回帰でidentical昇格（ドリフト解消/化粧差統一）"
+  },
+  "deficitGaugeCard": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "総回帰でidentical昇格（ドリフト解消/化粧差統一）"
+  },
+  "resolveMetricBase": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "総回帰でidentical昇格（ドリフト解消/化粧差統一）"
+  },
+  "fmt": {
+   "files": [
+    "player",
+    "staff",
+    "trainer",
+    "coach"
+   ],
+   "kind": "function",
+   "_p9c": "総回帰でidentical昇格（ドリフト解消/化粧差統一）"
+  },
+  "timeOptions": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "総回帰でidentical昇格（ドリフト解消/化粧差統一）"
+  },
+  "sv": {
+   "files": [
+    "player",
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "総回帰でidentical昇格（ドリフト解消/化粧差統一）"
+  },
+  "numStepHTML": {
+   "files": [
+    "staff",
+    "trainer"
+   ],
+   "kind": "function",
+   "_p9c": "総回帰でidentical昇格（ドリフト解消/化粧差統一）"
   }
  },
- "variant": {},
+ "variant": {
+  "saveEval": {
+   "files": {
+    "staff": "f186a7d1a6e3",
+    "trainer": "566461871e68"
+   },
+   "kind": "function",
+   "_p9c": "総回帰トリアージ=意図的per-site差。無断変更検出用の台帳ロック"
+  },
+  "saveSOAP": {
+   "files": {
+    "staff": "06ca40542317",
+    "trainer": "da9d6a70d791"
+   },
+   "kind": "function",
+   "_p9c": "総回帰トリアージ=意図的per-site差。無断変更検出用の台帳ロック"
+  },
+  "delSOAP": {
+   "files": {
+    "staff": "1704936b6c9e",
+    "trainer": "160843a47db8"
+   },
+   "kind": "function",
+   "_p9c": "総回帰トリアージ=意図的per-site差。無断変更検出用の台帳ロック"
+  },
+  "drawEvalCharts": {
+   "files": {
+    "staff": "17613ae6d89b",
+    "trainer": "108187be8bee"
+   },
+   "kind": "function",
+   "_p9c": "総回帰トリアージ=意図的per-site差。無断変更検出用の台帳ロック"
+  },
+  "renderInjHistoryBox": {
+   "files": {
+    "staff": "17c809315277",
+    "trainer": "4a1071300390"
+   },
+   "kind": "function",
+   "_p9c": "総回帰トリアージ=意図的per-site差。無断変更検出用の台帳ロック"
+  },
+  "getPlayerTapeRecs": {
+   "files": {
+    "staff": "5a979efc4ba9",
+    "trainer": "7591cb66cc61"
+   },
+   "kind": "function",
+   "_p9c": "総回帰トリアージ=意図的per-site差。無断変更検出用の台帳ロック"
+  },
+  "filterTapeRecList": {
+   "files": {
+    "staff": "9eeff27003cf",
+    "trainer": "1d814e8e80f0"
+   },
+   "kind": "function",
+   "_p9c": "総回帰トリアージ=意図的per-site差。無断変更検出用の台帳ロック"
+  },
+  "getChart": {
+   "files": {
+    "player": "ad018667343e",
+    "staff": "bff4e4a1e9c0",
+    "trainer": "bff4e4a1e9c0",
+    "coach": "ad018667343e"
+   },
+   "kind": "function",
+   "_p9c": "総回帰トリアージ=意図的per-site差。無断変更検出用の台帳ロック"
+  },
+  "getCurrentMSess": {
+   "files": {
+    "player": "5fe7ac980376",
+    "staff": "5fe7ac980376",
+    "trainer": "daaaa081c3de"
+   },
+   "kind": "function",
+   "_p9c": "総回帰トリアージ=意図的per-site差。無断変更検出用の台帳ロック"
+  },
+  "svSafe": {
+   "files": {
+    "player": "e007ed058eb8",
+    "staff": "659dd246ddd5",
+    "trainer": "43bda81cfe48"
+   },
+   "kind": "function",
+   "_p9c": "総回帰トリアージ=意図的per-site差。無断変更検出用の台帳ロック"
+  },
+  "dC": {
+   "files": {
+    "player": "aa67b056e569",
+    "staff": "aa67b056e569",
+    "trainer": "aa67b056e569",
+    "coach": "f1588a8153a4"
+   },
+   "kind": "function",
+   "_p9c": "総回帰トリアージ=意図的per-site差。無断変更検出用の台帳ロック"
+  },
+  "dCA": {
+   "files": {
+    "player": "8c4cd8934b08",
+    "staff": "8c4cd8934b08",
+    "coach": "358d27027412"
+   },
+   "kind": "function",
+   "_p9c": "総回帰トリアージ=意図的per-site差。無断変更検出用の台帳ロック"
+  },
+  "_armReveal": {
+   "files": {
+    "player": "f4774b734c55",
+    "staff": "13c7f7ba501f",
+    "trainer": "c9e1048222e5"
+   },
+   "kind": "function",
+   "_p9c": "総回帰トリアージ=意図的per-site差。無断変更検出用の台帳ロック"
+  },
+  "retryPendingRebuild": {
+   "files": {
+    "player": "fbdcb46d2129",
+    "staff": "e9255217ac03"
+   },
+   "kind": "function",
+   "_p9c": "総回帰トリアージ=意図的per-site差。無断変更検出用の台帳ロック"
+  },
+  "numStepHTML": {
+   "files": {
+    "player": "5cfb2ef67e7f"
+   },
+   "kind": "function",
+   "_p9c": "playerのみ44pxタッチターゲット版（71eed1d）＝意図的リッチ差分の台帳ロック"
+  }
+ },
  "chart_counts": {
   "player": 14,
   "staff": 12,

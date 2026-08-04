@@ -70,6 +70,11 @@ if(typeof rtpPitchHtml==='function'){
   ok('ラッパ: ピッチ+ボール+キャプション',has(w,'i-ball')&&has(w,'トライ = 完全復帰')&&has(w,'left:50%;top:29px'));
   ok('ラッパ: 旧クランプ互換(null→0)',has(rtpPitchHtml(null),'left:3%;top:29px'));
   ok('ラッパ: 旧クランプ互換(99→97%)',has(rtpPitchHtml(99),'left:97%;top:29px'));
+  // P9c: opts透過（リハビリタブのstill用）。opts無し=アニメあり（showMyChart従来仕様）
+  ok('ラッパ: opts無しはrtp-anim付き',has(w,'rtp-anim'));
+  var wStill=rtpPitchHtml(3,{still:true});
+  ok('ラッパ: still:trueでrtp-anim無し',!has(wStill,'rtp-anim'));
+  ok('ラッパ: still指定でもball/caption既定は維持',has(wStill,'i-ball')&&has(wStill,'トライ = 完全復帰'));
 }
 if(typeof rankPitchIdx==='function'){
   var ranks=[{k:'bronze',pct:0.70},{k:'silver',pct:0.85},{k:'gold',pct:1.00},{k:'platinum',pct:1.10},{k:'diamond',pct:1.20}];

@@ -36,7 +36,7 @@
   --ink-a32:rgba(42,10,12,.32);--jade:#0E9F6E;--maroon-a0:rgba(141,0,0,0);--maroon-a10:rgba(141,0,0,.10);--maroon-a14:rgba(141,0,0,.14);--maroon-a38:rgba(141,0,0,.38);
   --maroon-vivid-a12:rgba(193,18,31,.12);--maroon-vivid-a14:rgba(193,18,31,.14);--pale-a10:rgba(245,233,233,.10);--pale-a3:rgba(245,233,233,.03);--paper:#FFFDF6;--pink:#EC4899;
   --pink-a60:rgba(236,72,153,.6);--pull-bg:rgba(194,65,12,.10);--purple-l:#A78BFA;--purple-vivid:#8B5CF6;--purple-vivid-a60:rgba(139,92,246,.6);--red-vivid:#EF4444;
-  --red-vivid-a12:rgba(239,68,68,.12);--red-vivid-a60:rgba(239,68,68,.6);--rose-l-a55:rgba(222,182,182,.55);--steel:#A9B8CE;--text-primary-a6:rgba(35,20,22,.06);--text-primary-a7:rgba(35,20,22,.07);
+  --red-vivid-a12:rgba(239,68,68,.12);--red-vivid-a60:rgba(239,68,68,.6);--rose-l-a55:rgba(222,182,182,.55);--steel:#A9B8CE;--steel-a60:rgba(169,184,206,.6);--text-primary-a6:rgba(35,20,22,.06);--text-primary-a7:rgba(35,20,22,.07);
   --white:#fff;--white-a12:rgba(255,255,255,.12);--white-a16:rgba(255,255,255,.16);--white-a20:rgba(255,255,255,.2);--white-a50:rgba(255,255,255,.5);--white-a6:rgba(255,255,255,.06);
   /* P9b: ピッチモチーフ（playerと同値・ライト芝。pitchProgressHtml=identicalが参照する語彙） */
   --pitch-accent:var(--maroon);--pitch-cur:var(--maroon-vivid);--pitch-cur-ring:rgba(193,18,31,.18);--pitch-done:var(--maroon);--pitch-dot:#CBDFD3;--pitch-green-1:#EDF7F1;--pitch-green-2:#E3F2E9;
@@ -1285,16 +1285,16 @@ function svSafeUpdate(k,updateFn,onDone,onError){
   }).then(function(latest){D[k]=latest;if(onDone)onDone();}).catch(function(e){console.error('svSafeUpdate error:',k,e);if(onError)onError(e);else alert('保存に失敗しました');});
 }
 // 単一レコードをトランザクションで安全にupsert（id一致で置換、なければ追加）
-function svRec(k,rec,onDone){
-  svSafeUpdate(k,function(latest){
+function svRec(k,rec,onDone,onError){
+  return svSafeUpdate(k,function(latest){
     var i=latest.findIndex(function(x){return idEq(x.id,rec.id);});
     if(i>=0)latest[i]=rec;else latest.push(rec);
     return latest;
-  },onDone);
+  },onDone,onError);
 }
 // 単一レコードをトランザクションで安全に削除（id一致）
 function svDel(k,id,onDone){
-  svSafeUpdate(k,function(latest){return latest.filter(function(x){return!idEq(x.id,id);});},onDone);
+  return svSafeUpdate(k,function(latest){return latest.filter(function(x){return!idEq(x.id,id);});},onDone);
 }
 // Real-time listener for live updates
 // ⑮ 学年チェック（4月1日以降に前回更新から1年経過していたら通知）
@@ -1601,7 +1601,12 @@ function startListeners(){
     });
   });
 }
-function avH(p,sz){var i=p.id%AVC.length,ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';return p.photo?'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background-image:url('+p.photo+')"></div>':'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background:'+AVC[i][0]+';color:'+AVC[i][1]+';font-size:'+Math.round(sz*.35)+'px">'+escapeHtml(ini)+'</div>';}
+function avH(p,sz){
+  if(!p)return'';
+  var i=(p.id||0)%AVC.length;
+  var ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';
+  return p.photo?'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background-image:url('+p.photo+')"></div>':'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background:'+AVC[i][0]+';color:'+AVC[i][1]+';font-size:'+Math.round(sz*.35)+'px">'+escapeHtml(ini)+'</div>';
+}
 function fmt(d){return d?d.replace(/-/g,'/'):'-';}
 function pSt(pid){var a=D.i.find(function(x){return x.pid===pid&&!x.resolved;});if(!a)return'ok';var rh=D.r.find(function(x){return x.injId===a.id;});return(rh&&rh.stage>0)?'rehab':'inj';}
 // 種目の最新記録（ランク判定用）。date降順→inputAt降順→id降順で先頭。bronco>0ガードはgetBestと同一。
@@ -2948,10 +2953,11 @@ function renderChartTimeline(iid){
     soap:'<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>',
     stage:'<svg viewBox="0 0 24 24"><path d="M13 3v6h8l-9 12v-8H4l9-10z"/></svg>',
     rtp:'<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-2 15l-5-5 1.4-1.4L10 14.2l7.6-7.6L19 8l-9 9z"/></svg>',
-    goal:'<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm1-13h-2v6l5 3 1-1.6-4-2.4V7z"/></svg>'
+    goal:'<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm1-13h-2v6l5 3 1-1.6-4-2.4V7z"/></svg>',
+    edit:'<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>'
   };
-  var C={injury:'var(--red-vivid)',hospital:'var(--purple-vivid)',eval:'var(--blue-vivid)',soap:'var(--green-vivid)',stage:'var(--amber-vivid)',rtp:'var(--cyan-vivid)',goal:'var(--pink)'};
-  var G={injury:'var(--red-vivid-a60)',hospital:'var(--purple-vivid-a60)',eval:'var(--blue-vivid-a60)',soap:'var(--green-vivid-a60)',stage:'var(--amber-vivid-a60)',rtp:'var(--cyan-vivid-a60)',goal:'var(--pink-a60)'};
+  var C={injury:'var(--red-vivid)',hospital:'var(--purple-vivid)',eval:'var(--blue-vivid)',soap:'var(--green-vivid)',stage:'var(--amber-vivid)',rtp:'var(--cyan-vivid)',goal:'var(--pink)',edit:'var(--steel)'};
+  var G={injury:'var(--red-vivid-a60)',hospital:'var(--purple-vivid-a60)',eval:'var(--blue-vivid-a60)',soap:'var(--green-vivid-a60)',stage:'var(--amber-vivid-a60)',rtp:'var(--cyan-vivid-a60)',goal:'var(--pink-a60)',edit:'var(--steel-a60)'};
 
   // 1. 受傷
   events.push({date:inj.date,type:'injury',title:'受傷',desc:(inj.side||'')+inj.part+' '+inj.type+(inj.note?'<br>'+escapeHtml(inj.note):'')});
@@ -2962,13 +2968,18 @@ function renderChartTimeline(iid){
       var dtxt=[];
       if(ch.medical.hospital)dtxt.push(escapeHtml(ch.medical.hospital));
       if(ch.medical.diagnosis)dtxt.push('診断: '+escapeHtml(ch.medical.diagnosis));
-      if(ch.medical.imgFindings&&ch.medical.imgFindings.length)dtxt.push(Array.isArray(ch.medical.imgFindings)?ch.medical.imgFindings.join('・'):escapeHtml(ch.medical.imgFindings));
+      if(ch.medical.imgFindings&&ch.medical.imgFindings.length)dtxt.push(Array.isArray(ch.medical.imgFindings)?ch.medical.imgFindings.map(function(x){return escapeHtml(String(x));}).join('・'):escapeHtml(ch.medical.imgFindings));
       events.push({date:ddate,type:'hospital',title:'病院受診・診断',desc:dtxt.join('<br>')});
     }
     if(ch.medical.surgery&&ch.medical.surgeryDate){
       events.push({date:ch.medical.surgeryDate,type:'hospital',title:'手術',desc:escapeHtml(ch.medical.surgeryName||'手術実施')});
     }
   }
+  // 2.5. 基本情報編集履歴（trainer「怪我の基本情報編集」解禁分＝inj.editLog。P9c: trainer c845d66系からの同期取りこぼしを移植）
+  (inj.editLog||[]).forEach(function(e){
+    var desc=(e.changes||[]).map(function(c){return escapeHtml(c.field)+': '+escapeHtml(c.from)+' → '+escapeHtml(c.to);}).join('<br>');
+    events.push({date:e.date,type:'edit',title:'基本情報編集'+(e.by?'（'+escapeHtml(e.by)+'）':''),desc:desc});
+  });
   // 3. 評価（痛み・ROMの推移をメトリクスで）
   (ch.evals||[]).forEach(function(ev){
     var metrics='';
@@ -2977,8 +2988,8 @@ function renderChartTimeline(iid){
       var pc=maxP>=7?'var(--red-vivid)':maxP>=4?'var(--amber-vivid)':'var(--green-vivid)';
       metrics+='<span class="tl-metric" style="color:'+pc+'">'+ic('i-pain-3',12)+' 痛み '+maxP+'/10</span>';
     }
-    if(ev.rom){var romKeys=Object.keys(ev.rom);if(romKeys.length){var r0=ev.rom[romKeys[0]];if(r0)metrics+='<span class="tl-metric">'+ic('i-ruler',12)+' ROM '+r0+'°</span>';}}
-    if(ev.mmt){var mk=Object.keys(ev.mmt);if(mk.length){var m0=ev.mmt[mk[0]];if(m0)metrics+='<span class="tl-metric">'+ic('i-dumbbell',12)+' MMT '+m0+'</span>';}}
+    if(ev.rom){var romKeys=Object.keys(ev.rom);if(romKeys.length){var r0=ev.rom[romKeys[0]];if(r0)metrics+='<span class="tl-metric">'+ic('i-ruler',12)+' ROM '+escapeHtml(String(r0))+'°</span>';}}
+    if(ev.mmt){var mk=Object.keys(ev.mmt);if(mk.length){var m0=ev.mmt[mk[0]];if(m0)metrics+='<span class="tl-metric">'+ic('i-dumbbell',12)+' MMT '+escapeHtml(String(m0))+'</span>';}}
     events.push({date:ev.date,type:'eval',title:'評価',desc:(ev.note?escapeHtml(ev.note):'')+(metrics?'<div style="margin-top:2px">'+metrics+'</div>':'')});
   });
   // 4. SOAP
@@ -3017,8 +3028,8 @@ function renderChartTimeline(iid){
     events.push({date:inj.resolvedDate||todayStr(),type:'goal',title:'復帰・回復',desc:'競技復帰しました'});
   }
 
-  // 日付順にソート（同日は受傷→診断→評価→SOAPの優先度）
-  var typeOrder={injury:0,hospital:1,stage:2,eval:3,soap:4,rtp:5,goal:6};
+  // 日付順にソート（同日は受傷→診断→編集→評価→SOAPの優先度）
+  var typeOrder={injury:0,hospital:1,edit:1.5,stage:2,eval:3,soap:4,rtp:5,goal:6};
   events.sort(function(a,b){
     var dc=(a.date||'').localeCompare(b.date||'');
     if(dc!==0)return dc;
@@ -3046,8 +3057,8 @@ function renderChartTimeline(iid){
       '<div class="tl-dot">'+(IC[ev.type]||'')+'</div>'+
       '<div class="tl-card" style="'+futureStyle+'">'+
         '<div class="tl-date">'+fmt(ev.date)+(ev._future?' ・ 予定':'')+'</div>'+
-        '<div class="tl-title">'+escapeHtml(ev.title)+'</div>'+
-        (ev.desc?'<div class="tl-desc">'+escapeHtml(ev.desc)+'</div>':'')+
+        '<div class="tl-title">'+ev.title+'</div>'+ // P9c: 構築側でエスケープ済み（descは<br>やtl-metric等のHTMLを含む＝二重エスケープでタグが生表示されるバグの修正・trainer c845d66と同期）
+        (ev.desc?'<div class="tl-desc">'+ev.desc+'</div>':'')+
       '</div>'+
     '</div>';
   });
@@ -4011,6 +4022,8 @@ function toggleReturnCriteria(iid,el){
 function setRtpLevel(iid,level){
   chartUpdate(iid,function(ch){
     ch.rtpLevel=level;
+    ch.rtpLevelDate=todayStr(); // P9c: 変更日を記録（trainer c845d66と同期。タイムラインのRTPイベント日付が旧値のまま誤表示される取りこぼしの修正）
+    ch.rtpLevelBy=getCurrentUserName(MY_ROLE);
   },function(){renderChartTab();});
 }
 function unresolveInj(iid){
@@ -4051,22 +4064,8 @@ function goInjuryDetailUnused(iid){
 
 // 怪我ごとのコメント表示HTML
 function renderInjComments(iid,role){
-  var comments=(D.injcomm||[]).filter(function(c){return idEq(c.injId,iid);}).sort(function(a,b){return (a.createdAt||'').localeCompare(b.createdAt||'');});
-  var roleLabel={staff:'スタッフ',player:'選手',trainer:'専門学生'};
-  var roleColor={staff:'var(--purple)',player:'var(--blue)',trainer:'var(--green)'};
-  var commentsH=comments.length?comments.map(function(c){
-    var label=roleLabel[c.role]||c.role||'?';
-    var color=roleColor[c.role]||'var(--text-secondary)';
-    var dt=c.createdAt?new Date(c.createdAt):null;
-    var dateStr=dt?(toDateStr(dt)+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0')):'';
-    return'<div style="padding:8px 10px;border-radius:var(--radius);background:var(--bg-secondary);margin-bottom:6px">'+
-    '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;margin-bottom:4px">'+
-    '<span><span class="bd" style="background:'+color+';color:var(--white);font-size:9px">'+label+'</span> <b style="margin-left:4px">'+(c.authorName||'')+'</b></span>'+
-    '<span style="color:var(--text-secondary)">'+dateStr+(c.authorId&&role===c.role&&String(c.authorId)===String(getCurrentUserId(role))?' <button class="btn btn-sm btn-d" onclick="delInjComment(\''+c.id+'\','+iid+',\''+role+'\')">削除</button>':'')+'</span>'+
-    '</div>'+
-    '<div style="font-size:13px;white-space:pre-wrap;word-break:break-word">'+escapeHtml(c.text||'')+'</div>'+
-    '</div>';
-  }).join(''):'<div style="font-size:12px;color:var(--text-secondary);text-align:center;padding:14px">まだコメントはありません</div>';
+  // P9c: リスト部をListOnlyへ委譲（player/trainerと同構造に同期。旧インライン実装は編集ボタンを持たず、P6のコメント編集が初回表示で使えなかった）
+  var commentsH=renderInjCommentsListOnly(iid,role);
   return'<div class="form-box" style="margin-top:16px"><div class="form-title">'+ic('i-note',14,'var(--maroon)')+' コメント（スタッフ・選手・専門学生で共有）</div>'+
   '<div id="injcomm-list-'+iid+'" style="max-height:300px;overflow-y:auto;margin-bottom:10px">'+commentsH+'</div>'+
   '<textarea class="ipt" id="injcomm-input-'+iid+'" placeholder="コメントを入力..." style="min-height:60px"></textarea>'+
@@ -4086,7 +4085,7 @@ function getCurrentUserId(role){
 
 function getCurrentUserName(role){
   if(role==='staff')return 'スタッフ';
-  if(role==='player'){var p=D.p.find(function(x){return idEq(x.id,myPid);});return p?p.name:'選手';}
+  if(role==='player'){var p=D.p.find(function(x){return idEq(x.id,(typeof myPid!=='undefined'?myPid:null));});return p?p.name:'選手';}
   if(role==='trainer')return (typeof myTrainer!=='undefined'&&myTrainer)?myTrainer.name:'専門学生';
   return '';
 }
@@ -5517,12 +5516,12 @@ var TAPE_PARTS=['肩','肘','手首','指','腰','ハムストリングス','膝
 
 function timeOptions(selectedVal){
   var h='';var found=false;
-  for(var hh=0;hh<24;hh++){for(var mm=0;mm<60;mm+=5){ // 5分刻み（枠は5分単位。将来の枠編集でグリッド外に落ちないように）
+  for(var hh=0;hh<24;hh++){for(var mm=0;mm<60;mm+=5){ // 5分刻み（枠は5分単位で分割生成されるため。旧10分刻みだと枠編集で選択できず00:00に落ちる不具合）
     var v=String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
     if(v===selectedVal)found=true;
     h+='<option'+(v===selectedVal?' selected':'')+'>'+v+'</option>';
   }}
-  if(selectedVal&&!found)h='<option selected>'+selectedVal+'</option>'+h;
+  if(selectedVal&&!found)h='<option selected>'+selectedVal+'</option>'+h; // グリッド外の既存値（過去データ等）も選択状態で保持
   return h;
 }
 
@@ -5669,21 +5668,29 @@ function showTapeRecForm(recId,presetPid){
   h+='<div class="form-box"><div class="form-title">'+ic('i-warn',14,'var(--maroon)')+' 注意点・コツ</div><textarea class="ipt" id="tr-caution" placeholder="例：内反を強く制限する／かかとに皺が寄りやすい／きつく巻きすぎない" style="min-height:70px">'+escapeHtml(rec.caution||'')+'</textarea></div>';
   h+='<div class="form-box"><div class="form-title">参考動画・リンク（任意）</div><input class="ipt" id="tr-video" value="'+escapeHtml(rec.videoUrl||'')+'" placeholder="YouTube等のURL"></div>';
   h+='<div class="form-box"><div class="form-title">記録者</div><input class="ipt" id="tr-author" value="'+escapeHtml(rec.author||'')+'" placeholder="巻いた人の名前"></div>';
-  h+='<button class="btn btn-p" style="width:100%" onclick="saveTapeRec('+(isEdit?'\''+recId+'\'':'null')+')">保存</button>';
+  h+='<button class="btn btn-p" style="width:100%" onclick="saveTapeRec('+(isEdit?'\''+recId+'\'':'null')+',this)">保存</button>';
   pushView(isEdit?'テーピング記録を編集':'新しいテーピング記録',h);
 }
-function saveTapeRec(recId){
+function saveTapeRec(recId,btnEl){
   var pidEl=document.getElementById('tr-pid');
   var pid=pidEl&&pidEl.value?parseInt(pidEl.value):(recId?(D.taperec.find(function(x){return idEq(x.id,recId);})||{}).pid:null);
   if(!pid)return alert('選手を選択してください');
+  if(!guardSubmit(btnEl,'保存中…'))return; // P9c: 連打二重登録ガード（trainer c845d66と同期）
   var tapeTypes=Array.prototype.slice.call(document.querySelectorAll('.tr-tape:checked')).map(function(e){return e.value;});
   var g=function(id){var e=document.getElementById(id);return e?e.value:'';};
   var data={pid:pid,date:g('tr-date')||todayStr(),side:g('tr-side'),part:g('tr-part'),tapeTypes:tapeTypes,method:g('tr-method'),caution:g('tr-caution'),videoUrl:g('tr-video').trim(),author:g('tr-author'),inputAt:new Date().toISOString()};
   svSafeUpdate('taperec',function(latest){
-    if(recId){var idx=latest.findIndex(function(x){return idEq(x.id,recId);});if(idx>=0){data.id=recId;latest[idx]=data;}else{data.id=recId;latest.push(data);}}
+    if(recId){
+      var idx=latest.findIndex(function(x){return idEq(x.id,recId);});
+      if(idx>=0){data.authorId=(latest[idx].authorId!=null?latest[idx].authorId:null);data.id=recId;latest[idx]=data;} // P9c: 編集時は元のauthorIdを温存（P6の記録者trainerId化の同期取りこぼし＝消えると記録者表示がauthor文字列に劣化）
+      else{data.id=recId;latest.push(data);}
+    }
     else{data.id=Date.now()+'_'+Math.floor(Math.random()*1000);latest.push(data);}
     return latest;
-  },function(){popView();showPlayerTapeRecs(pid);toast('保存しました');});
+  },function(){popView();showPlayerTapeRecs(pid);toast('保存しました');},function(){
+    releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+  });
 }
 function delTapeRec(recId,pid){
   if(!confirm('このテーピング記録を削除しますか？'))return;

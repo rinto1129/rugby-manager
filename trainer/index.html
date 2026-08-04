@@ -781,9 +781,12 @@ function ld(){
   var promises=keys.map(function(k){
     return db.collection('appdata').doc(k).get().then(function(doc){
       if(doc.exists){
+        _lastRaw[k]=doc.data().data; // 購読直後のスナップショットバーストで初回描画を潰さないための前回値
         try{
           var parsed=JSON.parse(doc.data().data);
-          if(Array.isArray(parsed)&&(parsed.length>0||k==='pp'))D[k]=parsed;
+          // P9c: 空配列も受理（他端末で最後の1件を削除しても反映されるように＝7ccfc39系のplayer/staff監査対応を同期）。p/trainersのみ空を拒否（名簿/ログイン識別の全消し事故ガード）
+          if((k==='p'||k==='trainers')&&Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
+          else if(k!=='p'&&k!=='trainers'&&Array.isArray(parsed))D[k]=parsed;
         }catch(e){console.log('parse error:',k);}
       }
     }).catch(function(e){console.log('load error:',k,e);});
@@ -801,7 +804,7 @@ function ld(){
   });
 }
 
-function sv(k){db.collection('appdata').doc(k).set({data:JSON.stringify(D[k])}).catch(function(e){console.error('save error:',k,e);});}
+function sv(k){db.collection('appdata').doc(k).set({data:JSON.stringify(D[k])}).catch(function(e){console.error('Save error:',k,e);});}
 function svSafe(k,newRec,callback){
   var ref=db.collection('appdata').doc(k);
   return db.runTransaction(function(tx){
@@ -1076,7 +1079,7 @@ function doEditInjComment(cid,iid,role){
     if(listEl)listEl.innerHTML=renderInjCommentsListOnly(iid,role);
   });
 }
-function fmt(d){return d?d.replace(/-/g,'/'):'−';}
+function fmt(d){return d?d.replace(/-/g,'/'):'-';}
 // ===== ウエイトPUSH/PULL交互管理（pp）＝チーム全員共通・グローバル1列 =====
 function ppNext(){
   var a=Array.isArray(D.pp)?D.pp:[]; if(!a.length)return null;
@@ -1311,6 +1314,7 @@ function logout(){
 // テンプレには素マーカー.rvのみ書き、armはMutationObserverコールバック内でだけ行う。
 var _navAnim=false;      // go()で立てる→observerが消費。この順序は固定（フラグ残留防止）
 var _visitedTabs={};     // クラスAはセッション中1回だけ
+var _lastRaw={};         // onSnapshot生JSON前回値（P9c: player/staffのリスナー堅牢化を同期）
 var _rvInsurance=null;
 function _reduceMotion(){return typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;}
 function _rvForceIn(){
@@ -1856,7 +1860,7 @@ function renderChartTimeline(iid){
       var dtxt=[];
       if(ch.medical.hospital)dtxt.push(escapeHtml(ch.medical.hospital));
       if(ch.medical.diagnosis)dtxt.push('診断: '+escapeHtml(ch.medical.diagnosis));
-      if(ch.medical.imgFindings&&ch.medical.imgFindings.length)dtxt.push(Array.isArray(ch.medical.imgFindings)?ch.medical.imgFindings.join('・'):escapeHtml(ch.medical.imgFindings));
+      if(ch.medical.imgFindings&&ch.medical.imgFindings.length)dtxt.push(Array.isArray(ch.medical.imgFindings)?ch.medical.imgFindings.map(function(x){return escapeHtml(String(x));}).join('・'):escapeHtml(ch.medical.imgFindings));
       events.push({date:ddate,type:'hospital',title:'病院受診・診断',desc:dtxt.join('<br>')});
     }
     if(ch.medical.surgery&&ch.medical.surgeryDate){
@@ -1876,8 +1880,8 @@ function renderChartTimeline(iid){
       var pc=maxP>=7?'var(--red-vivid)':maxP>=4?'var(--amber-vivid)':'var(--green-vivid)';
       metrics+='<span class="tl-metric" style="color:'+pc+'">'+ic('i-pain-4',11)+' 痛み '+maxP+'/10</span>';
     }
-    if(ev.rom){var romKeys=Object.keys(ev.rom);if(romKeys.length){var r0=ev.rom[romKeys[0]];if(r0)metrics+='<span class="tl-metric">'+ic('i-ruler',11)+' ROM '+r0+'°</span>';}}
-    if(ev.mmt){var mk=Object.keys(ev.mmt);if(mk.length){var m0=ev.mmt[mk[0]];if(m0)metrics+='<span class="tl-metric">'+ic('i-dumbbell',11)+' MMT '+m0+'</span>';}}
+    if(ev.rom){var romKeys=Object.keys(ev.rom);if(romKeys.length){var r0=ev.rom[romKeys[0]];if(r0)metrics+='<span class="tl-metric">'+ic('i-ruler',11)+' ROM '+escapeHtml(String(r0))+'°</span>';}}
+    if(ev.mmt){var mk=Object.keys(ev.mmt);if(mk.length){var m0=ev.mmt[mk[0]];if(m0)metrics+='<span class="tl-metric">'+ic('i-dumbbell',11)+' MMT '+escapeHtml(String(m0))+'</span>';}}
     events.push({date:ev.date,type:'eval',title:'評価',desc:(ev.note?escapeHtml(ev.note):'')+(metrics?'<div style="margin-top:2px">'+metrics+'</div>':'')});
   });
   // 4. SOAP
@@ -3409,7 +3413,7 @@ function normalForMetric(inj,m){
 // 返り値 {val,src,srcKey,date?}|null（全滅で基準未設定）
 function resolveMetricBase(ch,inj,m){
   var evals=ch.evals||[];
-  if(m.target!=null&&!isNaN(parseFloat(m.target)))return{val:parseFloat(m.target),src:'🎯手動目標',srcKey:'target'};
+  if(m.target!=null&&!isNaN(parseFloat(m.target)))return{val:parseFloat(m.target),src:'手動目標',srcKey:'target'};
   var tried={};
   function tryMode(mode){
     if(!mode||tried[mode])return null;tried[mode]=true;
@@ -3546,7 +3550,7 @@ function deficitGaugeCard(ch,inj,m,mi){
   h+='<div style="font-size:11.5px;color:var(--text-secondary)">現状 <b style="color:var(--text-primary)">'+fmtNum(cur.patient)+unit+'</b> / 基準 '+fmtNum(base.val)+unit+'</div>';
   if(gc.reached){
     var reachMsg=(base.srcKey==='oldest')?'初回値に到達・手動目標の設定を推奨':'基準に到達';
-    h+='<div style="font-size:11.5px;color:var(--green);font-weight:700;margin-top:2px">✓ '+reachMsg+'</div>';
+    h+='<div style="font-size:11.5px;color:var(--green);font-weight:700;margin-top:2px">'+ic('i-check',11)+' '+reachMsg+'</div>';
   }else if(gc.remain!=null){
     h+='<div style="font-size:11.5px;color:var(--amber);font-weight:700;margin-top:2px">あと '+fmtNum(gc.remain)+unit+'</div>';
   }
@@ -3569,7 +3573,7 @@ function deficitGaugeCard(ch,inj,m,mi){
     if(sp!=null){
       var lcol=sp>=90?'var(--green)':(sp>=80?'var(--amber)':'var(--red)');
       var lbg=sp>=90?'var(--green-bg)':(sp>=80?'var(--amber-bg)':'var(--red-bg)');
-      h+='<div style="font-size:11px;padding:4px 8px;border-radius:8px;background:'+lbg+';color:'+lcol+';font-weight:700;margin-bottom:6px">患健比 '+sp+'%'+(sp>=90?' ✓':'')+' <span style="font-weight:400;color:var(--text-secondary)">(患'+fmtNum(cur.patient)+'/健'+fmtNum(cur.healthy)+unit+')</span></div>';
+      h+='<div style="font-size:11px;padding:4px 8px;border-radius:8px;background:'+lbg+';color:'+lcol+';font-weight:700;margin-bottom:6px">患健比 '+sp+'%'+(sp>=90?' '+ic('i-check',10):'')+' <span style="font-weight:400;color:var(--text-secondary)">(患'+fmtNum(cur.patient)+'/健'+fmtNum(cur.healthy)+unit+')</span></div>';
     }else if(cur.healthy==null){
       h+='<div style="font-size:10.5px;color:var(--text-tertiary);margin-bottom:6px">健側未測定（LSI算出待ち）</div>';
     }
@@ -4006,14 +4010,14 @@ function saveNextMenuT(injId){
   svSafeUpdate('rplan',function(latest){var plan=latest.find(function(x){return idEq(x.injId,injId);});if(!plan){plan={injId:injId,tplId:null,tomorrowCats:[]};latest.push(plan);}plan.tomorrowCats=cats;plan.tomorrowDate=cats.length?tomorrowDate:null;stampWho(plan);return latest;},function(){alert('保存しました ✓');goRehabPlayer(injId);});
 }
 
-function timeOptions(sel){
+function timeOptions(selectedVal){
   var h='';var found=false;
   for(var hh=0;hh<24;hh++){for(var mm=0;mm<60;mm+=5){ // 5分刻み（枠は5分単位で分割生成されるため。旧10分刻みだと枠編集で選択できず00:00に落ちる不具合）
     var v=String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
-    if(v===sel)found=true;
-    h+='<option'+(v===sel?' selected':'')+'>'+v+'</option>';
+    if(v===selectedVal)found=true;
+    h+='<option'+(v===selectedVal?' selected':'')+'>'+v+'</option>';
   }}
-  if(sel&&!found)h='<option selected>'+sel+'</option>'+h; // グリッド外の既存値（過去データ等）も選択状態で保持
+  if(selectedVal&&!found)h='<option selected>'+selectedVal+'</option>'+h; // グリッド外の既存値（過去データ等）も選択状態で保持
   return h;
 }
 
@@ -4134,8 +4138,15 @@ function startListeners(){
     db.collection('appdata').doc(k).onSnapshot(function(doc){
       if(doc.exists){
         try{
-          var parsed=JSON.parse(doc.data().data);
-          if(Array.isArray(parsed)&&(parsed.length>0||k==='pp'))D[k]=parsed;
+          var raw=doc.data().data;
+          if(_lastRaw[k]===raw)return; // 同一内容の再通知はスキップ（読み取り側のみの最適化・データ層不変）
+          // 起動直後の永続キャッシュ通知（ld()の最新値より古い）でDを巻き戻さない（P9c: player/staffの堅牢化を同期）
+          if(doc.metadata&&doc.metadata.fromCache&&_lastRaw[k]!=null)return;
+          _lastRaw[k]=raw;
+          var parsed=JSON.parse(raw);
+          // P9c: 空配列も受理（他端末の最終1件削除を反映）。p/trainersのみ空を拒否（全消し事故ガード）
+          if((k==='p'||k==='trainers')&&Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
+          else if(k!=='p'&&k!=='trainers'&&Array.isArray(parsed))D[k]=parsed;
           // 入力中フォーム判定
           var ae=document.activeElement;
           var isInputting=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT');

@@ -985,7 +985,7 @@ function sv(k){db.collection('appdata').doc(k).set({data:JSON.stringify(D[k])}).
 // Firestoreから最新を取得してpushしてから保存（上書き防止）
 function svSafe(k,newRec,callback){
   var ref=db.collection('appdata').doc(k);
-  db.runTransaction(function(tx){
+  return db.runTransaction(function(tx){ // P9c: 62dbe27「全書込トランザクション化」のreturn取りこぼしを同期（staff/trainerは返却済み）
     return tx.get(ref).then(function(doc){
       var latest=[];
       if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
@@ -998,7 +998,7 @@ function svSafe(k,newRec,callback){
 // onError(任意・第4引数): 指定時は失敗を呼び出し側へ委譲（既定の保存失敗alertは出さない）。未指定なら従来どおりalert。
 function svSafeUpdate(k,updateFn,onDone,onError){
   var ref=db.collection('appdata').doc(k);
-  db.runTransaction(function(tx){
+  return db.runTransaction(function(tx){
     return tx.get(ref).then(function(doc){
       var latest=[];if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
       latest=updateFn(latest);
@@ -1093,7 +1093,12 @@ function idEq(a,b){if(a==null||b==null)return false;return a===b||String(a)===St
 function newId(){return Date.now()*1000+Math.floor(Math.random()*1000);}
 function fmtDateTime(iso){if(!iso)return'';var d=new Date(iso);if(isNaN(d))return'';var now=new Date();var ys=d.getFullYear()!==now.getFullYear()?(d.getFullYear()+'/'):'';return ys+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function fmt(d){return d?d.replace(/-/g,'/'):'-';}
-function avH(p,sz){var i=p.id%AVC.length,ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';return p.photo?'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background-image:url('+p.photo+')"></div>':'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background:'+AVC[i][0]+';color:'+AVC[i][1]+';font-size:'+Math.round(sz*.35)+'px">'+escapeHtml(ini)+'</div>';}
+function avH(p,sz){
+  if(!p)return'';
+  var i=(p.id||0)%AVC.length;
+  var ini=p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';
+  return p.photo?'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background-image:url('+p.photo+')"></div>':'<div class="av" style="width:'+sz+'px;height:'+sz+'px;background:'+AVC[i][0]+';color:'+AVC[i][1]+';font-size:'+Math.round(sz*.35)+'px">'+escapeHtml(ini)+'</div>';
+}
 function rc(v){return v<=3?'var(--green)':v<=6?'var(--amber)':'var(--red)';}
 function sc(v){return v>=7?'var(--green)':v>=5?'var(--amber)':'var(--red)';}
 // typeOpt('bronco'|'phys')指定時はその種別のみ対象（省略時は全種別＝従来挙動）。
@@ -1781,7 +1786,7 @@ function getCurrentUserId(role){
 
 function getCurrentUserName(role){
   if(role==='staff')return 'スタッフ';
-  if(role==='player'){var p=D.p.find(function(x){return idEq(x.id,myPid);});return p?p.name:'選手';}
+  if(role==='player'){var p=D.p.find(function(x){return idEq(x.id,(typeof myPid!=='undefined'?myPid:null));});return p?p.name:'選手';}
   if(role==='trainer')return (typeof myTrainer!=='undefined'&&myTrainer)?myTrainer.name:'専門学生';
   return '';
 }
@@ -2682,7 +2687,7 @@ injury:function(){
       }
       return'<div style="font-size:13px;color:var(--blue);font-weight:600;margin-bottom:2px">現在: '+STG[rh.stage]+'</div>'+
       overdueInfo+
-      rtpPitchHtml(rh.stage)+ // P8a: リハビリタブ昇格に合わせ、段階ドットをRTPピッチ図（ROAD TO RETURN）へ
+      rtpPitchHtml(rh.stage,{still:!!_visitedTabs[curTab]})+ // P8a: 段階ドット→RTPピッチ図。still=初回タブ表示のみアニメ（P9c: onSnapshot再描画で毎回走る残置問題の解消＝レビュー確定①と同型）
       '<button class="btn btn-p" style="margin:10px 0 6px" onclick="showRehabForm('+rh.id+')">'+ic('i-edit',13)+' 今日のリハビリを記録</button>';
     })():'')+
     '<button class="btn btn-s" onclick="showWeekCheck('+inj.id+')">'+ic('i-clipboard',12)+' 週次怪我チェック</button>'+
@@ -3916,9 +3921,11 @@ function pitchProgressHtml(idx,total,labels,opts){
 }
 // RTPピッチ図（STG7段階=ラグビーピッチの7本の線と1:1。自陣ゴール→22m→10m→HW→10m→22m→敵陣ゴール=トライ）
 // P9b: 実体はpitchProgressHtml。既存呼出2箇所(リハビリタブ/showMyChart)互換の薄いラッパ（player専用・identical登録しない）
-function rtpPitchHtml(stage){
-  return pitchProgressHtml(stage,7,['G','22','10','HW','10','22','G'],
-    {ball:ic('i-ball',20,'var(--pitch-accent)'),caption:['自陣ゴール','ハーフウェイ','トライ = 完全復帰']});
+// P9c: opts追加（リハビリタブ=メインタブがstillを渡すため。showMyChart=サブ画面はopts無し=表示のたびアニメの従来仕様）
+function rtpPitchHtml(stage,opts){
+  var o={ball:ic('i-ball',20,'var(--pitch-accent)'),caption:['自陣ゴール','ハーフウェイ','トライ = 完全復帰']};
+  if(opts)for(var k in opts)o[k]=opts[k];
+  return pitchProgressHtml(stage,7,['G','22','10','HW','10','22','G'],o);
 }
 // 試合出場roleバッジ（英字小書き併記。マップ外=出場なし系は日本語のみ）
 var ROLE_EN={'スタート':'STARTING XV','リザーブ':'FINISHER'};
