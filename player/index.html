@@ -1287,9 +1287,9 @@ function computeAllBadges(){
   return{byPid:byPid,totalPts:totalPts,sessions:sessions};
 }
 
-// 種目の最新記録（ランク判定用）。date降順→inputAt降順→id降順で先頭。bronco>0ガードはgetBestと同一。
-function getLatest(pid,f){var rs=D.ph.filter(function(x){return idEq(x.pid,pid)&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;rs.sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d)return d;var ia=String(b.inputAt||'').localeCompare(String(a.inputAt||''));if(ia)return ia;return String(b.id||'').localeCompare(String(a.id||''));});return rs[0][f];}
-function getBest(pid,f){var rs=D.ph.filter(function(x){return idEq(x.pid,pid)&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
+// 種目の最新記録（ランク判定用）。date降順→inputAt降順→id降順で先頭。bronco/downbronco（タイム系=秒・小さいほど良い）>0ガードはgetBestと同一。
+function getLatest(pid,f){var rs=D.ph.filter(function(x){return idEq(x.pid,pid)&&x[f]!=null&&((f!=='bronco'&&f!=='downbronco')||x[f]>0);});if(!rs.length)return null;rs.sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d)return d;var ia=String(b.inputAt||'').localeCompare(String(a.inputAt||''));if(ia)return ia;return String(b.id||'').localeCompare(String(a.id||''));});return rs[0][f];}
+function getBest(pid,f){var rs=D.ph.filter(function(x){return idEq(x.pid,pid)&&x[f]!=null&&((f!=='bronco'&&f!=='downbronco')||x[f]>0);});if(!rs.length)return null;return(f==='bronco'||f==='downbronco')?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
 function getBestBIG3(pid){var sq=getBest(pid,'squat')||0;var bp=getBest(pid,'bench')||0;var dl=getBest(pid,'deadlift')||0;return (sq||bp||dl)?(sq+bp+dl):null;}
 function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
@@ -2615,13 +2615,13 @@ condition:function(){
 },
 physical:function(){
   var recs=D.ph.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
-  var bSQ=getBest(myPid,'squat'),bBP=getBest(myPid,'bench'),bDL=getBest(myPid,'deadlift'),bBR=getBest(myPid,'bronco');
+  var bSQ=getBest(myPid,'squat'),bBP=getBest(myPid,'bench'),bDL=getBest(myPid,'deadlift'),bBR=getBest(myPid,'bronco'),bDB=getBest(myPid,'downbronco');
   var lastPhysRec=D.ph.filter(function(r){return r.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
   $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">フィジカル測定</div>'+
-  '<div class="grid2" style="margin-bottom:12px"><div class="mc"><div class="v" style="font-size:16px">'+(bSQ||'-')+'</div><div class="l">SQ Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bBP||'-')+'</div><div class="l">BP Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bDL||'-')+'</div><div class="l">DL Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(getBest(myPid,'chinning')||'-')+'</div><div class="l">チンニング Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(getBest(myPid,'clean')||'-')+'</div><div class="l">クリーン Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+broncoFmt(bBR)+'</div><div class="l">Bronco Best</div></div></div>'+
+  '<div class="grid2" style="margin-bottom:12px"><div class="mc"><div class="v" style="font-size:16px">'+(bSQ||'-')+'</div><div class="l">SQ Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bBP||'-')+'</div><div class="l">BP Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bDL||'-')+'</div><div class="l">DL Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(getBest(myPid,'chinning')||'-')+'</div><div class="l">チンニング Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(getBest(myPid,'clean')||'-')+'</div><div class="l">クリーン Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+broncoFmt(bBR)+'</div><div class="l">Bronco Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+broncoFmt(bDB)+'</div><div class="l">ダウンブロンコ Best</div></div></div>'+
   '<button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="showPhysForm()">'+ic('i-edit',13)+' 記録を入力する</button>'+
   (recs.length>=2?'<div class="chart-wrap"><canvas id="ch-ph"></canvas></div>':'')+
-  (recs.length?recs.map(function(r){return'<div class="log-row" style="flex-wrap:wrap;gap:4px"><div style="min-width:60px"><div style="color:var(--text-secondary)">'+fmt(r.date)+'</div>'+(r.inputAt?'<div style="font-size:10px;color:var(--text-secondary);opacity:.7">入力 '+fmtDateTime(r.inputAt)+(r.editedAt?' (修正済)':'')+'</div>':'')+'</div>'+(r.squat?'<span>SQ:'+r.squat+'</span>':'')+(r.bench?'<span>BP:'+r.bench+'</span>':'')+(r.deadlift?'<span>DL:'+r.deadlift+'</span>':'')+(r.chinning?'<span>チンニング:'+r.chinning+'</span>':'')+(r.clean?'<span>クリーン:'+r.clean+'</span>':'')+(r.bronco?'<span style="font-weight:600;color:var(--blue)">Bronco:'+broncoFmt(r.bronco)+'</span>':'')+'<div style="margin-left:auto;display:flex;gap:4px"><button class="btn btn-sm" style="width:auto" onclick="showEditPhysRec('+r.id+')">修正</button><button class="btn btn-sm btn-d" style="width:auto" onclick="delPhysRec('+r.id+')">削除</button></div></div>';}).join(''):'<div class="no">記録なし</div>');
+  (recs.length?recs.map(function(r){return'<div class="log-row" style="flex-wrap:wrap;gap:4px"><div style="min-width:60px"><div style="color:var(--text-secondary)">'+fmt(r.date)+'</div>'+(r.inputAt?'<div style="font-size:10px;color:var(--text-secondary);opacity:.7">入力 '+fmtDateTime(r.inputAt)+(r.editedAt?' (修正済)':'')+'</div>':'')+'</div>'+(r.squat?'<span>SQ:'+r.squat+'</span>':'')+(r.bench?'<span>BP:'+r.bench+'</span>':'')+(r.deadlift?'<span>DL:'+r.deadlift+'</span>':'')+(r.chinning?'<span>チンニング:'+r.chinning+'</span>':'')+(r.clean?'<span>クリーン:'+r.clean+'</span>':'')+(r.bronco?'<span style="font-weight:600;color:var(--blue)">Bronco:'+broncoFmt(r.bronco)+'</span>':'')+(r.downbronco?'<span style="font-weight:600;color:var(--purple)">ダウンB:'+broncoFmt(r.downbronco)+'</span>':'')+'<div style="margin-left:auto;display:flex;gap:4px"><button class="btn btn-sm" style="width:auto" onclick="showEditPhysRec('+r.id+')">修正</button><button class="btn btn-sm btn-d" style="width:auto" onclick="delPhysRec('+r.id+')">削除</button></div></div>';}).join(''):'<div class="no">記録なし</div>');
   if(recs.length>=2)setTimeout(function(){var s=recs.slice().reverse();var e=document.getElementById('ch-ph');if(!e)return;dC('ph');
     var ctx=e.getContext('2d');
     function grad(c1,c2){var g=ctx.createLinearGradient(0,0,0,220);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;}
@@ -2899,6 +2899,14 @@ function showPhysForm(mode){
   '<input class="ipt" type="number" id="pf-br-s" placeholder="秒" min="0" max="59" style="width:80px">'+
   '<span style="font-weight:600">秒</span></div>'+
   '</div>'+
+  (isBronco?'':
+  '<div class="form-box"><div class="form-title">ダウンブロンコ</div>'+
+  '<div style="display:flex;align-items:center;gap:8px">'+
+  '<input class="ipt" type="number" id="pf-db-m" placeholder="分" min="0" style="width:80px">'+
+  '<span style="font-weight:600">分</span>'+
+  '<input class="ipt" type="number" id="pf-db-s" placeholder="秒" min="0" max="59" style="width:80px">'+
+  '<span style="font-weight:600">秒</span></div>'+
+  '</div>')+
   '<button class="btn btn-p" style="width:100%" onclick="doPhys(this,\''+(isBronco?'bronco':'')+'\')">記録する</button>'
   );
 }
@@ -3098,6 +3106,7 @@ function cancelAbsence(){
 function showEditPhysRec(phid){
   var rec=D.ph.find(function(r){return r.id===phid||String(r.id)===String(phid);});if(!rec)return;
   var brM=rec.bronco?Math.floor(rec.bronco/60):0,brS=rec.bronco?Math.round(rec.bronco%60):0;
+  var dbM=rec.downbronco?Math.floor(rec.downbronco/60):0,dbS=rec.downbronco?Math.round(rec.downbronco%60):0;
   showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">'+ic('i-dumbbell',16,'var(--maroon)')+' 記録を修正</div>'+
   '<div class="form-box"><div class="form-title">'+fmt(rec.date)+'の記録</div>'+
   '<div class="fl" style="margin-bottom:10px"><label>スクワット MAX（kg）</label><input class="ipt" type="number" id="eph-sq" value="'+(rec.squat||'')+'"></div>'+
@@ -3105,9 +3114,12 @@ function showEditPhysRec(phid){
   '<div class="fl" style="margin-bottom:10px"><label>デッドリフト MAX（kg）</label><input class="ipt" type="number" id="eph-dl" value="'+(rec.deadlift||'')+'"></div>'+
   '<div class="fl" style="margin-bottom:10px"><label>チンニング MAX（kg）</label><input class="ipt" type="number" id="eph-cn" value="'+(rec.chinning||'')+'"></div>'+
   '<div class="fl" style="margin-bottom:10px"><label>クリーン MAX（kg）</label><input class="ipt" type="number" id="eph-cl" value="'+(rec.clean||'')+'"></div>'+
-  '<div class="fl"><label>ブロンコ</label><div style="display:flex;align-items:center;gap:8px">'+
+  '<div class="fl" style="margin-bottom:10px"><label>ブロンコ</label><div style="display:flex;align-items:center;gap:8px">'+
   '<input class="ipt" type="number" id="eph-br-m" value="'+brM+'" style="width:80px"><span style="font-weight:600">分</span>'+
   '<input class="ipt" type="number" id="eph-br-s" value="'+brS+'" min="0" max="59" style="width:80px"><span style="font-weight:600">秒</span></div></div>'+
+  '<div class="fl"><label>ダウンブロンコ</label><div style="display:flex;align-items:center;gap:8px">'+
+  '<input class="ipt" type="number" id="eph-db-m" value="'+dbM+'" style="width:80px"><span style="font-weight:600">分</span>'+
+  '<input class="ipt" type="number" id="eph-db-s" value="'+dbS+'" min="0" max="59" style="width:80px"><span style="font-weight:600">秒</span></div></div>'+
   '</div>'+
   '<button class="btn btn-p" style="width:100%" onclick="doEditPhysRec(\''+phid+'\',this)">修正する</button>');
 }
@@ -3181,6 +3193,7 @@ function doEditPhysRec(phid,btnEl){
   var cn=document.getElementById('eph-cn').value;
   var cl=document.getElementById('eph-cl').value;
   var br=broncoFromInputs('eph-br-m','eph-br-s');
+  var db=broncoFromInputs('eph-db-m','eph-db-s');
   var notFound=false;
   svSafeUpdate('ph',function(latest){
     var idx=latest.findIndex(function(r){return r.id===pid||String(r.id)===String(phid);});
@@ -3192,6 +3205,7 @@ function doEditPhysRec(phid,btnEl){
     latest[idx].chinning=cn!==''?parseFloat(cn):null;
     latest[idx].clean=cl!==''?parseFloat(cl):null;
     latest[idx].bronco=br||null;
+    latest[idx].downbronco=db||null;
     latest[idx].editedAt=new Date().toISOString();
     return latest;
   },function(){if(notFound){releaseSubmit(btnEl);alert('記録が見つかりませんでした');return;}go('physical');toast('修正しました');},function(){
@@ -3748,7 +3762,9 @@ function doPhys(btnEl,mode){
   function pfv(id){var e=document.getElementById(id);return e?e.value:'';}
   var sq=parseFloat(pfv('pf-sq'))||null,bp=parseFloat(pfv('pf-bp'))||null,dl=parseFloat(pfv('pf-dl'))||null,br=broncoFromInputs('pf-br-m','pf-br-s');
   var cn=parseFloat(pfv('pf-cn'))||null,cl=parseFloat(pfv('pf-cl'))||null;
-  if(!sq&&!bp&&!dl&&!cn&&!cl&&!br)return alert(isBronco?'タイムを入力してください':'少なくとも1つ入力してください');
+  // ダウンブロンコ欄はブロンコ単独モードのDOMに無い → pfv同様にnull安全で読む
+  var db=isBronco?null:((parseInt(pfv('pf-db-m'))||0)*60+(parseInt(pfv('pf-db-s'))||0)||null);
+  if(!sq&&!bp&&!dl&&!cn&&!cl&&!br&&!db)return alert(isBronco?'タイムを入力してください':'少なくとも1つ入力してください');
   var dateV=pfv('pf-date');
   // 同日重複防止：同じ日付の記録が既にあれば新規作成せず修正画面へ誘導する（ブロンコもshowEditPhysRecのeph-br欄で追記可）
   var dupPh=D.ph.find(function(r){return idEq(r.pid,myPid)&&r.date===dateV;});
@@ -3761,13 +3777,14 @@ function doPhys(btnEl,mode){
   }
   if(!guardSubmit(btnEl,'記録中…'))return; // 二重送信ガード
   var prevBR=getBest(myPid,'bronco'); // 保存前のブロンコ・ベスト（getBestは保存後にnewRecを含むため事前に捕捉）
+  var prevDB=getBest(myPid,'downbronco');
   // P8c: 結果シート用に保存前の状態を捕捉（ベスト/ランク/BIG3合計。保存後の値と比較して変動を演出する）
-  var prevBest={squat:getBest(myPid,'squat'),bench:getBest(myPid,'bench'),deadlift:getBest(myPid,'deadlift'),chinning:getBest(myPid,'chinning'),clean:getBest(myPid,'clean'),bronco:prevBR};
+  var prevBest={squat:getBest(myPid,'squat'),bench:getBest(myPid,'bench'),deadlift:getBest(myPid,'deadlift'),chinning:getBest(myPid,'chinning'),clean:getBest(myPid,'clean'),bronco:prevBR,downbronco:prevDB};
   var prevRank={};STD_LIFTS.forEach(function(l){var _pi=getLiftRankInfo(myPid,l.k);prevRank[l.k]=(_pi&&_pi.rank)?_pi.rank.label:null;});
   var _pbi=getBroncoRankInfo(myPid);var prevBrRank=(_pbi&&_pbi.rank)?_pbi.rank.label:null;
   var prevB3=getBestBIG3(myPid);
   var curSess=getCurrentMSess(isBronco?'bronco':undefined); // ブロンコ回はブロンコ測定会のみに紐付け（フィジカル回同時開催時の誤紐づけ防止）
-  var newRec={id:newId(),pid:myPid,date:dateV,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br,msessId:curSess?curSess.id:null,inputAt:new Date().toISOString()};
+  var newRec={id:newId(),pid:myPid,date:dateV,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br,downbronco:db,msessId:curSess?curSess.id:null,inputAt:new Date().toISOString()};
   svSafeSeq([{k:'ph',rec:newRec}],function(){
     // PB判定は保存前捕捉のprevBestで行う（P8レビュー④: 保存後getBestは新記録自身を含み初回でも必ずPB扱い＝シートの「初回」表示と矛盾していた）
     var m=[];
@@ -3775,10 +3792,12 @@ function doPhys(btnEl,mode){
     if(bp&&prevBest.bench!=null&&bp>=prevBest.bench)m.push('BP');
     if(dl&&prevBest.deadlift!=null&&dl>=prevBest.deadlift)m.push('DL');
     var broncoPB=(br&&prevBR&&br<prevBR); // 過去ベストを更新した時のみ演出（初回はtoast）
+    var dbPB=(db&&prevDB&&db<prevDB);
     // P8c: NO SIDE結果シート（前回比チップ・ランク変動・CLUB到達・復帰目標）。PBフラッシュはシートの上に重ねる
-    showMeasureResult({vals:{squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br},prevBest:prevBest,prevRank:prevRank,prevBrRank:prevBrRank,prevB3:prevB3});
+    showMeasureResult({vals:{squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br,downbronco:db},prevBest:prevBest,prevRank:prevRank,prevBrRank:prevBrRank,prevB3:prevB3});
     if(m.length)setTimeout(function(){pbFlash(m.join('・')+' 自己ベスト更新！');},350);
     else if(broncoPB)setTimeout(function(){pbFlash('ブロンコ自己ベスト更新！ '+broncoFmt(prevBR)+' → '+broncoFmt(br));},350);
+    else if(dbPB)setTimeout(function(){pbFlash('ダウンブロンコ自己ベスト更新！ '+broncoFmt(prevDB)+' → '+broncoFmt(db));},350);
     else toast('記録しました');
   },function(){
     // 保存失敗 → ボタンを戻し、入力内容を温存して再試行できるようにする
@@ -3797,13 +3816,15 @@ function showMeasureResult(ctx){
     if(v[l[0]]!=null)entered.push({k:l[0],label:l[1]});
   });
   var hasBr=v.bronco!=null;
+  var hasDb=v.downbronco!=null;
   var b3=getBestBIG3(myPid);
   // 今日BIG3種目を測った時だけBIG3合計をヒーローにする（P8レビュー③: チンニングのみの日に過去のBIG3合計が「記録完了」として出ていた）
   var b3Today=(v.squat!=null||v.bench!=null||v.deadlift!=null);
   var h;
-  if(hasBr&&!entered.length)h=resultHero('NO SIDE',broncoFmt(v.bronco),'',ic('i-check',12)+' ブロンコテスト・記録完了');
+  if(hasBr&&!entered.length&&!hasDb)h=resultHero('NO SIDE',broncoFmt(v.bronco),'',ic('i-check',12)+' ブロンコテスト・記録完了');
+  else if(hasDb&&!entered.length&&!hasBr)h=resultHero('NO SIDE',broncoFmt(v.downbronco),'',ic('i-check',12)+' ダウンブロンコ・記録完了');
   else if(b3&&b3Today)h=resultHero('NO SIDE',b3,'kg',ic('i-check',12)+' BIG3合計（自己ベスト）・記録完了');
-  else h=resultHero('NO SIDE',String(entered.length+(hasBr?1:0)),'種目',ic('i-check',12)+' 測定・記録完了');
+  else h=resultHero('NO SIDE',String(entered.length+(hasBr?1:0)+(hasDb?1:0)),'種目',ic('i-check',12)+' 測定・記録完了');
   // 種目別: 今回値＋前回ベスト比チップ＋PB
   h+='<div class="card" style="margin-bottom:12px;padding:6px 14px 10px"><div class="kicker" style="margin:8px 0 1px">MEASURE STATS</div><div style="font-size:12px;font-weight:700;margin-bottom:4px">種目別（前回ベスト比）</div>';
   var pbChip=' <span class="bd" style="background:var(--gold-hot);color:var(--ink);font-size:9px">PB</span>';
@@ -3829,6 +3850,17 @@ function showMeasureResult(ctx){
       else chipB='<span style="color:var(--text-secondary)">±0</span>';
     }
     h+=resultStatRow('ブロンコ',broncoFmt(v.bronco)+' '+chipB+((pbr!=null&&v.bronco<=pbr)?pbChip:''));
+  }
+  if(hasDb){
+    var pdb=ctx.prevBest?ctx.prevBest.downbronco:null;var chipD;
+    if(pdb==null)chipD='<span style="color:var(--text-secondary);font-size:11px">初回</span>';
+    else{
+      var dD=v.downbronco-pdb; // 秒差。負=速くなった=良
+      if(dD<0)chipD='<span style="color:var(--green);font-weight:700">'+ic('i-up',10)+'-'+Math.abs(dD)+'秒</span>';
+      else if(dD>0)chipD='<span style="color:var(--red);font-weight:700">'+ic('i-down',10)+'+'+dD+'秒</span>';
+      else chipD='<span style="color:var(--text-secondary)">±0</span>';
+    }
+    h+=resultStatRow('ダウンブロンコ',broncoFmt(v.downbronco)+' '+chipD+((pdb!=null&&v.downbronco<=pdb)?pbChip:''));
   }
   h+='</div>';
   // ランク変動（ランク=最新記録基準。昇格も降格もそのまま見せる）
@@ -6641,7 +6673,7 @@ T.mydata=function(){
     '<div style="font-size:20px;font-weight:900;letter-spacing:-.01em;margin:0 0 12px">マイデータ</div>';
   // === NOW: 現在の正典値（ランク/ベスト/推定1RM/体組成）。P8aでマイページの数値ブロックをここに集約 ===
   h+='<div id="md-now">'+myPhysCardHtml();
-  var bSQ=getBest(myPid,'squat'),bBP=getBest(myPid,'bench'),bDL=getBest(myPid,'deadlift'),bBR=getBest(myPid,'bronco');
+  var bSQ=getBest(myPid,'squat'),bBP=getBest(myPid,'bench'),bDL=getBest(myPid,'deadlift'),bBR=getBest(myPid,'bronco'),bDB=getBest(myPid,'downbronco');
   var lastPh=D.ph.filter(function(r){return idEq(r.pid,myPid);}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');})[0];
   h+='<div style="display:flex;align-items:center;justify-content:space-between;margin:2px 0 8px"><span style="font-weight:600">'+ic('i-chart',15,'var(--maroon)')+' フィジカルベスト</span>'+(lastPh?'<span style="font-size:11px;color:var(--text-secondary)">前回: '+fmt(lastPh.date)+'</span>':'')+'</div>'+
     '<div class="grid3">'+
@@ -6651,6 +6683,7 @@ T.mydata=function(){
     '<div class="mc"><div class="v" style="font-size:15px">'+(getBest(myPid,'chinning')||'-')+'</div><div class="l">チンニング</div></div>'+
     '<div class="mc"><div class="v" style="font-size:15px">'+(getBest(myPid,'clean')||'-')+'</div><div class="l">クリーン</div></div>'+
     '<div class="mc"><div class="v" style="font-size:13px">'+broncoFmt(bBR)+'</div><div class="l">Bronco</div></div>'+
+    '<div class="mc"><div class="v" style="font-size:13px">'+broncoFmt(bDB)+'</div><div class="l">ダウンブロンコ</div></div>'+
     '</div>'+
     '<div class="mc" style="margin-top:8px"><div class="v" style="font-size:16px">'+(getBestBIG3(myPid)||'-')+'</div><div class="l">BIG3合計(各ベスト)</div></div>';
   var nowE1rm=getLatestE1RM(myPid);var nowE1k=Object.keys(nowE1rm);

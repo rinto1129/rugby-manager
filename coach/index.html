@@ -382,9 +382,9 @@ function loadTlogArch(cb){
   });
 }
 function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
-// 種目の最新記録（ランク判定用）。date降順→inputAt降順→id降順で先頭。bronco>0ガードはgetBestと同一。
-function getLatest(pid,f){var rs=D.ph.filter(function(x){return idEq(x.pid,pid)&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;rs.sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d)return d;var ia=String(b.inputAt||'').localeCompare(String(a.inputAt||''));if(ia)return ia;return String(b.id||'').localeCompare(String(a.id||''));});return rs[0][f];}
-function getBest(pid,f){var rs=D.ph.filter(function(x){return idEq(x.pid,pid)&&x[f]!=null&&(f!=='bronco'||x[f]>0);});if(!rs.length)return null;return f==='bronco'?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
+// 種目の最新記録（ランク判定用）。date降順→inputAt降順→id降順で先頭。bronco/downbronco（タイム系=秒・小さいほど良い）>0ガードはgetBestと同一。
+function getLatest(pid,f){var rs=D.ph.filter(function(x){return idEq(x.pid,pid)&&x[f]!=null&&((f!=='bronco'&&f!=='downbronco')||x[f]>0);});if(!rs.length)return null;rs.sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d)return d;var ia=String(b.inputAt||'').localeCompare(String(a.inputAt||''));if(ia)return ia;return String(b.id||'').localeCompare(String(a.id||''));});return rs[0][f];}
+function getBest(pid,f){var rs=D.ph.filter(function(x){return idEq(x.pid,pid)&&x[f]!=null&&((f!=='bronco'&&f!=='downbronco')||x[f]>0);});if(!rs.length)return null;return(f==='bronco'||f==='downbronco')?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
 function getBestBIG3(pid){var sq=getBest(pid,'squat')||0;var bp=getBest(pid,'bench')||0;var dl=getBest(pid,'deadlift')||0;return(sq||bp||dl)?(sq+bp+dl):null;}
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
 // フィットネス記録の時間表示: タイム記録(timeSec)なら分秒、従来の分記録(minutes)なら「N分」。無ければ空。3ファイル同一。
