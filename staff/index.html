@@ -2418,28 +2418,29 @@ matchview:function(){
 },
 rank:function(){
   var m=document.getElementById('rkm')?document.getElementById('rkm').value:'squat',yf=document.getElementById('rky')?document.getElementById('rky').value:'',pf=document.getElementById('rkp')?document.getElementById('rkp').value:'';
-  var labels={squat:'スクワットMAX',bench:'ベンチプレスMAX',deadlift:'デッドリフトMAX',chinning:'チンニングMAX',clean:'クリーンMAX',bronco:'ブロンコテスト',big3:'BIG3合計',big3perkg:'体重あたりBIG3'};
+  var labels={squat:'スクワットMAX',bench:'ベンチプレスMAX',deadlift:'デッドリフトMAX',chinning:'チンニングMAX',clean:'クリーンMAX',bronco:'ブロンコテスト',downbronco:'ダウンブロンコ',big3:'BIG3合計',big3perkg:'体重あたりBIG3'};
+  var isMinEv=(m==='bronco'||m==='downbronco'); // タイム系種目=秒・小さいほど上位（極性反転）
   var rk=D.p.filter(function(p){if(yf&&String(p.year)!==yf)return false;if(pf&&p.position!==pf)return false;return true;}).map(function(p){var rs=D.ph.filter(function(x){return x.pid===p.id;});var v=null;
-  if(m==='bronco'){var vs=rs.filter(function(x){return x.bronco;}).map(function(x){return x.bronco;});v=vs.length?Math.min.apply(null,vs):null;}
+  if(isMinEv){var vs=rs.filter(function(x){return x[m];}).map(function(x){return x[m];});v=vs.length?Math.min.apply(null,vs):null;}
   else if(m==='big3'){v=rs.length?Math.max.apply(null,rs.map(function(x){return big3(x);})):null;}
   else if(m==='big3perkg'){var w=parseFloat(p.weight);if(w){var b=getBestBIG3(p.id)||0;v=b?Math.round(b/w*100)/100:null;}}
   else{var vs2=rs.filter(function(x){return x[m];}).map(function(x){return x[m];});v=vs2.length?Math.max.apply(null,vs2):null;}
   return{p:p,v:v};}).filter(function(x){return x.v!==null;});
-  m==='bronco'?rk.sort(function(a,b){return a.v-b.v;}):rk.sort(function(a,b){return b.v-a.v;});
-  var unit=m==='bronco'?'':m==='big3perkg'?'倍':'kg';
-  var fmtVal=function(v){return m==='bronco'?broncoFmt(v):m==='big3perkg'?v.toFixed(2):v+(unit?' '+unit:'');};
+  isMinEv?rk.sort(function(a,b){return a.v-b.v;}):rk.sort(function(a,b){return b.v-a.v;});
+  var unit=isMinEv?'':m==='big3perkg'?'倍':'kg';
+  var fmtVal=function(v){return isMinEv?broncoFmt(v):m==='big3perkg'?v.toFixed(2):v+(unit?' '+unit:'');};
   var filterUI='<div class="srch"><select class="ipt" style="width:auto" id="rkm" onchange="V.rank()">'+Object.keys(labels).map(function(k){return'<option value="'+k+'"'+(m===k?' selected':'')+'>'+labels[k]+'</option>';}).join('')+'</select><select class="ipt" style="width:auto" id="rky" onchange="V.rank()"><option value="">全学年</option>'+[1,2,3,4].map(function(y){return'<option value="'+y+'"'+(yf===String(y)?' selected':'')+'>'+y+'年</option>';}).join('')+'</select><select class="ipt" style="width:auto" id="rkp" onchange="V.rank()"><option value="">全ポジション</option>'+POS.map(function(p){return'<option'+(pf===p?' selected':'')+'>'+p+'</option>';}).join('')+'</select></div>';
 
   if(!rk.length){$m().innerHTML=filterUI+'<div class="no">データなし</div>';return;}
 
-  var maxV=m==='bronco'?Math.max.apply(null,rk.map(function(r){return r.v;})):rk[0].v;
-  var minV=m==='bronco'?Math.min.apply(null,rk.map(function(r){return r.v;})):0;
-  // バーの幅%（broncoは小さいほど良いので反転）
-  var barPct=function(v){if(m==='bronco'){var range=maxV-minV;return range?Math.round((maxV-v)/range*70+25):60;}return maxV?Math.round(v/maxV*88):60;};
+  var maxV=isMinEv?Math.max.apply(null,rk.map(function(r){return r.v;})):rk[0].v;
+  var minV=isMinEv?Math.min.apply(null,rk.map(function(r){return r.v;})):0;
+  // バーの幅%（bronco/downbroncoは小さいほど良いので反転）
+  var barPct=function(v){if(isMinEv){var range=maxV-minV;return range?Math.round((maxV-v)/range*70+25):60;}return maxV?Math.round(v/maxV*88):60;};
 
   var iniOf=function(p){return p.name?p.name.split(/\s+/).map(function(w){return w[0];}).join('').slice(0,2):'?';};
   // 前回比チップ（player P5のdiffStrOfと同一表現。ブロンコは短縮=改善の極性反転済み・値は直近2回の測定差）
-  var SIMPLE_F={squat:1,bench:1,deadlift:1,chinning:1,clean:1,bronco:1};
+  var SIMPLE_F={squat:1,bench:1,deadlift:1,chinning:1,clean:1,bronco:1,downbronco:1};
   var latestDiffOf=function(pid){
     if(!SIMPLE_F[m])return null;
     var series=D.ph.filter(function(x){return x.pid===pid&&x[m]!=null;}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
@@ -2448,8 +2449,8 @@ rank:function(){
   };
   var diffStrOf=function(t){
     if(!t||t.prev==null)return'';
-    var diff=m==='bronco'?t.prev-t.v:t.v-t.prev;
-    var au=m==='bronco'?broncoFmt(Math.abs(diff)):Math.abs(diff)+(unit?unit:'');
+    var diff=isMinEv?t.prev-t.v:t.v-t.prev;
+    var au=isMinEv?broncoFmt(Math.abs(diff)):Math.abs(diff)+(unit?unit:'');
     if(diff>0)return'<span style="color:var(--green)">'+ic('i-up',9)+au+'</span>';
     if(diff<0)return'<span style="color:var(--red)">'+ic('i-down',9)+au+'</span>';
     return'<span style="color:var(--text-secondary)">→</span>';

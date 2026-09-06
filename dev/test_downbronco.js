@@ -84,6 +84,35 @@ if(IS_PLAYER){
   setEl('eph-db-m','0');setEl('eph-db-s','0');
   doEditPhysRec('5',btn());drain();
   ok('0分0秒はnullとして保存', store('ph')[0] && store('ph')[0].downbronco==null);
+
+  print('--- 7) player: ランキングにダウンブロンコ種目が出る（タイム系＝速い順） ---');
+  var _rkEls={};
+  document.getElementById=function(id){if(!_rkEls[id]){_rkEls[id]=mkEl();_rkEls[id].id=id;}return _rkEls[id];};
+  window._rkFO=false;
+  D.p=[
+    {id:1,name:'速井',position:'SH',year:2,weight:'70'},
+    {id:2,name:'中村',position:'CTB',year:3,weight:'85'},
+    {id:3,name:'遅田',position:'PR',year:1,weight:'105'}
+  ];
+  D.ph=[
+    {id:31,pid:1,date:daysAgo(10),downbronco:380},
+    {id:32,pid:2,date:daysAgo(10),downbronco:400},
+    {id:33,pid:3,date:daysAgo(10),downbronco:420}
+  ];
+  ['bc','f','std','msess','offday','ann','cal','md','matchsel','phskip','i','wc','tape','pp','a','e1rm','tlog','gs','ms','gmap'].forEach(function(k){D[k]=[];});
+  myPid=1;
+  T.ranking();
+  var rh0=document.getElementById('main').innerHTML;
+  ok('種目ピルにダウンブロンコ', rh0.indexOf('ダウンブロンコ')>=0);
+  rankSF('downbronco');
+  var rh=document.getElementById('main').innerHTML;
+  ok('見出しがダウンブロンコ', rh.indexOf('ダウンブロンコ')>=0);
+  ok('速い順（380→400→420）', rh.indexOf('速井')<rh.indexOf('中村') && rh.indexOf('中村')<rh.indexOf('遅田'));
+  ok('分秒表記(6分20秒)', rh.indexOf('6分20秒')>=0);
+  ok('ブロンコ用の目標ランク凡例は出ない', rh.indexOf('バッジ＝ポジション別の目標ランク')<0);
+  rankSF('bronco');
+  var rhb=document.getElementById('main').innerHTML;
+  ok('ブロンコに戻すと従来どおり凡例あり', rhb.indexOf('バッジ＝ポジション別の目標ランク')>=0);
 }
 
 if(IS_STAFF){
@@ -137,6 +166,35 @@ if(IS_STAFF){
   setEl('eph-db-m','6');setEl('eph-db-s','50');
   doEditPhys(9);drain();
   ok('downbronco=410秒に更新', store('ph')[0] && store('ph')[0].downbronco===410);
+
+  print('--- 11) staff: ランキングにダウンブロンコ種目が出る（タイム系＝速い順・前回比は短縮が改善） ---');
+  var _rkEls={};
+  document.getElementById=function(id){if(!_rkEls[id]){_rkEls[id]=mkEl();_rkEls[id].id=id;}return _rkEls[id];};
+  D.p=[
+    {id:1,name:'速井',position:'SH',year:2,weight:'70'},
+    {id:2,name:'中村',position:'CTB',year:3,weight:'85'},
+    {id:3,name:'遅田',position:'PR',year:1,weight:'105'}
+  ];
+  D.ph=[
+    {id:31,pid:1,date:daysAgo(40),downbronco:400},
+    {id:32,pid:1,date:daysAgo(10),downbronco:380},
+    {id:33,pid:2,date:daysAgo(10),downbronco:400},
+    {id:34,pid:3,date:daysAgo(10),downbronco:420}
+  ];
+  _rkEls['rkm']=mkEl();_rkEls['rkm'].value='downbronco';
+  V.rank();
+  var sh=document.getElementById('main-ct').innerHTML;
+  ok('種目セレクトにダウンブロンコ', sh.indexOf('ダウンブロンコ')>=0);
+  ok('速い順（380→400→420）', sh.indexOf('速井')<sh.indexOf('中村') && sh.indexOf('中村')<sh.indexOf('遅田'));
+  ok('分秒表記(6分20秒)', sh.indexOf('6分20秒')>=0);
+  ok('前回比チップが出る(400→380=20秒短縮)', sh.indexOf('前回比')>=0 && sh.indexOf('0分20秒')>=0);
+  ok('kg単位が付かない', sh.indexOf('380 kg')<0);
+  _rkEls['rkm'].value='bronco';
+  D.ph=[{id:41,pid:1,date:daysAgo(10),bronco:300},{id:42,pid:2,date:daysAgo(10),bronco:330}];
+  V.rank();
+  var shb=document.getElementById('main-ct').innerHTML;
+  ok('ブロンコも従来どおり速い順', shb.indexOf('速井')<shb.indexOf('中村'));
+  ok('ブロンコ分秒表記(5分00秒)', shb.indexOf('5分00秒')>=0);
 }
 
 print(__fail===0?'ALL DOWNBRONCO TESTS PASSED':(__fail+' TESTS FAILED'));

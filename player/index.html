@@ -3458,6 +3458,7 @@ T.ranking=function(){
     {field:'clean',label:'クリーン',full:'クリーン',unit:'kg',better:'max'},
     {field:'big3',label:'BIG3',full:'BIG3合計',unit:'kg',better:'max'},
     {field:'bronco',label:'ブロンコ',full:'ブロンコ',unit:'',better:'min',fmt:broncoFmt},
+    {field:'downbronco',label:'ダウンブロンコ',full:'ダウンブロンコ',unit:'',better:'min',fmt:broncoFmt},
     // Phase 9-B: GPS取込データ（src:'gs'＝測定会でなくGPSセッション/期間累計を参照）。値はgr_<id>行データ由来
     {field:'gpsDist',label:'走行距離',full:'総走行距離',unit:'m',better:'max',src:'gs',fmt:function(v){return(v/1000).toFixed(2)+' km';}},
     {field:'gpsMaxSpd',label:'最高速度',full:'最高速度',unit:'',better:'max',src:'gs',fmt:function(v){return(v*3.6).toFixed(1)+' km/h';}},
@@ -3532,7 +3533,7 @@ T.ranking=function(){
         if(curSessId!=='all'&&x.msessId!==curSessId)return false;
         return true;
       });
-      if(field==='bronco'){var vs=rs.filter(function(x){return x.bronco;}).map(function(x){return x.bronco;});return vs.length?Math.min.apply(null,vs):null;}
+      if(field==='bronco'||field==='downbronco'){var vs=rs.filter(function(x){return x[field];}).map(function(x){return x[field];});return vs.length?Math.min.apply(null,vs):null;}
       if(field==='big3'){var sq=null,bp=null,dl=null;rs.forEach(function(r){if(r.squat&&(!sq||r.squat>sq))sq=r.squat;if(r.bench&&(!bp||r.bench>bp))bp=r.bench;if(r.deadlift&&(!dl||r.deadlift>dl))dl=r.deadlift;});return(sq||bp||dl)?(sq||0)+(bp||0)+(dl||0):null;}
       var vs2=rs.filter(function(x){return x[field];}).map(function(x){return x[field];});return vs2.length?Math.max.apply(null,vs2):null;
     }
@@ -3545,7 +3546,7 @@ T.ranking=function(){
       if(idx<0||idx>=sortedSess.length-1)return null;
       var prevSessId=sortedSess[idx+1].id;
       var rs=D.ph.filter(function(x){return x.pid===pid&&x.msessId===prevSessId;});
-      if(field==='bronco'){var vs=rs.filter(function(x){return x.bronco;}).map(function(x){return x.bronco;});return vs.length?Math.min.apply(null,vs):null;}
+      if(field==='bronco'||field==='downbronco'){var vs=rs.filter(function(x){return x[field];}).map(function(x){return x[field];});return vs.length?Math.min.apply(null,vs):null;}
       if(field==='big3'){var sq=null,bp=null,dl=null;rs.forEach(function(r){if(r.squat&&(!sq||r.squat>sq))sq=r.squat;if(r.bench&&(!bp||r.bench>bp))bp=r.bench;if(r.deadlift&&(!dl||r.deadlift>dl))dl=r.deadlift;});return(sq||bp||dl)?(sq||0)+(bp||0)+(dl||0):null;}
       var vs2=rs.filter(function(x){return x[field];}).map(function(x){return x[field];});return vs2.length?Math.max.apply(null,vs2):null;
     }
