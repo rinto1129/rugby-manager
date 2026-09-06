@@ -19,6 +19,20 @@
    ],
    "kind": "function"
   },
+  "weekMonday": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
+  },
+  "weekSunday": {
+   "files": [
+    "player",
+    "staff"
+   ],
+   "kind": "function"
+  },
   "escapeHtml": {
    "files": [
     "player",

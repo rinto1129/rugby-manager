@@ -84,7 +84,7 @@ setKey('ph',[
 var alAll=physAlertsData();
 ok('全期間はup+downの2件',alAll.length===2&&alAll.some(function(a){return a.t==='up';})&&alAll.some(function(a){return a.t==='down';}));
 // 今週月曜以降に最新記録がある選手だけ
-var mon=new Date(new Date(todayStr()+'T00:00:00'));mon.setDate(mon.getDate()-mon.getDay()+1);
+var mon=weekMonday(new Date(todayStr()+'T00:00:00')); // 日曜に翌週月曜を返す旧式を廃止（製品側と同一ロジック）
 var alWeek=physAlertsData(toDateStr(mon));
 ok('今週分はupの1件のみ',alWeek.length===1&&alWeek[0].t==='up'&&alWeek[0].pid===1);
 setKey('ph',[]);

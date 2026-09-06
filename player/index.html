@@ -1087,6 +1087,10 @@ function startListeners(){
 }
 function todayStr(){var d=new Date();var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
 function toDateStr(d){var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
+// 今週の月曜/日曜（週の起点=月曜）。`getDate()-getDay()+1` は日曜(getDay()=0)に翌週月曜=未来日を返し、
+// 「今週」判定が日曜だけ空振りするため使わない（P8レビュー(7)と同じ不具合の再発防止）。引数省略で今日基準。
+function weekMonday(d){var x=d?new Date(d.getTime()):new Date();x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x;}
+function weekSunday(d){var x=weekMonday(d);x.setDate(x.getDate()+6);return x;}
 function idEq(a,b){if(a==null||b==null)return false;return a===b||String(a)===String(b);}
 // レコードid採番。同一ミリ秒に複数選手が保存するとDate.now()だけでは衝突し、削除時に他人の記録を巻き込む事故になるため乱数サフィックスで回避。
 // 数値のまま返す（既存コードのonclick埋め込み・===比較を一切変更せずに使えるようにするため。文字列化はしない）
@@ -1701,8 +1705,7 @@ function todayTodoHtml(){
     todoItems.push({key:'train',done:tlogToday,label:'ウエイトトレーニング',icon:'physical',onclick:"go('training')"});
   }
   if(pInj.length){
-    var weekStart=new Date();weekStart.setDate(weekStart.getDate()-weekStart.getDay()+1);// 月曜
-    var weekStartS=toDateStr(weekStart);
+    var weekStartS=toDateStr(weekMonday());
     pInj.forEach(function(inj){
       var wcThisWeek=D.wc.some(function(w){return idEq(w.pid,myPid)&&idEq(w.injId,inj.id)&&w.date>=weekStartS;});
       if(!wcThisWeek)todoItems.push({key:'wc'+inj.id,done:false,label:'週次怪我チェック（'+(inj.side||'')+inj.part+'）',icon:'absence',onclick:"showWeekCheck("+inj.id+")"});
@@ -2080,8 +2083,7 @@ home:function(){
   var teamAnns=D.ann.filter(function(a){return!a.targetPid;}).sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,5);
   // This week calendar events
   var now=new Date();
-  var monDt=new Date(now);monDt.setDate(now.getDate()-now.getDay()+1);
-  var sunDt=new Date(monDt);sunDt.setDate(monDt.getDate()+6);
+  var monDt=weekMonday(now),sunDt=weekSunday(now);
   var monS=toDateStr(monDt),sunS=toDateStr(sunDt);
   var weekEvts=(D.cal||[]).filter(function(e){return e.date>=monS&&e.date<=sunS;}).sort(function(a,b){return a.date.localeCompare(b.date);});
   // P8b: 試合日チェック未入力者一覧（チーム系）はstaff管掌へ撤去＝関連計算も削除
@@ -7022,7 +7024,7 @@ T.tape=function(){
   var today=todayStr();
   // 今週〜来週の枠を表示
   var now=new Date();
-  var monDt=new Date(now);monDt.setDate(now.getDate()-now.getDay()+1);
+  var monDt=weekMonday(now);
   var twoWeekLater=new Date(monDt);twoWeekLater.setDate(monDt.getDate()+13);
   var fromS=toDateStr(monDt);
   var toS=toDateStr(twoWeekLater);

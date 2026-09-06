@@ -1636,6 +1636,10 @@ function monStr(){var n=new Date();return n.getFullYear()+'-'+String(n.getMonth(
 function $m(){return document.getElementById('main-ct');}
 function todayStr(){var d=new Date();var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
 function toDateStr(d){var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
+// 今週の月曜/日曜（週の起点=月曜）。`getDate()-getDay()+1` は日曜(getDay()=0)に翌週月曜=未来日を返し、
+// 「今週」判定が日曜だけ空振りするため使わない（P8レビュー(7)と同じ不具合の再発防止）。引数省略で今日基準。
+function weekMonday(d){var x=d?new Date(d.getTime()):new Date();x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x;}
+function weekSunday(d){var x=weekMonday(d);x.setDate(x.getDate()+6);return x;}
 function absCnt(pid,mon){return D.a.filter(function(s){return s.date.startsWith(mon);}).reduce(function(c,s){return c+(s.absentees.some(function(x){return x.pid===pid;})?1:0);},0);}
 function absCntAll(pid){return D.a.reduce(function(c,s){return c+(s.absentees.some(function(x){return x.pid===pid;})?1:0);},0);}
 function totSess(mon){return D.a.filter(function(s){return s.date.startsWith(mon);}).length;}
@@ -1802,10 +1806,7 @@ dash:function(){
   // New injuries pending approval (source match/player, not yet approved)
   var pendingInj=D.i.filter(function(x){return!x.resolved&&x.source&&!x.approved;}).sort(function(a,b){return b.date.localeCompare(a.date);});
   // Can't practice next week → 今週中のみ表示（日曜を過ぎたら消える）
-  var thisWeekSun=new Date(today);thisWeekSun.setDate(today.getDate()+(7-today.getDay())%7||(7));
-  // 今週月曜
-  var thisWeekMon=new Date(today);thisWeekMon.setDate(today.getDate()-today.getDay()+1);
-  var thisWeekMonS=toDateStr(thisWeekMon);
+  var thisWeekMonS=toDateStr(weekMonday(today));
   var cantPrac=D.i.filter(function(x){
     if(x.resolved||x.canPractice!=='参加できない'||x.approved===false)return false;
     // その怪我報告の日付が今週以降（先週以前なら消す）
@@ -1998,8 +1999,7 @@ dash:function(){
     '</div>';
 
   // P8d: 今週の伸びサマリ（physAlertsData=フィジカル面の共通比較ロジック。最新記録が今週の分だけ）
-  // 月曜は(getDay()+6)%7で導出（P8レビュー(7): thisWeekMonSは日曜に翌週月曜=未来日になり、日曜だけパネルが空になる）
-  var _gd=new Date(today);_gd.setDate(today.getDate()-((today.getDay()+6)%7));
+  var _gd=weekMonday(today);
   var growth=physAlertsData(toDateStr(_gd));
   var growthPanel='';
   if(growth.length){
@@ -8638,8 +8638,7 @@ function undoRejectInjury(iid,snap){
 function escAnn(s){return (s||'').replace(/'/g,'\\\'').replace(/\n/g,' ');}
 function getThisWeekEvents(){
   var now=new Date();
-  var mon=new Date(now);mon.setDate(now.getDate()-now.getDay()+1);
-  var sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  var mon=weekMonday(now),sun=weekSunday(now);
   var monS=toDateStr(mon),sunS=toDateStr(sun);
   return D.cal.filter(function(e){return e.date>=monS&&e.date<=sunS;}).sort(function(a,b){return a.date.localeCompare(b.date);});
 }

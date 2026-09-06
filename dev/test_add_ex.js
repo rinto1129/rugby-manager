@@ -101,7 +101,7 @@ print('--- ホーム: 体組成撤去 / ランキングリンク化 / 今週圧�
 subView=null;curTab='home';_curTLog=null;
 window._homeWeekOpen=false;window._homeAnnOpen=false;
 // 今週の各曜日に予定（T.homeと同じ週窓の計算で7日分＝rest>0を保証）
-var now=new Date();var monDt=new Date(now);monDt.setDate(now.getDate()-now.getDay()+1);
+var now=new Date();var monDt=weekMonday(now); // 製品と同一の週窓（旧式は日曜に翌週月曜を返す）
 var wcal=[];
 for(var wi=0;wi<7;wi++){var d=new Date(monDt);d.setDate(monDt.getDate()+wi);wcal.push({id:300+wi,date:toDateStr(d),type:wi===2?'match':'weight',title:'予定'+wi});}
 D.cal=wcal;
