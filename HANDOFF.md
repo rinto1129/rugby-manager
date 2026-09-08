@@ -9,11 +9,11 @@
 ## 最終更新
 - 日時: 2026-09-08
 - 更新者: Claude
-- **試合日チェック全面再設計に着手（P1a実装完了・未push）**。9問ヒアリング（グリル形式）→4サイト横断調査ワークフロー（19エージェント・確定バグ9件）→設計ワークフロー（5フェーズ並列設計＋敵対レビュー5本）→プラン自体の3視点レビュー（見落とし/エラー/使いやすさ・mustFix10・shouldFix19・改善10採用）を経てプラン確定・ユーザー承認済み。プラン本文は `dev/audit/PLAN_matchday_redesign.md`（正典・詳細設計/レビューも同ディレクトリに永続化済み）。
+- **試合日チェック全面再設計に着手・P1a push済み `d30f040`**。9問ヒアリング（グリル形式）→4サイト横断調査ワークフロー（19エージェント・確定バグ9件）→設計ワークフロー（5フェーズ並列設計＋敵対レビュー5本）→プラン自体の3視点レビュー（見落とし/エラー/使いやすさ・mustFix10・shouldFix19・改善10採用）を経てプラン確定・ユーザー承認済み。プラン本文は `dev/audit/PLAN_matchday_redesign.md`（正典・詳細設計/レビューも同ディレクトリに永続化済み）。
   - **設計の要点**: 試合の正典を`cal`の`type:'match'`イベントに一本化（対戦相手/KO/会場/試合種別/メンバー表`squad`を追加フィールド）。旧`matchsel`（チーム全体1本のグローバル配列・試合ごとの区別不可）は完全撤去。共通ヘルパー`mdBelongsTo`等でmd↔試合の所属判定・重複判定・怪我/HIA判定を1箇所に統一。試合日チェックはコンディションと尺度統一（RPE×出場分・睡眠h・疲労/筋肉痛1-5）し、選手の必須項目を最小化。段階=P1a(試合基盤)→P1b(選手フォームv2)→P1c(スタッフレポート/代理入力/HIA承認)→P2(回復追跡)→P3(GPS/スタッツ紐づけ)→P4(出場記録)→P5(coach/trainer反映+CSV)。
-  - **P1a完了内容**（4サイト・push待ち）: 共通ヘルパー群20関数超をplayer/staff/coach（trainerはA群のみ）にidentical登録・`sync_check.py`に二重定義検出ゲートを追加。staffに`goSquadEditor`系（背番号提案・重複拒否・未設定/範囲外は1回警告で続行可・前回コピー・保存Undo）を新設し旧`goSelectMatchMembers`/`matchsel`関連を完全撤去。cal試合イベントにopp/ko/venue/comp編集フォーム＋日付/種別変更ガード（メンバー表/記録がある試合は変更・削除を拒否）。V.matchview/ダッシュボードを`pendingMatchChecks`ベースの試合ごとブロックに再構成（旧「昨日限定」二重実装と死コード`matchNotDone`を削除）。player側はP1b本実装までの暫定パッチ（`showMatchForm(dateArg)`で対象日付を明示）。matchselをSK/Dから4サイト全て削除。
-  - 新規テスト4本（`test_matchday_helpers.js`＝player/staff/coach3サイト共通契約・`test_matchday_squad_staff.js`・`test_matchday_cal_staff.js`・`test_matchday_dash_staff.js`）＋既存フィクスチャ2本更新。**`run_tests.py`=84 run/0 fail（69本）**・`sync_check.py`（identical154+variant15）緑・`--residue`0。
-  - **次にやること**: ユーザー確認→push→Cmd+Shift+R確認 → P1b（選手フォームv2・catch-up催促・冪等再送）とP1c（スタッフ代理入力・HIA承認・ダッシュボード最終形）を同時実装。
+  - **P1a完了内容**（4サイト・**push済み**）: 共通ヘルパー群20関数超をplayer/staff/coach（trainerはA群のみ）にidentical登録・`sync_check.py`に二重定義検出ゲートを追加。staffに`goSquadEditor`系（背番号提案・重複拒否・未設定/範囲外は1回警告で続行可・前回コピー・保存Undo）を新設し旧`goSelectMatchMembers`/`matchsel`関連を完全撤去。cal試合イベントにopp/ko/venue/comp編集フォーム＋日付/種別変更ガード（メンバー表/記録がある試合は変更・削除を拒否）。V.matchview/ダッシュボードを`pendingMatchChecks`ベースの試合ごとブロックに再構成（旧「昨日限定」二重実装と死コード`matchNotDone`を削除）。player側はP1b本実装までの暫定パッチ（`showMatchForm(dateArg)`で対象日付を明示）。matchselをSK/Dから4サイト全て削除。
+  - 新規テスト4本（`test_matchday_helpers.js`＝player/staff/coach3サイト共通契約・`test_matchday_squad_staff.js`・`test_matchday_cal_staff.js`・`test_matchday_dash_staff.js`）＋既存フィクスチャ2本更新。**`run_tests.py`=84 run/0 fail（69本）**・`sync_check.py`（identical154+variant15）緑・`--residue`0。**本番Firestoreの実データ（実選手74名・8月の過去5試合分）で読み取り専用ブラウザ確認済み**（メンバー表エディタ・試合日レポートとも正常表示、古い試合日記録の「カレンダー未登録」疑似行も正しく拾えることを確認）。
+  - **次にやること**: ユーザーのCmd+Shift+R確認 → P1b（選手フォームv2・catch-up催促・冪等再送）とP1c（スタッフ代理入力・HIA承認・ダッシュボード最終形）を同時実装。
 - **ダウンブロンコ計測を追加・push済み**（`07d411d`→`d1f4d55`→`c74328b`）。フィジカル測定(ph)に`downbronco`（秒・小さいほど良い）を新設し、staff/playerの単体・一括・編集フォーム／一覧・選手詳細・CSV・PBアラート・クラブレコード／ランキング（速い順・前回比の極性）までbronco同型で対応。player/staff/coach共通の`getBest`/`getLatest`をタイム系種目対応に拡張。**保留**: ポジション別ゴールド基準バッジ（基準タイム未確定）／coachの分析サイト化（ブロンコ×ダウンブロンコの差分表示・ユーザー要望あり・次にやること候補）。
   - 併せて見つけた既存バグ2件を修正: ①staffの一括入力(`doBulkPhys`)がDOMに存在しないチンニング/クリーン欄を直接読んでいて実機で一括保存が必ずクラッシュ ②`d.getDate()-d.getDay()+1`が日曜だけ「来週の月曜」を返し、日曜だけ週次怪我チェックToDo・今週の予定・テーピング枠表示がずれる（`weekMonday`/`weekSunday`共通関数に一本化・player/staff5箇所＋テスト2本の同型誤りも修正）。日曜(2026-09-06)の実機で両修正を確認。
   - テスト65本・78実行（新規`dev/test_downbronco.js`）・`sync_check.py` identical125（+weekMonday/weekSunday）・residue 0。
@@ -31,7 +31,7 @@
 
 | # | 内容 | 状態 |
 |---|---|---|
-| P1a | 試合イベント拡張(opp/ko/venue/comp/squad)＋共通ヘルパー基盤(20関数超・identical)＋メンバー表エディタ(goSquadEditor)＋matchsel完全撤去 | ✅ 実装完了・**未push**（run_tests.py 84run/0fail・sync_check緑・residue0） |
+| P1a | 試合イベント拡張(opp/ko/venue/comp/squad)＋共通ヘルパー基盤(20関数超・identical)＋メンバー表エディタ(goSquadEditor)＋matchsel完全撤去 | ✅ push済み `d30f040`（run_tests.py 84run/0fail・sync_check緑・residue0） |
 | P1b | 選手: 新試合日チェックフォームv2＋催促(pendingMatchChecks)＋CRUD＋冪等再送 | 未着手 |
 | P1c | スタッフ: 試合レポート再構成＋代理入力＋ダッシュボード最終形＋HIA承認(chart.isConcussion連携) | 未着手（P1bと同時出荷） |
 | P2 | 回復追跡（MD+nタグ・f×md追加読み）＋催促（お知らせ一括・LINEコピー） | 未着手 |
@@ -116,7 +116,7 @@
 - guardSubmit(二重送信ガード)はplayerに導入済み。新規フォームには必ず適用（雛形v2に含む）
 
 ## リポジトリの状態
-- ブランチ: main。origin/main=`c74328b`（ダウンブロンコ計測＋ランキング＋日曜週バグ修正の直近3コミット。前段`8dae0f6`でv2プラン全フェーズ完了・ユーザー承認2026-08-05でpush済み）。**v2プランは完了済み。現在は試合日チェック全面再設計P1a分をローカルで実装完了・未push（上記アクティブプラン参照）**
+- ブランチ: main。origin/main=`d30f040`（試合日チェック全面再設計P1a・push済み2026-09-08。前段`c74328b`＝ダウンブロンコ計測＋ランキング＋日曜週バグ修正、さらに前段`8dae0f6`でv2プラン全フェーズ完了・ユーザー承認2026-08-05でpush済み）。**v2プランは完了済み。現在は試合日チェック全面再設計を継続中・P1aまでpush済み（上記アクティブプラン参照）**
 - テスト用選手「テスト選手」(CTB/1年, note=動作確認用)が本番に1名存在（削除可）
 - ⚠️ 検証はjsc模擬実行で完結（本番Firestore直結のためブラウザで代理編集/削除の保存ボタンは押さない）。最終目視はユーザーのCmd+Shift+R確認に委ねる
 - **現在`run_tests.py`=84 run/0 fail（全緑・69本）**。`sync_check.py`identical154+variant15緑・`--residue`0。worktree(`claude/keen-kowalevski-01e4c2`)はP9cで整理済み（`git worktree remove`+`branch -D`済み）
