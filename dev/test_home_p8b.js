@@ -28,14 +28,13 @@ ok('ppカードは出ない',!has(hm,'次のウエイト'));
 ok('ランキング・バッジリンクに集約',has(hm,'ランキング・バッジ')&&has(hm,"go('ranking')"));
 
 print('--- 2) チーム系一覧はstaff管掌＝playerホームに出ない ---');
-setKey('cal',[{id:1,date:toDateStr(new Date(Date.now()-86400000)),type:'match',title:'試合'}]);
-setKey('matchsel',[1]);
+setKey('cal',[{id:1,date:toDateStr(new Date(Date.now()-86400000)),type:'match',title:'試合',squad:[{pid:1,num:1}]}]);
 setKey('msess',[{id:'ms1',name:'夏測定',startDate:todayStr(),endDate:todayStr(),closed:false}]);
 T.home();
 hm=_els['main'].innerHTML;
 ok('試合日チェック未入力一覧は出ない',!has(hm,'試合日チェック未入力'));
 ok('あとN名チップは出ない',!has(hm,'あと1名'));
-setKey('cal',[]);setKey('matchsel',[]);setKey('msess',[]);
+setKey('cal',[]);setKey('msess',[]);
 
 print('--- 3) 怪我クイック報告: 怪我なし=赤ボタン/怪我あり=RTPカードのみ ---');
 T.home();

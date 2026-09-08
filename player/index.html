@@ -405,7 +405,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:70px}
 if(window.Chart){Chart.defaults.color='#6E5A5C';Chart.defaults.borderColor='rgba(60,10,12,.08)';Chart.defaults.scale.grid.color='rgba(60,10,12,.08)';if(typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches)Chart.defaults.animation=false;}
 firebase.initializeApp({apiKey:"AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls",authDomain:"fukuokauniv-rug.firebaseapp.com",projectId:"fukuokauniv-rug",storageBucket:"fukuokauniv-rug.firebasestorage.app",messagingSenderId:"314514138275",appId:"1:314514138275:web:b1b93406813ebaba75cb16"});
 var db=firebase.firestore();
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',matchsel:'rm_matchsel',tape:'rm_tape',tapeslot:'rm_tapeslot',phskip:'rm_phskip',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm',pp:'rm_pushpull',std:'rm_standards',tgroup:'rm_tgroup',gs:'rm_gps_sessions',ms:'rm_match_stats'};
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',ph:'rm_physicals',a:'rm_absences',f:'rm_fatigue',md:'rm_matchday',wc:'rm_weekcheck',bc:'rm_bodycomp',ann:'rm_announce',offday:'rm_offday',cal:'rm_calendar',tape:'rm_tape',tapeslot:'rm_tapeslot',phskip:'rm_phskip',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',tmenu:'rm_tmenu',tlog:'rm_tlog',texlist:'rm_texlist',e1rm:'rm_e1rm',pp:'rm_pushpull',std:'rm_standards',tgroup:'rm_tgroup',gs:'rm_gps_sessions',ms:'rm_match_stats'};
 var RCATS=['ケア','ROM改善','患部外トレーニング','トレーニング','アジリティ','フィットネス','サポート','オフ'];
 var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'var(--cyan)',サポート:'var(--emerald)',オフ:'var(--text-secondary)'};
 var RCAT_BG={ケア:'var(--blue-bg)',ROM改善:'var(--green-bg)',患部外トレーニング:'var(--amber-bg)',トレーニング:'var(--red-bg)',アジリティ:'var(--purple-bg)',フィットネス:'var(--cyan-bg)',サポート:'var(--emerald-bg)',オフ:'var(--bg-tertiary)'};
@@ -576,6 +576,208 @@ function effDur(f){
   return t.length?Math.max.apply(null,t.map(function(x){return x.durMin;})):0;
 }
 function sLoad(f){return f?(f.rpe||0)*effDur(f):0;}
+// ===== 試合基盤ヘルパーA群（P1a・identical: player/staff/trainer/coach） =====
+var _mevSrc=null,_mevMap={};
+function matchEvents(){
+  return (D.cal||[]).filter(function(e){return e&&e.type==='match'&&typeof e.date==='string';}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||String(a.id).localeCompare(String(b.id));});
+}
+function matchEventById(id){
+  if(id==null)return null;
+  if(_mevSrc!==D.cal){
+    _mevSrc=D.cal;_mevMap={};
+    matchEvents().forEach(function(e){_mevMap[String(e.id)]=e;});
+  }
+  return _mevMap[String(id)]||null;
+}
+function squadOf(ev){return (ev&&Array.isArray(ev.squad))?ev.squad:[];}
+function squadNum(ev,pid){
+  var s=squadOf(ev).find(function(x){return idEq(x.pid,pid);});
+  return s?s.num:null;
+}
+function squadRole(ev,pid){
+  var s=squadOf(ev).find(function(x){return idEq(x.pid,pid);});
+  if(!s)return null;
+  var n=parseInt(s.num);
+  return(n>=1&&n<=15)?'start':'reserve';
+}
+function matchEventByDate(date,pid){
+  var evs=matchEvents().filter(function(e){return e.date===date;});
+  if(!evs.length)return null;
+  if(pid!=null){
+    var withRole=evs.find(function(e){return squadRole(e,pid)!=null;});
+    if(withRole)return withRole;
+  }
+  return evs[0];
+}
+function matchEvLabel(ev){
+  if(!ev)return'';
+  return ev.opp?('vs '+ev.opp):(ev.title||'試合');
+}
+function matchEvTitle(ev){
+  if(!ev)return'';
+  return escapeHtml(matchEvLabel(ev))+(ev.ko?(' '+escapeHtml(ev.ko)+' KO'):'');
+}
+function matchEventKey(ev){
+  if(!ev)return'';
+  return ev.id!=null?String(ev.id):String(ev.date);
+}
+function resolveMatchEvent(key,dateHint){
+  if(key==null&&dateHint==null)return null;
+  var byId=key!=null?matchEventById(key):null;
+  if(byId)return byId;
+  var d=dateHint!=null?dateHint:((typeof key==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(key))?key:null);
+  if(d){
+    var byDate=matchEventByDate(d);
+    if(byDate)return byDate;
+    return{id:null,date:d,squad:[]};
+  }
+  return null;
+}
+// ===== 試合基盤ヘルパーB群（P1a・identical: player/staff/coach。試合日チェック(md)の所属判定・生死判定は必ずこれらを経由する） =====
+function mdBelongsTo(m,ev){
+  if(!m||!ev)return false;
+  var resolved=(m.evId!=null)?matchEventById(m.evId):null;
+  if(resolved&&ev.id!=null)return idEq(m.evId,ev.id);
+  if(m.date!==ev.date)return false;
+  if(ev.id==null)return true;
+  var byDate=matchEventByDate(m.date,m.pid);
+  return!!byDate&&idEq(byDate.id,ev.id);
+}
+function mdOf(pid,ev){
+  if(!ev)return null;
+  var list=(D.md||[]).filter(function(m){return idEq(m.pid,pid)&&mdBelongsTo(m,ev);});
+  if(!list.length)return null;
+  list.sort(function(a,b){return(a.inputAt||'').localeCompare(b.inputAt||'');});
+  return list[list.length-1];
+}
+function mdsOfEvent(ev){
+  if(!ev)return[];
+  return(D.md||[]).filter(function(m){return mdBelongsTo(m,ev);});
+}
+function mdsOfEventUniq(ev){
+  var byPid={};
+  mdsOfEvent(ev).forEach(function(m){
+    var k=String(m.pid);
+    if(!byPid[k]||(m.inputAt||'')>(byPid[k].inputAt||''))byPid[k]=m;
+  });
+  return Object.keys(byPid).map(function(k){return byPid[k];});
+}
+function mdDupIn(latest,pid,ev){
+  if(!ev)return null;
+  var list=(latest||[]).filter(function(m){return idEq(m.pid,pid)&&mdBelongsTo(m,ev);});
+  if(!list.length)return null;
+  list.sort(function(a,b){return(a.inputAt||'').localeCompare(b.inputAt||'');});
+  return list[list.length-1];
+}
+function mdIsV2(m){return!!(m&&m.v===2);}
+function mdRoleCode(m){
+  if(!m)return'none';
+  if(m.role==='start'||m.role==='reserve'||m.role==='none')return m.role;
+  if(m.role==='スタート')return'start';
+  if(m.role==='リザーブ')return'reserve';
+  return'none';
+}
+function mdRoleLabel(m){
+  if(!m)return'';
+  if(m.role==='start')return'スタート';
+  if(m.role==='reserve')return'リザーブ';
+  if(m.role==='none')return'出場なし';
+  return m.role||'';
+}
+function mdNum(m){
+  if(!m)return null;
+  var ev=(m.evId!=null?matchEventById(m.evId):null)||matchEventByDate(m.date,m.pid);
+  return ev?squadNum(ev,m.pid):null;
+}
+function mdLoad(m){
+  if(!m||m.rpe==null||m.minutes==null)return null;
+  return(+m.rpe)*(+m.minutes);
+}
+function mdSleepStr(m){
+  if(!m)return'-';
+  if(m.sleepH!=null&&m.sleepH!==''){
+    return(+m.sleepH)+'h';
+  }
+  if(m.sleepTime&&m.wakeTime){
+    var sp=m.sleepTime.split(':'),wp=m.wakeTime.split(':');
+    if(sp.length===2&&wp.length===2){
+      var smin=(+sp[0])*60+(+sp[1]);
+      var wmin=(+wp[0])*60+(+wp[1]);
+      var diff=((wmin-smin+1440)%1440)/60;
+      return m.sleepTime+' → '+m.wakeTime+'（'+diff.toFixed(1)+'h）';
+    }
+  }
+  return'-';
+}
+function mdFatigueStr(m){
+  if(!m)return'';
+  var isV2=mdIsV2(m);
+  var pre=isV2?m.preFatigue:m.fatiguePre;
+  var post=isV2?m.postFatigue:m.fatiguePost;
+  var denom=isV2?5:6;
+  var preS=(pre!=null&&+pre>=1)?(pre+'/'+denom):'未入力';
+  var postS=(post!=null&&+post>=1)?(post+'/'+denom):'未入力';
+  return'前'+preS+' → 後'+postS;
+}
+function injIsHia(inj){return!!(inj&&inj.hia);}
+function mdInjuryLive(m){
+  if(!m)return null;
+  if(m.injId!=null){
+    var byId=(D.i||[]).find(function(x){return idEq(x.id,m.injId);});
+    return(byId&&byId.approved!==false)?byId:null;
+  }
+  var byMdId=(D.i||[]).find(function(x){return idEq(x.mdId,m.id)&&!injIsHia(x);});
+  if(byMdId)return byMdId.approved!==false?byMdId:null;
+  if(!mdIsV2(m)&&m.injured){
+    var legacy=(D.i||[]).find(function(x){return idEq(x.pid,m.pid)&&x.date===m.date&&x.source==='match'&&!injIsHia(x);});
+    if(legacy)return legacy.approved!==false?legacy:null;
+  }
+  return null;
+}
+function mdHiaLive(m){
+  if(!m)return null;
+  if(m.hiaInjId!=null){
+    var byId=(D.i||[]).find(function(x){return idEq(x.id,m.hiaInjId);});
+    return(byId&&byId.approved!==false)?byId:null;
+  }
+  var byMdId=(D.i||[]).find(function(x){return idEq(x.mdId,m.id)&&injIsHia(x);});
+  if(byMdId)return byMdId.approved!==false?byMdId:null;
+  return null;
+}
+function mdHia(m){
+  if(!m)return false;
+  if(m.hiaInjId!=null)return!!mdHiaLive(m);
+  return!!(m.hiaImpact&&(m.hiaSymptoms||[]).length>0);
+}
+function hasCondOn(pid,dateS){
+  return(D.f||[]).some(function(x){return idEq(x.pid,pid)&&x.date===dateS;})
+    ||(D.md||[]).some(function(m){return idEq(m.pid,pid)&&m.date===dateS;});
+}
+function pendingMatchChecks(pid,todayS,N){
+  N=N||3;
+  var from=toDateStr(new Date(new Date(todayS+'T00:00:00').getTime()-N*86400000));
+  var out=[];
+  matchEvents().forEach(function(ev){
+    if(ev.date<from||ev.date>todayS)return;
+    if(squadRole(ev,pid)==null)return;
+    if(mdOf(pid,ev))return;
+    var daysAgo=Math.round((new Date(todayS+'T00:00:00').getTime()-new Date(ev.date+'T00:00:00').getTime())/86400000);
+    out.push({ev:ev,date:ev.date,daysAgo:daysAgo});
+  });
+  out.sort(function(a,b){return a.date.localeCompare(b.date);});
+  return out;
+}
+function matchChecksMissing(ev){
+  if(!ev)return[];
+  var out=[];
+  squadOf(ev).forEach(function(s){
+    var p=(D.p||[]).find(function(x){return idEq(x.id,s.pid);});
+    if(!p)return;
+    if(mdOf(p.id,ev))return;
+    out.push(p);
+  });
+  return out;
+}
 // 種目ランク判定。oneRM=最新記録(getLatest)でランク算出・bestRMに自己ベスト併記。ratio=最新1RM÷(ゴールド倍率×体重)。ranks昇順でratio以上の最上位が現ランク。
 function getLiftRankInfo(pid,liftK){
   var p=D.p.find(function(x){return idEq(x.id,pid);});
@@ -949,7 +1151,7 @@ function getChart(injId){
 var PARTS=['頭部','頸部','肩','鎖骨','肘','手首','指','腰','股関節','大腿','膝','すね','足首','踵','アキレス腱','ふくらはぎ','足の甲','足趾','その他'];
 var INJ_TYPES=['捻挫','肉離れ','骨折','脱臼','打撲','靭帯損傷','半月板損傷','脳震盪','裂傷','腱炎','疲労骨折','その他'];
 var AVC=[['var(--av1-bg)','var(--av1-fg)'],['var(--av2-bg)','var(--av2-fg)'],['var(--av3-bg)','var(--av3-fg)'],['var(--av4-bg)','var(--av4-fg)'],['var(--av5-bg)','var(--av5-fg)'],['var(--av6-bg)','var(--av6-fg)'],['var(--av7-bg)','var(--av7-fg)']];
-var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],matchsel:[],tape:[],tapeslot:[],phskip:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],pp:[],std:[],tgroup:[],gs:[],ms:[]};
+var D={p:[],i:[],r:[],ph:[],a:[],f:[],md:[],wc:[],bc:[],ann:[],offday:[],cal:[],tape:[],tapeslot:[],phskip:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],pp:[],std:[],tgroup:[],gs:[],ms:[]};
 var myPid=null,curTab='home',charts={},subView=null;
 
 function ld(){
@@ -1687,16 +1889,14 @@ function todayTodoHtml(){
   var isOff=(D.offday||[]).indexOf(todayStr())>=0;
   var pickup=isOff?[]:getTodayPickup();var isPickup=(pickup||[]).indexOf(myPid)>=0;
   var bcDone=D.bc.some(function(r){return r.pid===myPid&&r.date===todayStr();});
-  var yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);
-  var yesterdayS=toDateStr(yesterday);
-  var wasMatchYesterday=(D.cal||[]).some(function(e){return e.date===yesterdayS&&e.type==='match';});
-  var myMatchDoneYesterday=D.md.some(function(m){return idEq(m.pid,myPid)&&m.date===yesterdayS;});
-  var wasSelected=(D.matchsel||[]).indexOf(myPid)>=0;
-  var showMatchDayAlert=wasMatchYesterday&&wasSelected&&!myMatchDoneYesterday;
   var todoItems=[];
   todoItems.push({key:'cond',done:todayDone,label:'コンディション入力',icon:'condition',onclick:"go('condition')"});
   if(isPickup)todoItems.push({key:'bc',done:bcDone,label:'体組成測定（本日対象）',icon:'bodycomp',onclick:"showBCForm()"});
-  if(showMatchDayAlert)todoItems.push({key:'match',done:false,label:'昨日の試合日チェック',icon:'match',onclick:"go('match')",urgent:true});
+  // 試合日チェック未入力（pendingMatchChecks・試合ごとに独立表示。P1a暫定=showMatchForm(date)、P1b でevId版に置換）
+  pendingMatchChecks(myPid,todayStr(),3).forEach(function(x){
+    var lb=x.daysAgo===0?'今日の試合日チェック':x.daysAgo===1?'昨日の試合日チェック':fmt(x.date)+'の試合日チェック';
+    todoItems.push({key:'match'+x.ev.id,done:false,label:lb,icon:'match',onclick:"showMatchForm('"+x.date+"')",urgent:true});
+  });
   // トレーニング項目: 「カレンダーに本日type=weightがある AND オフ日でない AND 自分に配信メニューがある」時だけ出す。
   // 無条件のtlog有無判定だと休養日に永遠の未完了が出て完了カウントが壊れる（確定バグ#18）
   var todayWeightEvt=(D.cal||[]).some(function(e){return e.date===todayStr()&&e.type==='weight';});
@@ -2749,8 +2949,9 @@ injury:function(){
 },
 match:function(){
   var mds=D.md.filter(function(x){return x.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);});
+  var lastEv=matchEvents().filter(function(e){return e.date<=todayStr();}).slice(-1)[0];
   $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">'+ic('i-back',14)+' マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">試合日コンディション</div>'+
-  '<button class="btn btn-match" style="margin-bottom:16px" onclick="showMatchForm()">'+ic('i-flag',14)+' 試合日チェックを入力</button>'+
+  '<button class="btn btn-match" style="margin-bottom:16px" onclick="showMatchForm('+(lastEv?"'"+lastEv.date+"'":'')+')">'+ic('i-flag',14)+' 試合日チェックを入力</button>'+
   (mds.length?'<div style="font-weight:600;margin-bottom:8px">過去の試合記録</div>'+mds.map(function(m){return'<div class="card card-click" onclick="showMatchDetail('+m.id+')"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600">'+fmt(m.date)+'</span><div style="display:flex;align-items:center;gap:4px">'+roleBadgeHtml(m.role)+'<button class="btn btn-sm" onclick="event.stopPropagation();showEditMatch(\''+m.id+'\')">修正</button><button class="btn btn-sm btn-d" onclick="event.stopPropagation();delMatchDay(\''+m.id+'\')">削除</button></div></div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">疲労: 前'+m.fatiguePre+'/6 → 後'+m.fatiguePost+'/6'+(m.injured?' | <span style="color:var(--red)">怪我あり</span>':'')+(m.cramp?' | 足攣り':'')+'</div></div>';}).join(''):'<div class="no">記録なし</div>');
 }};
 
@@ -4318,7 +4519,8 @@ function doEditWeekCheck(wid,btnEl){
 }
 
 // === MATCH DAY FORM ===
-function showMatchForm(){var td=todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px;display:flex;align-items:center;gap:7px">'+ic('i-flag',17,'var(--maroon)')+'試合日コンディションチェック</div>'+
+function showMatchForm(dateArg){var td=dateArg||todayStr();showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px;display:flex;align-items:center;gap:7px">'+ic('i-flag',17,'var(--maroon)')+'試合日コンディションチェック</div>'+
+(dateArg?'<div class="alert-card alert-info" style="margin-bottom:12px">対象試合日: '+fmt(dateArg)+'</div>':'')+
 '<div class="form-box"><div class="form-title">基本情報</div>'+
 '<div class="fl"><label>日付</label><input class="ipt" type="date" id="md-date" value="'+td+'"></div>'+
 '<div class="fl"><label>スタート / リザーブ / 出場なし</label><select class="ipt" id="md-role"><option>スタート</option><option>リザーブ</option><option>出場なし（ベンチ）</option><option>出場なし（応援）</option><option>出場なし（その他）</option></select></div></div>'+

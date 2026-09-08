@@ -373,6 +373,7 @@
   "POS_NUM": {
    "files": [
     "player",
+    "staff",
     "trainer",
     "coach"
    ],
@@ -1008,6 +1009,248 @@
    ],
    "kind": "function",
    "_p9c": "総回帰でidentical昇格（ドリフト解消/化粧差統一）"
+  },
+  "matchEvents": {
+   "files": [
+    "player",
+    "staff",
+    "trainer",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "matchEventById": {
+   "files": [
+    "player",
+    "staff",
+    "trainer",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "squadOf": {
+   "files": [
+    "player",
+    "staff",
+    "trainer",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "squadNum": {
+   "files": [
+    "player",
+    "staff",
+    "trainer",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "squadRole": {
+   "files": [
+    "player",
+    "staff",
+    "trainer",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "matchEventByDate": {
+   "files": [
+    "player",
+    "staff",
+    "trainer",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "matchEvLabel": {
+   "files": [
+    "player",
+    "staff",
+    "trainer",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "matchEvTitle": {
+   "files": [
+    "player",
+    "staff",
+    "trainer",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "matchEventKey": {
+   "files": [
+    "player",
+    "staff",
+    "trainer",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "resolveMatchEvent": {
+   "files": [
+    "player",
+    "staff",
+    "trainer",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "mdBelongsTo": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "mdOf": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "mdsOfEvent": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "mdsOfEventUniq": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "mdDupIn": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "mdIsV2": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "mdRoleCode": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "mdRoleLabel": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "mdNum": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "mdLoad": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "mdSleepStr": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "mdFatigueStr": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "injIsHia": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "mdInjuryLive": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "mdHiaLive": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "mdHia": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "hasCondOn": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "pendingMatchChecks": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
+  },
+  "matchChecksMissing": {
+   "files": [
+    "player",
+    "staff",
+    "coach"
+   ],
+   "kind": "function"
   }
  },
  "variant": {

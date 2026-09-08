@@ -73,17 +73,16 @@ ok('入力済みで取り消し線',has(t2,'line-through'));
 
 print('--- todayTodoHtml (昨日試合・未チェック) ---');
 var yd=new Date();yd.setDate(yd.getDate()-1);var ydS=toDateStr(yd);
-D.cal=[{id:41,date:ydS,type:'match',title:'練習試合'}];
-D.matchsel=[1];
+D.cal=[{id:41,date:ydS,type:'match',title:'練習試合',squad:[{pid:1,num:1}]}];
 var t3=todayTodoHtml();
 ok('試合日チェック項目',has(t3,'昨日の試合日チェック'));
 ok('試合日チェックはurgent強調(赤背景)',has(t3,'background:var(--red-bg)'));
 ok('試合日チェックはurgent強調(i-warnアイコン)',has(t3,'#i-warn')&&has(t3,'昨日の試合日チェック'));
 ok('urgent強調は試合日チェックの1件のみ(コンディション入力等は対象外)',(t3.match(/background:var\(--red-bg\)/g)||[]).length===1);
-D.md=[{id:51,pid:1,date:ydS}];
+D.md=[{id:51,pid:1,date:ydS,evId:41}];
 var t4=todayTodoHtml();
 ok('チェック済みなら項目消える',!has(t4,'昨日の試合日チェック'));
-D.cal=[];D.matchsel=[];D.md=[];
+D.cal=[];D.md=[];
 
 print('--- todayTodoHtml (トレーニング項目の出現条件) ---');
 D.tmenu=[{id:91,scope:'all',title:'全体メニュー'}];

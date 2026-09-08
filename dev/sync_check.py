@@ -142,6 +142,19 @@ def check(update=False):
     man = json.load(open(MANIFEST, encoding='utf-8'))
     srcs = {s: read(s) for s in SITES}
     fails = []
+    # identical名の同一ファイル内二重定義（後勝ちで契約がズレても機械的に検出できない事故を防ぐ）
+    for name, spec in man.get('identical', {}).items():
+        kind = spec.get('kind', 'function')
+        if kind == 'function':
+            pat = re.compile(r'(?m)^\s*function %s\s*\(' % re.escape(name))
+        elif kind == 'var':
+            pat = re.compile(r'(?m)^\s*var %s\s*=' % re.escape(name))
+        else:
+            continue
+        for site in spec['files']:
+            n = len(pat.findall(srcs[site]))
+            if n >= 2:
+                fails.append('DUPLICATE %-24s %s: %d回定義されています（1回にまとめてください）' % (name, site, n))
     # identical
     for name, spec in man.get('identical', {}).items():
         vals = {}

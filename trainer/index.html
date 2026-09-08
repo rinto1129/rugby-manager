@@ -904,6 +904,63 @@ function filterRehabList(){
 
 function toDateStr(d){var y=d.getFullYear();var m=String(d.getMonth()+1).padStart(2,'0');var day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
 function idEq(a,b){if(a==null||b==null)return false;return a===b||String(a)===String(b);}
+// ===== 試合基盤ヘルパーA群（P1a・identical: player/staff/trainer/coach） =====
+var _mevSrc=null,_mevMap={};
+function matchEvents(){
+  return (D.cal||[]).filter(function(e){return e&&e.type==='match'&&typeof e.date==='string';}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||String(a.id).localeCompare(String(b.id));});
+}
+function matchEventById(id){
+  if(id==null)return null;
+  if(_mevSrc!==D.cal){
+    _mevSrc=D.cal;_mevMap={};
+    matchEvents().forEach(function(e){_mevMap[String(e.id)]=e;});
+  }
+  return _mevMap[String(id)]||null;
+}
+function squadOf(ev){return (ev&&Array.isArray(ev.squad))?ev.squad:[];}
+function squadNum(ev,pid){
+  var s=squadOf(ev).find(function(x){return idEq(x.pid,pid);});
+  return s?s.num:null;
+}
+function squadRole(ev,pid){
+  var s=squadOf(ev).find(function(x){return idEq(x.pid,pid);});
+  if(!s)return null;
+  var n=parseInt(s.num);
+  return(n>=1&&n<=15)?'start':'reserve';
+}
+function matchEventByDate(date,pid){
+  var evs=matchEvents().filter(function(e){return e.date===date;});
+  if(!evs.length)return null;
+  if(pid!=null){
+    var withRole=evs.find(function(e){return squadRole(e,pid)!=null;});
+    if(withRole)return withRole;
+  }
+  return evs[0];
+}
+function matchEvLabel(ev){
+  if(!ev)return'';
+  return ev.opp?('vs '+ev.opp):(ev.title||'試合');
+}
+function matchEvTitle(ev){
+  if(!ev)return'';
+  return escapeHtml(matchEvLabel(ev))+(ev.ko?(' '+escapeHtml(ev.ko)+' KO'):'');
+}
+function matchEventKey(ev){
+  if(!ev)return'';
+  return ev.id!=null?String(ev.id):String(ev.date);
+}
+function resolveMatchEvent(key,dateHint){
+  if(key==null&&dateHint==null)return null;
+  var byId=key!=null?matchEventById(key):null;
+  if(byId)return byId;
+  var d=dateHint!=null?dateHint:((typeof key==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(key))?key:null);
+  if(d){
+    var byDate=matchEventByDate(d);
+    if(byDate)return byDate;
+    return{id:null,date:d,squad:[]};
+  }
+  return null;
+}
 function fmtDateTime(iso){if(!iso)return'';var d=new Date(iso);if(isNaN(d))return'';var now=new Date();var ys=d.getFullYear()!==now.getFullYear()?(d.getFullYear()+'/'):'';return ys+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 
 // ===== 怪我コメント機能（3者共有） =====
