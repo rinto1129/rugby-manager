@@ -921,6 +921,12 @@ function mdFatigueStr(m){
   return'前'+preS+' → 後'+postS;
 }
 function injIsHia(inj){return!!(inj&&inj.hia);}
+// P1c-12: HIA(脳震盪疑い)を最上位に・同着はdate降順（reqQueueのpendingInjとdashの新着怪我カードで共通使用）
+function injHiaFirstCmp(a,b){
+  var ah=injIsHia(a)?0:1,bh=injIsHia(b)?0:1;
+  if(ah!==bh)return ah-bh;
+  return(b.date||'').localeCompare(a.date||'');
+}
 function mdInjuryLive(m){
   if(!m)return null;
   if(m.injId!=null){
@@ -978,6 +984,71 @@ function matchChecksMissing(ev){
     out.push(p);
   });
   return out;
+}
+// ===== P1c: 要対応トリアージ（staff専用） =====
+// rank0=HIA→1=怪我+来週不可→2=怪我→3=攣り→4=高負荷(rpe≥8 or 提出8名以上時の負荷上位25%)→5=睡眠<6h→6=perf≤2。該当なしはnull。
+function mdTriage(m,mds){
+  if(!m)return null;
+  if(mdHia(m))return 0;
+  var injLive=mdInjuryLive(m);
+  if(injLive&&m.canPractice==='参加できない')return 1;
+  if(injLive)return 2;
+  if(m.cramp)return 3;
+  var rpe=(m.rpe!=null&&m.rpe!=='')?+m.rpe:null;
+  if(rpe!=null&&rpe>=8)return 4;
+  if(mdIsV2(m)){
+    var loads=(mds||[]).map(mdLoad).filter(function(v){return v!=null;});
+    if(loads.length>=8){
+      var sorted=loads.slice().sort(function(a,b){return a-b;});
+      var thresh=sorted[Math.min(Math.floor(sorted.length*0.75),sorted.length-1)];
+      var myLoad=mdLoad(m);
+      if(myLoad!=null&&myLoad>=thresh)return 4;
+    }
+  }
+  if(m.sleepH!=null&&m.sleepH!==''&&+m.sleepH<6)return 5;
+  if(m.perf!=null&&+m.perf<=2)return 6;
+  return null;
+}
+// HIA疑いの怪我カルテへ脳震盪フラグを反映（診断系＝roleGate('diagnosis')。injDetail/sceneは触らない）
+function hiaChartApply(injId,onDone,onError){
+  if(!roleGate('diagnosis')){if(onError)onError('role');return;}
+  return svSafeUpdate('chart',function(latest){
+    var i=_chartIdx(latest,injId);
+    latest[i].isConcussion=true;
+    latest[i].injType='脳震盪';
+    return latest;
+  },onDone,onError);
+}
+// HIA承認のUndo時にカルテの脳震盪フラグを戻す（injTypeは怪我報告自体の値なので触らない）
+function hiaChartUnapply(injId,onDone,onError){
+  return svSafeUpdate('chart',function(latest){
+    var i=latest.findIndex(function(x){return idEq(x.injId,injId);});
+    if(i>=0)latest[i].isConcussion=false;
+    return latest;
+  },onDone,onError);
+}
+// LINE連絡用テキスト（未提出者への催促）。P2で本実装予定のものをP1cで前倒し配置。
+function mdRemindText(ev,missing){
+  if(!ev)return'';
+  var title=matchEvLabel(ev);
+  var names=(missing||[]).map(function(p){return'・'+(p.name||'');}).join('\n');
+  return'【試合日チェック 未提出のお知らせ】\n'+title+'\n\n以下の選手は試合日チェックが未提出です。アプリから入力をお願いします。\n\n'+names;
+}
+function copyText(text,onOk,onErr){
+  try{
+    if(navigator&&navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){if(onOk)onOk();}).catch(function(e){if(onErr)onErr(e);});
+      return;
+    }
+  }catch(e){}
+  if(onErr)onErr(new Error('clipboard unavailable'));
+}
+function copyMdRemind(evKey){
+  var ev=resolveMatchEvent(evKey);
+  if(!ev)return;
+  var missing=matchChecksMissing(ev);
+  var text=mdRemindText(ev,missing);
+  copyText(text,function(){toast('LINE用テキストをコピーしました');},function(){alert('コピーに失敗しました');});
 }
 // 種目ランク判定。oneRM=最新記録(getLatest)でランク算出・bestRMに自己ベスト併記。ratio=最新1RM÷(ゴールド倍率×体重)。ranks昇順でratio以上の最上位が現ランク。
 function getLiftRankInfo(pid,liftK){
@@ -1500,6 +1571,30 @@ function svRec(k,rec,onDone,onError){
 function svDel(k,id,onDone){
   return svSafeUpdate(k,function(latest){return latest.filter(function(x){return!idEq(x.id,id);});},onDone);
 }
+function svSafeSeq(items,onAllDone,onError){
+  var done=[];
+  function step(i){
+    if(i>=items.length){if(onAllDone)onAllDone(done);return;}
+    var it=items[i];
+    // svSafeは失敗時に内部でalert＋catchしてしまうので、ここでは専用のトランザクションで成否を捕捉する
+    var ref=db.collection('appdata').doc(it.k);
+    db.runTransaction(function(tx){
+      return tx.get(ref).then(function(doc){
+        var latest=[];
+        if(doc.exists){try{var parsed=JSON.parse(doc.data().data);if(Array.isArray(parsed))latest=parsed;}catch(e){}}
+        latest.push(it.rec);
+        tx.set(ref,{data:JSON.stringify(latest)});
+        return latest;
+      });
+    }).then(function(latest){
+      D[it.k]=latest;done.push(it.k);step(i+1);
+    }).catch(function(e){
+      console.error('svSafeSeq error:',it.k,e);
+      if(onError)onError(e,done,it);
+    });
+  }
+  step(0);
+}
 // Real-time listener for live updates
 // ⑮ 学年チェック（4月1日以降に前回更新から1年経過していたら通知）
 function checkYearUpdate(){
@@ -1784,7 +1879,7 @@ function startListeners(){
           if(k==='p'&&Array.isArray(parsed)&&parsed.length>0)D[k]=parsed;
           else if(k!=='p'&&Array.isArray(parsed))D[k]=parsed;
           // P8d: 要対応バッジは入力中でも更新して構わない（入力欄には触れない）
-          if(k==='i'||k==='rtest'||k==='f')updateQueueBadge();
+          if(k==='i'||k==='rtest'||k==='f'||k==='md')updateQueueBadge();
           // 入力中フォーム判定：input/textarea/selectがactiveElementなら再描画しない
           var ae=document.activeElement;
           var isInputting=ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT');
@@ -1831,6 +1926,128 @@ function numStepHTML(id,min,max,oninput){
   return'<div style="display:flex;align-items:center;gap:0;border:1.5px solid var(--border-secondary);border-radius:var(--radius);overflow:hidden">'+dec+inp+inc+'</div>';
 }
 function numStep(id,dir,min,max){var el=document.getElementById(id);var v=parseInt(el.value)||0;v=Math.min(max,Math.max(min,v+dir));el.value=v;el.dispatchEvent(new Event('input'));}
+// ===== コンディション拡張（mood/stress/soreness/部位/体重）用ヘルパー =====
+// 5段階アイコン（変数名維持・中身のみic()化。サイズはic引数で明示＝旧font-size:17px依存の置換）
+var MOOD_EMO=[ic('i-face-1',22),ic('i-face-2',22),ic('i-face-3',22),ic('i-face-4',22),ic('i-face-5',22)];      // 1=どんより → 5=絶好調（悲→喜の素直な並び）
+var STRESS_EMO=[ic('i-face-5',22),ic('i-face-4',22),ic('i-face-3',22),ic('i-face-2',22),ic('i-face-1',22)];    // 1=なし=笑顔 → 5=強い（i-faceを逆順格納。極性を崩さないこと）
+var SORE_EMO=[ic('i-pain-1',22),ic('i-pain-2',22),ic('i-pain-3',22),ic('i-pain-4',22),ic('i-pain-5',22)];      // 1=なし → 5=激痛
+// 5段階の日本語ラベル（アイコン下に併記）
+var RATE5_LABELS={mood:['どんより','いまいち','ふつう','良い','絶好調'],stress:['なし','少し','ふつう','強い','限界'],sore:['なし','軽い','ある','痛い','激痛'],fat:['元気','やや疲れ','ふつう','疲れ気味','ヘトヘト'],perf:['不調','いまいち','ふつう','良い','最高']};
+// ===== 試合日チェックv2（P1b）用定数 =====
+var MD_CRAMP_WHEN=['前半','後半','試合後'];
+var MD_CRAMP_PARTS=['ふくらはぎ','ハムストリングス','大腿四頭筋','足裏','その他'];
+var MD_HIA_SYMPTOMS=['頭痛','めまい','吐き気','もやもや','記憶が飛んだ','その他'];
+var MD_MIN_QUICK=[0,10,20,30,40,60,80];
+// 1〜5のアイコンボタン行（同じボタン再タップで解除＝任意項目）。値はhidden inputに入る
+var _rate5OnChange={};
+function rate5HTML(id,emojis,loCap,hiCap,labels){
+  return'<input type="hidden" id="'+id+'">'+
+  '<div style="display:flex;gap:6px">'+[1,2,3,4,5].map(function(v){
+    return'<button type="button" class="btn" style="flex:1;padding:8px 0 5px;min-height:44px;line-height:1.2;position:relative" id="'+id+'-b'+v+'" aria-pressed="false" onclick="setRate5(\''+id+'\','+v+')">'+
+      '<span id="'+id+'-chk'+v+'" style="display:none;position:absolute;top:2px;right:3px">'+ic('i-check',10,'var(--maroon)')+'</span>'+
+      emojis[v-1]+'<div style="font-size:8px;color:var(--text-tertiary);margin-top:1px;white-space:nowrap">'+((labels&&labels[v-1])||v)+'</div></button>';
+  }).join('')+'</div>'+
+  // ラベル併記時は下段の両端キャプションが冗長（かつ文言が食い違いうる）ため省略
+  (labels?'':'<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-tertiary);margin-top:2px"><span>'+loCap+'</span><span>'+hiCap+'</span></div>');
+}
+function setRate5(id,v){
+  var hid=document.getElementById(id);if(!hid)return;
+  var cur=parseInt(hid.value)||0;
+  var nv=(cur===v)?0:v;
+  hid.value=nv||'';
+  for(var i=1;i<=5;i++){
+    var b=document.getElementById(id+'-b'+i);
+    if(b){
+      var on=nv&&i===nv;
+      // 選択=maroon枠+pale塗り（inset影で実質2px枠。border太らせによるレイアウトシフトを回避）
+      b.style.borderColor=on?'var(--maroon)':'';
+      b.style.background=on?'var(--pale)':'';
+      b.style.boxShadow=on?'inset 0 0 0 1px var(--maroon)':'';
+      if(b.setAttribute)b.setAttribute('aria-pressed',on?'true':'false');
+    }
+    var chk=document.getElementById(id+'-chk'+i);
+    if(chk)chk.style.display=(nv&&i===nv)?'':'none';
+  }
+  if(_rate5OnChange[id])_rate5OnChange[id](nv);
+}
+// 部位の複数選択チップ（PARTS流用）。値はhidden inputにカンマ区切りで入る。pale地→選択maroon
+function partChipsHTML(id){
+  return'<div style="display:flex;flex-wrap:wrap;gap:5px">'+PARTS.map(function(pt,i){
+    return'<button type="button" class="btn btn-sm part-chip" id="'+id+'-c'+i+'" style="padding:5px 10px;font-size:11px" aria-pressed="false" onclick="togglePartChip(\''+id+'\','+i+')">'+pt+'</button>';
+  }).join('')+'</div><input type="hidden" id="'+id+'">';
+}
+function togglePartChip(id,i){
+  var hid=document.getElementById(id);if(!hid)return;
+  var sel=hid.value?hid.value.split(','):[];
+  var pt=PARTS[i];var idx=sel.indexOf(pt);
+  if(idx>=0)sel.splice(idx,1);else sel.push(pt);
+  hid.value=sel.join(',');
+  var b=document.getElementById(id+'-c'+i);
+  if(b){var on=sel.indexOf(pt)>=0;b.style.borderColor=on?'var(--maroon)':'';b.style.color=on?'var(--white)':'';b.style.background=on?'var(--maroon)':'';if(b.setAttribute)b.setAttribute('aria-pressed',on?'true':'false');}
+}
+function clearPartChips(id){
+  var hid=document.getElementById(id);if(!hid)return;
+  hid.value='';
+  PARTS.forEach(function(_,i){var b=document.getElementById(id+'-c'+i);if(b){b.style.borderColor='';b.style.color='';b.style.background='';}});
+}
+// 筋肉痛レート→部位チップ表示の連動（2以上で部位を聞く）
+function bindSorePartsToggle(rateId,wrapId,chipsId){
+  _rate5OnChange[rateId]=function(v){
+    var w=document.getElementById(wrapId);if(!w)return;
+    if(v>=2){w.style.display='';}
+    else{w.style.display='none';clearPartChips(chipsId);}
+  };
+}
+// ===== 汎用チップ部品（P1b・試合日チェックv2）。partChipsHTMLと同型だが任意のラベル配列を受ける単一/複数選択どちらにも使える =====
+// opts={labels:[...],multi:bool(既定true)}。ラベル配列はchipsHTML呼び出し時に_chipDefsへ記録する（DOM由来にしない＝
+// data-*属性の読み書きやDOM要素数ループに依存すると、テスト用document.getElementByIdモック（常に何か返す実装）で
+// 破綻または無限ループしうるため、実ブラウザ・模擬実行どちらでも同じに動くJS側のレジストリを正とする）
+var _chipDefs={};
+function chipsHTML(id,opts){
+  opts=opts||{};var labels=opts.labels||[];
+  _chipDefs[id]={labels:labels,multi:opts.multi!==false};
+  return'<div style="display:flex;flex-wrap:wrap;gap:5px">'+labels.map(function(lb,i){
+    return'<button type="button" class="btn btn-sm part-chip" id="'+id+'-c'+i+'" style="padding:5px 10px;font-size:11px" aria-pressed="false" onclick="toggleChip(\''+id+'\','+i+')">'+escapeHtml(String(lb))+'</button>';
+  }).join('')+'</div><input type="hidden" id="'+id+'">';
+}
+function _chipLabels(id){return(_chipDefs[id]&&_chipDefs[id].labels)||[];}
+function _chipPaint(id,sel){
+  _chipLabels(id).forEach(function(_,n){
+    var b=document.getElementById(id+'-c'+n);
+    if(!b)return;
+    var on=sel.indexOf(String(n))>=0;
+    b.style.borderColor=on?'var(--maroon)':'';b.style.color=on?'var(--white)':'';b.style.background=on?'var(--maroon)':'';if(b.setAttribute)b.setAttribute('aria-pressed',on?'true':'false');
+  });
+}
+function toggleChip(id,i){
+  var hid=document.getElementById(id);if(!hid)return;
+  var multi=_chipDefs[id]?_chipDefs[id].multi:true;
+  var sel=hid.value?hid.value.split(','):[];
+  var key=String(i);
+  var idx=sel.indexOf(key);
+  if(multi){
+    if(idx>=0)sel.splice(idx,1);else sel.push(key);
+  } else {
+    sel=(idx>=0)?[]:[key];
+  }
+  hid.value=sel.join(',');
+  _chipPaint(id,sel);
+  if(_rate5OnChange[id])_rate5OnChange[id](sel.length);
+}
+function chipVals(id){
+  var hid=document.getElementById(id);if(!hid||!hid.value)return[];
+  var labels=_chipLabels(id);
+  return hid.value.split(',').map(function(k){return labels[parseInt(k)];}).filter(function(x){return x!=null;});
+}
+function setChips(id,vals){
+  vals=vals||[];
+  var labels=_chipLabels(id);
+  var idxs=[];
+  labels.forEach(function(lb,i){if(vals.indexOf(lb)>=0)idxs.push(i);});
+  var hid=document.getElementById(id);if(hid)hid.value=idxs.join(',');
+  _chipPaint(id,idxs.map(String));
+}
+function clearChips(id){setChips(id,[]);}
 function broncoFromInputs(minId,secId){var m=parseInt(document.getElementById(minId).value)||0,s=parseInt(document.getElementById(secId).value)||0;return m*60+s||null;}
 function broncoMinSec(sec){return{m:sec?Math.floor(sec/60):0,s:sec?Math.round(sec%60):0};}
 function medH(pid){var l=D.i.filter(function(x){return x.pid===pid;});return l.length?l.map(function(x){return fmt(x.date)+' '+(x.side||'')+x.part+x.type;}).join('、'):'なし';}
@@ -1858,13 +2075,14 @@ function playerSearchHTML(id,selectedPid){
 }
 function openPSearch(id){document.getElementById(id+'-list').classList.add('open');}
 function filterPSearch(id){var q=document.getElementById(id+'-search').value.toLowerCase();var items=document.getElementById(id+'-list').children;for(var j=0;j<items.length;j++){var n=items[j].textContent.toLowerCase();items[j].style.display=n.indexOf(q)>=0?'flex':'none';}document.getElementById(id+'-list').classList.add('open');}
-function selectPSearch(id,pid){var p=D.p.find(function(x){return x.id===pid;});document.getElementById(id+'-search').value=p?p.name:'';document.getElementById(id+'-val').value=pid;document.getElementById(id+'-list').classList.remove('open');}
+function selectPSearch(id,pid){var p=D.p.find(function(x){return x.id===pid;});document.getElementById(id+'-search').value=p?p.name:'';document.getElementById(id+'-val').value=pid;document.getElementById(id+'-list').classList.remove('open');if(typeof _pSearchOnSelect==='function')_pSearchOnSelect(id,pid);}
+var _pSearchOnSelect=null; // P1c-6: goAddMatchDay等が選択後フックを差し込むための口（既定は何もしない）
 document.addEventListener('click',function(e){document.querySelectorAll('.p-search-list.open').forEach(function(el){if(!el.parentElement.contains(e.target))el.classList.remove('open');});});
 
 // ===== P8d 要対応キュー: 怪我承認＋rtest承認＋レッドフラグ（当日RPE>=8/睡眠<=5h）＋提出督促（2日以上）を一元集計 =====
 function reqQueue(){
   var todayS=todayStr();
-  var pendingInj=(D.i||[]).filter(function(x){return!x.resolved&&x.source&&!x.approved;});
+  var pendingInj=(D.i||[]).filter(function(x){return!x.resolved&&x.source&&!x.approved;}).sort(injHiaFirstCmp);
   // 復帰テスト承認待ち: 直近結果が患部・フィット両方クリアで未承認（goRTestDetailの承認ボタン条件と同一）
   var rtestPend=[];
   (D.i||[]).filter(function(x){return!x.resolved&&!x.rtestApproved;}).forEach(function(inj){
@@ -1877,8 +2095,8 @@ function reqQueue(){
   var yd=new Date();yd.setDate(yd.getDate()-1);var ydS=toDateStr(yd);
   var late=[];
   D.p.forEach(function(p){
-    var hasY=D.f.some(function(r){return idEq(r.pid,p.id)&&r.date===ydS;});
-    var hasT=D.f.some(function(r){return idEq(r.pid,p.id)&&r.date===todayS;});
+    var hasY=hasCondOn(p.id,ydS);
+    var hasT=hasCondOn(p.id,todayS);
     if(hasY||hasT)return;
     var lastRec=D.f.filter(function(r){return idEq(r.pid,p.id);}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
     var ds=lastRec?Math.floor((new Date(todayS)-new Date(lastRec.date))/86400000):null;
@@ -2008,7 +2226,7 @@ dash:function(){
   var nextSunS=toDateStr(nextSun);
   var returning=D.i.filter(function(x){return!x.resolved&&x.returnDate&&x.returnDate>=nextMonS&&x.returnDate<=nextSunS;});
   // New injuries pending approval (source match/player, not yet approved)
-  var pendingInj=D.i.filter(function(x){return!x.resolved&&x.source&&!x.approved;}).sort(function(a,b){return b.date.localeCompare(a.date);});
+  var pendingInj=D.i.filter(function(x){return!x.resolved&&x.source&&!x.approved;}).sort(injHiaFirstCmp);
   // Can't practice next week → 今週中のみ表示（日曜を過ぎたら消える）
   var thisWeekMonS=toDateStr(weekMonday(today));
   var cantPrac=D.i.filter(function(x){
@@ -2020,9 +2238,8 @@ dash:function(){
   var thisWeekEvents=getThisWeekEvents();
   // ===== 本日の提出状況集計 =====
   // コンディション：全選手が毎日提出すべき
-  var condSubmittedToday=D.f.filter(function(r){return r.date===todayS;}).map(function(r){return r.pid;});
   var condNotSubmitted=D.p.filter(function(p){
-    return !condSubmittedToday.some(function(sid){return idEq(sid,p.id);});
+    return !hasCondOn(p.id,todayS); // P1c-11: f または md（試合日チェック）どちらかがあれば提出扱い
   });
   var condRate=tot>0?Math.round((tot-condNotSubmitted.length)/tot*100):0;
   var condSubCnt=tot-condNotSubmitted.length; // P9b: 提出人数（ピッチのボール前進分子）
@@ -2037,8 +2254,8 @@ dash:function(){
   var yd=new Date();yd.setDate(yd.getDate()-1);var ydS=toDateStr(yd);
   var lateSubmitters=[];
   D.p.forEach(function(p){
-    var hasYesterday=D.f.some(function(r){return idEq(r.pid,p.id)&&r.date===ydS;});
-    var hasToday=D.f.some(function(r){return idEq(r.pid,p.id)&&r.date===todayS;});
+    var hasYesterday=hasCondOn(p.id,ydS);
+    var hasToday=hasCondOn(p.id,todayS);
     if(!hasYesterday&&!hasToday){
       // 最後に提出した日
       var lastRec=D.f.filter(function(r){return idEq(r.pid,p.id);}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
@@ -2107,7 +2324,8 @@ dash:function(){
   if(pendingInj.length){
     urgentItems.push('<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.5rem">'+ic('i-bandage',15,'var(--red)')+'新着怪我<span class="bd bd-r">'+pendingInj.length+'</span><span style="font-size:11px;font-weight:600;color:var(--text-secondary)">スタッフ確認が必要</span></div>'+
     pendingInj.map(function(x){var p=D.p.find(function(pp){return pp.id===x.pid;});if(!p)return'';
-      return'<div class="alert-card alert-down" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><span style="flex:1">'+escapeHtml(p.name)+' — '+(x.side||'')+x.part+' '+x.type+' ('+fmt(x.date)+') '+(x.source==='match'?'【試合】':'【練習/その他】')+'</span><div style="display:flex;gap:6px"><button class="btn btn-sm btn-s" onclick="approveInjury('+x.id+')">怪我人に追加</button><button class="btn btn-sm btn-d" onclick="rejectInjury('+x.id+')">却下</button><button class="btn btn-sm" onclick="goInjuryDetail('+x.id+')">詳細</button></div></div>';
+      var isHia=injIsHia(x);
+      return'<div class="alert-card alert-down" style="justify-content:space-between;flex-wrap:wrap;gap:6px'+(isHia?';border-left:3px solid var(--red)':'')+'"><span style="flex:1">'+(isHia?'<span class="bd bd-r">HIA</span> ':'')+escapeHtml(p.name)+' — '+(x.side||'')+x.part+' '+x.type+' ('+fmt(x.date)+') '+(x.source==='match'?'【試合】':'【練習/その他】')+(isHia&&(x.hiaSymptoms||[]).length?'<br><span style="font-size:11px;color:var(--text-secondary)">症状: '+escapeHtml(x.hiaSymptoms.join('・'))+'</span>':'')+'</span><div style="display:flex;gap:6px"><button class="btn btn-sm btn-s" onclick="approveInjury('+x.id+',this)">怪我人に追加</button><button class="btn btn-sm btn-d" onclick="rejectInjury('+x.id+')">却下</button><button class="btn btn-sm" onclick="goInjuryDetail('+x.id+')">詳細</button></div></div>';
     }).join(''));
   }
   // 緊急: 復帰テスト承認待ち（P8d 要対応キュー: 全テストクリア済み＝スタッフの承認判断だけが残っている）
@@ -2197,29 +2415,61 @@ dash:function(){
       '<div style="display:flex;flex-wrap:wrap;gap:5px">'+bcNotSubmitted.map(function(p){return'<span class="chip-late" onclick="goPlayerDetail('+p.id+')" style="cursor:pointer">'+escapeHtml(p.name)+'</span>';}).join('')+'</div>':'')+
     '</div>';
 
-  // ===== 試合日チェック未入力パネル（P1a・pendingMatchChecks ベース。試合ごとにブロック。P1c-11で中身を最終形に差し替え） =====
+  // ===== 試合日チェックパネル（P1c-11最終形。「次の試合」1件に焦点＝直近7日以内の未来戦、無ければ直近3日以内で未提出が残る過去戦） =====
   var matchPanel='';
   (function(){
-    var byEv={};
-    D.p.forEach(function(p){
-      pendingMatchChecks(p.id,todayS,3).forEach(function(x){
-        var k=String(x.ev.id);
-        if(!byEv[k])byEv[k]={ev:x.ev,daysAgo:x.daysAgo,players:[]};
-        byEv[k].players.push(p);
-      });
-    });
-    var keys=Object.keys(byEv).sort(function(a,b){return byEv[b].ev.date.localeCompare(byEv[a].ev.date);});
-    if(!keys.length)return;
+    var fromD=toDateStr(new Date(new Date(todayS+'T00:00:00').getTime()-3*86400000));
+    var toD=toDateStr(new Date(new Date(todayS+'T00:00:00').getTime()+7*86400000));
+    var cand=matchEvents().filter(function(e){return e.date>=fromD&&e.date<=toD;});
+    var future=cand.filter(function(e){return e.date>=todayS;}).sort(function(a,b){return a.date.localeCompare(b.date);});
+    var past=cand.filter(function(e){return e.date<todayS;}).sort(function(a,b){return b.date.localeCompare(a.date);});
+    var nextEv=future[0]||past.filter(function(e){return matchChecksMissing(e).length>0;})[0]||null;
+    if(!nextEv)return;
+    var evKeyR=matchEventKey(nextEv);
+    var squad=squadOf(nextEv);
+    var isToday=nextEv.date===todayS;
+    var mdN=Math.round((new Date(nextEv.date+'T00:00:00').getTime()-new Date(todayS+'T00:00:00').getTime())/86400000);
     matchPanel='<div class="card rv" style="margin-bottom:1.25rem;padding:1.1rem 1.25rem">'+
-      '<div class="kicker" style="margin-bottom:8px">MATCH CHECK-IN</div>'+
-      keys.map(function(k){
-        var g=byEv[k];
-        var N=squadOf(g.ev).length;
-        var doneN=N-g.players.length;
-        return'<div style="margin-bottom:10px"><div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;margin-bottom:.4rem">'+ic('i-ball',15,'var(--maroon)')+'試合日チェック未入力 <span style="font-size:12px;color:var(--text-secondary);font-weight:400">'+fmt(g.ev.date)+' '+matchEvTitle(g.ev)+' / 残り'+g.players.length+'名'+(N?'（提出 '+doneN+'/'+N+'）':'')+(g.daysAgo>=2?' <span class="bd bd-r">'+g.daysAgo+'日経過</span>':'')+'</span></div>'+
-        '<div style="display:flex;flex-wrap:wrap;gap:5px">'+g.players.map(function(p){return'<span class="chip-late" onclick="goPlayerDetail('+p.id+')" style="cursor:pointer">'+escapeHtml(p.name)+'</span>';}).join('')+'</div></div>';
-      }).join('')+
-      '</div>';
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">'+
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+ic('i-ball',16,'var(--maroon)')+'<span style="font-weight:700;font-size:14px">次の試合</span><span class="bd bd-p">MD'+(mdN>=0?'-'+mdN:'+'+(-mdN))+'</span><span style="font-size:12px;color:var(--text-secondary)">'+fmt(nextEv.date)+' '+matchEvTitle(nextEv)+'</span></div>'+
+      '<div style="display:flex;align-items:center;gap:6px">'+
+      (squad.length?'<span class="bd bd-g">'+ic('i-check-c',10)+' メンバー表 '+squad.length+'名</span>':'<span class="bd '+(isToday?'bd-r':'bd-a')+'">メンバー表未登録</span>')+
+      '<button class="btn btn-sm" onclick="goSquadEditor(\''+(nextEv.id!=null?nextEv.id:'')+'\')">メンバー表を開く</button>'+
+      '</div></div>';
+    var koCutoffPassed=false;
+    if(isToday){
+      var koTime=nextEv.ko||'18:00';
+      var kp=koTime.split(':');
+      if(kp.length===2){
+        var koDate=new Date(todayS+'T'+koTime+':00');
+        koDate.setHours(koDate.getHours()+2);
+        koCutoffPassed=new Date()<koDate;
+      }
+    }
+    if(isToday&&koCutoffPassed){
+      matchPanel+='<div style="font-size:13px;color:var(--text-secondary)">'+ic('i-clock',13)+' 試合後に集計します（KO '+(nextEv.ko||'18:00')+'）</div></div>';
+      return;
+    }
+    var mdsUniq=mdsOfEventUniq(nextEv);
+    var squadPidSet={};squad.forEach(function(s){squadPidSet[String(s.pid)]=true;});
+    var inSquadN=mdsUniq.filter(function(m){return squadPidSet[String(m.pid)];}).length;
+    var missing=matchChecksMissing(nextEv).sort(function(a,b){return(squadNum(nextEv,a.id)||99)-(squadNum(nextEv,b.id)||99);});
+    var hiaN=mdsUniq.filter(mdHia).length;
+    var injN=mdsUniq.filter(function(m){return!!mdInjuryLive(m);}).length;
+    matchPanel+='<div class="kicker" style="margin-bottom:4px">MATCH CHECK-IN</div>';
+    if(squad.length){
+      matchPanel+=pitchProgressHtml(Math.min(inSquadN,squad.length-1),squad.length,null,{still:true,ball:ic('i-ball',18,'var(--pitch-accent)')});
+      matchPanel+='<div style="font-size:12px;color:var(--text-secondary);margin:4px 0 8px">提出 '+inSquadN+'/'+squad.length+'名'+(hiaN?' / HIA '+hiaN+'名':'')+(injN?' / 怪我 '+injN+'名':'')+'</div>';
+    }
+    if(missing.length){
+      matchPanel+='<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">'+missing.map(function(p){return'<span class="chip-late" onclick="goAddMatchDay(\''+evKeyR+'\','+p.id+')" style="cursor:pointer">'+escapeHtml(p.name)+'</span>';}).join('')+'</div>';
+    } else if(squad.length){
+      matchPanel+='<div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--green);font-weight:600;margin-bottom:8px">'+ic('i-check-c',14)+'全員提出済み</div>';
+    }
+    matchPanel+='<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+      '<button class="btn btn-sm" onclick="goMatchReport(\''+evKeyR+'\')">レポートを開く</button>'+
+      (squad.length?'<button class="btn btn-sm" onclick="copyMdRemind(\''+evKeyR+'\')">'+ic('i-clipboard',12)+' LINE用テキストをコピー</button>':'')+
+      '</div></div>';
   })();
 
   // P8d: 今週の伸びサマリ（physAlertsData=フィジカル面の共通比較ロジック。最新記録が今週の分だけ）
@@ -2406,8 +2656,8 @@ injury:function(){
     if(pf&&String(x.pid)!==pf)return false;
     return true;
   }).sort(function(a,b){return b.date.localeCompare(a.date);});
-  var pending=D.i.filter(function(x){return x.source&&(x.approved===null||x.approved===undefined)&&!x.resolved;});
-  var injCard=function(i){var p=D.p.find(function(x){return x.id===i.pid;});if(!p)return'';return'<div class="card card-click" style="margin-bottom:8px;padding:1rem" onclick="goInjuryDetail('+i.id+')"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+avH(p,32)+'<div style="flex:1;min-width:140px"><div style="font-size:14px;font-weight:600">'+escapeHtml(p.name)+' — '+injLabel(i)+'</div><div style="font-size:12px;color:var(--text-secondary)">受傷: '+fmt(i.date)+(i.returnDate?' | 復帰予定: '+fmt(i.returnDate):'')+'</div></div><span class="bd '+(i.hospitalVisited?'bd-g':'bd-a')+'">'+(i.hospitalVisited?'受診済':'未受診')+'</span><span class="bd '+(i.resolved?'bd-g':'bd-r')+'">'+(i.resolved?'回復済':'治療中')+'</span></div></div>';};
+  var pending=D.i.filter(function(x){return x.source&&(x.approved===null||x.approved===undefined)&&!x.resolved;}).sort(injHiaFirstCmp);
+  var injCard=function(i){var p=D.p.find(function(x){return x.id===i.pid;});if(!p)return'';return'<div class="card card-click" style="margin-bottom:8px;padding:1rem" onclick="goInjuryDetail('+i.id+')"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+avH(p,32)+'<div style="flex:1;min-width:140px"><div style="font-size:14px;font-weight:600">'+(injIsHia(i)?'<span class="bd bd-r">HIA</span> ':'')+escapeHtml(p.name)+' — '+injLabel(i)+(i.proxy?' <span class="bd bd-n">代理入力</span>':'')+'</div><div style="font-size:12px;color:var(--text-secondary)">受傷: '+fmt(i.date)+(i.returnDate?' | 復帰予定: '+fmt(i.returnDate):'')+'</div></div><span class="bd '+(i.hospitalVisited?'bd-g':'bd-a')+'">'+(i.hospitalVisited?'受診済':'未受診')+'</span><span class="bd '+(i.resolved?'bd-g':'bd-r')+'">'+(i.resolved?'回復済':'治療中')+'</span></div></div>';};
   var resolvedH=resolvedList.length?
   '<div style="margin-top:14px"><div style="font-size:14px;font-weight:600;color:var(--text-secondary);cursor:pointer;margin-bottom:8px" onclick="toggleResolvedInj()">回復済み ('+resolvedList.length+'件) <span id="resolved-inj-arrow">'+ic('i-chevron-r',12)+'</span></div>'+
   '<div id="resolved-inj-list" style="display:none">'+resolvedList.map(injCard).join('')+'</div></div>':'';
@@ -2544,6 +2794,14 @@ help:function(){
   '・「欠席管理」で全選手の出欠を確認<br>'+
   '</div></div>'+
   
+  '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--maroon)">'+
+  '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-ball',15,'var(--maroon)')+' 試合日レポート</div>'+
+  '<div style="font-size:13px;line-height:1.8">'+
+  '・試合ごとの提出状況・要対応（HIA/怪我/攣り等）は「試合日レポート」から確認<br>'+
+  '・選手本人が入力できない場合は「+ 代理入力」からスタッフが代わりに記録できます<br>'+
+  '・頭部への衝撃（HIA疑い）の報告は最優先で承認/却下を判断してください。承認すると自動でカルテに脳震盪フラグが付きます<br>'+
+  '</div></div>'+
+
   '<div class="card" style="margin-bottom:12px;border-left:3px solid var(--red)">'+
   '<div style="font-weight:600;font-size:15px;margin-bottom:8px">'+ic('i-bandage',15,'var(--red)')+' 怪我管理</div>'+
   '<div style="font-size:13px;line-height:1.8">'+
@@ -2642,8 +2900,9 @@ matchview:function(){
     var hiaN=mdsUniq.filter(function(m){return mdHia(m);}).length;
     var crampN=mdsUniq.filter(function(m){return m.cramp;}).length;
     var title=x.en.isPseudo?'（カレンダー未登録）':matchEvTitle(ev);
-    var subtitle='提出: '+inSquadN+(squad.length?'/'+squad.length:'')+'名'+(extraN?'（+'+extraN+' メンバー外）':'')+(squad.length===0&&!x.en.isPseudo?'（メンバー表未登録）':'');
-    return'<div class="card card-click" style="margin-bottom:8px" onclick="goMatchDateDetail(\''+ev.date+'\')">'+
+    var missingN=squad.length?Math.max(0,squad.length-inSquadN):0;
+    var subtitle='提出: '+inSquadN+(squad.length?'/'+squad.length:'')+'名'+(extraN?'（+'+extraN+' メンバー外）':'')+(missingN?'・未提出 '+missingN+'名':'')+(squad.length===0&&!x.en.isPseudo?'（メンバー表未登録）':'');
+    return'<div class="card card-click" style="margin-bottom:8px" onclick="goMatchReport(\''+matchEventKey(x.en.isPseudo?{id:null,date:ev.date}:ev)+'\')">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">'+
     '<div><div style="font-weight:600;font-size:15px">'+fmt(ev.date)+' '+title+(x.isFuture?' <span class="flag" style="background:var(--maroon-vivid);color:var(--white)">NEXT</span>':'')+(!x.en.isPseudo&&ev.comp==='practice'?' <span class="bd">練習試合</span>':'')+'</div>'+
     '<div style="font-size:12px;color:var(--text-secondary);margin-top:2px">'+subtitle+'</div></div>'+
@@ -3329,7 +3588,24 @@ function renderChartOverview(iid){
   var lastEval=ch.evals.slice().sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d!==0)return d;return (b.inputAt||'').localeCompare(a.inputAt||'');})[0];
   // 最新痛み
   var lastPain=lastEval&&lastEval.pain?lastEval.pain:{};
-  var h='<div class="grid g3" style="margin-bottom:16px">'+
+  var h='';
+  // P1c-12: 承認待ちバナー（HIA/代理入力バッジ・試合日チェックへの導線）＋HIAなのにカルテ未反映のアラート
+  if(inj.source&&(inj.approved===null||inj.approved===undefined)&&!inj.resolved){
+    h+='<div class="alert-card alert-down" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">'+
+      '<div style="flex:1;min-width:200px">'+(injIsHia(inj)?'<span class="bd bd-r">HIA</span> ':'')+(inj.proxy?'<span class="bd bd-n">代理入力</span> ':'')+'この報告は承認待ちです'+((inj.hiaSymptoms||[]).length?'<div style="font-size:11px;margin-top:3px">症状: '+escapeHtml(inj.hiaSymptoms.join('・'))+'</div>':'')+'</div>'+
+      '<div style="display:flex;gap:6px">'+
+      '<button class="btn btn-sm btn-s" onclick="approveInjury('+iid+',this)">怪我人に追加</button>'+
+      '<button class="btn btn-sm btn-d" onclick="rejectInjury('+iid+')">却下</button>'+
+      (inj.mdId!=null?'<button class="btn btn-sm" onclick="goMatchDetailFromInj('+inj.mdId+')">試合日チェックを開く</button>':'')+
+      '</div></div>';
+  }
+  if(injIsHia(inj)&&inj.approved===true&&!(getChart(inj.id)||{}).isConcussion){
+    h+='<div class="alert-card alert-down" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">'+
+      '<span class="bd bd-r">脳震盪フラグ未設定</span><span style="flex:1;font-size:12px">承認済みのHIA報告ですが、カルテの脳震盪フラグが未反映です。</span>'+
+      '<button class="btn btn-sm btn-p" onclick="hiaChartApply('+iid+',function(){renderChartTab();toast(\'カルテに反映しました\');},function(){alert(\'反映に失敗しました。もう一度お試しください\');})">カルテに反映</button>'+
+      '</div>';
+  }
+  h+='<div class="grid g3" style="margin-bottom:16px">'+
     '<div class="mc"><div class="v" style="font-size:20px;color:var(--accent)">'+daysSince+'</div><div class="l">受傷からの日数</div></div>'+
     '<div class="mc"><div class="v" style="font-size:20px">'+ch.evals.length+'</div><div class="l">評価記録</div></div>'+
     '<div class="mc"><div class="v" style="font-size:20px">'+ch.soaps.length+'</div><div class="l">SOAP記録</div></div>'+
@@ -4883,10 +5159,10 @@ function goPlayerDetail(pid,openTab){
     fRecs.slice(0,5).forEach(function(r){allSubs.push({type:'コンディション',date:r.date,inputAt:r.inputAt,color:'var(--blue)'});});
     pPh.slice(0,3).forEach(function(r){allSubs.push({type:'フィジカル',date:r.date,inputAt:r.inputAt,color:'var(--purple)'});});
     D.bc.filter(function(r){return idEq(r.pid,pid);}).slice(0,3).forEach(function(r){allSubs.push({type:'体組成',date:r.date,inputAt:r.inputAt,color:'var(--green)'});});
-    D.md.filter(function(r){return idEq(r.pid,pid);}).slice(0,3).forEach(function(r){allSubs.push({type:'試合日',date:r.date,inputAt:r.inputAt,color:'var(--amber)'});});
+    D.md.filter(function(r){return idEq(r.pid,pid);}).sort(function(a,b){return(b.inputAt||b.date||'').localeCompare(a.inputAt||a.date||'');}).slice(0,3).forEach(function(r){allSubs.push({type:'試合日',date:r.date,inputAt:r.inputAt,color:'var(--amber)',mdId:r.id,proxy:r.proxy});});
     allSubs.sort(function(a,b){return (b.inputAt||b.date).localeCompare(a.inputAt||a.date);});
     if(!allSubs.length)return'<div class="no">記録なし</div>';
-    return allSubs.slice(0,12).map(function(s){return'<div class="log-row"><span class="bd" style="background:'+s.color+';color:var(--white);font-size:9px;min-width:80px;text-align:center">'+s.type+'</span><span style="flex:1;font-size:12px">対象日 '+fmt(s.date)+'</span><span style="font-size:11px;color:var(--text-secondary)">'+(s.inputAt?'入力 '+fmtDateTime(s.inputAt):'時刻不明')+'</span></div>';}).join('');
+    return allSubs.slice(0,12).map(function(s){return'<div class="log-row"'+(s.mdId!=null?' style="cursor:pointer" onclick="goMatchDetailFromInj('+s.mdId+')"':'')+'><span class="bd" style="background:'+s.color+';color:var(--white);font-size:9px;min-width:80px;text-align:center">'+s.type+'</span><span style="flex:1;font-size:12px">対象日 '+fmt(s.date)+(s.proxy?' <span class="bd bd-n" style="font-size:9px">代理入力</span>':'')+'</span><span style="font-size:11px;color:var(--text-secondary)">'+(s.inputAt?'入力 '+fmtDateTime(s.inputAt):'時刻不明')+'</span></div>';}).join('');
   })()+'</div>'+
   (absRecs.length?'<div class="form-box"><div class="form-title">欠席履歴</div>'+absRecs.map(function(s){var ab=s.absentees.find(function(a){return idEq(a.pid,pid);});return'<div class="log-row"><span style="min-width:70px;color:var(--text-secondary)">'+fmt(s.date)+'</span><span class="bd bd-r">欠席</span><span style="flex:1;color:var(--text-secondary)">'+(ab&&ab.reason?ab.reason:'理由なし')+'</span></div>';}).join('')+'</div>':'<div class="no">欠席記録なし</div>')+'</div>'+
   '<div class="tc" id="dt5"></div>',
@@ -5398,15 +5674,43 @@ function doEditWeekCheckStaff(wid,btnEl){
   },function(){if(notFound){releaseSubmit(btnEl);alert('記録が見つかりませんでした');return;}popView();toast('修正しました');},function(){releaseSubmit(btnEl);alert('保存できませんでした。もう一度お試しください');});
 }
 
-function delMatchDayStaff(mid,date){
-  if(!confirm('この試合日チェック記録を削除しますか？\n（削除すると元に戻せません）'))return;
-  var id=parseInt(mid)||mid;var notFound=false;
+// P1c-10: confirm撤去→即削除+Undoトースト（型はdoRejectInjury/undoRejectInjuryと同じ）。evKeyは呼び出し元の試合キー（レポート再描画に使う）
+function _mdAfterChange(evKey){
+  if(document.getElementById('mr-root')){goMatchReport(evKey,true);return;}
+  if((!viewStack||!viewStack.length)&&V[curPage]){V[curPage]();return;}
+  popView();
+}
+function delMatchDayStaff(mid,evKey,opts){
+  opts=opts||{};
+  var notFound=false,snap=null;
   svSafeUpdate('md',function(latest){
-    var before=latest.length;
-    latest=latest.filter(function(r){return r.id!==id&&String(r.id)!==String(mid);});
-    notFound=(latest.length===before);
+    var idx=latest.findIndex(function(x){return idEq(x.id,mid);});
+    if(idx<0){notFound=true;return latest;}
+    snap=latest[idx];
+    latest.splice(idx,1);
     return latest;
-  },function(){if(notFound){alert('記録が見つかりませんでした');return;}popView();goMatchDateDetail(date);toast('削除しました');});
+  },function(){
+    if(notFound){alert('記録が見つかりませんでした');return;}
+    if(opts.back==='page'){popView();}else{_mdAfterChange(evKey);}
+    toast('削除しました','元に戻す',function(){undoDelMatchDayStaff(snap,evKey);});
+  },function(){alert('保存できませんでした。もう一度お試しください');});
+}
+function undoDelMatchDayStaff(snap,evKey){
+  if(!snap)return;
+  var skipped=false;
+  svSafeUpdate('md',function(latest){
+    skipped=false;
+    var exists=latest.some(function(x){return idEq(x.id,snap.id);}); // 同idの復元済みなら二重復元しない
+    if(exists)return latest;
+    var ev=resolveMatchEvent(evKey,snap.date);
+    var dup=mdDupIn(latest,snap.pid,ev);
+    if(dup){skipped=true;return latest;} // 別の記録が既に登録されている（再提出済み等）→復元しない
+    latest.push(snap);
+    return latest;
+  },function(){
+    _mdAfterChange(evKey);
+    toast(skipped?'別の記録が既に登録されているため復元しませんでした':'元に戻しました');
+  },function(){alert('復元に失敗しました。もう一度お試しください');});
 }
 
 function delFatigueStaff(fid){
@@ -5619,7 +5923,10 @@ function exportCSV(type){
   else if(type==='bodycomp'){fname='体組成.csv';csv='選手,日付,体重,体脂肪率,筋量\n';D.bc.forEach(function(r){csv+='"'+pName(r.pid)+'","'+r.date+'",'+(r.weight||'')+','+(r.fat||'')+','+(r.muscle||'')+'\n';});}
   else if(type==='fatigue'){fname='疲労度.csv';csv='選手,日付,RPE,睡眠,TR時間,sRPE,メモ\n';D.f.forEach(function(r){csv+='"'+pName(r.pid)+'","'+r.date+'",'+r.rpe+','+r.sleep+','+effDur(r)+','+sLoad(r)+',"'+(r.note||'')+'"\n';});}
   else if(type==='absence'){fname='欠席データ.csv';csv='日付,名称,欠席者,理由\n';D.a.forEach(function(s){if(!s.absentees.length){csv+='"'+s.date+'","'+(s.label||'')+'","なし",""\n';}else{s.absentees.forEach(function(a){csv+='"'+s.date+'","'+(s.label||'')+'","'+pName(a.pid)+'","'+(a.reason||'')+'"\n';});}});}
-  else if(type==='matchday'){fname='試合日レポート.csv';csv='選手,日付,出場,試合前疲労,試合後疲労,睡眠,朝食,怪我,部位,痛み,足攣り\n';D.md.forEach(function(m){csv+='"'+pName(m.pid)+'","'+m.date+'","'+escapeHtml(m.role)+'",'+m.fatiguePre+','+m.fatiguePost+',"'+m.sleepTime+'→'+m.wakeTime+'","'+m.breakfast+'","'+(m.injured?'あり':'なし')+'","'+(m.injured?(m.injSide||'')+m.injPart:'')+'","'+(m.injured?m.injPainNow:'')+'","'+(m.cramp?'あり':'なし')+'"\n';});}
+  else if(type==='matchday'){fname='試合日レポート.csv';csv='選手,日付,出場,疲労,睡眠,怪我,部位,足攣り,HIA\n';D.md.forEach(function(m){
+    var liveInj=mdInjuryLive(m);
+    csv+='"'+pName(m.pid)+'","'+(m.date||'')+'","'+escapeHtml(mdRoleLabel(m)||'')+'","'+escapeHtml(mdFatigueStr(m)||'')+'","'+escapeHtml(mdSleepStr(m)||'')+'","'+(liveInj?'あり':'なし')+'","'+(liveInj?escapeHtml((liveInj.side||'')+(liveInj.part||'')):'')+'","'+(m.cramp?'あり':'なし')+'","'+(mdHia(m)?'あり':'なし')+'"\n';
+  });}
   if(!csv)return;
   var bom='\uFEFF';
   var blob=new Blob([bom+csv],{type:'text/csv;charset=utf-8;'});
@@ -5696,35 +6003,420 @@ function doDelPhys(phid){
 }
 function mvTab(i){document.querySelectorAll('#main-ct .tab').forEach(function(t,j){t.classList.toggle('ac',j===i);});document.querySelectorAll('#main-ct .tc').forEach(function(t,j){t.classList.toggle('ac',j===i);});}
 
-// === MATCH DATE DETAIL ===
+// === MATCH REPORT（P1c-3/4。試合ごとの提出状況・要対応トリアージ・代理入力の入口） ===
+// goMatchDateDetail(date)は旧呼び出し元向けの薄い委譲エイリアス（cal試合日ならそのイベント、無ければ疑似イベント扱い）
 function goMatchDateDetail(date){
-  var recs=D.md.filter(function(m){return m.date===date;});
-  var h='<div style="display:flex;align-items:center;gap:7px;font-size:17px;font-weight:700;margin-bottom:14px">'+ic('i-ball',18,'var(--maroon)')+fmt(date)+' の試合記録</div>';
-  h+='<div class="grid g3" style="margin-bottom:1rem">';
-  h+='<div class="mc"><div class="v">'+recs.length+'</div><div class="l">提出数</div></div>';
-  h+='<div class="mc"><div class="v" style="color:var(--red)">'+recs.filter(function(m){return m.injured;}).length+'</div><div class="l">怪我あり</div></div>';
-  h+='<div class="mc"><div class="v" style="color:var(--amber)">'+recs.filter(function(m){return m.cramp;}).length+'</div><div class="l">足攣り</div></div>';
+  var ev=matchEventByDate(date)||{id:null,date:date,squad:[]};
+  goMatchReport(matchEventKey(ev));
+}
+function mrTagsHtml(m){
+  var t='';
+  if(mdHia(m))t+='<span class="bd bd-r">HIA</span> ';
+  if(mdInjuryLive(m))t+='<span class="bd bd-r">怪我</span> ';
+  if(m.cramp)t+='<span class="bd bd-a">足攣り</span> ';
+  return t;
+}
+// 試合日レポートの1行（要対応/その他共通）。evは所属先イベント（重複判定・背番号解決に使用）
+function mrRowHtml(m,ev,dupCount,oldOnes){
+  var p=D.p.find(function(x){return idEq(x.id,m.pid);});if(!p)return'';
+  var sr=squadRole(ev,m.pid),mr=mdIsV2(m)?mdRoleCode(m):null;
+  var mismatch=(sr&&mr&&sr!==mr);
+  var num=mdNum(m);
+  var ld=mdLoad(m);
+  var isV2=mdIsV2(m);
+  return'<div class="card" style="margin-bottom:8px">'+
+  '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+avH(p,32)+
+  '<div style="flex:1;min-width:160px"><div style="font-weight:600">'+escapeHtml(p.name)+' '+roleBadgeHtml(mdRoleLabel(m))+(num!=null?' <span class="bd bd-p">#'+num+'</span>':'')+(m.proxy?' <span class="bd bd-n">代理入力</span>':'')+(!isV2?' <span class="bd bd-n">旧形式</span>':'')+(dupCount>1?' <span class="bd bd-a">重複 '+dupCount+'件</span>':'')+(mismatch?' <span class="bd bd-a">メンバー表: '+(sr==='start'?'スタート':'リザーブ')+'</span>':'')+'</div>'+
+  '<div style="font-size:12px;color:var(--text-secondary);margin-top:2px">'+
+  (isV2?((m.minutes!=null?m.minutes+'分':'-')+(m.rpe!=null?' / RPE '+m.rpe:'')+(ld!=null?' / 負荷'+ld+'AU':'')+' / 睡眠'+mdSleepStr(m)):mdFatigueStr(m))+
+  (m.canPractice?' / 来週: '+escapeHtml(m.canPractice):'')+
+  '</div>'+
+  '<div style="font-size:10px;color:var(--text-tertiary);margin-top:1px">入力: '+(m.inputAt?new Date(m.inputAt).toLocaleString('ja-JP'):'-')+(m.editedAt?'（修正済み）':'')+'</div></div>'+
+  '<div>'+mrTagsHtml(m)+'</div>'+
+  '<button class="btn btn-sm" onclick="goMatchDetail(\''+m.id+'\')">詳細</button>'+
+  '<button class="btn btn-sm" onclick="showEditMatchStaff(\''+m.id+'\',\''+matchEventKey(ev)+'\')">修正</button>'+
+  '<button class="btn btn-sm btn-d" onclick="delMatchDayStaff(\''+m.id+'\',\''+matchEventKey(ev)+'\')">削除</button>'+
+  '</div>'+
+  (oldOnes&&oldOnes.length?'<div style="margin-top:6px;padding-top:6px;border-top:0.5px solid var(--border-tertiary);display:flex;flex-direction:column;gap:4px">'+oldOnes.map(function(o){
+    return'<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-tertiary)"><span style="flex:1">旧レコード（'+(o.inputAt?new Date(o.inputAt).toLocaleString('ja-JP'):'-')+'）</span><button class="btn btn-sm btn-d" onclick="delMatchDayStaff(\''+o.id+'\',\''+matchEventKey(ev)+'\')">削除</button></div>';
+  }).join('')+'</div>':'')+
+  '</div>';
+}
+function goMatchReport(evKey,replace){
+  var ev=resolveMatchEvent(evKey);
+  if(!ev){alert('対象の試合が見つかりません');return;}
+  var evKeyR=matchEventKey(ev);
+  var squad=squadOf(ev);
+  var squadPidSet={};squad.forEach(function(s){squadPidSet[String(s.pid)]=true;});
+  var allByEv=mdsOfEvent(ev);
+  var byPid={};allByEv.forEach(function(m){var k=String(m.pid);(byPid[k]=byPid[k]||[]).push(m);});
+  var mdsUniq=mdsOfEventUniq(ev);
+  var inSquad=mdsUniq.filter(function(m){return squadPidSet[String(m.pid)];});
+  var extra=mdsUniq.filter(function(m){return!squadPidSet[String(m.pid)];});
+  var hiaN=mdsUniq.filter(mdHia).length;
+  var injN=mdsUniq.filter(function(m){return!!mdInjuryLive(m);}).length;
+  var crampN=mdsUniq.filter(function(m){return m.cramp;}).length;
+  var missing=matchChecksMissing(ev);
+  var triage=mdsUniq.map(function(m){return{m:m,rank:mdTriage(m,mdsUniq)};}).filter(function(x){return x.rank!=null;});
+  triage.sort(function(a,b){return a.rank-b.rank||((b.m.inputAt||'').localeCompare(a.m.inputAt||''));});
+  var triagePids={};triage.forEach(function(x){triagePids[String(x.m.pid)]=true;});
+  var rowOf=function(m){
+    var list=(byPid[String(m.pid)]||[]).slice().sort(function(a,b){return(a.inputAt||'').localeCompare(b.inputAt||'');});
+    var oldOnes=list.slice(0,-1);
+    return mrRowHtml(m,ev,list.length,oldOnes);
+  };
+  var h='<div style="max-width:760px" id="mr-root">';
+  h+='<div style="display:flex;align-items:center;gap:7px;font-size:17px;font-weight:700;margin-bottom:2px">'+ic('i-ball',18,'var(--maroon)')+fmt(ev.date)+' '+matchEvTitle(ev)+(ev.comp==='practice'?' <span class="bd">練習試合</span>':'')+'</div>';
+  if(ev.venue)h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">'+escapeHtml(ev.venue)+'</div>';
+  h+='<div class="grid g4" style="margin-bottom:1rem">';
+  h+='<div class="mc"><div class="v">'+inSquad.length+(squad.length?'/'+squad.length:'')+'</div><div class="l">提出</div></div>';
+  h+='<div class="mc'+(hiaN?' card-click':'')+'"'+(hiaN?' onclick="mrScrollTo(\'mr-todo\')"':'')+'><div class="v" style="color:'+(hiaN?'var(--red)':'inherit')+'">'+hiaN+'</div><div class="l">HIA</div></div>';
+  h+='<div class="mc'+(injN?' card-click':'')+'"'+(injN?' onclick="mrScrollTo(\'mr-todo\')"':'')+'><div class="v" style="color:'+(injN?'var(--red)':'inherit')+'">'+injN+'</div><div class="l">怪我</div></div>';
+  h+='<div class="mc"><div class="v" style="color:'+(crampN?'var(--amber)':'inherit')+'">'+crampN+'</div><div class="l">足攣り</div></div>';
   h+='</div>';
-  h+=recs.map(function(m){
-    var p=D.p.find(function(x){return x.id===m.pid;});if(!p)return'';
-    return'<div class="card card-click" style="margin-bottom:8px" onclick="goMatchDetail('+m.id+')">'+
-    '<div style="display:flex;align-items:center;gap:10px">'+avH(p,32)+
-    '<div style="flex:1"><div style="font-weight:600">'+escapeHtml(p.name)+' '+roleBadgeHtml(m.role)+'</div>'+
-    '<div style="font-size:12px;color:var(--text-secondary)">疲労: 前'+m.fatiguePre+'/6 → 後'+m.fatiguePost+'/6</div></div>'+
-    (m.injured?'<span class="bd bd-r">怪我あり</span>':'')+
-    (m.cramp?'<span class="bd bd-a" style="margin-left:4px">足攣り</span>':'')+
-    '<button class="btn btn-sm" style="margin-left:6px" onclick="event.stopPropagation();showEditMatchStaff(\''+m.id+'\',\''+date+'\')">修正</button>'+
-    '<button class="btn btn-sm btn-d" style="margin-left:4px" onclick="event.stopPropagation();delMatchDayStaff(\''+m.id+'\',\''+date+'\')">削除</button>'+
+  // 要対応
+  h+='<div id="mr-todo">';
+  if(triage.length){
+    h+='<div style="font-size:14px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px">'+ic('i-warn',14,'var(--red)')+'要対応 <span class="bd bd-r">'+triage.length+'</span></div>';
+    h+=triage.map(function(x){return rowOf(x.m);}).join('');
+  }
+  h+='</div>';
+  // 提出状況（squad基準）
+  h+='<div class="card" style="margin-bottom:1rem;padding:1rem">';
+  if(squad.length&&missing.length===0){
+    h+='<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--green);font-weight:600">'+ic('i-check-c',14)+'メンバー全員提出済み（'+inSquad.length+'/'+squad.length+'）</div>';
+  } else if(squad.length){
+    var idxDone=Math.min(inSquad.length,squad.length-1);
+    h+='<div class="kicker" style="margin-bottom:4px">SUBMISSION</div>';
+    h+=pitchProgressHtml(idxDone,squad.length,null,{still:true,ball:ic('i-ball',18,'var(--pitch-accent)')});
+    h+='<div style="font-size:12px;color:var(--text-secondary);margin:4px 0 8px">提出 '+inSquad.length+'/'+squad.length+'名・未提出 '+missing.length+'名</div>';
+    var missingSorted=missing.slice().sort(function(a,b){return(squadNum(ev,a.id)||99)-(squadNum(ev,b.id)||99);});
+    h+='<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">'+missingSorted.map(function(p){return'<span class="chip-late" onclick="goAddMatchDay(\''+evKeyR+'\','+p.id+')" style="cursor:pointer">'+escapeHtml(p.name)+'</span>';}).join('')+'</div>';
+  } else {
+    h+='<div class="alert-card alert-warn" style="margin-bottom:8px">'+ic('i-warn',13)+' メンバー表が未登録です。登録すると提出状況を追跡できます。</div>'+
+    '<button class="btn btn-sm" onclick="goSquadEditor(\''+(ev.id!=null?ev.id:'')+'\')">メンバー表を開く</button>';
+  }
+  h+='<div style="display:flex;gap:8px;margin-top:8px">'+
+    (squad.length?'<button class="btn btn-sm" onclick="copyMdRemind(\''+evKeyR+'\')">'+ic('i-clipboard',12)+' LINE用テキストをコピー</button>':'')+
     '</div></div>';
-  }).join('');
-  pushView(fmt(date)+' の試合記録',h);
+  // 代理入力
+  h+='<button class="btn btn-p" style="width:100%;margin-bottom:1rem" onclick="goAddMatchDay(\''+evKeyR+'\')">+ 代理入力（メンバー外も可）</button>';
+  // その他の提出
+  var others=inSquad.filter(function(m){return!triagePids[String(m.pid)];});
+  if(others.length){
+    others.sort(function(a,b){return(squadNum(ev,a.pid)||99)-(squadNum(ev,b.pid)||99);});
+    h+='<div style="font-size:13px;font-weight:700;margin:6px 0 8px">その他の提出（'+others.length+'名）</div>';
+    h+=others.map(rowOf).join('');
+  }
+  // メンバー外の提出
+  if(extra.length){
+    h+='<div style="font-size:13px;font-weight:700;margin:14px 0 8px">メンバー外の提出（'+extra.length+'名）<button class="btn btn-sm" style="margin-left:8px" onclick="goSquadEditor(\''+(ev.id!=null?ev.id:'')+'\')">メンバー表を開く</button></div>';
+    h+=extra.map(rowOf).join('');
+  }
+  h+='</div>';
+  if(replace&&viewStack.length){dCA();document.getElementById('pg-title').innerHTML='<span class="btn-back" onclick="popView()">'+ic('i-back',14)+' 戻る</span> 試合日レポート';document.getElementById('tb-act').innerHTML='';$m().innerHTML=h;}
+  else pushView('試合日レポート',h);
+}
+function mrScrollTo(id){var el=document.getElementById(id);if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'start'});}
+// ===== P1c-7/8: 試合日チェックの代理新規入力（スタッフが選手に代わって入力） =====
+// 直近1日以内の未解決・未承認・未紐づけの怪我報告（player側showMatchFormのexistingInjと同型）
+function _mdNearbyExistingInj(pid,dateS){
+  return(D.i||[]).filter(function(x){
+    if(!idEq(x.pid,pid))return false;
+    if(x.resolved)return false;
+    if(x.approved===false)return false;
+    if(x.mdId!=null)return false;
+    if(!x.date)return false;
+    return Math.abs((new Date(x.date+'T00:00:00')-new Date(dateS+'T00:00:00'))/86400000)<=1;
+  })[0]||null;
+}
+function smdSyncSquad(evKey,pid){
+  var ev=resolveMatchEvent(evKey);if(!ev)return;
+  var dupEl=document.getElementById('smd-dup');if(dupEl){dupEl.innerHTML='';dupEl.style.display='none';}
+  var btn=document.getElementById('smd-savebtn');if(btn)btn.disabled=false;
+  if(!pid)return;
+  var p=D.p.find(function(x){return idEq(x.id,pid);});
+  var sr=squadRole(ev,pid);
+  var roleEl=document.getElementById('smd-role');
+  if(roleEl){roleEl.value=sr||'none';mdRoleChangeStaff();}
+  var dup=mdOf(pid,ev);
+  if(dup){
+    if(dupEl){dupEl.style.display='';dupEl.innerHTML='<div class="alert-card alert-warn">'+(p?escapeHtml(p.name):'この選手')+'は既に提出済みです。 <button class="btn btn-sm" onclick="showEditMatchStaff(\''+dup.id+'\',\''+matchEventKey(ev)+'\')">修正画面へ</button></div>';}
+    if(btn)btn.disabled=true;
+  }
+  var linkWrap=document.getElementById('smd-linkwrap');
+  var existingInj=_mdNearbyExistingInj(pid,ev.date);
+  if(linkWrap){
+    if(existingInj){
+      linkWrap.style.display='';
+      linkWrap.innerHTML='<label style="font-size:12px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="smd-inj-link" data-inj-id="'+existingInj.id+'" checked>既に報告済みの怪我に紐づける: '+(existingInj.side||'')+escapeHtml(existingInj.part||'')+' '+escapeHtml(existingInj.type||'')+'（'+fmt(existingInj.date)+'）</label>';
+    }else{linkWrap.style.display='none';linkWrap.innerHTML='';}
+  }
+}
+function mdRoleChangeStaff(){
+  var role=(document.getElementById('smd-role')||{}).value;
+  var minEl=document.getElementById('smd-min');
+  if(!minEl)return;
+  if(role==='none'){minEl.value=0;minEl.disabled=true;}
+  else{minEl.disabled=false;if(!minEl.value)minEl.value=role==='start'?80:'';}
+}
+function goAddMatchDay(evKey,pid){
+  var ev=resolveMatchEvent(evKey);
+  if(!ev){alert('対象の試合が見つかりません');return;}
+  var evKeyR=matchEventKey(ev);
+  var missing=matchChecksMissing(ev);
+  var h='<div style="max-width:520px">'+
+  '<div style="font-size:16px;font-weight:700;margin-bottom:4px">'+fmt(ev.date)+' '+matchEvTitle(ev)+' — 代理入力</div>'+
+  (missing.length?'<div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">残り '+missing.length+'名 未提出</div>':'')+
+  '<div class="form-box"><div class="form-title">選手</div>'+playerSearchHTML('smd-p',pid)+'</div>'+
+  '<div id="smd-dup"></div>'+
+  '<div class="form-box"><div class="form-title">① 出場</div>'+
+  '<div class="fl"><label>出場区分</label><select class="ipt" id="smd-role" onchange="mdRoleChangeStaff()"><option value="start">スタート</option><option value="reserve">リザーブ</option><option value="none">出場なし</option></select></div>'+
+  '<div class="fl"><label>出場分</label><div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">'+MD_MIN_QUICK.map(function(v){return'<button type="button" class="btn btn-sm" onclick="mdMinQuickPickStaff('+v+')">'+v+'分</button>';}).join('')+'</div>'+numStepHTML('smd-min',0,120,'')+'</div>'+
+  '<div class="fl"><label>RPE（1-10・自覚的運動強度）</label>'+numStepHTML('smd-rpe',1,10,'')+'</div></div>'+
+  '<div class="form-box"><div class="form-title">② コンディション</div>'+
+  '<div class="fl"><label>試合後の疲労度</label>'+rate5HTML('smd-fpost',STRESS_EMO,'','',RATE5_LABELS.fat)+'</div>'+
+  '<div class="fl"><label>筋肉痛</label>'+rate5HTML('smd-sore',SORE_EMO,'','',RATE5_LABELS.sore)+'</div>'+
+  '<div class="fl" id="smd-sorewrap" style="display:none"><label>部位</label>'+partChipsHTML('smd-soreparts')+'</div>'+
+  '<div class="fl"><label>パフォーマンス自己評価</label>'+rate5HTML('smd-perf',MOOD_EMO,'','',RATE5_LABELS.perf)+'</div></div>'+
+  '<div class="form-box"><div class="form-title">③ 怪我について</div>'+
+  '<div id="smd-linkwrap" style="display:none;margin-bottom:8px"></div>'+
+  '<div class="fl"><label>試合で怪我をしたか</label><select class="ipt" id="smd-inj" onchange="document.getElementById(\'smd-inj-detail\').style.display=this.value===\'はい\'?\'block\':\'none\'"><option>いいえ</option><option>はい</option></select></div>'+
+  '<div id="smd-inj-detail" style="display:none">'+
+  '<div class="grid2"><div class="fl"><label>左右</label><select class="ipt" id="smd-side"><option value="">指定なし</option><option>右</option><option>左</option><option>両</option></select></div><div class="fl"><label>部位</label><select class="ipt" id="smd-part">'+PARTS.map(function(x){return'<option>'+x+'</option>';}).join('')+'</select></div></div>'+
+  '<div class="fl"><label>怪我の種類</label><select class="ipt" id="smd-type">'+INJ_TYPES.map(function(x){return'<option>'+x+'</option>';}).join('')+'</select></div>'+
+  '<div class="fl"><label>この部位の怪我は？</label><select class="ipt" id="smd-hist"><option>初めて</option><option>2回目</option><option>3回目以上</option></select></div>'+
+  '<div class="fl"><label>どのように怪我をしたか</label><textarea class="ipt" id="smd-how"></textarea></div>'+
+  '<div class="grid2"><div class="fl"><label>怪我した時の痛み（1-10）</label>'+numStepHTML('smd-painat',1,10,'')+'</div><div class="fl"><label>現在の痛み（1-10）</label>'+numStepHTML('smd-painnow',1,10,'')+'</div></div>'+
+  '<div class="fl"><label>プレーを続行したか</label><select class="ipt" id="smd-cont"><option>はい（続行した）</option><option>いいえ（途中退場）</option></select></div>'+
+  '<div class="fl"><label>来週からの練習に参加できるか</label><select class="ipt" id="smd-canprac"><option>参加できる</option><option>参加できない</option><option>わからない</option></select></div></div></div>'+
+  '<div class="form-box"><div class="form-title">④ 足の攣り</div>'+
+  '<div class="fl"><label>試合中に足が攣ったか</label><select class="ipt" id="smd-cramp" onchange="document.getElementById(\'smd-cramp-detail\').style.display=this.value===\'はい\'?\'block\':\'none\'"><option>いいえ</option><option>はい</option></select></div>'+
+  '<div id="smd-cramp-detail" style="display:none">'+
+  '<div class="fl"><label>いつ</label>'+chipsHTML('smd-crampwhen',{labels:MD_CRAMP_WHEN,multi:false})+'</div>'+
+  '<div class="fl"><label>部位</label>'+chipsHTML('smd-crampparts',{labels:MD_CRAMP_PARTS,multi:true})+'</div>'+
+  '<div class="fl"><label>頻度</label><select class="ipt" id="smd-crampfreq"><option>今回が初めて</option><option>たまにある</option><option>よく攣る</option></select></div></div></div>'+
+  '<div class="form-box"><div class="form-title">⑤ 頭部について</div>'+
+  '<div class="fl"><label>試合中に頭・首に衝撃を受けたか</label><select class="ipt" id="smd-hia" onchange="document.getElementById(\'smd-hiasym-wrap\').style.display=this.value===\'はい\'?\'block\':\'none\'"><option>いいえ</option><option>はい</option></select></div>'+
+  '<div class="fl" id="smd-hiasym-wrap" style="display:none"><label>あてはまる症状</label>'+chipsHTML('smd-hiasym',{labels:MD_HIA_SYMPTOMS,multi:true})+'</div></div>'+
+  '<div class="form-box"><div class="form-title">任意項目</div>'+
+  '<div class="fl"><label>睡眠時間（h・任意）</label><input class="ipt" type="number" step="0.5" min="0" max="24" id="smd-sleeph"></div>'+
+  '<div class="fl"><label>メモ</label><textarea class="ipt" id="smd-note" placeholder="代理入力の経緯など"></textarea></div></div>'+
+  '<div style="position:sticky;bottom:8px;z-index:5"><button class="btn btn-p" id="smd-savebtn" style="width:100%;box-shadow:var(--shadow-md)" onclick="doAddMatchDay(\''+evKeyR+'\',this)">記録を保存する</button></div></div>';
+  pushView('試合日チェック（代理入力）',h,function(){
+    bindSorePartsToggle('smd-sore','smd-sorewrap','smd-soreparts');
+    _pSearchOnSelect=function(id,selPid){if(id==='smd-p')smdSyncSquad(evKeyR,selPid);};
+    if(pid!=null)smdSyncSquad(evKeyR,pid);
+  });
+}
+function mdMinQuickPickStaff(v){var el=document.getElementById('smd-min');if(el){el.value=v;}}
+var _smdPending=null;
+function smdPendingLoad(){
+  if(_smdPending)return _smdPending;
+  try{var s=sessionStorage.getItem('rm_smd_pending');if(s)_smdPending=JSON.parse(s);}catch(e){}
+  return _smdPending;
+}
+function smdPendingSave(obj){_smdPending=obj;try{sessionStorage.setItem('rm_smd_pending',JSON.stringify(obj));}catch(e){}}
+function smdPendingClear(){_smdPending=null;try{sessionStorage.removeItem('rm_smd_pending');}catch(e){}}
+function doAddMatchDay(evKey,btnEl){
+  var ev=resolveMatchEvent(evKey);
+  if(!ev){alert('対象の試合が見つかりません');return;}
+  var pid=parseInt((document.getElementById('smd-p-val')||{}).value);
+  if(!pid){alert('選手を選択してください');return;}
+  var missing=[],firstEl=null;
+  function chk(cond,label,elId){if(!cond){missing.push(label);if(!firstEl)firstEl=document.getElementById(elId);}}
+  var roleEl=document.getElementById('smd-role');
+  var role=roleEl?roleEl.value:'none';
+  var minEl=document.getElementById('smd-min');
+  if(role!=='none')chk(isFilled(minEl&&minEl.value),'出場分','smd-min');
+  var minutes=role==='none'?0:(parseInt(minEl&&minEl.value)||0);
+  var rpeEl=document.getElementById('smd-rpe');
+  if(minutes>0)chk(isFilled(rpeEl&&rpeEl.value)&&+rpeEl.value>=1&&+rpeEl.value<=10,'RPE','smd-rpe');
+  if(missing.length){alert('未入力の項目があります:\n・'+missing.join('\n・'));if(firstEl&&firstEl.scrollIntoView)firstEl.scrollIntoView({block:'center'});return;}
+  var localDup=mdOf(pid,ev);
+  if(localDup){showEditMatchStaff(localDup.id,matchEventKey(ev));return;}
+  if(!guardSubmit(btnEl,'保存中…'))return;
+  var pend=smdPendingLoad();
+  var sig=String(pid)+'|'+matchEventKey(ev);
+  var reuse=!!(pend&&pend.sig===sig&&pend.ids);
+  var mid=(reuse&&pend.ids.mid)||newId();
+  var recorderName=getCurrentUserName(MY_ROLE);
+  var rec={id:mid,pid:pid,date:ev.date,evId:(ev.id!=null?Number(ev.id):null),inputAt:new Date().toISOString(),v:2,role:role,minutes:minutes,proxy:true,recordedBy:recorderName,recordedByRole:MY_ROLE};
+  if(minutes>0)rec.rpe=+rpeEl.value;
+  var postEl=document.getElementById('smd-fpost');if(postEl&&isFilled(postEl.value))rec.postFatigue=+postEl.value;
+  var soreEl=document.getElementById('smd-sore');if(soreEl&&isFilled(soreEl.value))rec.soreness=+soreEl.value;
+  var spEl=document.getElementById('smd-soreparts');rec.sorenessParts=(spEl&&spEl.value)?spEl.value.split(','):[];
+  var perfEl=document.getElementById('smd-perf');if(perfEl&&isFilled(perfEl.value))rec.perf=+perfEl.value;
+  var sleepEl=document.getElementById('smd-sleeph');if(sleepEl&&isFilled(sleepEl.value))rec.sleepH=+sleepEl.value;
+  var noteEl=document.getElementById('smd-note');if(noteEl&&noteEl.value)rec.note=noteEl.value;
+  var injSel=document.getElementById('smd-inj');
+  var injuredFlag=injSel&&injSel.value==='はい';
+  var linkChk=document.getElementById('smd-inj-link');
+  var linkExisting=(linkChk&&linkChk.checked&&linkChk.dataset.injId)?linkChk.dataset.injId:null;
+  var items=[];
+  var newInjRec=null,rehabRec=null;
+  var approverName=recorderName,approverRole=MY_ROLE;
+  if(injuredFlag){
+    rec.injured=true;
+    rec.injSide=document.getElementById('smd-side').value;
+    rec.injPart=document.getElementById('smd-part').value;
+    rec.injType=document.getElementById('smd-type').value;
+    rec.injHistory=document.getElementById('smd-hist').value;
+    rec.injHow=document.getElementById('smd-how').value;
+    rec.injPainAt=parseInt(document.getElementById('smd-painat').value)||0;
+    rec.injPainNow=parseInt(document.getElementById('smd-painnow').value)||0;
+    rec.injContinued=document.getElementById('smd-cont').value;
+    rec.canPractice=document.getElementById('smd-canprac').value;
+    if(linkExisting){
+      rec.injId=linkExisting;
+    } else {
+      var iid=(reuse&&pend.ids.injId)||newId();
+      // スタッフ/トレーナー起票は即承認（CLAUDE.md承認ルール: trainer/staff起票=approved:true）
+      newInjRec={id:iid,pid:pid,side:rec.injSide,part:rec.injPart,partOther:'',type:rec.injType,typeOther:'',date:ev.date,returnDate:'',hospitalVisited:false,hospitalDate:'',note:'【試合で受傷・代理入力】'+rec.injHow+' / 痛み:受傷時'+rec.injPainAt+' 現在'+rec.injPainNow+' / '+rec.injHistory+' / プレー続行:'+rec.injContinued+' / 来週練習:'+rec.canPractice,resolved:false,source:'match',canPractice:rec.canPractice,painLevel:rec.injPainNow,approved:true,approvedAt:new Date().toISOString(),approvedBy:approverName,approvedByRole:approverRole,mdId:mid,matchEvId:rec.evId,proxy:true};
+      var rid=(reuse&&pend.ids.rehabId)||newId();
+      rehabRec={id:rid,injId:iid,pid:pid,stage:0,logs:[],stageDates:[]};
+      items.push({k:'i',rec:newInjRec});items.push({k:'r',rec:rehabRec});
+      rec.injId=iid;
+    }
+  }
+  var crampSel=document.getElementById('smd-cramp');
+  var crampFlag=crampSel&&crampSel.value==='はい';
+  if(crampFlag){
+    rec.cramp=true;
+    var cwVals=chipVals('smd-crampwhen');if(cwVals.length)rec.crampWhen=cwVals[0];
+    var cpVals=chipVals('smd-crampparts');if(cpVals.length)rec.crampParts=cpVals;
+    var cfEl=document.getElementById('smd-crampfreq');if(cfEl)rec.crampFreq=cfEl.value;
+  }
+  var hiaSel=document.getElementById('smd-hia');
+  var hiaImpact=hiaSel&&hiaSel.value==='はい';
+  var hiaInjRec=null,hiaRehabRec=null;
+  if(hiaImpact){
+    rec.hiaImpact=true;
+    var hs=chipVals('smd-hiasym');
+    rec.hiaSymptoms=hs;
+    if(hs.length>0){
+      if(newInjRec&&newInjRec.type==='脳震盪'){
+        newInjRec.hia=true;newInjRec.hiaSymptoms=hs;
+        rec.hiaInjId=newInjRec.id;
+      } else {
+        var hid=(reuse&&pend.ids.hiaId)||newId();
+        hiaInjRec={id:hid,pid:pid,side:'',part:'頭部',partOther:'',type:'脳震盪',typeOther:'',date:ev.date,returnDate:'',hospitalVisited:false,hospitalDate:'',note:'【HIA疑い・代理入力】症状:'+hs.join('・'),resolved:false,source:'match',canPractice:'わからない',approved:true,approvedAt:new Date().toISOString(),approvedBy:approverName,approvedByRole:approverRole,mdId:mid,matchEvId:rec.evId,hia:true,hiaSymptoms:hs,proxy:true};
+        var hrid=(reuse&&pend.ids.hiaRehabId)||newId();
+        hiaRehabRec={id:hrid,injId:hid,pid:pid,stage:0,logs:[],stageDates:[]};
+        items.push({k:'i',rec:hiaInjRec});items.push({k:'r',rec:hiaRehabRec});
+        rec.hiaInjId=hid;
+      }
+    }
+  }
+  smdPendingSave({sig:sig,ids:{mid:mid,injId:newInjRec?newInjRec.id:null,rehabId:rehabRec?rehabRec.id:null,hiaId:hiaInjRec?hiaInjRec.id:null,hiaRehabId:hiaRehabRec?hiaRehabRec.id:null}});
+  function saveMd(){
+    var dupRef=null;
+    svSafeUpdate('md',function(latest){
+      dupRef=mdDupIn(latest,pid,ev);
+      if(dupRef){
+        var changed=false;
+        if(dupRef.injId==null&&rec.injId!=null){
+          dupRef.injId=rec.injId;dupRef.injured=true;
+          ['injSide','injPart','injType','injHistory','injHow','injPainAt','injPainNow','injContinued','canPractice'].forEach(function(f){if(rec[f]!=null)dupRef[f]=rec[f];});
+          dupRef.injLate=true;changed=true;
+        }
+        if(dupRef.hiaInjId==null&&rec.hiaInjId!=null){dupRef.hiaInjId=rec.hiaInjId;changed=true;}
+        if(changed)dupRef.editedAt=new Date().toISOString();
+        return latest;
+      }
+      latest.push(rec);
+      return latest;
+    },function(){
+      releaseSubmit(btnEl);
+      smdPendingClear();
+      if(dupRef){
+        // 別端末/再送で既に提出があった場合: 新規レコードは作らずdupRefへ転記済み（updateFn内でmdDupIn経由）
+        goMatchReport(evKeyR2(),true);
+        toast('既に提出があったため内容を既存の記録に追記しました');
+        if(dupRef.hiaInjId)hiaChartApply(dupRef.hiaInjId,null,function(){console.error('hiaChartApply failed');});
+        return;
+      }
+      if(linkExisting){
+        svSafeUpdate('i',function(latest2){
+          var idx=latest2.findIndex(function(x){return idEq(x.id,linkExisting);});
+          if(idx>=0){latest2[idx].mdId=mid;latest2[idx].matchEvId=rec.evId;}
+          return latest2;
+        });
+      }
+      goMatchReport(evKeyR2(),true);
+      toast('保存しました','次の未提出者へ',function(){
+        var stillMissing=matchChecksMissing(ev).filter(function(x){return!idEq(x.id,pid);});
+        if(stillMissing.length)goAddMatchDay(matchEventKey(ev),stillMissing[0].id);
+      });
+      if(rec.hiaInjId)hiaChartApply(rec.hiaInjId,null,function(){console.error('hiaChartApply failed');});
+    },function(){
+      releaseSubmit(btnEl);
+      alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+    });
+  }
+  function evKeyR2(){return matchEventKey(ev);}
+  if(items.length){
+    svSafeSeq(items,function(){saveMd();},function(){
+      releaseSubmit(btnEl);
+      alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+    });
+  } else {
+    saveMd();
+  }
 }
 // 試合日記録(md)の代理修正。コンディション系フィールドのみ更新し、injured/cramp フラグと怪我サブフィールドは
 // 触らない（player doMatchのi/r生成を再実行させない＝怪我レコードの重複を防ぐ）。怪我内容は怪我管理へ誘導。
-function showEditMatchStaff(mid,date){
+function showEditMatchStaff(mid,evKey,opts){
+  opts=opts||{};
   var m=D.md.find(function(x){return idEq(x.id,mid);});if(!m)return;
   var p=D.p.find(function(x){return idEq(x.id,m.pid);});
-  pushView('試合日記録を修正','<div style="max-width:520px"><div class="form-box"><div class="form-title">'+(p?escapeHtml(p.name)+' — ':'')+fmt(m.date)+' の記録</div>'+
+  if(mdIsV2(m)){
+    var evOpts=matchEvents().map(function(e){return'<option value="'+e.id+'"'+(m.evId!=null&&idEq(e.id,m.evId)?' selected':'')+'>'+fmt(e.date)+' '+escapeHtml(matchEvLabel(e))+'</option>';}).join('');
+    var hasLiveInj=!!(mdInjuryLive(m)||mdHiaLive(m));
+    var h='<div style="max-width:520px"><div class="form-box"><div class="form-title">'+(p?escapeHtml(p.name)+' — ':'')+fmt(m.date)+' の記録（v2）</div>'+
+    '<div class="fl"><label>対象試合</label><select class="ipt" id="emd2-ev">'+evOpts+'</select></div>'+
+    '<div class="fl"><label>出場区分</label><select class="ipt" id="emd2-role"><option value="start">スタート</option><option value="reserve">リザーブ</option><option value="none">出場なし</option></select></div>'+
+    '<div class="fl"><label>出場分</label>'+numStepHTML('emd2-min',0,120,'')+'</div>'+
+    '<div class="fl"><label>RPE（1-10）</label>'+numStepHTML('emd2-rpe',1,10,'')+'</div>'+
+    '<div class="fl"><label>試合後の疲労度</label>'+rate5HTML('emd2-fpost',STRESS_EMO,'','',RATE5_LABELS.fat)+'</div>'+
+    '<div class="fl"><label>筋肉痛</label>'+rate5HTML('emd2-sore',SORE_EMO,'','',RATE5_LABELS.sore)+'</div>'+
+    '<div class="fl" id="emd2-sorewrap" style="display:none"><label>部位</label>'+partChipsHTML('emd2-soreparts')+'</div>'+
+    '<div class="fl"><label>パフォーマンス自己評価</label>'+rate5HTML('emd2-perf',MOOD_EMO,'','',RATE5_LABELS.perf)+'</div>'+
+    '<div class="fl"><label>睡眠時間（h・任意）</label><input class="ipt" type="number" step="0.5" min="0" max="24" id="emd2-sleeph"></div>'+
+    '<div class="fl"><label>試合中に足が攣ったか</label><select class="ipt" id="emd2-cramp" onchange="document.getElementById(\'emd2-cramp-detail\').style.display=this.value===\'はい\'?\'block\':\'none\'"><option>いいえ</option><option>はい</option></select></div>'+
+    '<div id="emd2-cramp-detail" style="display:none">'+
+    '<div class="fl"><label>いつ</label>'+chipsHTML('emd2-crampwhen',{labels:MD_CRAMP_WHEN,multi:false})+'</div>'+
+    '<div class="fl"><label>部位</label>'+chipsHTML('emd2-crampparts',{labels:MD_CRAMP_PARTS,multi:true})+'</div>'+
+    '<div class="fl"><label>頻度</label><select class="ipt" id="emd2-crampfreq"><option>今回が初めて</option><option>たまにある</option><option>よく攣る</option></select></div></div>'+
+    '<div class="fl"><label>メモ</label><textarea class="ipt" id="emd2-note"></textarea></div>'+
+    '</div>'+
+    (hasLiveInj?'<div class="alert-card alert-info" style="margin-bottom:12px">'+ic('i-info',13)+' 怪我報告の受傷日・内容の修正は「怪我管理」から行ってください</div>':'')+
+    '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick=\'doEditMatchStaff("'+mid+'","'+evKey+'",this,'+ (opts.back==='page'?'"page"':'null') +')\'>修正を保存</button></div></div>';
+    pushView('試合日記録を修正',h,function(){
+      var e;
+      e=document.getElementById('emd2-role');if(e)e.value=mdRoleCode(m);
+      e=document.getElementById('emd2-min');if(e)e.value=m.minutes!=null?m.minutes:0;
+      e=document.getElementById('emd2-rpe');if(e)e.value=m.rpe!=null?m.rpe:0;
+      bindSorePartsToggle('emd2-sore','emd2-sorewrap','emd2-soreparts');
+      if(m.postFatigue)setRate5('emd2-fpost',m.postFatigue);
+      if(m.soreness)setRate5('emd2-sore',m.soreness);
+      if(m.perf)setRate5('emd2-perf',m.perf);
+      if(m.soreness>=2){var w=document.getElementById('emd2-sorewrap');if(w)w.style.display='';}
+      setChips('emd2-soreparts',m.sorenessParts||[]);
+      e=document.getElementById('emd2-sleeph');if(e&&m.sleepH!=null)e.value=m.sleepH;
+      if(m.cramp){
+        e=document.getElementById('emd2-cramp');if(e)e.value='はい';
+        var dw=document.getElementById('emd2-cramp-detail');if(dw)dw.style.display='block';
+        if(m.crampWhen){var wi=MD_CRAMP_WHEN.indexOf(m.crampWhen);if(wi>=0)toggleChip('emd2-crampwhen',wi);}
+        (m.crampParts||[]).forEach(function(pt){var pi=MD_CRAMP_PARTS.indexOf(pt);if(pi>=0)toggleChip('emd2-crampparts',pi);});
+        e=document.getElementById('emd2-crampfreq');if(e)e.value=m.crampFreq||'今回が初めて';
+      }
+      e=document.getElementById('emd2-note');if(e)e.value=m.note||'';
+    });
+    return;
+  }
+  pushView('試合日記録を修正','<div style="max-width:520px"><div class="form-box"><div class="form-title">'+(p?escapeHtml(p.name)+' — ':'')+fmt(m.date)+' の記録（旧形式）</div>'+
+  '<div class="fl"><label>日付</label><input class="ipt" type="date" id="emds-date"></div>'+
   '<div class="fl"><label>出場</label><select class="ipt" id="emds-role"><option>スタート</option><option>リザーブ</option><option>出場なし（ベンチ）</option><option>出場なし（応援）</option><option>出場なし（その他）</option></select></div>'+
   '<div class="grid g2" style="gap:14px"><div class="fl"><label>試合前の疲労度（1-6）</label>'+numStepHTML('emds-fpre',1,6,'')+'</div><div class="fl"><label>試合後の疲労度（1-6）</label>'+numStepHTML('emds-fpost',1,6,'')+'</div></div>'+
   '<div class="grid g2" style="gap:14px"><div class="fl"><label>就寝時刻</label><input class="ipt" type="time" id="emds-stime"></div><div class="fl"><label>起床時刻</label><input class="ipt" type="time" id="emds-wtime"></div></div>'+
@@ -5733,8 +6425,9 @@ function showEditMatchStaff(mid,date){
   (m.cramp?'<div class="fl"><label>足の攣りの頻度</label><select class="ipt" id="emds-crampfreq"><option>今回が初めて</option><option>たまにある</option><option>よく攣る</option></select></div>':'')+
   '</div>'+
   (m.injured?'<div class="alert-card alert-info" style="margin-bottom:12px">'+ic('i-info',13)+' 怪我の内容の修正・取消は「怪我管理」から行ってください</div>':'')+
-  '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="doEditMatchStaff(\''+mid+'\',\''+date+'\',this)">修正を保存</button></div></div>',function(){
+  '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick=\'doEditMatchStaff("'+mid+'","'+evKey+'",this,'+ (opts.back==='page'?'"page"':'null') +')\'>修正を保存</button></div></div>',function(){
     var e;
+    e=document.getElementById('emds-date');if(e)e.value=m.date||'';
     e=document.getElementById('emds-role');if(e)e.value=m.role||'スタート';
     e=document.getElementById('emds-fpre');if(e)e.value=m.fatiguePre||0;
     e=document.getElementById('emds-fpost');if(e)e.value=m.fatiguePost||0;
@@ -5745,13 +6438,69 @@ function showEditMatchStaff(mid,date){
     if(m.cramp){var cf=document.getElementById('emds-crampfreq');if(cf)cf.value=m.crampFreq||'今回が初めて';}
   });
 }
-function doEditMatchStaff(mid,date,btnEl){
+function doEditMatchStaff(mid,evKey,btnEl,backMode){
   if(!guardSubmit(btnEl,'保存中…'))return;
-  var notFound=false;
+  var m0=D.md.find(function(x){return idEq(x.id,mid);});
+  if(!m0){releaseSubmit(btnEl);alert('記録が見つかりませんでした');return;}
+  var isV2=mdIsV2(m0);
+  var notFound=false,targetKey=evKey;
+  if(isV2){
+    var evEl=document.getElementById('emd2-ev');
+    var newEvIdRaw=evEl?evEl.value:null;
+    var newEv=(newEvIdRaw!=null&&newEvIdRaw!=='')?matchEventById(isNaN(newEvIdRaw)?newEvIdRaw:+newEvIdRaw):null;
+    var roleV=(document.getElementById('emd2-role')||{}).value||'none';
+    var minV=parseInt((document.getElementById('emd2-min')||{}).value)||0;
+    var rpeV=parseFloat((document.getElementById('emd2-rpe')||{}).value)||null;
+    var postV=parseInt((document.getElementById('emd2-fpost')||{}).value)||null;
+    var soreV=parseInt((document.getElementById('emd2-sore')||{}).value)||null;
+    var perfV=parseInt((document.getElementById('emd2-perf')||{}).value)||null;
+    var sleepEl=document.getElementById('emd2-sleeph');
+    var sleepV=(sleepEl&&isFilled(sleepEl.value))?+sleepEl.value:null;
+    var crampSel=document.getElementById('emd2-cramp');
+    var crampFlag=crampSel&&crampSel.value==='はい';
+    var cwVals=chipVals('emd2-crampwhen'),cpVals=chipVals('emd2-crampparts');
+    var crampFreqV=(document.getElementById('emd2-crampfreq')||{}).value;
+    var sorepartsEl=document.getElementById('emd2-soreparts');
+    var sorepartsV=sorepartsEl?sorepartsEl.value:'';
+    var noteV=(document.getElementById('emd2-note')||{}).value||'';
+    var editorName=getCurrentUserName(MY_ROLE);
+    if(newEv)targetKey=matchEventKey(newEv);
+    svSafeUpdate('md',function(latest){
+      var idx=latest.findIndex(function(x){return idEq(x.id,mid);});
+      if(idx<0){notFound=true;return latest;}
+      var m=latest[idx];
+      if(newEv){m.evId=newEv.id!=null?Number(newEv.id):null;m.date=newEv.date;}
+      m.role=roleV;m.minutes=minV;
+      if(minV>0&&rpeV!=null)m.rpe=rpeV;else delete m.rpe;
+      if(postV!=null)m.postFatigue=postV;
+      if(soreV!=null)m.soreness=soreV;
+      m.sorenessParts=sorepartsV?sorepartsV.split(','):[];
+      if(minV>0&&perfV!=null)m.perf=perfV;
+      if(sleepV!=null)m.sleepH=sleepV;else delete m.sleepH;
+      m.cramp=!!crampFlag;
+      if(crampFlag){
+        if(cwVals.length)m.crampWhen=cwVals[0];
+        if(cpVals.length)m.crampParts=cpVals;
+        if(crampFreqV)m.crampFreq=crampFreqV;
+      }
+      if(noteV)m.note=noteV;else delete m.note;
+      m.editedAt=new Date().toISOString();m.editedBy=editorName;
+      return latest;
+    },function(){
+      releaseSubmit(btnEl);
+      if(notFound){alert('記録が見つかりませんでした');return;}
+      if(backMode==='page'){popView();}else{goMatchReport(targetKey,true);}
+      toast('修正しました');
+    },function(){releaseSubmit(btnEl);alert('保存できませんでした。もう一度お試しください');});
+    return;
+  }
+  var dateEl=document.getElementById('emds-date');
+  var newDate=(dateEl&&dateEl.value)?dateEl.value:null;
   svSafeUpdate('md',function(latest){
     var idx=latest.findIndex(function(x){return idEq(x.id,mid);});
     if(idx<0){notFound=true;return latest;}
     var m=latest[idx];
+    if(newDate)m.date=newDate;
     m.role=(document.getElementById('emds-role')||{}).value||m.role;
     m.fatiguePre=parseInt((document.getElementById('emds-fpre')||{}).value)||0;
     m.fatiguePost=parseInt((document.getElementById('emds-fpost')||{}).value)||0;
@@ -5762,7 +6511,15 @@ function doEditMatchStaff(mid,date,btnEl){
     if(m.cramp){var cf=document.getElementById('emds-crampfreq');if(cf&&cf.value)m.crampFreq=cf.value;}
     m.editedAt=new Date().toISOString();
     return latest;
-  },function(){if(notFound){releaseSubmit(btnEl);alert('記録が見つかりませんでした');return;}popView();goMatchDateDetail(date);toast('修正しました');},function(){releaseSubmit(btnEl);alert('保存できませんでした。もう一度お試しください');});
+  },function(){
+    releaseSubmit(btnEl);
+    if(notFound){alert('記録が見つかりませんでした');return;}
+    if(backMode==='page'){popView();}else{
+      var ev2=newDate?(matchEventByDate(newDate)||{id:null,date:newDate,squad:[]}):null;
+      goMatchReport(ev2?matchEventKey(ev2):evKey,true);
+    }
+    toast('修正しました');
+  },function(){releaseSubmit(btnEl);alert('保存できませんでした。もう一度お試しください');});
 }
 
 // === TAPING RESERVATION ===
@@ -8802,37 +9559,137 @@ function assignTrainer(injId,tid){
 }
 
 
+// P1c-5: 試合日チェック単体詳細（選手名・日付）。v2/旧互換表示・怪我承認状態・HIA承認状態バッジ。試合解決はresolveMatchEvent(m.evId,m.date)。
+// P1c-12: 怪我カルテからの「試合日チェックを開く」導線。v2はレポート、旧形式はgoMatchDetailへ
+function goMatchDetailFromInj(mdId){
+  var m=D.md.find(function(x){return idEq(x.id,mdId);});
+  if(m&&mdIsV2(m)){
+    var ev=(m.evId!=null?matchEventById(m.evId):null)||matchEventByDate(m.date,m.pid);
+    if(ev){goMatchReport(matchEventKey(ev));return;}
+  }
+  goMatchDetail(mdId);
+}
 function goMatchDetail(mid){
-  var m=D.md.find(function(x){return x.id===mid;});if(!m)return;var p=D.p.find(function(x){return x.id===m.pid;});
-  pushView((p?p.name:'')+'の試合記録 '+fmt(m.date),'<div style="max-width:600px">'+
-  '<div class="form-box"><div class="form-title">基本情報</div>'+
-  '<div class="detail-row"><span class="detail-label">選手</span><span class="detail-value">'+(p?p.name:'不明')+'</span></div>'+
-  '<div class="detail-row"><span class="detail-label">日付</span><span class="detail-value">'+fmt(m.date)+'</span></div>'+
-  '<div class="detail-row"><span class="detail-label">出場</span><span class="detail-value">'+roleBadgeHtml(m.role)+'</span></div>'+
-  '<div class="detail-row"><span class="detail-label">試合前疲労</span><span class="detail-value">'+m.fatiguePre+'/6</span></div>'+
-  '<div class="detail-row"><span class="detail-label">試合後疲労</span><span class="detail-value">'+m.fatiguePost+'/6</span></div>'+
-  '<div class="detail-row"><span class="detail-label">前日の睡眠</span><span class="detail-value">'+m.sleepTime+' → '+m.wakeTime+'</span></div>'+
-  '<div class="detail-row"><span class="detail-label">朝食</span><span class="detail-value">'+m.breakfast+(m.breakfastDetail?' ('+m.breakfastDetail+')':'')+'</span></div></div>'+
-  (m.injured?'<div class="form-box"><div class="form-title" style="color:var(--red)">怪我情報</div>'+
-  '<div class="detail-row"><span class="detail-label">部位</span><span class="detail-value">'+(m.injSide||'')+m.injPart+' '+m.injType+'</span></div>'+
-  '<div class="detail-row"><span class="detail-label">怪我の回数</span><span class="detail-value">'+m.injHistory+'</span></div>'+
-  '<div class="detail-row"><span class="detail-label">状況</span><span class="detail-value">'+(m.injHow||'-')+'</span></div>'+
-  '<div class="detail-row"><span class="detail-label">受傷時の痛み</span><span class="detail-value">'+m.injPainAt+'/10</span></div>'+
-  '<div class="detail-row"><span class="detail-label">現在の痛み</span><span class="detail-value">'+m.injPainNow+'/10</span></div>'+
-  '<div class="detail-row"><span class="detail-label">プレー続行</span><span class="detail-value">'+m.injContinued+'</span></div></div>':'')+
-  (m.cramp?'<div class="form-box"><div class="form-title">足の攣り</div><div class="detail-row"><span class="detail-label">頻度</span><span class="detail-value">'+m.crampFreq+'</span></div></div>':'')+
-  '</div>');
+  var m=D.md.find(function(x){return idEq(x.id,mid);});if(!m)return;
+  var p=D.p.find(function(x){return idEq(x.id,m.pid);});
+  var ev=resolveMatchEvent(m.evId,m.date);
+  var evKey=ev?matchEventKey(ev):m.date;
+  var approvedBadge=function(inj,okLabel,pendLabel,ngLabel){
+    return inj.approved===true?'<span class="bd bd-g">'+okLabel+'</span>':inj.approved===false?'<span class="bd bd-n">'+ngLabel+'</span>':'<span class="bd bd-a">'+pendLabel+'</span>';
+  };
+  var h='<div style="max-width:600px">';
+  if(mdIsV2(m)){
+    var num=mdNum(m);
+    h+='<div class="form-box"><div class="form-title">基本情報</div>'+
+    '<div class="detail-row"><span class="detail-label">選手</span><span class="detail-value">'+(p?escapeHtml(p.name):'不明')+'</span></div>'+
+    '<div class="detail-row"><span class="detail-label">日付</span><span class="detail-value">'+fmt(m.date)+(ev?' '+escapeHtml(matchEvLabel(ev)):'')+'</span></div>'+
+    '<div class="detail-row"><span class="detail-label">出場</span><span class="detail-value">'+roleBadgeHtml(mdRoleLabel(m))+(num!=null?' <span class="bd bd-p">#'+num+'</span>':'')+'</span></div>';
+    if(m.minutes!=null)h+='<div class="detail-row"><span class="detail-label">出場分</span><span class="detail-value">'+m.minutes+'分</span></div>';
+    if(m.rpe!=null)h+='<div class="detail-row"><span class="detail-label">RPE</span><span class="detail-value">'+m.rpe+'/10</span></div>';
+    var ld=mdLoad(m);if(ld!=null)h+='<div class="detail-row"><span class="detail-label">試合負荷</span><span class="detail-value">'+ld+' AU</span></div>';
+    h+='<div class="detail-row"><span class="detail-label">試合後疲労</span><span class="detail-value">'+mdFatigueStr(m)+'</span></div>';
+    if(m.soreness!=null)h+='<div class="detail-row"><span class="detail-label">筋肉痛</span><span class="detail-value">'+m.soreness+'/5'+((m.sorenessParts||[]).length?'（'+m.sorenessParts.join('・')+'）':'')+'</span></div>';
+    if(m.perf!=null)h+='<div class="detail-row"><span class="detail-label">パフォーマンス</span><span class="detail-value">'+m.perf+'/5</span></div>';
+    h+='<div class="detail-row"><span class="detail-label">睡眠</span><span class="detail-value">'+mdSleepStr(m)+'</span></div>';
+    if(m.breakfast)h+='<div class="detail-row"><span class="detail-label">朝食</span><span class="detail-value">'+escapeHtml(m.breakfast)+(m.breakfastDetail?'（'+escapeHtml(m.breakfastDetail)+'）':'')+'</span></div>';
+    if(m.note)h+='<div class="detail-row"><span class="detail-label">メモ</span><span class="detail-value">'+escapeHtml(m.note)+'</span></div>';
+    h+='<div class="detail-row"><span class="detail-label">入力</span><span class="detail-value">'+(m.inputAt?new Date(m.inputAt).toLocaleString('ja-JP'):'-')+(m.proxy?'（代理入力'+(m.recordedBy?'：'+escapeHtml(m.recordedBy):'')+'）':'')+(m.editedAt?' ・修正済み':'')+'</span></div>';
+    h+='</div>';
+    var liveInj=mdInjuryLive(m);
+    if(liveInj){
+      h+='<div class="form-box"><div class="form-title" style="color:var(--red)">怪我</div>'+
+      '<div class="detail-row"><span class="detail-label">部位</span><span class="detail-value">'+(liveInj.side||'')+escapeHtml(liveInj.part||'')+' '+escapeHtml(liveInj.type||'')+'</span></div>'+
+      '<div class="detail-row"><span class="detail-label">承認状態</span><span class="detail-value">'+approvedBadge(liveInj,'承認済み','確認待ち','却下')+'</span></div>'+
+      '<div style="margin-top:6px"><button class="btn btn-sm" onclick="goInjuryDetail(\''+liveInj.id+'\')">怪我詳細を開く</button></div></div>';
+    } else if(m.injured){
+      h+='<div class="alert-card alert-warn" style="margin-bottom:12px">'+ic('i-warn',13)+' 怪我報告は削除または未承認のため表示できません</div>';
+    }
+    var liveHia=mdHiaLive(m);
+    if(liveHia||mdHia(m)){
+      h+='<div class="form-box"><div class="form-title" style="color:var(--red)">脳震盪疑い（HIA）</div>'+
+      '<div class="detail-row"><span class="detail-label">症状</span><span class="detail-value">'+((m.hiaSymptoms||[]).join('・')||'-')+'</span></div>';
+      if(liveHia)h+='<div class="detail-row"><span class="detail-label">承認状態</span><span class="detail-value">'+approvedBadge(liveHia,'承認済み','確認待ち','問題なし')+'</span></div>'+
+      '<div style="margin-top:6px"><button class="btn btn-sm" onclick="goInjuryDetail(\''+liveHia.id+'\')">怪我詳細を開く</button></div>';
+      h+='</div>';
+    }
+    if(m.cramp){
+      h+='<div class="form-box"><div class="form-title">足の攣り</div>';
+      if(m.crampWhen)h+='<div class="detail-row"><span class="detail-label">タイミング</span><span class="detail-value">'+escapeHtml(m.crampWhen)+'</span></div>';
+      if((m.crampParts||[]).length)h+='<div class="detail-row"><span class="detail-label">部位</span><span class="detail-value">'+m.crampParts.join('・')+'</span></div>';
+      if(m.crampFreq)h+='<div class="detail-row"><span class="detail-label">頻度</span><span class="detail-value">'+escapeHtml(m.crampFreq)+'</span></div>';
+      h+='</div>';
+    }
+  } else {
+    // 旧形式は表示互換のみ（移行なし）
+    h+='<div class="form-box"><div class="form-title">基本情報</div>'+
+    '<div class="detail-row"><span class="detail-label">選手</span><span class="detail-value">'+(p?escapeHtml(p.name):'不明')+'</span></div>'+
+    '<div class="detail-row"><span class="detail-label">日付</span><span class="detail-value">'+fmt(m.date)+'</span></div>'+
+    '<div class="detail-row"><span class="detail-label">出場</span><span class="detail-value">'+roleBadgeHtml(m.role)+'</span></div>'+
+    '<div class="detail-row"><span class="detail-label">試合前疲労</span><span class="detail-value">'+m.fatiguePre+'/6</span></div>'+
+    '<div class="detail-row"><span class="detail-label">試合後疲労</span><span class="detail-value">'+m.fatiguePost+'/6</span></div>'+
+    '<div class="detail-row"><span class="detail-label">前日の睡眠</span><span class="detail-value">'+m.sleepTime+' → '+m.wakeTime+'</span></div>'+
+    '<div class="detail-row"><span class="detail-label">朝食</span><span class="detail-value">'+m.breakfast+(m.breakfastDetail?'（'+m.breakfastDetail+'）':'')+'</span></div></div>';
+    if(m.injured){
+      var legacyInj=mdInjuryLive(m);
+      h+='<div class="form-box"><div class="form-title" style="color:var(--red)">怪我情報</div>'+
+      '<div class="detail-row"><span class="detail-label">部位</span><span class="detail-value">'+(m.injSide||'')+m.injPart+' '+m.injType+'</span></div>'+
+      '<div class="detail-row"><span class="detail-label">怪我の回数</span><span class="detail-value">'+m.injHistory+'</span></div>'+
+      '<div class="detail-row"><span class="detail-label">状況</span><span class="detail-value">'+(m.injHow||'-')+'</span></div>'+
+      '<div class="detail-row"><span class="detail-label">受傷時の痛み</span><span class="detail-value">'+m.injPainAt+'/10</span></div>'+
+      '<div class="detail-row"><span class="detail-label">現在の痛み</span><span class="detail-value">'+m.injPainNow+'/10</span></div>'+
+      '<div class="detail-row"><span class="detail-label">プレー続行</span><span class="detail-value">'+m.injContinued+'</span></div>'+
+      (legacyInj?'<div class="detail-row"><span class="detail-label">承認状態</span><span class="detail-value">'+approvedBadge(legacyInj,'承認済み','確認待ち','却下')+'</span></div><div style="margin-top:6px"><button class="btn btn-sm" onclick="goInjuryDetail(\''+legacyInj.id+'\')">怪我詳細を開く</button></div>':'')+
+      '</div>';
+    }
+    if(m.cramp)h+='<div class="form-box"><div class="form-title">足の攣り</div><div class="detail-row"><span class="detail-label">頻度</span><span class="detail-value">'+m.crampFreq+'</span></div></div>';
+  }
+  h+='<div style="display:flex;gap:8px;margin-top:8px">'+
+  '<button class="btn" onclick="showEditMatchStaff(\''+m.id+'\',\''+evKey+'\',{back:\'page\'})">修正</button>'+
+  '<button class="btn btn-d" onclick="delMatchDayStaff(\''+m.id+'\',\''+evKey+'\',{back:\'page\'})">削除</button>'+
+  '</div></div>';
+  pushView('試合日チェック（'+(p?escapeHtml(p.name):'')+'・'+fmt(m.date)+'）',h);
 }
 // === INJURY APPROVAL ===
-function approveInjury(iid){
-  var inj=D.i.find(function(x){return idEq(x.id,iid);});
-  if(!inj)return;
-  inj.approved=true;
-  inj.approvedAt=new Date().toISOString();
-  inj.approvedBy=getCurrentUserName(MY_ROLE);inj.approvedByRole=MY_ROLE; // P7c 承認ルール明文化: 承認者を記録
-  inj.notifyPlayer=true; // 選手側で未読通知扱い
-  svRec('i',inj);
-  V.dash();
+function approveInjury(iid,btnEl){
+  if(btnEl&&!guardSubmit(btnEl,'処理中…'))return;
+  var approverName=getCurrentUserName(MY_ROLE),approverRole=MY_ROLE; // DOM/現在値の読み取りはupdateFn外
+  var notFound=false,blocked=false,snapshot=null,wasHia=false;
+  svSafeUpdate('i',function(latest){
+    var idx=latest.findIndex(function(x){return idEq(x.id,iid);});
+    if(idx<0){notFound=true;return latest;}
+    if(latest[idx].approved===false){blocked=true;return latest;} // 並行却下済み→承認しない
+    snapshot={approved:latest[idx].approved,approvedAt:latest[idx].approvedAt,approvedBy:latest[idx].approvedBy,approvedByRole:latest[idx].approvedByRole,notifyPlayer:latest[idx].notifyPlayer};
+    wasHia=injIsHia(latest[idx]);
+    latest[idx].approved=true;
+    latest[idx].approvedAt=new Date().toISOString();
+    latest[idx].approvedBy=approverName;latest[idx].approvedByRole=approverRole; // P7c 承認ルール明文化: 承認者を記録
+    latest[idx].notifyPlayer=true; // 選手側で未読通知扱い
+    return latest;
+  },function(){
+    if(notFound){if(btnEl)releaseSubmit(btnEl);alert('報告が見つかりませんでした');return;}
+    if(blocked){if(btnEl)releaseSubmit(btnEl);alert('この報告は既に却下されています。承認できません。');return;}
+    V.dash();
+    toast('怪我人に追加しました','元に戻す',function(){undoApproveInjury(iid,snapshot);});
+    if(wasHia)hiaChartApply(iid,null,function(){alert('カルテへの脳震盪フラグ反映に失敗しました。怪我詳細から「カルテに反映」をやり直してください');});
+  },function(){if(btnEl)releaseSubmit(btnEl);alert('保存できませんでした。もう一度お試しください');});
+}
+function undoApproveInjury(iid,snap){
+  if(!snap)return;
+  var wasHia=false;
+  svSafeUpdate('i',function(latest){
+    var idx=latest.findIndex(function(x){return idEq(x.id,iid);});
+    if(idx<0)return latest;
+    wasHia=injIsHia(latest[idx]);
+    latest[idx].approved=snap.approved;
+    if(snap.approvedAt===undefined)delete latest[idx].approvedAt;else latest[idx].approvedAt=snap.approvedAt;
+    if(snap.approvedBy===undefined)delete latest[idx].approvedBy;else latest[idx].approvedBy=snap.approvedBy;
+    if(snap.approvedByRole===undefined)delete latest[idx].approvedByRole;else latest[idx].approvedByRole=snap.approvedByRole;
+    if(snap.notifyPlayer===undefined)delete latest[idx].notifyPlayer;else latest[idx].notifyPlayer=snap.notifyPlayer;
+    return latest;
+  },function(){
+    V.dash();toast('元に戻しました');
+    if(wasHia)hiaChartUnapply(iid,null,function(){});
+  },function(){alert('復元に失敗しました。もう一度お試しください');});
 }
 function rejectInjury(iid){
   var inj=D.i.find(function(x){return idEq(x.id,iid);});if(!inj)return;
@@ -8840,6 +9697,7 @@ function rejectInjury(iid){
   var h='<div style="max-width:480px"><div style="font-weight:600;margin-bottom:6px">この怪我報告を却下しますか？</div>'+
   '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">'+(p?escapeHtml(p.name)+' — ':'')+(inj.side||'')+escapeHtml(inj.part||'')+' '+escapeHtml(inj.type||'')+'（'+fmt(inj.date)+'）<br>却下すると怪我人一覧から外れ、選手にも却下通知が届きます。</div>'+
   '<div class="form-box"><div class="form-title">却下理由（任意・選手に表示されます）</div>'+
+  (injIsHia(inj)?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">'+['症状なしを確認・問題なし','医療機関で異常なし'].map(function(t){return'<button type="button" class="btn btn-sm" onclick="document.getElementById(\'rej-reason\').value='+JSON.stringify(t)+'">'+t+'</button>';}).join('')+'</div>':'')+
   '<textarea class="ipt" id="rej-reason" placeholder="例: 練習に支障がないため / 既に報告済みのため など"></textarea></div>'+
   '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button>'+
   '<button class="btn btn-d" onclick="doRejectInjury('+iid+',this)">却下する</button></div></div>';

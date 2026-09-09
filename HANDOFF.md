@@ -73,7 +73,7 @@
 | P3 | ~~デザイン基盤前倒し（ダーク化）~~ | 🚫 **不採用・撤回**（ユーザーがダーク却下→ライト維持。実装は完了したがpushせず全revert） |
 | P4 | リハビリ役割分担フレーム（緩やか分担・roleGate・trainer確定ボタン撤去） | ✅ push済み `2d82102` |
 | P5 | player CRUD残り（怪我/rlog/痛み/wc/md/bc/tape/欠席/PIN） | ✅ push済み `585b926` |
-| P6 | staff/trainer CRUD残り＋prompt()7箇所（staff6+trainer1）撲滅 | ✅ push済み `1b25310`。残: tape代理変更/wc・md新規代理入力/trainer rtest編集削除/rtest結果編集/rlog種目編集/preCheck編集（**未着手のまま・上記アクティブプランで再考予定**） |
+| P6 | staff/trainer CRUD残り＋prompt()7箇所（staff6+trainer1）撲滅 | ✅ push済み `1b25310`。残: tape代理変更/wc・trainer rtest編集削除/rtest結果編集/rlog種目編集/preCheck編集（**md新規代理入力はP1c-7/8で実装済み(goAddMatchDay/doAddMatchDay)に消し込み・他は未着手のまま**） |
 | P7a | 体重dedup＋sRPE実測化（durMin/effDur/sLoad） | ✅ push済み `6aa9713` |
 | P7b | 欠席統一（今日は休む↔欠席a・coach追加読み） | ✅ push済み `ee08429` |
 | P7c | 復帰フロー＋coach根拠＋承認ルール明文化＋トレーナー新規登録チップ | ✅ push済み `bf58d90` |

@@ -63,6 +63,7 @@ select.ipt{appearance:auto}textarea.ipt{resize:vertical;min-height:80px}
 .bd-a{background:var(--amber-bg);color:var(--amber)}
 .bd-b{background:var(--blue-bg);color:var(--blue)}
 .bd-p{background:var(--purple-bg);color:var(--purple)}
+.bd-n{background:var(--bg-tertiary);color:var(--text-secondary)}
 .no{text-align:center;padding:2rem;color:var(--text-secondary);font-size:13px}
 .log-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border-tertiary);font-size:12px}
 .log-row:last-child{border-bottom:none}
@@ -211,9 +212,9 @@ var db=firebase.firestore();
 // tmenu/tlog/texlist/e1rmはtrainer内で一切読まれない（トレーニング関連はstaff/player/coach専用）。
 // 購読すると選手のセット保存の度に全trainer端末がtlog(数百KB)を再ダウンロード＋画面リセットされるため対象外にする。
 // cal/ppは軽量・低頻度更新のため上記除外方針の対象外（ppの「次のweight日」表示にcalが必要）。
-var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',cal:'rm_calendar',pp:'rm_pushpull'};
+var SK={p:'rm_players',i:'rm_injuries',r:'rm_rehabs',tape:'rm_tape',tapeslot:'rm_tapeslot',trainers:'rm_trainers',rtpl:'rm_rehab_tpl',rplan:'rm_rehab_plan',rlog:'rm_rehab_log',rtest_tpl:'rm_rtest_tpl',rtest:'rm_rtest',msess:'rm_msess',injcomm:'rm_injcomm',chart:'rm_chart',taperec:'rm_taperec',cal:'rm_calendar',pp:'rm_pushpull',md:'rm_matchday'};
 var AVC=[['var(--av1-bg)','var(--av1-fg)'],['var(--av2-bg)','var(--av2-fg)'],['var(--av3-bg)','var(--av3-fg)'],['var(--av4-bg)','var(--av4-fg)'],['var(--av5-bg)','var(--av5-fg)'],['var(--av6-bg)','var(--av6-fg)'],['var(--av7-bg)','var(--av7-fg)']];
-var D={p:[],i:[],r:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],cal:[],pp:[]};
+var D={p:[],i:[],r:[],tape:[],tapeslot:[],trainers:[],rtpl:[],rplan:[],rlog:[],rtest_tpl:[],rtest:[],msess:[],injcomm:[],chart:[],taperec:[],tmenu:[],tlog:[],texlist:[],e1rm:[],cal:[],pp:[],md:[]};
 var myTrainer=null;
 var RCATS=['ケア','ROM改善','患部外トレーニング','トレーニング','アジリティ','フィットネス','サポート','オフ'];
 var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'var(--cyan-deep)',サポート:'var(--green-deep)',オフ:'var(--text-secondary)'};
@@ -961,6 +962,78 @@ function resolveMatchEvent(key,dateHint){
   }
   return null;
 }
+// ===== 試合基盤ヘルパーB群（P1c-14前倒し・player/staff/coach/trainer identical分のみ。hasCondOn/pendingMatchChecks/matchChecksMissineは移植しない） =====
+function mdBelongsTo(m,ev){
+  if(!m||!ev)return false;
+  var resolved=(m.evId!=null)?matchEventById(m.evId):null;
+  if(resolved&&ev.id!=null)return idEq(m.evId,ev.id);
+  if(m.date!==ev.date)return false;
+  if(ev.id==null)return true;
+  var byDate=matchEventByDate(m.date,m.pid);
+  return!!byDate&&idEq(byDate.id,ev.id);
+}
+function mdOf(pid,ev){
+  if(!ev)return null;
+  var list=(D.md||[]).filter(function(m){return idEq(m.pid,pid)&&mdBelongsTo(m,ev);});
+  if(!list.length)return null;
+  list.sort(function(a,b){return(a.inputAt||'').localeCompare(b.inputAt||'');});
+  return list[list.length-1];
+}
+function mdsOfEvent(ev){
+  if(!ev)return[];
+  return(D.md||[]).filter(function(m){return mdBelongsTo(m,ev);});
+}
+function mdsOfEventUniq(ev){
+  var byPid={};
+  mdsOfEvent(ev).forEach(function(m){
+    var k=String(m.pid);
+    if(!byPid[k]||(m.inputAt||'')>(byPid[k].inputAt||''))byPid[k]=m;
+  });
+  return Object.keys(byPid).map(function(k){return byPid[k];});
+}
+function mdIsV2(m){return!!(m&&m.v===2);}
+function mdRoleLabel(m){
+  if(!m)return'';
+  if(m.role==='start')return'スタート';
+  if(m.role==='reserve')return'リザーブ';
+  if(m.role==='none')return'出場なし';
+  return m.role||'';
+}
+function mdNum(m){
+  if(!m)return null;
+  var ev=(m.evId!=null?matchEventById(m.evId):null)||matchEventByDate(m.date,m.pid);
+  return ev?squadNum(ev,m.pid):null;
+}
+function injIsHia(inj){return!!(inj&&inj.hia);}
+function mdInjuryLive(m){
+  if(!m)return null;
+  if(m.injId!=null){
+    var byId=(D.i||[]).find(function(x){return idEq(x.id,m.injId);});
+    return(byId&&byId.approved!==false)?byId:null;
+  }
+  var byMdId=(D.i||[]).find(function(x){return idEq(x.mdId,m.id)&&!injIsHia(x);});
+  if(byMdId)return byMdId.approved!==false?byMdId:null;
+  if(!mdIsV2(m)&&m.injured){
+    var legacy=(D.i||[]).find(function(x){return idEq(x.pid,m.pid)&&x.date===m.date&&x.source==='match'&&!injIsHia(x);});
+    if(legacy)return legacy.approved!==false?legacy:null;
+  }
+  return null;
+}
+function mdHiaLive(m){
+  if(!m)return null;
+  if(m.hiaInjId!=null){
+    var byId=(D.i||[]).find(function(x){return idEq(x.id,m.hiaInjId);});
+    return(byId&&byId.approved!==false)?byId:null;
+  }
+  var byMdId=(D.i||[]).find(function(x){return idEq(x.mdId,m.id)&&injIsHia(x);});
+  if(byMdId)return byMdId.approved!==false?byMdId:null;
+  return null;
+}
+function mdHia(m){
+  if(!m)return false;
+  if(m.hiaInjId!=null)return!!mdHiaLive(m);
+  return!!(m.hiaImpact&&(m.hiaSymptoms||[]).length>0);
+}
 function fmtDateTime(iso){if(!iso)return'';var d=new Date(iso);if(isNaN(d))return'';var now=new Date();var ys=d.getFullYear()!==now.getFullYear()?(d.getFullYear()+'/'):'';return ys+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 
 // ===== 怪我コメント機能（3者共有） =====
@@ -1471,6 +1544,51 @@ function trBadgeGo(action,injId){
   if(action==='rtest')return goRTestRecord(injId);
   return goRehabPlayer(injId);
 }
+// ===== P1c-14前倒し: 試合後の要ケア一覧（HIA最上段。脳震盪の見落とし防止のためP5より前倒し実装） =====
+// mdsOfEvent(ev)をそのまま使う（自前フィルタ禁止＝所属判定を二重管理しない）
+function matchCareList(ev){
+  if(!ev)return[];
+  var items=[];
+  mdsOfEvent(ev).forEach(function(m){
+    var hia=mdHia(m);
+    var inj=mdInjuryLive(m);
+    var cramp=!!m.cramp;
+    var soreHigh=(m.soreness!=null&&+m.soreness>=4);
+    var fatHigh=mdIsV2(m)?(m.postFatigue!=null&&+m.postFatigue>=5):(m.fatiguePost!=null&&+m.fatiguePost>=5);
+    if(hia||inj||cramp||soreHigh||fatHigh)items.push({m:m,hia:hia,inj:inj,cramp:cramp,rank:hia?0:inj?1:cramp?2:3});
+  });
+  items.sort(function(a,b){return a.rank-b.rank||((b.m.inputAt||'').localeCompare(a.m.inputAt||''));});
+  return items;
+}
+function mccToggle(id){var el=document.getElementById(id);if(el)el.style.display=(el.style.display==='none')?'block':'none';}
+function matchCareCardHtml(ev){
+  var items=matchCareList(ev);
+  if(!items.length)return'';
+  var h='<div class="card rv" style="margin-bottom:10px;border-left:3px solid var(--red)"><div style="font-weight:600;margin-bottom:8px;color:var(--red)">'+ic('i-warn',14)+' 試合後の要ケア '+fmt(ev.date)+' '+matchEvTitle(ev)+'</div>';
+  items.forEach(function(x){
+    var m=x.m,inj=x.inj;
+    var p=D.p.find(function(pp){return idEq(pp.id,m.pid);});if(!p)return;
+    var rowId='mcc-'+m.id;
+    h+='<div class="log-row card-click" style="flex-wrap:wrap" onclick="mccToggle(\''+rowId+'\')">'+
+      '<span style="flex:1;display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
+      (x.hia?'<span class="bd bd-r">HIA</span>':'')+
+      '<span style="font-weight:600">'+escapeHtml(p.name)+'</span>'+
+      (inj?'<span class="bd bd-r">'+(inj.side||'')+escapeHtml(inj.part||'')+' '+escapeHtml(inj.type||'')+(inj.painLevel!=null?' 痛み'+inj.painLevel+'/10':'')+'</span>':'')+
+      (x.cramp?'<span class="bd bd-a">攣り</span>':'')+
+      (m.canPractice?'<span style="font-size:11px;color:var(--text-secondary)">来週: <span style="color:'+(m.canPractice==='参加できない'?'var(--red)':'inherit')+'">'+escapeHtml(m.canPractice)+'</span></span>':'')+
+      '</span>'+
+      (inj?(inj.approved===null||inj.approved===undefined?'<span class="bd bd-a">承認待ち</span>':inj.approved===true?'<span class="bd bd-g" style="cursor:pointer" onclick="event.stopPropagation();openChart('+inj.id+')">カルテ</span>':''):'')+
+    '</div>'+
+    '<div id="'+rowId+'" style="display:none;padding:4px 0 10px;font-size:11px;color:var(--text-secondary);line-height:1.6">'+
+      (m.injHow?'状況: '+escapeHtml(m.injHow)+'<br>':'')+
+      (m.injContinued?'プレー続行: '+escapeHtml(m.injContinued)+'<br>':'')+
+      ((m.hiaSymptoms||[]).length?'症状: '+escapeHtml(m.hiaSymptoms.join('・'))+'<br>':'')+
+      (m.crampWhen?'攣り: '+escapeHtml(m.crampWhen)+((m.crampParts||[]).length?'・'+escapeHtml(m.crampParts.join('・')):'')+'<br>':'')+
+    '</div>';
+  });
+  h+='</div>';
+  return h;
+}
 
 // ===== TABS =====
 var T={
@@ -1492,6 +1610,12 @@ home:function(){
   '<div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="showChangePINT()" style="font-size:11px">🔑 PIN変更</button><button class="btn btn-sm" onclick="go(\'help\')" style="font-size:11px">'+ic('i-book',12)+' ガイド</button></div>'+
   '</div>'+
   '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px">'+fmt(today)+'</div>';
+  // P1c-14前倒し: 直近3日以内の試合で要ケアがあれば最上段に表示（HIA見落とし防止）
+  (function(){
+    var fromD=toDateStr(new Date(new Date(today+'T00:00:00').getTime()-3*86400000));
+    var careEv=matchEvents().filter(function(e){return e.date<=today&&e.date>=fromD;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
+    if(careEv)h+=matchCareCardHtml(careEv);
+  })();
   h+='<div class="rv">'+ppCardHtml(false)+'</div>'; // PUSH/PULL編集はstaffに集約（P7d）。trainerは表示のみ（ppCardHtmlはidentical＝本体不改変でラッパ包み）
 
   // 今日のテーピング
