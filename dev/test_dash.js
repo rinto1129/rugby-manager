@@ -68,6 +68,9 @@ ok('取り消し線なし(未完了)',!has(t1,'line-through'));
 
 print('--- todayTodoHtml (本日コンディション入力済み) ---');
 D.f.push({id:32,pid:1,date:todayStr(),rpe:4,sleep:8,duration:30,inputAt:'T08:00'});
+// P1b: prelude.jsにsessionStorageモックが実装された（todayTodoHtmlの「たった今done」演出用sig）ため、
+// 前段のtodayTodoHtml()呼び出しが残したsigをクリアしてから呼ぶ（実アプリの初回描画相当にする）
+try{sessionStorage.removeItem('rm_todo_sig');}catch(e){}
 var t2=todayTodoHtml();
 ok('入力済みで取り消し線',has(t2,'line-through'));
 

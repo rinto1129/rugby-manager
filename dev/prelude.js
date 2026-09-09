@@ -11,6 +11,7 @@ var __alerts=[];
 function alert(m){__alerts.push(String(m));}
 function confirm(m){return true;}
 var localStorage={_d:{},getItem:function(k){return Object.prototype.hasOwnProperty.call(this._d,k)?this._d[k]:null;},setItem:function(k,v){this._d[k]=String(v);},removeItem:function(k){delete this._d[k];}};
+var sessionStorage={_d:{},getItem:function(k){return Object.prototype.hasOwnProperty.call(this._d,k)?this._d[k]:null;},setItem:function(k,v){this._d[k]=String(v);},removeItem:function(k){delete this._d[k];}};
 var navigator={userAgent:'jsc-mock'};
 var location={href:'',reload:function(){}};
 var history={pushState:function(){},replaceState:function(){},back:function(){}};
