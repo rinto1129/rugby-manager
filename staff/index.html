@@ -6716,8 +6716,8 @@ function delTapeRec(recId,pid){
 // tgroup（新キー・常に1レコード全置換）:
 //   [{id,ts,date,by,mode:'ampm'|'single',excluded:[pid],
 //     shifts:[{key,label,groups:[[pid,...],...]}]}]
-// 申告 p.wg={f5:['mon'/'wed'/'fri'のsubset],far:bool,pref:'am'|'pm'|null,upd:ISO}
-var WG_DAYS=[{k:'mon',label:'月'},{k:'wed',label:'水'},{k:'fri',label:'金'}];
+// 申告 p.wg={f5:['mon'/'tue'/'thu'のsubset],far:bool,pref:'am'|'pm'|null,upd:ISO}
+var WG_DAYS=[{k:'mon',label:'月'},{k:'tue',label:'火'},{k:'thu',label:'木'}];
 
 // 選手サイトと同じ推定1RM最新値取得（レビューLow-1: staffへ移植）
 function getLatestE1RM(pid){
@@ -6849,7 +6849,7 @@ function tgSave(){
 function tgWgBadges(p){
   var wg=(p.wg&&typeof p.wg==='object')?p.wg:null;
   if(!wg)return '<span style="font-size:10px;font-weight:700;color:var(--red)">未回答</span>';
-  var dayLbl={mon:'月',wed:'水',fri:'金'};
+  var dayLbl={mon:'月',tue:'火',thu:'木'};
   var out=[];
   var chip=function(txt,col){return '<span style="font-size:10px;font-weight:600;color:'+col+';border:1px solid '+col+';border-radius:99px;padding:1px 7px">'+txt+'</span>';};
   if(wg.f5&&wg.f5.length)out.push(chip('5限:'+wg.f5.map(function(k){return dayLbl[k]||k;}).join(''),'var(--blue)'));
@@ -7008,7 +7008,7 @@ function goEditWg(pid){
   var p=D.p.find(function(x){return idEq(x.id,pid);});if(!p)return;
   var wg=(p.wg&&typeof p.wg==='object')?p.wg:{};
   var h='<div style="max-width:480px"><div class="form-box"><div class="form-title">'+escapeHtml(p.name)+' のウエイト時間帯</div>'+
-    '<div class="fl"><label>月・水・金で5限がある曜日</label><div style="display:flex;gap:18px;margin-top:4px">'+
+    '<div class="fl"><label>月・火・木で5限がある曜日</label><div style="display:flex;gap:18px;margin-top:4px">'+
       WG_DAYS.map(function(d){return '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:14px"><input type="checkbox" id="ewg-'+d.k+'"'+(((wg.f5||[]).indexOf(d.k)>=0)?' checked':'')+'> '+d.label+'</label>';}).join('')+'</div></div>'+
     '<div class="fl"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="ewg-far"'+(wg.far?' checked':'')+'> 大学から遠い（通学に時間がかかる）</label></div>'+
     '<div class="fl"><label>時間帯の希望</label><select class="ipt" id="ewg-pref"><option value=""'+(!wg.pref?' selected':'')+'>どちらでも</option><option value="am"'+(wg.pref==='am'?' selected':'')+'>午前がいい</option><option value="pm"'+(wg.pref==='pm'?' selected':'')+'>午後がいい</option></select></div>'+

@@ -2602,7 +2602,7 @@ mypage:function(){
   var wg=(p.wg&&typeof p.wg==='object')?p.wg:{};
   var _htTxt=(p.height!=null&&p.height!=='')?escapeHtml(String(p.height))+'cm':'<span style="color:var(--red);font-weight:700">未設定</span>';
   var _prefTxt=wg.pref==='am'?'午前希望':wg.pref==='pm'?'午後希望':'希望なし';
-  var _f5Txt=(wg.f5&&wg.f5.length)?wg.f5.map(function(k){return {mon:'月',wed:'水',fri:'金'}[k]||k;}).join('・'):'なし';
+  var _f5Txt=(wg.f5&&wg.f5.length)?wg.f5.map(function(k){return {mon:'月',tue:'火',thu:'木'}[k]||k;}).join('・'):'なし';
   var _wgTxt=(p.wg&&p.wg.upd)?('5限 '+_f5Txt+'／'+_prefTxt):'<span style="color:var(--red);font-weight:700">未回答</span>';
   h+='<div class="card card-click" onclick="showProfileSettings()" style="margin-bottom:12px;display:flex;align-items:center;gap:12px;cursor:pointer">'+
     ic('i-user',18,'var(--maroon)')+
@@ -6835,9 +6835,9 @@ function saveMyHeight(){
 }
 
 // ===== Phase 7: ウエイト時間帯アンケート（wg）=====
-// p.wg={f5:['mon'/'wed'/'fri'のsubset], far:bool, pref:'am'|'pm'|null, upd:ISO}
-// 月水金の5限有無・遠方・時間帯希望を選手が自己申告。スタッフも代理編集可（V.tgroup）。学期替わりは選手が随時更新。
-var WG_DAYS=[{k:'mon',label:'月'},{k:'wed',label:'水'},{k:'fri',label:'金'}];
+// p.wg={f5:['mon'/'tue'/'thu'のsubset], far:bool, pref:'am'|'pm'|null, upd:ISO}
+// 月火木の5限有無・遠方・時間帯希望を選手が自己申告。スタッフも代理編集可（V.tgroup）。学期替わりは選手が随時更新。
+var WG_DAYS=[{k:'mon',label:'月'},{k:'tue',label:'火'},{k:'thu',label:'木'}];
 function saveMyWg(){
   var f5=[];
   WG_DAYS.forEach(function(d){var el=document.getElementById('wg-'+d.k);if(el&&el.checked)f5.push(d.k);});
@@ -6859,7 +6859,7 @@ function showProfileSettings(){
   h+='<div class="card" style="margin-bottom:12px"><div class="kicker" style="margin-bottom:2px">WEIGHT SESSION</div>'+
     '<div style="font-weight:800;font-size:14px;margin-bottom:2px">ウエイト時間帯アンケート</div>'+
     '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">午前組／午後組の振り分けに使います。学期が替わったら更新してください。</div>'+
-    '<div style="font-size:12px;font-weight:700;margin-bottom:5px">月・水・金で5限がある曜日</div>'+
+    '<div style="font-size:12px;font-weight:700;margin-bottom:5px">月・火・木で5限がある曜日</div>'+
     '<div style="display:flex;gap:16px;margin-bottom:12px">'+
       WG_DAYS.map(function(d){return '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="wg-'+d.k+'"'+(((wg.f5||[]).indexOf(d.k)>=0)?' checked':'')+'> '+d.label+'</label>';}).join('')+
     '</div>'+

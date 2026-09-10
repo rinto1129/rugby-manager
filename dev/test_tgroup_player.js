@@ -50,7 +50,7 @@ showProfileSettings();
 var ps=__els['main'].innerHTML;
 ok('サブ: 身長input',has(ps,'id="mh-input"'));
 ok('サブ: アンケート見出し(WEIGHT SESSION)',has(ps,'WEIGHT SESSION')&&has(ps,'ウエイト時間帯アンケート'));
-ok('サブ: 5限チェック(月水金)',has(ps,'id="wg-mon"')&&has(ps,'id="wg-wed"')&&has(ps,'id="wg-fri"'));
+ok('サブ: 5限チェック(月火木)',has(ps,'id="wg-mon"')&&has(ps,'id="wg-tue"')&&has(ps,'id="wg-thu"'));
 ok('サブ: 遠方チェック',has(ps,'id="wg-far"'));
 ok('サブ: 希望セレクト',has(ps,'id="wg-pref"')&&has(ps,'午前がいい')&&has(ps,'午後がいい')&&has(ps,'どちらでも'));
 ok('サブ: 保存ボタン(saveMyWg)',has(ps,'saveMyWg()'));
@@ -59,20 +59,20 @@ ok('未設定時はcheckedなし',!has(ps,'checked'));
 
 // ============ 2. showProfileSettings プリフィル＋mypageサマリー反映 ============
 print('--- showProfileSettings: プリフィル（wg設定済み） ---');
-D.p[0].wg={f5:['mon','fri'],far:true,pref:'pm',upd:'2026-07-01T00:00:00.000Z'};
+D.p[0].wg={f5:['mon','thu'],far:true,pref:'pm',upd:'2026-07-01T00:00:00.000Z'};
 subView=null;
 showProfileSettings();
 var mp2=__els['main'].innerHTML;
 ok('月がchecked',has(mp2,'id="wg-mon" checked'));
-ok('金がchecked',has(mp2,'id="wg-fri" checked'));
-ok('水はcheckedでない',has(mp2,'id="wg-wed">'));
+ok('木がchecked',has(mp2,'id="wg-thu" checked'));
+ok('火はcheckedでない',has(mp2,'id="wg-tue">'));
 ok('遠方がchecked',has(mp2,'id="wg-far" checked'));
 ok('希望pmがselected',has(mp2,'value="pm" selected'));
 subView=null;
 T.mypage();
 var mpSum=__els['main'].innerHTML;
 ok('サマリーに午後希望',has(mpSum,'午後希望'));
-ok('サマリーに5限 月・金',has(mpSum,'月・金'));
+ok('サマリーに5限 月・木',has(mpSum,'月・木'));
 
 // ============ 3. saveMyWg（保存・他フィールド不変・完了後サブ画面維持） ============
 print('--- saveMyWg: 保存 ---');
@@ -80,7 +80,7 @@ D.p[0].wg=undefined;
 __store['p']=JSON.stringify(D.p);
 subView=null;
 showProfileSettings(); // WG UIを描画してidを用意
-document.getElementById('wg-mon').checked=true;document.getElementById('wg-wed').checked=false;document.getElementById('wg-fri').checked=true;
+document.getElementById('wg-mon').checked=true;document.getElementById('wg-tue').checked=false;document.getElementById('wg-thu').checked=true;
 document.getElementById('wg-far').checked=false;document.getElementById('wg-pref').value='am';
 __alerts.length=0;
 saveMyWg();drain();
@@ -88,7 +88,7 @@ ok('保存完了後もサブ画面維持(subView=true)',subView===true);
 var pStore=JSON.parse(__store['p']);
 var meRec=pStore.find(function(x){return x.id===1;});
 ok('wgが保存される',meRec&&meRec.wg&&typeof meRec.wg==='object');
-ok('f5=[mon,fri]',meRec.wg.f5.length===2&&meRec.wg.f5.indexOf('mon')>=0&&meRec.wg.f5.indexOf('fri')>=0&&meRec.wg.f5.indexOf('wed')<0);
+ok('f5=[mon,thu]',meRec.wg.f5.length===2&&meRec.wg.f5.indexOf('mon')>=0&&meRec.wg.f5.indexOf('thu')>=0&&meRec.wg.f5.indexOf('tue')<0);
 ok('far=false',meRec.wg.far===false);
 ok('pref=am',meRec.wg.pref==='am');
 ok('updがISO文字列',typeof meRec.wg.upd==='string'&&meRec.wg.upd.length>0);
@@ -98,7 +98,7 @@ ok('D.pもメモリ更新',D.p.find(function(x){return x.id===1;}).wg.pref==='am
 
 // 希望「どちらでも」→pref=null
 print('--- saveMyWg: どちらでも→pref=null ---');
-document.getElementById('wg-pref').value='';document.getElementById('wg-mon').checked=false;document.getElementById('wg-fri').checked=false;
+document.getElementById('wg-pref').value='';document.getElementById('wg-mon').checked=false;document.getElementById('wg-thu').checked=false;
 saveMyWg();drain();
 ok('pref=null（どちらでも）',JSON.parse(__store['p']).find(function(x){return x.id===1;}).wg.pref===null);
 
