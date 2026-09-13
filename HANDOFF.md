@@ -7,13 +7,17 @@
 ---
 
 ## 最終更新
-- 日時: 2026-09-08
+- 日時: 2026-09-13
 - 更新者: Claude
-- **試合日チェック全面再設計に着手・P1a push済み `d30f040`**。9問ヒアリング（グリル形式）→4サイト横断調査ワークフロー（19エージェント・確定バグ9件）→設計ワークフロー（5フェーズ並列設計＋敵対レビュー5本）→プラン自体の3視点レビュー（見落とし/エラー/使いやすさ・mustFix10・shouldFix19・改善10採用）を経てプラン確定・ユーザー承認済み。プラン本文は `dev/audit/PLAN_matchday_redesign.md`（正典・詳細設計/レビューも同ディレクトリに永続化済み）。
+- **次にやること＝ウエイトグループ分け v2 の実装（設計確定済み・未着手）**。グリル形式16問でユーザー決定済み（再ヒアリング不要）。**プラン本文（正典）は `dev/audit/PLAN_tgroup_v2.md`**（現状コードの事実・16決定・データモデル案・共通ヘルパー案・実装フェーズ1〜7まで記載）。要点: 目的＝バー共有時のプレート付け替え削減→**tlogの1セット重量(BP/SQ/DL)が近い人で組む**／FW/BK完全分離（スイッチ可）／班サイズ可変／申告を曜日別3択（午前のみ/午後のみ/どちらでも）にしてホーム組＋ゲスト曜日／手動＝タップ移動・入替・班追加削除・ピン／履歴5件＋Undo／保存時お知らせ／`estBase`を種目名から自動補完（スクワット・デッドの推定1RMが記録されていない現状不具合の根本対策）。実装開始時は上記プランを読み、フェーズ1（共通ヘルパー基盤）から「1機能ずつ→jsc→run_tests.py」で進める。
+- **試合日チェック全面再設計はP1（P1a/P1b/P1c）まで完了・push済み**（`d30f040`→`df2f025`→`64d9599`）。P2以降（回復追跡/GPS紐づけ/出場記録/coach反映）は**ウエイトグループ分けv2の後に再開**（下記アクティブプラン節参照）。
+- **ウエイト時間帯アンケートの対象曜日を月水金→月火木に変更・push済み `e2b00ee`**（player/staffの`WG_DAYS`＋文言＋テスト2本）。※v2で曜日別3択に作り替える予定（上記プラン#15/#16）。
+- 単発対応: ダウンブロンコ記録一覧PDF（入力順44名＋未入力30名・本番Firestore REST読み取りのみ・reportlab CIDフォント・成果物はscratchpadのみ＝リポジトリ外）。
+- 以下は2026-09-08時点の記録: **試合日チェック全面再設計に着手・P1a push済み `d30f040`**。9問ヒアリング（グリル形式）→4サイト横断調査ワークフロー（19エージェント・確定バグ9件）→設計ワークフロー（5フェーズ並列設計＋敵対レビュー5本）→プラン自体の3視点レビュー（見落とし/エラー/使いやすさ・mustFix10・shouldFix19・改善10採用）を経てプラン確定・ユーザー承認済み。プラン本文は `dev/audit/PLAN_matchday_redesign.md`（正典・詳細設計/レビューも同ディレクトリに永続化済み）。
   - **設計の要点**: 試合の正典を`cal`の`type:'match'`イベントに一本化（対戦相手/KO/会場/試合種別/メンバー表`squad`を追加フィールド）。旧`matchsel`（チーム全体1本のグローバル配列・試合ごとの区別不可）は完全撤去。共通ヘルパー`mdBelongsTo`等でmd↔試合の所属判定・重複判定・怪我/HIA判定を1箇所に統一。試合日チェックはコンディションと尺度統一（RPE×出場分・睡眠h・疲労/筋肉痛1-5）し、選手の必須項目を最小化。段階=P1a(試合基盤)→P1b(選手フォームv2)→P1c(スタッフレポート/代理入力/HIA承認)→P2(回復追跡)→P3(GPS/スタッツ紐づけ)→P4(出場記録)→P5(coach/trainer反映+CSV)。
   - **P1a完了内容**（4サイト・**push済み**）: 共通ヘルパー群20関数超をplayer/staff/coach（trainerはA群のみ）にidentical登録・`sync_check.py`に二重定義検出ゲートを追加。staffに`goSquadEditor`系（背番号提案・重複拒否・未設定/範囲外は1回警告で続行可・前回コピー・保存Undo）を新設し旧`goSelectMatchMembers`/`matchsel`関連を完全撤去。cal試合イベントにopp/ko/venue/comp編集フォーム＋日付/種別変更ガード（メンバー表/記録がある試合は変更・削除を拒否）。V.matchview/ダッシュボードを`pendingMatchChecks`ベースの試合ごとブロックに再構成（旧「昨日限定」二重実装と死コード`matchNotDone`を削除）。player側はP1b本実装までの暫定パッチ（`showMatchForm(dateArg)`で対象日付を明示）。matchselをSK/Dから4サイト全て削除。
   - 新規テスト4本（`test_matchday_helpers.js`＝player/staff/coach3サイト共通契約・`test_matchday_squad_staff.js`・`test_matchday_cal_staff.js`・`test_matchday_dash_staff.js`）＋既存フィクスチャ2本更新。**`run_tests.py`=84 run/0 fail（69本）**・`sync_check.py`（identical154+variant15）緑・`--residue`0。**本番Firestoreの実データ（実選手74名・8月の過去5試合分）で読み取り専用ブラウザ確認済み**（メンバー表エディタ・試合日レポートとも正常表示、古い試合日記録の「カレンダー未登録」疑似行も正しく拾えることを確認）。
-  - **次にやること**: ユーザーのCmd+Shift+R確認 → P1b（選手フォームv2・catch-up催促・冪等再送）とP1c（スタッフ代理入力・HIA承認・ダッシュボード最終形）を同時実装。
+  - ~~**次にやること**: P1bとP1cを同時実装~~ → **P1b/P1c完了・push済み**（2026-09-09。P1b `df2f025`＝選手フォームv2・催促・CRUD・冪等再送・テスト3本／P1c `64d9599`＝試合日レポート`goMatchReport`・代理入力`goAddMatchDay`・ダッシュボードmatchPanel最終形・HIA最上位ソート＋承認/却下svSafeUpdate化＋Undo・`hiaChartApply`・trainer要ケア一覧`matchCareList`・`svSafeSeq`をstaffへ移植（player/staff/trainer identical）・テスト4本。**run_tests.py=90 run/0 fail**・sync_check緑・residue0）。P1bで簡略化した3点（pending未送信値のフォーム復元／HIAと既存紐づけ怪我が両方脳震盪typeの統合／`T.match`の対象試合window=直近3試合固定）はP2以降で拾う。
 - **ダウンブロンコ計測を追加・push済み**（`07d411d`→`d1f4d55`→`c74328b`）。フィジカル測定(ph)に`downbronco`（秒・小さいほど良い）を新設し、staff/playerの単体・一括・編集フォーム／一覧・選手詳細・CSV・PBアラート・クラブレコード／ランキング（速い順・前回比の極性）までbronco同型で対応。player/staff/coach共通の`getBest`/`getLatest`をタイム系種目対応に拡張。**保留**: ポジション別ゴールド基準バッジ（基準タイム未確定）／coachの分析サイト化（ブロンコ×ダウンブロンコの差分表示・ユーザー要望あり・次にやること候補）。
   - 併せて見つけた既存バグ2件を修正: ①staffの一括入力(`doBulkPhys`)がDOMに存在しないチンニング/クリーン欄を直接読んでいて実機で一括保存が必ずクラッシュ ②`d.getDate()-d.getDay()+1`が日曜だけ「来週の月曜」を返し、日曜だけ週次怪我チェックToDo・今週の予定・テーピング枠表示がずれる（`weekMonday`/`weekSunday`共通関数に一本化・player/staff5箇所＋テスト2本の同型誤りも修正）。日曜(2026-09-06)の実機で両修正を確認。
   - テスト65本・78実行（新規`dev/test_downbronco.js`）・`sync_check.py` identical125（+weekMonday/weekSunday）・residue 0。
@@ -23,7 +27,13 @@
   - **検証基盤**: `dev/run_tests.py`(65本・78実行)／`dev/sync_check.py`(identical125+variant15+chart_counts+`--residue`)／`dev/hex_ledger.py`
   - 各フェーズの成果物一覧は下記「✅完了プラン」節のフェーズ表を参照
 
-## 🔴 アクティブプラン: 試合日チェック全面再設計（P1a実装完了・push待ち。最優先で継続中）
+## 🔴 アクティブプラン: ウエイトグループ分け v2（設計確定・未着手・次セッションで着手）
+
+- **プラン本文（正典）**: `dev/audit/PLAN_tgroup_v2.md`。2026-09-13にグリル形式16問で全決定済み（再ヒアリング不要）。実装フェーズ1〜7と共通ヘルパー案・データモデル案まで記載済み。
+- **着手手順**: プランを読む → フェーズ1（`liftKeyOf`/`posUnit`/`wgNorm`/`tgLiftWeights`のidentical基盤＋sync_manifest登録＋player側のestBaseフォールバック配線）から。既存の`test_tgroup.js`/`test_tgroup_player.js`は仕様変更で赤くなる前提＝各フェーズで更新する。
+- **実装時の注意**: 本番`tgroup`docは未作成（構造変更自由）。`p.wg`は読み側`wgNorm`で旧形式を吸収し移行処理は書かない。1セット重量は保存せず表示のたび算出（二次記録禁止）。`tgResetState`の`confirm()`撤去（雛形v2）。
+
+## 🟠 一時停止中プラン: 試合日チェック全面再設計（P1a/P1b/P1c完了・push済み。P2以降はウエイトグループ分けv2の後に再開）
 
 - **経緯**: 2026-09-06に「昨日試合があったので試合日チェックを完璧に仕上げたい」と着手。グリル形式ヒアリング（9問・D1〜D9で決定）→調査ワークフロー（19エージェント・4サイト全量マップ＋確定バグ9件＋改善提案38件）→設計ワークフロー（5フェーズ並列詳細設計＋敵対レビュー5本）→プラン自体の3視点レビュー（見落とし/エラー/使いやすさ・計45件超をmustFix10・shouldFix19・改善提案10採用に統合）を経て2026-09-08にプラン確定・ユーザー承認済み。**プラン本文（正典）は `dev/audit/PLAN_matchday_redesign.md`**。詳細設計5本・敵対レビュー・プランレビューの統合結果も同ディレクトリに永続化済み（`design_matchday_*.md`／`review_matchday_*.md`）。
 - **ユーザー決定（D1〜D9・再ヒアリング不要）**: D1 目的=怪我/攣り/疲労の早期把握・出場記録台帳・試合負荷×コンディション長期分析の3本柱を同等に／D2 試合の正典=`cal`の`type:'match'`イベント（対戦相手・メンバー表等は追加フィールド。旧`matchsel`は読み書きしない）／D3 スタッフがメンバー表（スタート/リザーブ+背番号）登録・選手が出場時間を自己申告／D4 選手は試合当日の夜まで入力（催促は当日〜3日）・翌日以降の回復は毎日のコンディションで追う（MD+nタグ）／D5 試合日チェックに一本化しコンディションと尺度統一（RPE×出場分・睡眠h・疲労/筋肉痛1-5）・試合日はf(コンディション)を書かず追加読みで集計に合流／D6 追加項目=脳震盪スクリーニング・攣りの詳細・パフォーマンス自己評価／D7 メンバー表=スタート/リザーブ+背番号（POS_NUMで初期提案）／D8 trainer要ケア一覧・coach試合レポート+個人履歴／D9 P1完成後に9/5分を遡り入力→P2回復追跡→P3 GPS/ms紐づけ→P4選手シーズン出場記録→P5 coach/trainer反映+CSV刷新。
@@ -32,8 +42,8 @@
 | # | 内容 | 状態 |
 |---|---|---|
 | P1a | 試合イベント拡張(opp/ko/venue/comp/squad)＋共通ヘルパー基盤(20関数超・identical)＋メンバー表エディタ(goSquadEditor)＋matchsel完全撤去 | ✅ push済み `d30f040`（run_tests.py 84run/0fail・sync_check緑・residue0） |
-| P1b | 選手: 新試合日チェックフォームv2＋催促(pendingMatchChecks)＋CRUD＋冪等再送 | 未着手 |
-| P1c | スタッフ: 試合レポート再構成＋代理入力＋ダッシュボード最終形＋HIA承認(chart.isConcussion連携) | 未着手（P1bと同時出荷） |
+| P1b | 選手: 新試合日チェックフォームv2＋催促(pendingMatchChecks)＋CRUD＋冪等再送 | ✅ push済み `df2f025` |
+| P1c | スタッフ: 試合レポート再構成＋代理入力＋ダッシュボード最終形＋HIA承認(chart.isConcussion連携)＋trainer要ケア一覧(前倒し) | ✅ push済み `64d9599`（run_tests.py 90run/0fail） |
 | P2 | 回復追跡（MD+nタグ・f×md追加読み）＋催促（お知らせ一括・LINEコピー） | 未着手 |
 | P3 | GPS・試合スタッツの試合紐づけ（evId） | 未着手 |
 | P4 | 選手のシーズン出場記録（マイ試合履歴・CAPSバッジ） | 未着手 |
@@ -116,10 +126,10 @@
 - guardSubmit(二重送信ガード)はplayerに導入済み。新規フォームには必ず適用（雛形v2に含む）
 
 ## リポジトリの状態
-- ブランチ: main。origin/main=`d30f040`（試合日チェック全面再設計P1a・push済み2026-09-08。前段`c74328b`＝ダウンブロンコ計測＋ランキング＋日曜週バグ修正、さらに前段`8dae0f6`でv2プラン全フェーズ完了・ユーザー承認2026-08-05でpush済み）。**v2プランは完了済み。現在は試合日チェック全面再設計を継続中・P1aまでpush済み（上記アクティブプラン参照）**
+- ブランチ: main。origin/main=`e2b00ee`（ウエイト曜日変更・2026-09-10。前段`64d9599`/`df2f025`＝試合日チェック再設計P1c/P1b、`d30f040`＝P1a、`c74328b`＝ダウンブロンコ計測、`8dae0f6`＝v2プラン全フェーズ完了）。**次はウエイトグループ分けv2（上記アクティブプラン参照）。試合日チェック再設計はP1完了・P2以降一時停止**
 - テスト用選手「テスト選手」(CTB/1年, note=動作確認用)が本番に1名存在（削除可）
 - ⚠️ 検証はjsc模擬実行で完結（本番Firestore直結のためブラウザで代理編集/削除の保存ボタンは押さない）。最終目視はユーザーのCmd+Shift+R確認に委ねる
-- **現在`run_tests.py`=84 run/0 fail（全緑・69本）**。`sync_check.py`identical154+variant15緑・`--residue`0。worktree(`claude/keen-kowalevski-01e4c2`)はP9cで整理済み（`git worktree remove`+`branch -D`済み）
+- **現在`run_tests.py`=90 run/0 fail（全緑・test_matchday_*計11本含む）**。`sync_check.py`緑（identicalにsvSafeSeq 3ファイル・B群trainer追加済み）・`--residue`0。worktree(`claude/keen-kowalevski-01e4c2`)はP9cで整理済み（`git worktree remove`+`branch -D`済み）
 
 ## 運用ルール（このプロジェクト固有）
 - データは「短いキー」で読む。保存は `svSafe` / `svSafeUpdate` を使う。
