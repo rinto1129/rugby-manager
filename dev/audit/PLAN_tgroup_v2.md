@@ -1,6 +1,6 @@
 # ウエイトグループ分け v2 プラン（重量近接＋FW/BK＋曜日別シフト＋手動編集）
 
-確定日: 2026-09-13（グリル形式16問・全てユーザー決定済み・**再ヒアリング不要**）。状態: **フェーズ1〜6実装済み（2026-09-13・未コミット）→実機確認・push待ち**（末尾「実装状況」参照）。
+確定日: 2026-09-13（グリル形式16問・全てユーザー決定済み・**再ヒアリング不要**）。状態: **フェーズ1〜6実装・push済み `fc09600`（2026-09-13）**（末尾「実装状況」参照）。
 
 ## 背景（コードと本番データで確認済みの事実）
 - 現行実装: staff `// ===== Phase 7: グループ分け` ブロック（`getLatestE1RM`/`groupScore`/`chunkGroups`/`tgAutoAssignShifts`/`tgMakeGroups`/`tgInit`/`tgGenerate`/`tgChipTap`/`tgAddUnscored`/`tgSave`/`tgWgBadges`/`tgReasonBadge`/`tgSavedCardHtml`/`V.tgroup`/`goEditWg`/`doSaveWg`、定数`WG_DAYS`）。player側は `myGroupInfo`/`myGroupCardHtml`/`showAllGroups`/`saveMyWg`/`showProfileSettings`（`WG_DAYS`定義あり）。テストは `dev/test_tgroup.js`(staff)・`dev/test_tgroup_player.js`(player)。
@@ -55,10 +55,10 @@
 7. **テスト**: `test_tgroup.js`/`test_tgroup_player.js`全面更新＋新規（アルゴリズムの決定性・FW/BK分離・ピン不動・ゲスト最近傍・旧wg変換・履歴5件上限）。`sync_check.py`/`--residue`緑。HANDOFF更新。
 
 ## 実装状況（2026-09-13）
-- フェーズ1〜6 実装済み（ローカル・未コミット）。`run_tests.py`=96 run/0 fail・`sync_check.py`緑（identical168）・`--residue`0。
+- フェーズ1〜6 実装済み・push済み `fc09600`。`run_tests.py`=96 run/0 fail・`sync_check.py`緑（identical168）・`--residue`0。
 - **改訂（ユーザー決定）**: #4の期間=直近60日＋アーカイブ読込（`TG_LIFT_DAYS=60`）。一部種目だけ記録がある選手は、ある種目だけで比べて自動に含める（プールは記録ゼロのみ）。選手画面の班メンバー重量は選手端末のD.tlog（直近15日）で算出。
 - データモデル（実装）: `tgroup`=直近5件（末尾=最新）`{id(newId),ts,date,by,mode,size,splitUnit,excluded,pinned,shifts:[{key,label,groups:[[pid]],guests:[{pid,day,gi}]}]}`（未配置poolは保存しない＝読み込み時に`tgFillPools`で補う）。`p.wg` v2=`{v:2,days:{mon,tue,thu},far,pref,upd}`。
 - アルゴリズムの細部（プランに無かった部分の決め）: 強さ=記録のある種目の「重量÷チーム中央値」の平均／候補の比較キー=[加えた後の班内最大差, −比べた種目数, 差の合計, 強さの近さ, id]／端数1人=最も近い班へ合流。ただし「直前の班と半分ずつ2班（計4人以上）」または「1人のまま」の方が変わる班の最大差が`TG_SPLIT_GAIN`=10kg以上小さいならそちら／自動振分バランスは同ユニットの人数が少ない組へ／ピン選手は前回の組を維持し、前回の班の核として埋める（記録ゼロのピン選手は推定重量で相手を選ぶ）／ゲストは曜日ごとに配置し、同点は人数の少ない班。
 - 検証で不採用にした案: 「比べられる種目数を優先する」候補キー（本番試算で班内最大差 中央値20→25kg・90%点40→50kgに悪化）。
 - テスト: `test_tgroup_helpers.js`（player/staff/coach）・`test_tgroup_algo.js`・`test_tgroup_ui.js`・`test_tgroup_save.js`・`test_tgroup.js`・`test_tgroup_player.js`。
-- 残り（フェーズ7）: 実機確認→commit/push→選手へアンケート更新の声かけ（旧形式64名・未回答10名）。
+- 残り（フェーズ7）: push済み。選手へアンケート更新の声かけ（旧形式64名・未回答10名）のみ残り。
