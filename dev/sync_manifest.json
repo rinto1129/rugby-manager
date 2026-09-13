@@ -1314,34 +1314,6 @@
       ],
       "kind": "var"
     },
-    "WG_CHOICES": {
-      "files": [
-        "player",
-        "staff"
-      ],
-      "kind": "var"
-    },
-    "wgSegHTML": {
-      "files": [
-        "player",
-        "staff"
-      ],
-      "kind": "function"
-    },
-    "wgSegPick": {
-      "files": [
-        "player",
-        "staff"
-      ],
-      "kind": "function"
-    },
-    "wgSegRead": {
-      "files": [
-        "player",
-        "staff"
-      ],
-      "kind": "function"
-    },
     "TG_LIFT_DAYS": {
       "files": [
         "player",
@@ -1357,6 +1329,48 @@
       "kind": "function"
     },
     "tgDayLabel": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "wgF5Txt": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "wgOvTxt": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "tgDayShifts": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "tgDefaultDay": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "tgIsDay": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "tgDayTabsHtml": {
       "files": [
         "player",
         "staff"

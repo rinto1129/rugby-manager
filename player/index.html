@@ -2625,11 +2625,10 @@ mypage:function(){
   // プロフィール（身長・ウエイト時間帯）は設定サブ画面へ移設。マイページは導線のみ（Phase B）。
   var wg=(p.wg&&typeof p.wg==='object')?p.wg:{};
   var _htTxt=(p.height!=null&&p.height!=='')?escapeHtml(String(p.height))+'cm':'<span style="color:var(--red);font-weight:700">未設定</span>';
-  // ウエイト時間帯: wgNorm経由で曜日別に要約（旧形式(f5)も変換して表示し「要更新」を添える）
+  // ウエイト時間帯: 申告の要約「5限 火・木／午後希望」（未回答は赤）＋スタッフの曜日指定「火は午後（スタッフ設定）」
   var _nwg=wgNorm(p.wg);
-  var _wgTxt=_nwg?(WG_DAYS.map(function(d){var v=_nwg.days[d.k];return d.label+(v==='am'?'午前':v==='pm'?'午後':'どちらでも');}).join('・')+
-    (_nwg.pref?'／'+(_nwg.pref==='am'?'午前希望':'午後希望'):'')+
-    (_nwg.legacy?' <span style="color:var(--amber);font-weight:700">要更新</span>':'')):'<span style="color:var(--red);font-weight:700">未回答</span>';
+  var _wgTxt=(_nwg&&_nwg.answered)?(escapeHtml(wgF5Txt(_nwg))+(_nwg.pref?'／'+(_nwg.pref==='am'?'午前希望':'午後希望'):'')):'<span style="color:var(--red);font-weight:700">未回答</span>';
+  if(_nwg&&_nwg.hasOv)_wgTxt+=' <span style="color:var(--purple);font-weight:700">'+escapeHtml(wgOvTxt(_nwg))+'（スタッフ設定）</span>';
   h+='<div class="card card-click" onclick="showProfileSettings()" style="margin-bottom:12px;display:flex;align-items:center;gap:12px;cursor:pointer">'+
     ic('i-user',18,'var(--maroon)')+
     '<div style="flex:1;min-width:0"><div class="kicker" style="margin-bottom:2px">PROFILE</div><div style="font-weight:800;font-size:14px">プロフィール設定</div>'+
@@ -6866,8 +6865,9 @@ function saveMyHeight(){
 }
 
 // ===== Phase 7: ウエイト時間帯アンケート（wg）=====
-// p.wg={f5:['mon'/'tue'/'thu'のsubset], far:bool, pref:'am'|'pm'|null, upd:ISO}（旧形式。v2形とその読み方はwgNorm参照）
-// 月火木の5限有無・遠方・時間帯希望を選手が自己申告。スタッフも代理編集可（V.tgroup）。学期替わりは選手が随時更新。
+// p.wg={f5:['mon'/'tue'/'thu'のsubset],far:bool,pref:'am'|'pm'|null,upd:ISO, ov:{mon,tue,thu:'am'|'pm'|''},ovUpd:ISO}
+// f5/far/pref/upd=選手の自己申告（5限がある曜日・遠方・希望）。ov/ovUpd=スタッフが設定する「曜日の指定」（選手から直接相談された分。staffのgoEditWgでのみ書く）。
+// 読み方はwgNorm参照。学期替わりは選手が随時更新（選手の再回答でovは消えない＝saveMyWgがサーバー最新から引き継ぐ）。
 var WG_DAYS=[{k:'mon',label:'月'},{k:'tue',label:'火'},{k:'thu',label:'木'}];
 // ===== ウエイトグループ分けv2 共通ヘルパー（player/staff identical・posUnitはcoachも） =====
 // ポジション→ユニット 'FW'(PR/HO/LO/FL/No.8)|'BK'(SH/SO/CTB/WTB/FB)|null（未設定・未知）。
@@ -6877,26 +6877,40 @@ function posUnit(pos){
   if(pos==='SH'||pos==='SO'||pos==='CTB'||pos==='WTB'||pos==='FB')return 'BK';
   return null;
 }
-// ウエイト時間帯申告(p.wg)をv2形へ正規化（読み側で旧形式を吸収＝移行処理は書かない・プラン#15/#16）。未回答はnull。
-// v2保存形: {v:2,days:{mon,tue,thu},far,pref,upd}。days値='am'(午前のみ)|'pm'(午後のみ)|''(どちらでも)。
-// 旧形式{f5:[曜日],far,pref,upd}: 5限の曜日→'am'・他→''（WG_DAYS外の水/金は破棄）・far/pref維持・legacy:true（「旧形式・要更新」表示用）。
-// 常に新しいオブジェクトを返す（入力は変更しない）。正規化済みを再度通しても同じ結果（冪等）。
+// ウエイト時間帯申告(p.wg)の正規化（読み側で全形式を吸収＝移行処理は書かない）。wgが無ければnull（未回答＋指定なし）。
+// 保存形: {f5:[5限の曜日],far,pref,upd, ov:{mon,tue,thu:'am'|'pm'|''},ovUpd}。ov=スタッフの「曜日の指定」（5限より優先。その曜日だけ逆の組に入る）。
+// 戻り値: {f5,ov,hasOv,days,far,pref,upd,ovUpd,answered}。days=曜日ごとの実効値 'am'|'pm'|''（ov優先。無ければ5限の曜日は'am'・他は''）。
+// answered=選手の申告があるか（upd有り）。ovだけある未回答の選手はanswered:false・hasOv:true。
+// 2026-09-13の一時形式{v:2,days:{..:'am'|'pm'|''}}（曜日別3択・本番1名）は 'am'→5限扱い・'pm'→指定'pm'として読む（失うものなし）。
+// WG_DAYS外の曜日（水/金）は破棄。常に新しいオブジェクトを返す（入力は変更しない）。正規化済みを再度通しても同じ結果（冪等）。
 function wgNorm(wg){
   if(!wg||typeof wg!=='object')return null;
-  var isV2=wg.v===2;
-  var src=(isV2&&wg.days&&typeof wg.days==='object')?wg.days:{};
-  var f5=(!isV2&&Array.isArray(wg.f5))?wg.f5:[];
-  var days={};
+  var isV2=wg.v===2&&!!wg.days&&typeof wg.days==='object';
+  var srcOv=(wg.ov&&typeof wg.ov==='object')?wg.ov:{};
+  var f5=[],ov={},days={},hasOv=false;
   WG_DAYS.forEach(function(d){
-    var v=isV2?src[d.k]:(f5.indexOf(d.k)>=0?'am':'');
-    days[d.k]=(v==='am'||v==='pm')?v:'';
+    var o=srcOv[d.k];
+    if(isV2){if(wg.days[d.k]==='am')f5.push(d.k);else if(wg.days[d.k]==='pm'&&o!=='am'&&o!=='pm')o='pm';}
+    else if(Array.isArray(wg.f5)&&wg.f5.indexOf(d.k)>=0)f5.push(d.k);
+    ov[d.k]=(o==='am'||o==='pm')?o:'';
+    if(ov[d.k])hasOv=true;
+    days[d.k]=ov[d.k]||(f5.indexOf(d.k)>=0?'am':'');
   });
-  return {v:2,days:days,far:!!wg.far,pref:(wg.pref==='am'||wg.pref==='pm')?wg.pref:null,upd:wg.upd||null,legacy:!isV2||wg.legacy===true};
+  return {f5:f5,ov:ov,hasOv:hasOv,days:days,far:!!wg.far,pref:(wg.pref==='am'||wg.pref==='pm')?wg.pref:null,upd:wg.upd||null,ovUpd:wg.ovUpd||null,answered:!!wg.upd};
 }
-// 曜日キー('mon'|'tue'|'thu')の申告値='am'|'pm'|''（どちらでも・未回答・対象外曜日）。生のp.wgでもwgNorm済みでも可。
+// 曜日キー('mon'|'tue'|'thu')の実効値='am'|'pm'|''（指定なし・未回答・対象外曜日）。生のp.wgでもwgNorm済みでも可。
 function wgDayShift(wg,day){
   var n=wgNorm(wg);
   return (n&&n.days[day])||'';
+}
+// 申告の短い表示「5限 火・木」「5限なし」（未回答は''）／指定の短い表示「火は午後・木は午前」（指定なしは''）。nはwgNorm済み
+function wgF5Txt(n){
+  if(!n||!n.answered)return '';
+  return n.f5.length?'5限 '+n.f5.map(tgDayLabel).join('・'):'5限なし';
+}
+function wgOvTxt(n){
+  if(!n||!n.hasOv)return '';
+  return WG_DAYS.filter(function(d){return n.ov[d.k];}).map(function(d){return d.label+'は'+(n.ov[d.k]==='am'?'午前':'午後');}).join('・');
 }
 // 班分け用の1セット重量{bench,squat,deadlift}（kg・無ければnull）。保存しない＝表示のたびtlogから算出（二次記録禁止）。
 // 直近TG_LIFT_DAYS(60)日で、その種目を含む「最新セッション」の最高セット重量。チームメニューのセッションを優先し、チームに無い種目だけ
@@ -6928,57 +6942,61 @@ function tgLiftWeights(pid,logs){
 // 1セット重量の短い表示「BP80 SQ120 DL140」（記録なしの種目は—）（player/staff identical）
 function tgLiftTxt(w){return [['bench','BP'],['squat','SQ'],['deadlift','DL']].map(function(x){return x[1]+(w&&w[x[0]]!=null?w[x[0]]:'—');}).join(' ');}
 function tgDayLabel(day){var d=WG_DAYS.find(function(x){return x.k===day;});return d?d.label:String(day);}
-// 曜日別3択（午前のみ/午後のみ/どちらでも）の入力部品（player/staff identical）。pfx='wg'(選手の設定画面)/'ewg'(スタッフ代理編集)。
-// 選択値はhidden input「pfx-曜日」に 'am'|'pm'|'any'|''(未選択)。保存形へはwgSegReadで'any'→''(どちらでも)に変換する。
-// 未回答の選手は何も選択しない（「どちらでも」を既定にすると確認せず保存されるため）。旧形式はwgNormの変換値を初期選択にする。
-var WG_CHOICES=[{v:'am',label:'午前のみ'},{v:'pm',label:'午後のみ'},{v:'any',label:'どちらでも'}];
-function wgSegHTML(pfx,wg){
-  var n=wgNorm(wg);
-  return WG_DAYS.map(function(d){
-    var cur=n?(n.days[d.k]||'any'):'';
-    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'+
-      '<span style="flex:none;width:22px;font-size:14px;font-weight:800">'+d.label+'</span>'+
-      '<div style="flex:1;display:flex;gap:5px">'+WG_CHOICES.map(function(c){
-        var on=cur===c.v;
-        return '<button type="button" class="btn btn-sm" id="'+pfx+'-'+d.k+'-'+c.v+'" aria-pressed="'+(on?'true':'false')+'" onclick="wgSegPick(\''+pfx+'\',\''+d.k+'\',\''+c.v+'\')" style="flex:1;padding:7px 4px;font-size:12px'+(on?';background:var(--maroon);border-color:var(--maroon);color:var(--white);font-weight:700':'')+'">'+c.label+'</button>';
-      }).join('')+'</div>'+
-      '<input type="hidden" id="'+pfx+'-'+d.k+'" value="'+cur+'"></div>';
-  }).join('');
-}
-function wgSegPick(pfx,day,v){
-  var hid=document.getElementById(pfx+'-'+day);if(hid)hid.value=v;
-  WG_CHOICES.forEach(function(c){
-    var b=document.getElementById(pfx+'-'+day+'-'+c.v);if(!b)return;
-    var on=c.v===v;
-    b.style.background=on?'var(--maroon)':'';b.style.borderColor=on?'var(--maroon)':'';b.style.color=on?'var(--white)':'';b.style.fontWeight=on?'700':'';
-    if(b.setAttribute)b.setAttribute('aria-pressed',on?'true':'false');
+// ---- 曜日別の表示（player/staff identical）----
+// 曜日dayの実際の出席構成。shifts=[{key,label,groups:[[pid]],guests:[{pid,day,gi}],pool?}]（編集中の_tgStateでも保存済みtgroupレコードでも可）。
+// 戻り値: [{si,key,label,groups:[{gi,here:[{pid,sli,guest:false}|{pid,xi,guest:true}],away:[{pid,sli,si,gi}]}],pool:[pid],unplaced:[{xi,pid}]}]
+// here=その日その班にいる人（ホーム班の人からその日ゲストで逆の組へ行く人を除き、その日そこに入るゲストを足す）。sli/xi=元配列のindex（タップ操作用）。
+// away=その日ゲストで逆の組へ行くホーム班の人（行き先si/gi・未配置ならgi:null）。unplaced=その日のゲストで班が未定の人。
+// ゲストは「自分のホーム組（班または未配置にいる組）以外の組」の分だけ有効（同じ組を指す異常データは無視＝同じ人を二重に出さない）。行き先が空の班のゲストは未定(gi:null)扱い。
+function tgDayShifts(shifts,day){
+  var homeSi={},away={};
+  var mark=function(pid,si){var k=String(pid);if(homeSi[k]==null)homeSi[k]=si;};
+  (shifts||[]).forEach(function(sh,si){(sh.groups||[]).forEach(function(g){(g||[]).forEach(function(pid){mark(pid,si);});});(sh.pool||[]).forEach(function(pid){mark(pid,si);});});
+  var live=function(x,si){return !!x&&x.day===day&&homeSi[String(x.pid)]!==si;};
+  var dest=function(sh,x){return (x.gi!=null&&((sh.groups||[])[x.gi]||[]).length)?x.gi:null;}; // 空の班を指すゲストは班未定扱い（保存で空の班は消える＝保存結果と同じ答え）
+  (shifts||[]).forEach(function(sh,si){(sh.guests||[]).forEach(function(x,xi){if(live(x,si))away[String(x.pid)]={si:si,gi:dest(sh,x),xi:xi};});});
+  return (shifts||[]).map(function(sh,si){
+    var groups=(sh.groups||[]).map(function(g,gi){
+      var here=[],aw=[];
+      (g||[]).forEach(function(pid,sli){var a=away[String(pid)];if(a&&a.si!==si)aw.push({pid:pid,sli:sli,si:a.si,gi:a.gi});else here.push({pid:pid,sli:sli,guest:false});});
+      (sh.guests||[]).forEach(function(x,xi){if(live(x,si)&&dest(sh,x)===gi&&!here.some(function(h){return idEq(h.pid,x.pid);}))here.push({pid:x.pid,xi:xi,guest:true});});
+      return {gi:gi,here:here,away:aw};
+    });
+    var unplaced=[];(sh.guests||[]).forEach(function(x,xi){if(live(x,si)&&dest(sh,x)==null)unplaced.push({xi:xi,pid:x.pid});});
+    return {si:si,key:sh.key,label:sh.label||'',groups:groups,pool:(sh.pool||[]).slice(),unplaced:unplaced};
   });
 }
-// 入力部品から保存用daysを読む → {days:{mon,tue,thu:'am'|'pm'|''}, missing:[未選択の曜日ラベル]}
-function wgSegRead(pfx){
-  var days={},missing=[];
-  WG_DAYS.forEach(function(d){
-    var el=document.getElementById(pfx+'-'+d.k);var v=el?el.value:'';
-    if(v==='am'||v==='pm')days[d.k]=v;
-    else{days[d.k]='';if(v!=='any')missing.push(d.label);}
-  });
-  return {days:days,missing:missing};
+// 表示する曜日の既定: 今日が月/火ならその日、水・木は木、金〜日は月（now省略時は現在時刻）
+function tgDefaultDay(now){var d=(now||new Date()).getDay();return d===1?'mon':d===2?'tue':(d===3||d===4)?'thu':'mon';}
+function tgIsDay(k){return WG_DAYS.some(function(d){return d.k===k;});}
+// 曜日タブ（月/火/木）。fn=クリック時に呼ぶ関数名（引数=曜日キー・呼び先で再描画）。cur=選択中
+function tgDayTabsHtml(cur,fn){
+  return '<div style="display:flex;gap:6px">'+WG_DAYS.map(function(d){
+    var on=d.k===cur;
+    return '<button type="button" class="btn btn-sm" aria-pressed="'+(on?'true':'false')+'" onclick="'+fn+'(\''+d.k+'\')" style="flex:1;min-width:52px;padding:7px 10px;font-size:13px;font-weight:800'+(on?';background:var(--maroon);border-color:var(--maroon);color:var(--white)':'')+'">'+d.label+'</button>';
+  }).join('')+'</div>';
 }
-// 申告の保存（v2形{v:2,days,far,pref,upd}・svSafeUpdateでwgのみ更新＝旧形式はこの保存で消える）。曜日の未選択は保存しない。
+// 申告の保存（{f5,far,pref,upd}・svSafeUpdateでwgのみ更新）。スタッフが設定した曜日の指定(ov/ovUpd)はサーバー最新から引き継ぐ（選手の再回答で消さない）。
 function saveMyWg(btnEl){
-  var sr=wgSegRead('wg');
-  if(sr.missing.length){alert('曜日ごとに時間帯を選んでください（未選択: '+sr.missing.join('・')+'）');return;}
+  var f5=[];
+  WG_DAYS.forEach(function(d){var el=document.getElementById('wg-'+d.k);if(el&&el.checked)f5.push(d.k);});
   var farEl=document.getElementById('wg-far');var far=!!(farEl&&farEl.checked);
   var prefEl=document.getElementById('wg-pref');var pref=prefEl?(prefEl.value||''):'';
   if(pref!=='am'&&pref!=='pm')pref=null;
   if(btnEl&&!guardSubmit(btnEl,'保存中…'))return;
-  var wg={v:2,days:sr.days,far:far,pref:pref,upd:new Date().toISOString()};
-  svSafeUpdate('p',function(latest){var me=latest.find(function(x){return idEq(x.id,myPid);});if(me)me.wg=wg;return latest;},function(){showProfileSettings();toast('ウエイト時間帯を保存しました');},function(){if(btnEl)releaseSubmit(btnEl);alert('保存できませんでした。電波の良い場所でもう一度お試しください。');});
+  var upd=new Date().toISOString();
+  svSafeUpdate('p',function(latest){
+    var me=latest.find(function(x){return idEq(x.id,myPid);});if(!me)return latest;
+    var cur=wgNorm(me.wg),wg={f5:f5,far:far,pref:pref,upd:upd};
+    if(cur&&cur.hasOv){wg.ov=cur.ov;wg.ovUpd=cur.ovUpd;}
+    me.wg=wg;return latest;
+  },function(){showProfileSettings();toast('ウエイト時間帯を保存しました');},function(){if(btnEl)releaseSubmit(btnEl);alert('保存できませんでした。電波の良い場所でもう一度お試しください。');});
 }
-// プロフィール設定サブ画面（身長＋ウエイト時間帯アンケート）。身長=mh-input/saveMyHeight、時間帯=曜日別3択(wgSegHTML 'wg')/wg-far/wg-pref/saveMyWg。
+// プロフィール設定サブ画面（身長＋ウエイト時間帯アンケート）。身長=mh-input/saveMyHeight、時間帯=5限の曜日(wg-mon/tue/thu)/wg-far/wg-pref/saveMyWg。
+// スタッフが設定した曜日の指定(ov)は読み取り表示のみ（変更はスタッフに相談）。
 function showProfileSettings(){
   var p=D.p.find(function(x){return x.id===myPid;});if(!p)return;
-  var nwg=wgNorm(p.wg); // 旧形式(f5)は変換値で初期表示＋注意を出す（保存でv2になる）
+  var nwg=wgNorm(p.wg)||{f5:[],ov:{},hasOv:false,far:false,pref:null,answered:false};
   var h='<div class="card" style="margin-bottom:12px">'+
     '<div style="display:flex;gap:8px;align-items:flex-end"><div style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">身長（cm）</label>'+
     '<input id="mh-input" class="ipt" type="number" step="0.1" min="100" max="230" inputmode="decimal" placeholder="例：175" value="'+(p.height!=null&&p.height!==''?escapeHtml(String(p.height)):'')+'"></div>'+
@@ -6986,12 +7004,15 @@ function showProfileSettings(){
     '<div style="font-size:11px;color:var(--text-secondary);margin-top:8px">身長を登録すると、マイフィジカルで推奨体重帯やFFMI（除脂肪量指数）が表示されます。体重は体組成測定で自動記録されます。</div></div>';
   h+='<div class="card" style="margin-bottom:12px"><div class="kicker" style="margin-bottom:2px">WEIGHT SESSION</div>'+
     '<div style="font-weight:800;font-size:14px;margin-bottom:2px">ウエイト時間帯アンケート</div>'+
-    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;line-height:1.6">曜日ごとに、ウエイトに参加できる時間帯を選んでください（例: 5限がある日→午前のみ）。午前組／午後組の振り分けに使います。学期が替わったら更新してください。</div>'+
-    (nwg&&nwg.legacy?'<div class="alert-card alert-warn" style="margin-bottom:10px;font-size:12px">'+ic('i-warn',13)+' 前の形式（5限の曜日）の回答を変換して表示しています。確認して「時間帯を保存」を押してください。</div>':'')+
-    wgSegHTML('wg',p.wg)+
-    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin:10px 0 12px"><input type="checkbox" id="wg-far"'+(nwg&&nwg.far?' checked':'')+'> 大学から遠い（通学に時間がかかる）</label>'+
-    '<div style="font-size:12px;font-weight:700;margin-bottom:5px">「どちらでも」の日の希望</div>'+
-    '<select id="wg-pref" class="ipt" style="margin-bottom:10px"><option value=""'+(!(nwg&&nwg.pref)?' selected':'')+'>どちらでも</option><option value="am"'+(nwg&&nwg.pref==='am'?' selected':'')+'>午前がいい</option><option value="pm"'+(nwg&&nwg.pref==='pm'?' selected':'')+'>午後がいい</option></select>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">午前組／午後組の振り分けに使います。学期が替わったら更新してください。</div>'+
+    '<div style="font-size:12px;font-weight:700;margin-bottom:5px">月・火・木で5限がある曜日</div>'+
+    '<div style="display:flex;gap:16px;margin-bottom:12px">'+
+      WG_DAYS.map(function(d){return '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="wg-'+d.k+'"'+(nwg.f5.indexOf(d.k)>=0?' checked':'')+'> '+d.label+'</label>';}).join('')+
+    '</div>'+
+    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin-bottom:12px"><input type="checkbox" id="wg-far"'+(nwg.far?' checked':'')+'> 大学から遠い（通学に時間がかかる）</label>'+
+    '<div style="font-size:12px;font-weight:700;margin-bottom:5px">時間帯の希望</div>'+
+    '<select id="wg-pref" class="ipt" style="margin-bottom:10px"><option value=""'+(!nwg.pref?' selected':'')+'>どちらでも</option><option value="am"'+(nwg.pref==='am'?' selected':'')+'>午前がいい</option><option value="pm"'+(nwg.pref==='pm'?' selected':'')+'>午後がいい</option></select>'+
+    (nwg.hasOv?'<div class="alert-card alert-info" style="margin-bottom:10px;font-size:12px"><span style="flex:none">'+ic('i-info',13)+'</span><span>スタッフの設定: <b>'+escapeHtml(wgOvTxt(nwg))+'</b>。その曜日はこの時間帯の班に入ります（変更はスタッフに相談してください）。</span></div>':'')+
     '<button class="btn btn-p" style="width:100%" onclick="saveMyWg(this)">時間帯を保存</button></div>';
   // PIN変更（現PIN確認→新PIN2回一致→svSafeUpdate('p')。平文比較=既存checkPIN/doSetupPINと同方式。忘れた場合はスタッフがpを編集）
   h+='<div class="card" style="margin-bottom:12px"><div class="kicker" style="margin-bottom:2px">SECURITY</div>'+
@@ -7015,7 +7036,9 @@ function doChangePIN(){
 }
 // 自分の所属グループ情報（tgroup最新レコードから。除外/未割当ならnull）。
 // 互換: mode/shiftKey/shiftLabel/shiftIdx/groupLetter/members/mates＝ホームの班。guests=[{day,shiftKey,shiftLabel,shiftIdx,gi,groupLetter,members}]＝その曜日だけ入る班（v2）。
-// schedule=[{days,label:'月・火',shiftKey,shiftLabel,groupLetter,guest}]＝曜日ごとの行き先を同じ行き先でまとめたもの（午前/午後モードのみ）。未配置のゲスト(gi=null)は出さない。
+// schedule=[{days,label:'月・火',shiftKey,shiftLabel,groupLetter,guest}]＝曜日ごとの行き先を同じ行き先でまとめたもの（午前/午後モードのみ）。
+// 班が未定のゲスト(gi=null)は guests に groupLetter:null・members:[] で入り、schedule では「午後（班未定）」になる（全班一覧の曜日表示と同じ答え）。
+// ホームの班が無く、班の決まったゲストも無い時はnull（カードを出さない）。
 function myGroupInfo(){
   var recs=D.tgroup||[];
   if(!recs.length)return null;
@@ -7027,11 +7050,14 @@ function myGroupInfo(){
       if(!home&&(g||[]).some(function(pid){return idEq(pid,myPid);}))home={shiftKey:sh.key,shiftLabel:sh.label||'',shiftIdx:si,gi:gi,members:g.slice()};
     });
     (sh.guests||[]).forEach(function(x){
-      var g=(x&&x.gi!=null)?(sh.groups||[])[x.gi]:null;
-      if(g&&idEq(x.pid,myPid))guests.push({day:x.day,shiftKey:sh.key,shiftLabel:sh.label||'',shiftIdx:si,gi:x.gi,groupLetter:String.fromCharCode(65+x.gi),members:g.slice()});
+      if(!x||!idEq(x.pid,myPid))return;
+      var g=x.gi!=null?(sh.groups||[])[x.gi]:null;
+      if(g&&g.length)guests.push({day:x.day,shiftKey:sh.key,shiftLabel:sh.label||'',shiftIdx:si,gi:x.gi,groupLetter:String.fromCharCode(65+x.gi),members:g.slice()});
+      else guests.push({day:x.day,shiftKey:sh.key,shiftLabel:sh.label||'',shiftIdx:si,gi:null,groupLetter:null,members:[]}); // 空の班・存在しない班を指す行も班未定（tgDayShiftsと同じ答え）
     });
   });
-  if(!home&&!guests.length)return null;
+  if(home)guests=guests.filter(function(x){return x.shiftIdx!==home.shiftIdx;}); // 自分のホーム組を指す異常データは無視（tgDayShiftsと同じ）
+  if(!home&&!guests.some(function(x){return x.groupLetter;}))return null;
   var schedule=[];
   if(rec.mode!=='single'){
     WG_DAYS.forEach(function(d){
@@ -7047,18 +7073,24 @@ function myGroupInfo(){
   return {mode:rec.mode,shiftKey:home?home.shiftKey:null,shiftLabel:home?home.shiftLabel:'',shiftIdx:home?home.shiftIdx:null,
     groupLetter:home?String.fromCharCode(65+home.gi):null,members:home?home.members:[],mates:mates,guests:guests,schedule:schedule};
 }
-// 曜日別の行き先の1行表示「月・火: 午前 A班 ／ 木: 午後 C班（ゲスト）」
+// 曜日別の行き先の1行表示「月・火: 午前 A班 ／ 木: 午後 C班」（班が未定の曜日は「木: 午後（班未定）」）
 function myGroupScheduleTxt(info){
-  return (info&&info.schedule||[]).map(function(s){return escapeHtml(s.label)+': '+escapeHtml(s.shiftLabel)+' '+s.groupLetter+'班'+(s.guest?'（ゲスト）':'');}).join(' ／ ');
+  return (info&&info.schedule||[]).map(function(s){return escapeHtml(s.label)+': '+escapeHtml(s.shiftLabel)+(s.groupLetter?' '+s.groupLetter+'班':'（班未定）');}).join(' ／ ');
 }
 // グループ表示カード（トレーニングタブ。未所属は''）。班メンバーの1セット重量(BP/SQ/DL・直近の記録)と、曜日で組が変わる選手は曜日別の行き先。タップで全班一覧(showAllGroups)へ。
 function myGroupCardHtml(){
   var gi=myGroupInfo();
   if(!gi)return '';
   var isAmpm=gi.mode==='ampm';
-  var guestOnly=!gi.groupLetter,g0=guestOnly?gi.guests[0]:null; // ホームの班が無くゲストだけの時は最初のゲスト先を表示
-  var shiftKey=guestOnly?g0.shiftKey:gi.shiftKey,shiftLabel=guestOnly?g0.shiftLabel:gi.shiftLabel;
-  var letter=guestOnly?g0.groupLetter:gi.groupLetter,members=guestOnly?g0.members:(gi.members||[]);
+  // 主表示: ホームの班。ただしホームの班が無い／3曜日とも別の班へ行く（ホームに1日も行かない）時は、班の決まった最初の行き先。
+  // その行き先も無い（全曜日が班未定）時は組だけ出して「班未定」
+  var homeDays=!isAmpm||!gi.schedule.length||gi.schedule.some(function(x){return !x.guest;});
+  var guestOnly=!gi.groupLetter||!homeDays,g0=guestOnly?gi.guests.filter(function(x){return x.groupLetter;})[0]:null,und=guestOnly&&!g0;
+  var gsrc=und?gi.guests[0]:g0;
+  var shiftKey=guestOnly?gsrc.shiftKey:gi.shiftKey,shiftLabel=guestOnly?gsrc.shiftLabel:gi.shiftLabel;
+  var letter=und?'—':guestOnly?g0.groupLetter:gi.groupLetter,members=und?[]:guestOnly?g0.members:(gi.members||[]);
+  var g0Days=g0?gi.guests.filter(function(x){return x.shiftIdx===g0.shiftIdx&&x.gi===g0.gi;}).map(function(x){return x.day;}):[];
+  var subLbl=und?'班未定':(guestOnly&&g0Days.length<WG_DAYS.length)?g0Days.map(tgDayLabel).join('・')+'のみ':'';
   var isAm=shiftKey==='am';
   var shiftChip=(isAmpm&&shiftLabel)?'<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;background:'+(isAm?'var(--shift-am-a25)':'var(--shift-pm-a25)')+';color:var(--white);border:1px solid '+(isAm?'var(--shift-am-a55)':'var(--shift-pm-a55)')+'">'+escapeHtml(shiftLabel)+'組</span>':'';
   var avatars=members.map(function(pid,i){
@@ -7079,7 +7111,7 @@ function myGroupCardHtml(){
       '<span style="font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--white-a72)">MY GROUP</span>'+shiftChip+'</div>'+
     sched+
     '<div style="display:flex;align-items:center;gap:13px">'+
-      '<div class="num" style="font-size:30px;font-weight:900;color:var(--white);line-height:1;flex:none;text-align:center">'+letter+'班'+(guestOnly?'<div style="font-size:10px;font-weight:800;margin-top:4px;color:var(--white-a90)">ゲスト</div>':'')+'</div>'+
+      '<div class="num" style="font-size:30px;font-weight:900;color:var(--white);line-height:1;flex:none;text-align:center">'+letter+(und?'':'班')+(subLbl?'<div style="font-size:10px;font-weight:800;margin-top:4px;color:var(--white-a90)">'+subLbl+'</div>':'')+'</div>'+
       '<div style="flex:1;min-width:0">'+
         (avatars?'<div style="display:flex;align-items:center;margin-bottom:5px">'+avatars+'</div>':'')+
         '<div style="display:flex;flex-direction:column;gap:2px">'+rows+'</div>'+
@@ -7087,53 +7119,62 @@ function myGroupCardHtml(){
       '<div style="flex:none;text-align:center;color:var(--white-a90)">'+ic('i-chevron-r',20)+'<div style="font-size:9px;font-weight:700;margin-top:-3px">全班を見る</div></div>'+
     '</div></div>';
 }
-// 全班のウエイトグループ編成を一覧表示（選手が全班閲覧）。班メンバーの1セット重量・ゲスト（曜日）も表示。戻り先は現在タブ。
+// 全班のウエイトグループ編成を一覧表示（選手が全班閲覧）。曜日タブ（月/火/木）でその曜日の実際の班を表示：曜日で組が変わる選手は
+// その曜日の班に「火のみ」印で出て、元の班では「→ 午後 C班」と薄く出る。班メンバーの1セット重量も表示。戻り先は現在タブ。
+// タブは agSetDay(曜日)→window._agDay→再描画（showSubのサブ内再描画＝入場アニメ無し）。分割なし(single)は曜日タブ無し。
+function agSetDay(day){if(!tgIsDay(day))return;window._agDay=day;showAllGroups();}
 function showAllGroups(){
   var recs=D.tgroup||[];var rec=recs.length?recs[recs.length-1]:null;
   var back=curTab||'home',backLbl=back==='training'?'トレーニングに戻る':'ホームに戻る';
   if(!rec||!rec.shifts||!rec.shifts.length){showSub('<div class="no">まだ編成がありません。スタッフが組むとここに表示されます。</div>',back,backLbl);return;}
   var info=myGroupInfo();
+  var isAmpm=rec.mode!=='single';
+  var day=tgIsDay(window._agDay)?window._agDay:tgDefaultDay();window._agDay=day;
+  var DV=tgDayShifts(rec.shifts,isAmpm?day:null);
   var h='<div class="kicker" style="margin-bottom:2px">WEIGHT GROUPS</div><div style="font-size:18px;font-weight:900;margin-bottom:2px">ウエイトグループ編成</div>'+
-    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">'+fmt(rec.date)+' 更新'+(rec.mode==='single'?'':'（午前／午後シフト）')+'</div>'+
+    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">'+fmt(rec.date)+' 更新'+(isAmpm?'（午前／午後シフト）':'')+'</div>'+
     '<div style="font-size:10px;color:var(--text-tertiary);margin-bottom:12px">各メンバーの数字は直近の記録の1セット重量（BP/SQ/DL・記録なしは—）</div>';
   if(info&&info.guests.length&&info.schedule.length){
     h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--maroon)"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:2px">あなたの行き先（曜日別）</div><div style="font-size:13px;font-weight:800">'+myGroupScheduleTxt(info)+'</div></div>';
   }
-  rec.shifts.forEach(function(sh){
-    var groups=sh.groups||[];
-    if(!groups.some(function(g){return g&&g.length;}))return;
+  if(isAmpm){
+    h+='<div style="margin-bottom:4px"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px">表示する曜日（曜日で午前・午後が変わる人は、その曜日の班に出ます）</div>'+tgDayTabsHtml(day,'agSetDay')+'</div>';
+  }
+  rec.shifts.forEach(function(sh,si){
+    var dv=DV[si];
+    if(!dv.groups.some(function(d){return d.here.length||d.away.length;}))return;
     var isAm=sh.key==='am';
-    if(rec.mode!=='single'&&sh.label){
-      h+='<div style="font-size:13px;font-weight:800;margin:16px 0 8px;display:flex;align-items:center;gap:7px"><span style="width:9px;height:9px;border-radius:50%;background:'+(isAm?'var(--blue)':'var(--purple)')+'"></span>'+escapeHtml(sh.label)+'組</div>';
+    if(isAmpm&&sh.label){
+      h+='<div style="font-size:13px;font-weight:800;margin:16px 0 8px;display:flex;align-items:center;gap:7px"><span style="width:9px;height:9px;border-radius:50%;background:'+(isAm?'var(--blue)':'var(--purple)')+'"></span>'+escapeHtml(sh.label)+'組'+(isAmpm?'<span style="font-size:11px;color:var(--text-secondary);font-weight:600">（'+tgDayLabel(day)+'曜）</span>':'')+'</div>';
     }
-    groups.forEach(function(g,gi){
-      if(!g||!g.length)return;
-      var letter=String.fromCharCode(65+gi);
-      var isMyGroup=g.some(function(pid){return idEq(pid,myPid);});
-      var gGuests=(sh.guests||[]).filter(function(x){return x&&x.gi===gi;});
-      var myGuestDays=gGuests.filter(function(x){return idEq(x.pid,myPid);}).map(function(x){return tgDayLabel(x.day);});
-      var mine=isMyGroup||myGuestDays.length>0;
+    var everyDay=function(pid,gi){var ds={};(sh.guests||[]).forEach(function(y){if(y&&idEq(y.pid,pid)&&y.gi===gi)ds[y.day]=1;});return WG_DAYS.every(function(w){return ds[w.k];});};
+    dv.groups.forEach(function(d){
+      if(!d.here.length&&!d.away.length)return;
+      var letter=String.fromCharCode(65+d.gi);
+      var mine=d.here.some(function(x){return idEq(x.pid,myPid);});
+      d.here.forEach(function(x){x.only=x.guest&&!everyDay(x.pid,d.gi);});
+      var guestN=d.here.filter(function(x){return x.only;}).length;
       h+='<div class="card" style="margin-bottom:8px'+(mine?';border:1.5px solid var(--maroon-vivid);box-shadow:0 0 12px -4px var(--maroon-vivid)':'')+'">'+
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap"><span style="font-size:15px;font-weight:900">'+letter+'班</span>'+
-        (isMyGroup?'<span style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:99px;background:var(--maroon);color:var(--white)">MY</span>':'')+
-        (myGuestDays.length?'<span style="font-size:10px;font-weight:800;padding:1px 8px;border-radius:99px;border:1px solid var(--maroon);color:var(--maroon)">MY（'+myGuestDays.join('・')+'・ゲスト）</span>':'')+
-        '<span style="font-size:11px;color:var(--text-secondary);margin-left:auto">'+g.length+'名'+(gGuests.length?'＋ゲスト'+gGuests.length:'')+'</span></div>'+
-        '<div style="display:flex;flex-direction:column;gap:6px">'+g.map(function(pid){
-          var pp=D.p.find(function(x){return idEq(x.id,pid);});if(!pp)return'';
-          var isMe=idEq(pid,myPid);
-          return '<div style="display:flex;align-items:center;gap:8px">'+avH(pp,26)+
-            '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:'+(isMe?'800':'600')+(isMe?';color:var(--maroon-vivid)':'')+'">'+escapeHtml(pp.name)+(isMe?'（自分）':'')+'</div>'+
-            '<div class="num" style="font-size:10px;color:var(--text-secondary);font-variant-numeric:tabular-nums">'+tgLiftTxt(tgLiftWeights(pid))+'</div></div>'+
+        (mine?'<span style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:99px;background:var(--maroon);color:var(--white)">MY</span>':'')+
+        '<span style="font-size:11px;color:var(--text-secondary);margin-left:auto">'+d.here.length+'名'+(guestN?'（'+tgDayLabel(day)+'のみ '+guestN+'名）':'')+'</span></div>'+
+        '<div style="display:flex;flex-direction:column;gap:6px">'+d.here.map(function(x){
+          var pp=D.p.find(function(y){return idEq(y.id,x.pid);});if(!pp)return'';
+          var isMe=idEq(x.pid,myPid);
+          return '<div style="display:flex;align-items:center;gap:8px'+(x.only?';padding:4px 6px;border:1px dashed var(--amber);border-radius:8px':'')+'">'+avH(pp,26)+
+            '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:'+(isMe?'800':'600')+(isMe?';color:var(--maroon-vivid)':'')+'">'+escapeHtml(pp.name)+(isMe?'（自分）':'')+
+              (x.only?' <span style="font-size:10px;font-weight:800;color:var(--amber)">'+tgDayLabel(day)+'のみ</span>':'')+'</div>'+
+            '<div class="num" style="font-size:10px;color:var(--text-secondary);font-variant-numeric:tabular-nums">'+tgLiftTxt(tgLiftWeights(x.pid))+'</div></div>'+
             '<span style="font-size:10px;color:var(--text-secondary)">'+escapeHtml(pp.position||'-')+'</span></div>';
         }).filter(Boolean).join('')+
-        gGuests.map(function(x){
-          var gp=D.p.find(function(y){return idEq(y.id,x.pid);});if(!gp)return'';
-          var isMe=idEq(x.pid,myPid);
-          return '<div style="display:flex;align-items:center;gap:8px;padding:4px 6px;border:1px dashed var(--border-tertiary);border-radius:8px">'+
-            '<span style="flex:none;font-size:10px;font-weight:800;color:var(--amber)">ゲスト（'+tgDayLabel(x.day)+'）</span>'+
-            '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:'+(isMe?'800':'600')+(isMe?';color:var(--maroon-vivid)':'')+'">'+escapeHtml(gp.name)+(isMe?'（自分）':'')+'</div>'+
-            '<div class="num" style="font-size:10px;color:var(--text-secondary);font-variant-numeric:tabular-nums">'+tgLiftTxt(tgLiftWeights(x.pid))+'</div></div></div>';
-        }).join('')+
+        d.away.map(function(x){
+          var pp=D.p.find(function(y){return idEq(y.id,x.pid);});if(!pp)return'';
+          var isMe=idEq(x.pid,myPid),to=rec.shifts[x.si];
+          var dest='→ '+escapeHtml((to&&to.label)||'')+(x.gi!=null?' '+String.fromCharCode(65+x.gi)+'班':'（班未定）');
+          return '<div style="display:flex;align-items:center;gap:8px;opacity:.55">'+avH(pp,26)+
+            '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:'+(isMe?'800':'600')+'">'+escapeHtml(pp.name)+(isMe?'（自分）':'')+'</div>'+
+            '<div style="font-size:10px;color:var(--text-secondary)">'+tgDayLabel(day)+'曜は '+dest+'</div></div></div>';
+        }).filter(Boolean).join('')+
         '</div></div>';
     });
   });

@@ -6743,7 +6743,8 @@ function delTapeRec(recId,pid){
 // tgroup（1レコード全置換）:
 //   [{id,ts,date,by,mode:'ampm'|'single',size,splitUnit,excluded:[pid],pinned:[pid],
 //     shifts:[{key,label,groups:[[pid,...],...],guests:[{pid,day,gi}]}]}]
-// 申告 p.wg={f5:['mon'/'tue'/'thu'のsubset],far:bool,pref:'am'|'pm'|null,upd:ISO}（旧形式。v2形とその読み方はwgNorm参照）
+// 申告 p.wg={f5:['mon'/'tue'/'thu'のsubset],far:bool,pref:'am'|'pm'|null,upd:ISO, ov:{mon,tue,thu:'am'|'pm'|''},ovUpd:ISO}
+// f5/far/pref/upd=選手の自己申告（5限がある曜日・遠方・希望）。ov/ovUpd=スタッフが設定する「曜日の指定」（選手から直接相談された分。goEditWgでのみ書く）。読み方はwgNorm参照。
 var WG_DAYS=[{k:'mon',label:'月'},{k:'tue',label:'火'},{k:'thu',label:'木'}];
 // ===== ウエイトグループ分けv2 共通ヘルパー（player/staff identical・posUnitはcoachも） =====
 // ポジション→ユニット 'FW'(PR/HO/LO/FL/No.8)|'BK'(SH/SO/CTB/WTB/FB)|null（未設定・未知）。
@@ -6753,26 +6754,40 @@ function posUnit(pos){
   if(pos==='SH'||pos==='SO'||pos==='CTB'||pos==='WTB'||pos==='FB')return 'BK';
   return null;
 }
-// ウエイト時間帯申告(p.wg)をv2形へ正規化（読み側で旧形式を吸収＝移行処理は書かない・プラン#15/#16）。未回答はnull。
-// v2保存形: {v:2,days:{mon,tue,thu},far,pref,upd}。days値='am'(午前のみ)|'pm'(午後のみ)|''(どちらでも)。
-// 旧形式{f5:[曜日],far,pref,upd}: 5限の曜日→'am'・他→''（WG_DAYS外の水/金は破棄）・far/pref維持・legacy:true（「旧形式・要更新」表示用）。
-// 常に新しいオブジェクトを返す（入力は変更しない）。正規化済みを再度通しても同じ結果（冪等）。
+// ウエイト時間帯申告(p.wg)の正規化（読み側で全形式を吸収＝移行処理は書かない）。wgが無ければnull（未回答＋指定なし）。
+// 保存形: {f5:[5限の曜日],far,pref,upd, ov:{mon,tue,thu:'am'|'pm'|''},ovUpd}。ov=スタッフの「曜日の指定」（5限より優先。その曜日だけ逆の組に入る）。
+// 戻り値: {f5,ov,hasOv,days,far,pref,upd,ovUpd,answered}。days=曜日ごとの実効値 'am'|'pm'|''（ov優先。無ければ5限の曜日は'am'・他は''）。
+// answered=選手の申告があるか（upd有り）。ovだけある未回答の選手はanswered:false・hasOv:true。
+// 2026-09-13の一時形式{v:2,days:{..:'am'|'pm'|''}}（曜日別3択・本番1名）は 'am'→5限扱い・'pm'→指定'pm'として読む（失うものなし）。
+// WG_DAYS外の曜日（水/金）は破棄。常に新しいオブジェクトを返す（入力は変更しない）。正規化済みを再度通しても同じ結果（冪等）。
 function wgNorm(wg){
   if(!wg||typeof wg!=='object')return null;
-  var isV2=wg.v===2;
-  var src=(isV2&&wg.days&&typeof wg.days==='object')?wg.days:{};
-  var f5=(!isV2&&Array.isArray(wg.f5))?wg.f5:[];
-  var days={};
+  var isV2=wg.v===2&&!!wg.days&&typeof wg.days==='object';
+  var srcOv=(wg.ov&&typeof wg.ov==='object')?wg.ov:{};
+  var f5=[],ov={},days={},hasOv=false;
   WG_DAYS.forEach(function(d){
-    var v=isV2?src[d.k]:(f5.indexOf(d.k)>=0?'am':'');
-    days[d.k]=(v==='am'||v==='pm')?v:'';
+    var o=srcOv[d.k];
+    if(isV2){if(wg.days[d.k]==='am')f5.push(d.k);else if(wg.days[d.k]==='pm'&&o!=='am'&&o!=='pm')o='pm';}
+    else if(Array.isArray(wg.f5)&&wg.f5.indexOf(d.k)>=0)f5.push(d.k);
+    ov[d.k]=(o==='am'||o==='pm')?o:'';
+    if(ov[d.k])hasOv=true;
+    days[d.k]=ov[d.k]||(f5.indexOf(d.k)>=0?'am':'');
   });
-  return {v:2,days:days,far:!!wg.far,pref:(wg.pref==='am'||wg.pref==='pm')?wg.pref:null,upd:wg.upd||null,legacy:!isV2||wg.legacy===true};
+  return {f5:f5,ov:ov,hasOv:hasOv,days:days,far:!!wg.far,pref:(wg.pref==='am'||wg.pref==='pm')?wg.pref:null,upd:wg.upd||null,ovUpd:wg.ovUpd||null,answered:!!wg.upd};
 }
-// 曜日キー('mon'|'tue'|'thu')の申告値='am'|'pm'|''（どちらでも・未回答・対象外曜日）。生のp.wgでもwgNorm済みでも可。
+// 曜日キー('mon'|'tue'|'thu')の実効値='am'|'pm'|''（指定なし・未回答・対象外曜日）。生のp.wgでもwgNorm済みでも可。
 function wgDayShift(wg,day){
   var n=wgNorm(wg);
   return (n&&n.days[day])||'';
+}
+// 申告の短い表示「5限 火・木」「5限なし」（未回答は''）／指定の短い表示「火は午後・木は午前」（指定なしは''）。nはwgNorm済み
+function wgF5Txt(n){
+  if(!n||!n.answered)return '';
+  return n.f5.length?'5限 '+n.f5.map(tgDayLabel).join('・'):'5限なし';
+}
+function wgOvTxt(n){
+  if(!n||!n.hasOv)return '';
+  return WG_DAYS.filter(function(d){return n.ov[d.k];}).map(function(d){return d.label+'は'+(n.ov[d.k]==='am'?'午前':'午後');}).join('・');
 }
 // 班分け用の1セット重量{bench,squat,deadlift}（kg・無ければnull）。保存しない＝表示のたびtlogから算出（二次記録禁止）。
 // 直近TG_LIFT_DAYS(60)日で、その種目を含む「最新セッション」の最高セット重量。チームメニューのセッションを優先し、チームに無い種目だけ
@@ -6801,42 +6816,73 @@ function tgLiftWeights(pid,logs){
   });
   return out;
 }
-
-// 曜日別3択（午前のみ/午後のみ/どちらでも）の入力部品（player/staff identical）。pfx='wg'(選手の設定画面)/'ewg'(スタッフ代理編集)。
-// 選択値はhidden input「pfx-曜日」に 'am'|'pm'|'any'|''(未選択)。保存形へはwgSegReadで'any'→''(どちらでも)に変換する。
-// 未回答の選手は何も選択しない（「どちらでも」を既定にすると確認せず保存されるため）。旧形式はwgNormの変換値を初期選択にする。
-var WG_CHOICES=[{v:'am',label:'午前のみ'},{v:'pm',label:'午後のみ'},{v:'any',label:'どちらでも'}];
-function wgSegHTML(pfx,wg){
-  var n=wgNorm(wg);
+// 1セット重量の短い表示「BP80 SQ120 DL140」（記録なしの種目は—）（player/staff identical）
+function tgLiftTxt(w){return [['bench','BP'],['squat','SQ'],['deadlift','DL']].map(function(x){return x[1]+(w&&w[x[0]]!=null?w[x[0]]:'—');}).join(' ');}
+function tgDayLabel(day){var d=WG_DAYS.find(function(x){return x.k===day;});return d?d.label:String(day);}
+// ---- 曜日別の表示（player/staff identical）----
+// 曜日dayの実際の出席構成。shifts=[{key,label,groups:[[pid]],guests:[{pid,day,gi}],pool?}]（編集中の_tgStateでも保存済みtgroupレコードでも可）。
+// 戻り値: [{si,key,label,groups:[{gi,here:[{pid,sli,guest:false}|{pid,xi,guest:true}],away:[{pid,sli,si,gi}]}],pool:[pid],unplaced:[{xi,pid}]}]
+// here=その日その班にいる人（ホーム班の人からその日ゲストで逆の組へ行く人を除き、その日そこに入るゲストを足す）。sli/xi=元配列のindex（タップ操作用）。
+// away=その日ゲストで逆の組へ行くホーム班の人（行き先si/gi・未配置ならgi:null）。unplaced=その日のゲストで班が未定の人。
+// ゲストは「自分のホーム組（班または未配置にいる組）以外の組」の分だけ有効（同じ組を指す異常データは無視＝同じ人を二重に出さない）。行き先が空の班のゲストは未定(gi:null)扱い。
+function tgDayShifts(shifts,day){
+  var homeSi={},away={};
+  var mark=function(pid,si){var k=String(pid);if(homeSi[k]==null)homeSi[k]=si;};
+  (shifts||[]).forEach(function(sh,si){(sh.groups||[]).forEach(function(g){(g||[]).forEach(function(pid){mark(pid,si);});});(sh.pool||[]).forEach(function(pid){mark(pid,si);});});
+  var live=function(x,si){return !!x&&x.day===day&&homeSi[String(x.pid)]!==si;};
+  var dest=function(sh,x){return (x.gi!=null&&((sh.groups||[])[x.gi]||[]).length)?x.gi:null;}; // 空の班を指すゲストは班未定扱い（保存で空の班は消える＝保存結果と同じ答え）
+  (shifts||[]).forEach(function(sh,si){(sh.guests||[]).forEach(function(x,xi){if(live(x,si))away[String(x.pid)]={si:si,gi:dest(sh,x),xi:xi};});});
+  return (shifts||[]).map(function(sh,si){
+    var groups=(sh.groups||[]).map(function(g,gi){
+      var here=[],aw=[];
+      (g||[]).forEach(function(pid,sli){var a=away[String(pid)];if(a&&a.si!==si)aw.push({pid:pid,sli:sli,si:a.si,gi:a.gi});else here.push({pid:pid,sli:sli,guest:false});});
+      (sh.guests||[]).forEach(function(x,xi){if(live(x,si)&&dest(sh,x)===gi&&!here.some(function(h){return idEq(h.pid,x.pid);}))here.push({pid:x.pid,xi:xi,guest:true});});
+      return {gi:gi,here:here,away:aw};
+    });
+    var unplaced=[];(sh.guests||[]).forEach(function(x,xi){if(live(x,si)&&dest(sh,x)==null)unplaced.push({xi:xi,pid:x.pid});});
+    return {si:si,key:sh.key,label:sh.label||'',groups:groups,pool:(sh.pool||[]).slice(),unplaced:unplaced};
+  });
+}
+// 表示する曜日の既定: 今日が月/火ならその日、水・木は木、金〜日は月（now省略時は現在時刻）
+function tgDefaultDay(now){var d=(now||new Date()).getDay();return d===1?'mon':d===2?'tue':(d===3||d===4)?'thu':'mon';}
+function tgIsDay(k){return WG_DAYS.some(function(d){return d.k===k;});}
+// 曜日タブ（月/火/木）。fn=クリック時に呼ぶ関数名（引数=曜日キー・呼び先で再描画）。cur=選択中
+function tgDayTabsHtml(cur,fn){
+  return '<div style="display:flex;gap:6px">'+WG_DAYS.map(function(d){
+    var on=d.k===cur;
+    return '<button type="button" class="btn btn-sm" aria-pressed="'+(on?'true':'false')+'" onclick="'+fn+'(\''+d.k+'\')" style="flex:1;min-width:52px;padding:7px 10px;font-size:13px;font-weight:800'+(on?';background:var(--maroon);border-color:var(--maroon);color:var(--white)':'')+'">'+d.label+'</button>';
+  }).join('')+'</div>';
+}
+// 曜日の指定（スタッフ用）の入力部品: 曜日ごとに 自動／午前／午後。値はhidden input「pfx-ov-曜日」に ''(自動)|'am'|'pm'
+// （「pfx-曜日」は同じフォームの5限チェックボックスが使うのでIDを分ける）。ボタンid=pfx-曜日-auto|am|pm。
+// 選手から直接相談された「この曜日だけ午後にしてほしい」等を記録する（選手側の入力には無い＝スタッフだけが設定）。
+var WG_CHOICES=[{v:'',label:'自動'},{v:'am',label:'午前'},{v:'pm',label:'午後'}];
+function wgSegHTML(pfx,n){
   return WG_DAYS.map(function(d){
-    var cur=n?(n.days[d.k]||'any'):'';
+    var cur=(n&&n.ov&&n.ov[d.k])||'';
     return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'+
       '<span style="flex:none;width:22px;font-size:14px;font-weight:800">'+d.label+'</span>'+
       '<div style="flex:1;display:flex;gap:5px">'+WG_CHOICES.map(function(c){
         var on=cur===c.v;
-        return '<button type="button" class="btn btn-sm" id="'+pfx+'-'+d.k+'-'+c.v+'" aria-pressed="'+(on?'true':'false')+'" onclick="wgSegPick(\''+pfx+'\',\''+d.k+'\',\''+c.v+'\')" style="flex:1;padding:7px 4px;font-size:12px'+(on?';background:var(--maroon);border-color:var(--maroon);color:var(--white);font-weight:700':'')+'">'+c.label+'</button>';
+        return '<button type="button" class="btn btn-sm" id="'+pfx+'-'+d.k+'-'+(c.v||'auto')+'" aria-pressed="'+(on?'true':'false')+'" onclick="wgSegPick(\''+pfx+'\',\''+d.k+'\',\''+c.v+'\')" style="flex:1;padding:7px 4px;font-size:12px'+(on?';background:var(--maroon);border-color:var(--maroon);color:var(--white);font-weight:700':'')+'">'+c.label+'</button>';
       }).join('')+'</div>'+
-      '<input type="hidden" id="'+pfx+'-'+d.k+'" value="'+cur+'"></div>';
+      '<input type="hidden" id="'+pfx+'-ov-'+d.k+'" value="'+cur+'"></div>';
   }).join('');
 }
 function wgSegPick(pfx,day,v){
-  var hid=document.getElementById(pfx+'-'+day);if(hid)hid.value=v;
+  var hid=document.getElementById(pfx+'-ov-'+day);if(hid)hid.value=v;
   WG_CHOICES.forEach(function(c){
-    var b=document.getElementById(pfx+'-'+day+'-'+c.v);if(!b)return;
+    var b=document.getElementById(pfx+'-'+day+'-'+(c.v||'auto'));if(!b)return;
     var on=c.v===v;
     b.style.background=on?'var(--maroon)':'';b.style.borderColor=on?'var(--maroon)':'';b.style.color=on?'var(--white)':'';b.style.fontWeight=on?'700':'';
     if(b.setAttribute)b.setAttribute('aria-pressed',on?'true':'false');
   });
 }
-// 入力部品から保存用daysを読む → {days:{mon,tue,thu:'am'|'pm'|''}, missing:[未選択の曜日ラベル]}
+// 入力部品から指定を読む → {mon,tue,thu:'am'|'pm'|''}
 function wgSegRead(pfx){
-  var days={},missing=[];
-  WG_DAYS.forEach(function(d){
-    var el=document.getElementById(pfx+'-'+d.k);var v=el?el.value:'';
-    if(v==='am'||v==='pm')days[d.k]=v;
-    else{days[d.k]='';if(v!=='any')missing.push(d.label);}
-  });
-  return {days:days,missing:missing};
+  var ov={};
+  WG_DAYS.forEach(function(d){var el=document.getElementById(pfx+'-ov-'+d.k);var v=el?el.value:'';ov[d.k]=(v==='am'||v==='pm')?v:'';});
+  return ov;
 }
 
 // 選手サイトと同じ推定1RM最新値取得（レビューLow-1: staffへ移植）
@@ -6961,9 +7007,13 @@ function tgBuildBucket(pids,cores,W,RW,med,size){
   order.sort(function(a,b){var sa=a.s==null?-1:a.s,sb=b.s==null?-1:b.s;return (sb-sa)||(a.i-b.i);});
   return {groups:order.map(function(x){return x.g;}),pool:pool};
 }
-// 曜日別申告→ホーム組とゲスト曜日（プラン#8/#15）。優先: ピン（前回の組を維持）＞3日とも同じ「〜のみ」=固定＞「〜のみ」の多い方=申告＞
-// 同数(0対0/1対1)は希望＞遠方(午後)＞人数バランス（同ユニットの人数が少ない組・同数なら全体の少ない組・強い順に配る）。
-// ホームと逆の「〜のみ」の曜日はゲスト（その曜日だけ逆の組の班に入る）。戻り値 {am:[pid],pm:[pid],reason:{pid:理由},guests:[{pid,home,days}]}
+// 申告→ホーム組とゲスト曜日（プラン#8/#15・2026-09-13改訂: 申告=5限の曜日＋スタッフの曜日指定(ov)）。
+// 曜日ごとに 実効値 wgNorm.days（指定＞5限の曜日=午前）、それが無い曜日は時間帯の希望(pref) で午前/午後を数える。
+// ホーム組の優先: ピン（前回の組を維持）＞午前の日と午後の日の多い方（理由=多い側に指定の日があれば「指定」・5限の日があれば「5限」・希望だけなら「希望」）＞
+// 同数（希望なしで指定/5限も同数）は遠方(午後)＞人数バランス（同ユニットの人数が少ない組・同数なら全体の少ない組・強い順に配る）=自動。
+// ホームと実効値(days)が逆の曜日だけゲスト（その曜日だけ逆の組の班に入る。希望で数えた曜日はゲストにしない）。
+// 例: 午前がいい＋火曜を午後に指定 → 午前2日(希望)>午後1日 → 基本は午前・火曜だけ午後の班／午後がいい＋木に5限 → 基本は午後・木曜だけ午前の班。
+// 戻り値 {am:[pid],pm:[pid],reason:{pid:理由},guests:[{pid,home,days}]}
 function tgAutoAssignShifts(pids,W,med,pinShift){
   pinShift=pinShift||{};
   var am=[],pm=[],reason={},home={},autos=[],uc={am:{},pm:{}},byId={};
@@ -6971,14 +7021,16 @@ function tgAutoAssignShifts(pids,W,med,pinShift){
   function wgOf(pid){var p=byId[String(pid)];return wgNorm(p&&p.wg);}
   function put(pid,sh,why){(sh==='am'?am:pm).push(pid);reason[pid]=why;home[String(pid)]=sh;var u=posUnit(tgPos(pid))||'-';uc[sh][u]=(uc[sh][u]||0)+1;}
   pids.forEach(function(pid){
-    var n=wgOf(pid),ca=0,cp=0,ps=pinShift[String(pid)];
-    if(n)WG_DAYS.forEach(function(d){if(n.days[d.k]==='am')ca++;else if(n.days[d.k]==='pm')cp++;});
+    var n=wgOf(pid),ps=pinShift[String(pid)],cnt={am:0,pm:0},by={am:{},pm:{}};
+    if(n)WG_DAYS.forEach(function(d){
+      var v=n.days[d.k],src=n.ov[d.k]?'指定':v?'5限':'希望';
+      if(!v)v=n.pref||'';
+      if(v==='am'||v==='pm'){cnt[v]++;by[v][src]=1;}
+    });
+    var why=function(sh){return by[sh]['指定']?'指定':by[sh]['5限']?'5限':'希望';};
     if(ps==='am'||ps==='pm')put(pid,ps,'ピン');
-    else if(ca===WG_DAYS.length)put(pid,'am','固定');
-    else if(cp===WG_DAYS.length)put(pid,'pm','固定');
-    else if(ca>cp)put(pid,'am','申告');
-    else if(cp>ca)put(pid,'pm','申告');
-    else if(n&&n.pref)put(pid,n.pref,'希望');
+    else if(cnt.am>cnt.pm)put(pid,'am',why('am'));
+    else if(cnt.pm>cnt.am)put(pid,'pm',why('pm'));
     else if(n&&n.far)put(pid,'pm','遠方');
     else autos.push(pid);
   });
@@ -7042,12 +7094,14 @@ function tgEstWeights(pid){
 //   shifts:[{key,label,groups:[[pid]],pool:[pid],guests:[{pid,day,gi}]}],generated,_reason:{pid:理由},sel}
 // 保存記録→編集状態（読み込み・初回表示で共用）。未配置(pool)は保存しないので空で作り、tgFillPoolsで補う
 function tgStateFromRecord(r){
-  return {
+  var st={
     mode:r.mode||'ampm',size:(r.size>=2&&r.size<=4)?r.size:3,splitUnit:r.splitUnit!==false,
     excluded:(r.excluded||[]).slice(),pinned:(r.pinned||[]).slice(),
     shifts:(r.shifts||[]).map(function(sh){return {key:sh.key,label:sh.label,groups:(sh.groups||[]).map(function(g){return (g||[]).slice();}),pool:[],guests:(sh.guests||[]).map(function(x){return {pid:x.pid,day:x.day,gi:x.gi!=null?x.gi:null};})};}),
     generated:!!(r.shifts&&r.shifts.length),_reason:{},sel:null
   };
+  tgPruneGuests(st.shifts);
+  return st;
 }
 // 読み込んだ編成に居ない対象選手（保存時の未配置・その後に追加された選手）を、申告どおりの組の未配置に入れる（画面から消えないように）
 function tgFillPools(st){
@@ -7131,7 +7185,7 @@ function tgGenerate(opts){
     });
     return {key:def.key,label:def.label,groups:groups,pool:pool,guests:[]};
   });
-  if(st.mode!=='single')tgPlaceGuests(st.shifts,guestList,RW,st.splitUnit);
+  if(st.mode!=='single'){tgPlaceGuests(st.shifts,guestList,RW,st.splitUnit);tgPruneGuests(st.shifts);}
   st.generated=true;st.sel=null;V.tgroup();
   if(backup)toast('組み直しました（ピン留めした選手はそのまま）','元に戻す',function(){window._tgState=backup;V.tgroup();});
 }
@@ -7149,30 +7203,34 @@ function tgSpreadTxt(sp){
   var col=sp.max<=10?'var(--green)':sp.max<=25?'var(--amber)':'var(--red)';
   return '<b style="color:'+col+'">'+TG_LIFTS.map(function(k,i){return ['BP','SQ','DL'][i]+(sp[k]==null?'—':sp[k]);}).join('・')+'</b>';
 }
-// 選手チップ（班の選手/未配置）。o={sel,onclick,pinned,reason,est}。est=1RMからの推定重量（グレー＋「推定」）
+// 選手チップ（班の選手/未配置）。o={sel,onclick,pinned,reason,est,note,dim}。est=1RMからの推定重量（グレー＋「推定」）。
+// note=重量の下に小さく出す補足（曜日表示でその日の行き先「→ 午後 C班」等）。dim=薄く表示（その日はこの班にいない人）
 function tgChipHtml(p,w,o){
   var sel=!!o.sel;
-  return '<div onclick="'+o.onclick+'" style="display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:8px;cursor:pointer;margin-bottom:4px;'+(sel?'background:var(--purple);color:var(--white)':'background:var(--bg-primary)')+'">'+
+  return '<div onclick="'+o.onclick+'" style="display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:8px;cursor:pointer;margin-bottom:4px;'+(sel?'background:var(--purple);color:var(--white)':'background:var(--bg-primary)')+(o.dim&&!sel?';opacity:.55':'')+'">'+
     '<div style="flex:none">'+avH(p,26)+'</div>'+
     '<div style="flex:1;min-width:0">'+
       '<div style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;min-width:0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escapeHtml(p.name)+'</span>'+tgUnitTag(posUnit(p.position),sel)+
         (o.pinned?'<span style="flex:none;display:inline-flex" title="ピン留め">'+ic('i-pin',11,sel?'var(--white)':'var(--maroon)')+'</span>':'')+(o.reason||'')+'</div>'+
       '<div style="font-size:10px;font-variant-numeric:tabular-nums;color:'+(sel?'var(--white)':(o.est?'var(--text-tertiary)':'var(--text-secondary)'))+'">'+tgLiftTxt(w)+(o.est?' <span class="bd bd-n" style="font-size:9px;padding:0 6px">推定</span>':'')+'</div>'+
+      (o.note?'<div style="font-size:10px;font-weight:700;color:'+(sel?'var(--white)':'var(--purple)')+'">'+o.note+'</div>':'')+
     '</div></div>';
 }
+// ゲストチップ（その曜日だけこの班に入る人）。印は「火のみ」（曜日表示ではその曜日のタブにだけ出る）
 function tgGuestChipHtml(p,x,w,sel,onclick){
-  return '<div onclick="'+onclick+'" style="display:flex;align-items:center;gap:6px;padding:4px 7px;border-radius:8px;margin-bottom:4px;cursor:pointer;font-size:11px;border:1px dashed '+(sel?'var(--purple)':'var(--border-tertiary)')+(sel?';background:var(--purple);color:var(--white)':'')+'">'+
-    '<span style="flex:none;font-weight:700;color:'+(sel?'var(--white)':'var(--amber)')+'">ゲスト（'+tgDayLabel(x.day)+'）</span>'+
+  return '<div onclick="'+onclick+'" style="display:flex;align-items:center;gap:6px;padding:4px 7px;border-radius:8px;margin-bottom:4px;cursor:pointer;font-size:11px;border:1px dashed '+(sel?'var(--purple)':'var(--amber)')+(sel?';background:var(--purple);color:var(--white)':'')+'">'+
+    '<span style="flex:none;font-weight:800;color:'+(sel?'var(--white)':'var(--amber)')+'">'+tgDayLabel(x.day)+'のみ</span>'+
     '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">'+escapeHtml(p.name)+'</span>'+tgUnitTag(posUnit(p.position),sel)+
     '<span style="flex:none;font-size:10px;'+(sel?'':'color:var(--text-secondary)')+'">'+tgLiftTxt(w)+'</span></div>';
 }
-// 選択中のものを班(si,gi)へ入れられるか（班の選手=今いる班以外の全班／未配置=全班／ゲスト=同じ組の今の班以外）
+// 選択中のものを班(si,gi)へ入れられるか（班の選手=今いる班以外の全班／未配置=全班／
+// ゲスト=同じ組の今の班以外で空でない班・午前/午後モードでは表示中の曜日のゲストだけ＝見えていない曜日を動かさない。空の班は保存で消えるため）
 function tgCanDrop(st,si,gi){
   var s=st.sel;if(!s||!st.shifts[si]||!st.shifts[si].groups[gi])return false;
   if(s.k==='m')return !(s.si===si&&s.gi===gi);
   if(s.k==='p')return true;
   var x=(st.shifts[s.si].guests||[])[s.xi];
-  return s.si===si&&!!x&&x.gi!==gi;
+  return s.si===si&&!!x&&x.gi!==gi&&st.shifts[si].groups[gi].length>0&&(st.mode==='single'||x.day===tgDay());
 }
 function tgSelPid(st){
   var s=st.sel;if(!s)return null;var sh=st.shifts[s.si];if(!sh)return null;
@@ -7198,8 +7256,18 @@ function tgRefreshGuests(st,pid){
   var days=WG_DAYS.filter(function(d){return n.days[d.k]===opp;}).map(function(d){return d.k;});
   if(osh&&days.length)tgPlaceGuest(osh,{pid:pid,home:home,days:days},tgRefWeights(st),st.splitUnit);
 }
-function tgMoved(st,pid,fromSi,toSi){
-  if(fromSi===toSi)return;
+// ゲスト行は「どこかの班にいる選手」の「ホーム組以外の組」の分だけ持つ（未配置の人・ホーム組を指す行は消す）。
+// shifts=[{groups,guests}]（編集中の状態でも保存レコードでも可・未配置poolはホームに数えない）。生成直後・読み込み時・保存時に通す
+function tgPruneGuests(shifts){
+  var homeSi={};
+  (shifts||[]).forEach(function(sh,si){(sh.groups||[]).forEach(function(g){(g||[]).forEach(function(pid){var k=String(pid);if(homeSi[k]==null)homeSi[k]=si;});});});
+  (shifts||[]).forEach(function(sh,si){sh.guests=(sh.guests||[]).filter(function(x){var h=x?homeSi[String(x.pid)]:null;return h!=null&&h!==si;});});
+}
+// 選手を未配置へ出した時はその人のゲスト行を全て消す（班に入れ直した時にtgMoved(fromPool)で申告/指定どおり付け直す）
+function tgDropGuests(st,pid){st.shifts.forEach(function(sh){sh.guests=(sh.guests||[]).filter(function(x){return !idEq(x.pid,pid);});});}
+// fromPool=未配置から班へ入れた（未配置の人にはゲストが付いていないことがある＝同じ組でも申告/指定どおりに付け直す）
+function tgMoved(st,pid,fromSi,toSi,fromPool){
+  if(fromSi===toSi){if(fromPool)tgRefreshGuests(st,pid);return;}
   st._reason=st._reason||{};st._reason[pid]='手動';
   tgRefreshGuests(st,pid);
 }
@@ -7216,7 +7284,7 @@ function tgChipTap(si,gi,sli){
   }else{
     var pool=st.shifts[s.si].pool,pp=pool[s.pi];
     pool[s.pi]=pb;tg[sli]=pp;tgPin(st,pp,true);tgPin(st,pb,false);
-    tgMoved(st,pp,s.si,si);tgMoved(st,pb,si,s.si);
+    tgMoved(st,pp,s.si,si,true);tgDropGuests(st,pb);
   }
   st.sel=null;V.tgroup();
 }
@@ -7227,7 +7295,7 @@ function tgPoolTap(si,pi){
   if(s&&s.k==='m'){
     var sg=st.shifts[s.si].groups[s.gi],pa=sg[s.sli],pool=st.shifts[si].pool,pp=pool[pi];
     sg[s.sli]=pp;pool[pi]=pa;tgPin(st,pp,true);tgPin(st,pa,false);
-    tgMoved(st,pp,si,s.si);tgMoved(st,pa,s.si,si);
+    tgMoved(st,pp,si,s.si,true);tgDropGuests(st,pa);
     st.sel=null;V.tgroup();return;
   }
   st.sel={k:'p',si:si,pi:pi};V.tgroup();
@@ -7250,7 +7318,7 @@ function tgMoveTo(si,gi){
     else{pid=ssh.pool.splice(s.pi,1)[0];tgPin(st,pid,true);}
     if(pid==null)return;
     tsh.groups[gi].push(pid);
-    tgMoved(st,pid,s.si,si);
+    tgMoved(st,pid,s.si,si,s.k==='p');
   }
   st.sel=null;V.tgroup();
 }
@@ -7258,7 +7326,7 @@ function tgMoveTo(si,gi){
 function tgToPool(){
   var st=window._tgState,s=st.sel;if(!s||s.k!=='m')return;
   var sh=st.shifts[s.si],pid=sh.groups[s.gi].splice(s.sli,1)[0];
-  if(pid!=null){sh.pool.push(pid);tgPin(st,pid,false);}
+  if(pid!=null){sh.pool.push(pid);tgPin(st,pid,false);tgDropGuests(st,pid);}
   st.sel=null;V.tgroup();
 }
 function tgTogglePin(){
@@ -7309,11 +7377,11 @@ function tgActionBarHtml(st){
   var s=st.sel,pid=tgSelPid(st);if(!s||pid==null)return '';
   var sh=st.shifts[s.si],p=D.p.find(function(x){return idEq(x.id,pid);});if(!p)return '';
   var pinned=(st.pinned||[]).some(function(x){return idEq(x,pid);});
-  var where=(sh.label?sh.label+'組・':'')+(s.k==='m'?String.fromCharCode(65+s.gi)+'班':s.k==='p'?'未配置':'ゲスト（'+tgDayLabel(sh.guests[s.xi].day)+'）');
+  var where=(sh.label?escapeHtml(sh.label)+'組・':'')+(s.k==='m'?String.fromCharCode(65+s.gi)+'班':s.k==='p'?'未配置':tgDayLabel(sh.guests[s.xi].day)+'のみ（ゲスト）');
   var btns='',hint='';
   if(s.k==='m'){
     btns='<button class="btn btn-sm" onclick="tgTogglePin()">'+ic('i-pin',12)+' '+(pinned?'ピンを外す':'ピン留め')+'</button><button class="btn btn-sm" onclick="tgToPool()">未配置へ戻す</button>';
-    hint='行き先の班の「ここへ」で移動（午前⇔午後も可）／他の選手をタップで入替';
+    hint='行き先の班の「ここへ」で移動（午前⇔午後も可・全曜日）／他の選手をタップで入替。曜日だけ変えたい時は申告一覧の「編集」で曜日を指定';
   }else if(s.k==='p'){
     var sg=tgSuggestGroup(st,s.si,pid);
     if(sg>=0)btns='<button class="btn btn-sm btn-p" onclick="tgMoveTo('+s.si+','+sg+')">推定重量が近い'+String.fromCharCode(65+sg)+'班へ</button>';
@@ -7343,6 +7411,8 @@ function tgSave(btnEl){
       sh.groups.forEach(function(g,i){if(g.length){remap[i]=groups.length;groups.push(g.slice());}});
       return {key:sh.key,label:sh.label,groups:groups,guests:(sh.guests||[]).map(function(x){return {pid:x.pid,day:x.day,gi:(x.gi!=null&&remap[x.gi]!=null)?remap[x.gi]:null};})};
     })};
+  tgPruneGuests(rec.shifts);
+  var ugN=rec.shifts.reduce(function(a,sh){return a+sh.guests.filter(function(x){return x.gi==null;}).length;},0); // 班にいる選手の、行き先が未定の曜日＝選手画面で「班未定」
   var annRec=window._tgAnnOff===true?null:{id:newId(),date:todayStr(),text:'ウエイトグループが更新されました。トレーニングタブの「MY GROUP」で自分の班と時間帯を確認してください。',targetPid:null};
   svSafeUpdate('tgroup',function(latest){
     var arr=latest.filter(function(x){return x&&!idEq(x.id,rid);}); // 再実行されても同じ記録は1件
@@ -7352,7 +7422,7 @@ function tgSave(btnEl){
     var finish=function(annOk){
       if(btnEl)releaseSubmit(btnEl);
       tgRerender();
-      toast('グループを保存しました（選手に公開）'+(annRec?(annOk?'・お知らせを投稿':'・お知らせは投稿できませんでした'):''),'元に戻す',function(){tgUndoSave(rid,annOk?annRec.id:null);});
+      toast('グループを保存しました（選手に公開）'+(annRec?(annOk?'・お知らせを投稿':'・お知らせは投稿できませんでした'):'')+(ugN?'。ゲスト未配置'+ugN+'件は選手に「班未定」と表示されます':''),'元に戻す',function(){tgUndoSave(rid,annOk?annRec.id:null);});
     };
     if(!annRec){finish(false);return;}
     svSafeUpdate('ann',function(latest){if(!latest.some(function(x){return x&&idEq(x.id,annRec.id);}))latest.push(annRec);return latest;},function(){finish(true);},function(){finish(false);});
@@ -7379,33 +7449,47 @@ function tgLoadRecord(id,recompute){
   V.tgroup();
   if(backup)toast(fmt(rec.date)+'の編成を読み込みました','元に戻す',function(){window._tgState=backup;V.tgroup();});
 }
-// 申告バッジ（1選手分・wgNorm経由＝旧形式も曜日別に表示し「旧形式・要更新」を付ける）
+// 申告バッジ（1選手分）: 5限の曜日／遠方／希望＋スタッフの曜日指定（紫）。未回答は赤（指定だけある人は「未回答」＋指定チップ）
 function tgWgBadges(p){
   var n=wgNorm(p.wg);
-  if(!n)return '<span style="font-size:10px;font-weight:700;color:var(--red)">未回答</span>';
   var chip=function(txt,col){return '<span style="font-size:10px;font-weight:600;color:'+col+';border:1px solid '+col+';border-radius:99px;padding:1px 7px">'+txt+'</span>';};
-  var out=WG_DAYS.map(function(d){
-    var v=n.days[d.k];
-    return chip(d.label+(v==='am'?'午前のみ':v==='pm'?'午後のみ':'どちらでも'),v==='am'?'var(--blue)':v==='pm'?'var(--purple)':'var(--text-tertiary)');
-  });
-  if(n.far)out.push(chip('遠方','var(--amber)'));
-  if(n.pref)out.push(chip(n.pref==='am'?'午前希望':'午後希望','var(--green)'));
-  if(n.legacy)out.push(chip('旧形式・要更新','var(--red)'));
+  var out=[];
+  if(!n||!n.answered)out.push('<span style="font-size:10px;font-weight:700;color:var(--red)">未回答</span>');
+  else{
+    out.push(chip(escapeHtml(wgF5Txt(n)),n.f5.length?'var(--blue)':'var(--text-tertiary)'));
+    if(n.far)out.push(chip('遠方','var(--amber)'));
+    if(n.pref)out.push(chip(n.pref==='am'?'午前希望':'午後希望','var(--green)'));
+  }
+  if(n&&n.hasOv)WG_DAYS.forEach(function(d){if(n.ov[d.k])out.push(chip('指定 '+d.label+':'+(n.ov[d.k]==='am'?'午前':'午後'),'var(--purple)'));});
   return out.join(' ');
 }
-// シフト振分の根拠バッジ
+// シフト振分の根拠バッジ（tgAutoAssignShiftsのreason: ピン/指定/5限/希望/遠方/自動・手動=tgMoved）
 function tgReasonBadge(pid){
   var st=window._tgState;var r=st&&st._reason&&st._reason[pid];
   if(!r)return '';
-  var col={'固定':'var(--blue)','申告':'var(--blue)','希望':'var(--green)','遠方':'var(--amber)','自動':'var(--text-tertiary)','手動':'var(--purple)','ピン':'var(--maroon)'}[r]||'var(--text-tertiary)';
+  var col={'指定':'var(--purple)','5限':'var(--blue)','希望':'var(--green)','遠方':'var(--amber)','自動':'var(--text-tertiary)','手動':'var(--purple)','ピン':'var(--maroon)'}[r]||'var(--text-tertiary)';
   return '<span style="font-size:8px;font-weight:700;color:'+col+';border:1px solid '+col+';border-radius:99px;padding:0 5px;margin-left:5px">'+r+'</span>';
 }
-// 1セット重量の短い表示「BP80 SQ120 DL140」（記録なしの種目は—）（player/staff identical）
-function tgLiftTxt(w){return [['bench','BP'],['squat','SQ'],['deadlift','DL']].map(function(x){return x[1]+(w&&w[x[0]]!=null?w[x[0]]:'—');}).join(' ');}
-function tgDayLabel(day){var d=WG_DAYS.find(function(x){return x.k===day;});return d?d.label:String(day);}
 function tgToggleSurvey(){window._tgSurveyOpen=window._tgSurveyOpen!==true;V.tgroup();}
-// 現在の保存済み編成（選手に公開中）の読み取り専用カード。編集中の_tgStateとは独立に常に見える。既定=開。
 function tgSavedToggle(){window._tgSavedOpen=(window._tgSavedOpen===false);V.tgroup();}
+// 表示する曜日（編集中の結果・保存済みカード共通）。window._tgDay（未設定は今日から tgDefaultDay）
+function tgDay(){return tgIsDay(window._tgDay)?window._tgDay:tgDefaultDay();}
+function tgSetDay(day){if(!tgIsDay(day))return;window._tgDay=day;if(window._tgState)window._tgState.sel=null;V.tgroup();} // 見えなくなる曜日のゲストを選んだまま動かさない
+// 曜日表示の班カードの中身（保存済みカード用・読み取り専用）: その日いる人（ゲストは「火のみ」）＋その日逆の組へ行く人（薄く「→ 午後 C班」）
+function tgSavedGroupRows(rec,dv,pById,day){
+  var h='';
+  dv.here.forEach(function(x){
+    var pp=pById[String(x.pid)];if(!pp)return;
+    h+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">'+avH(pp,20)+'<span style="font-size:11px">'+escapeHtml(pp.name)+'</span>'+(x.guest?'<span style="font-size:9px;font-weight:800;color:var(--amber);border:1px dashed var(--amber);border-radius:99px;padding:0 5px">'+tgDayLabel(day)+'のみ</span>':'')+'</div>';
+  });
+  dv.away.forEach(function(x){
+    var pp=pById[String(x.pid)];if(!pp)return;
+    var to=rec.shifts[x.si];
+    h+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;opacity:.55">'+avH(pp,20)+'<span style="font-size:11px">'+escapeHtml(pp.name)+'</span><span style="font-size:9px;color:var(--purple);font-weight:700">→ '+escapeHtml((to&&to.label)||'')+' '+(x.gi!=null?String.fromCharCode(65+x.gi)+'班':'未配置')+'</span></div>';
+  });
+  return h;
+}
+// 現在の保存済み編成（選手に公開中）の読み取り専用カード。編集中の_tgStateとは独立に常に見える。既定=開。午前/午後モードは曜日タブ付き
 function tgSavedCardHtml(){
   var recs=D.tgroup||[];
   var rec=recs.length?recs[recs.length-1]:null;
@@ -7420,22 +7504,27 @@ function tgSavedCardHtml(){
   var body='';
   if(open){
     var pById={};D.p.forEach(function(p){pById[String(p.id)]=p;});
+    var isAmpm=rec.mode==='ampm',day=tgDay();
+    var DV=tgDayShifts(rec.shifts,isAmpm?day:null);
     body='<div style="margin-top:10px;border-top:1px solid var(--border-tertiary);padding-top:10px">';
-    rec.shifts.forEach(function(sh){
-      var groups=(sh.groups||[]).filter(function(g){return g&&g.length;});
+    if(isAmpm)body+='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px"><span style="font-size:11px;color:var(--text-secondary)">表示する曜日</span><div style="width:180px">'+tgDayTabsHtml(day,'tgSetDay')+'</div></div>';
+    rec.shifts.forEach(function(sh,si){
+      var dv=DV[si];
+      var groups=dv.groups.filter(function(d){return d.here.length||d.away.length;});
       if(!groups.length)return;
-      if(rec.mode==='ampm'&&sh.label){
-        body+='<div style="font-size:12px;font-weight:800;margin:8px 0 6px;color:'+(sh.key==='am'?'var(--blue)':'var(--purple)')+'">'+escapeHtml(sh.label)+'組</div>';
+      if(isAmpm&&sh.label){
+        body+='<div style="font-size:12px;font-weight:800;margin:8px 0 6px;color:'+(sh.key==='am'?'var(--blue)':'var(--purple)')+'">'+escapeHtml(sh.label)+'組 <span style="font-size:10px;color:var(--text-secondary);font-weight:600">'+tgDayLabel(day)+'曜</span></div>';
       }
       body+='<div style="display:flex;flex-wrap:wrap;gap:8px">';
-      groups.forEach(function(g,gi){
-        var letter=String.fromCharCode(65+gi);
-        body+='<div style="border:1px solid var(--border-tertiary);border-radius:10px;padding:7px 10px;min-width:118px"><div style="font-size:12px;font-weight:800;margin-bottom:4px">'+letter+'班 <span style="font-size:10px;color:var(--text-secondary);font-weight:400">'+g.length+'名</span></div>'+
-          g.map(function(pid){var pp=pById[String(pid)];return pp?'<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">'+avH(pp,20)+'<span style="font-size:11px">'+escapeHtml(pp.name)+'</span></div>':'';}).filter(Boolean).join('')+
-          (sh.guests||[]).filter(function(x){return x.gi===gi;}).map(function(x){var gp=pById[String(x.pid)];return gp?'<div style="font-size:10px;color:var(--amber);margin-top:2px">＋ゲスト（'+tgDayLabel(x.day)+'）'+escapeHtml(gp.name)+'</div>':'';}).join('')+
-          '</div>';
+      groups.forEach(function(d){
+        var letter=String.fromCharCode(65+d.gi);
+        body+='<div style="border:1px solid var(--border-tertiary);border-radius:10px;padding:7px 10px;min-width:118px"><div style="font-size:12px;font-weight:800;margin-bottom:4px">'+letter+'班 <span style="font-size:10px;color:var(--text-secondary);font-weight:400">'+d.here.length+'名</span></div>'+
+          tgSavedGroupRows(rec,d,pById,day)+'</div>';
       });
       body+='</div>';
+      if(dv.unplaced.length){
+        body+='<div style="font-size:10px;color:var(--amber);margin-top:4px">'+tgDayLabel(day)+'曜のゲスト未配置: '+dv.unplaced.map(function(u){var pp=pById[String(u.pid)];return pp?escapeHtml(pp.name):'';}).filter(Boolean).join('・')+'</div>';
+      }
     });
     body+='</div>';
     // 保存履歴（新しい順）。読み込む=その編成をそのまま編集／引き継いで組み直す=人数・FW/BK・除外・ピンを引き継いで最新の記録で再計算
@@ -7460,7 +7549,7 @@ V.tgroup=function(){
   var st=window._tgState;
   var h='<div style="max-width:960px">';
   h+=tgSavedCardHtml();
-  h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;line-height:1.6">選手の申告（曜日ごとの午前のみ／午後のみ／どちらでも・遠方・希望）をもとに午前/午後へ振り分け、各組をFW/BK別に、直近60日の1セット重量（BP/SQ/DL）が近い人で班にします。曜日によって午前・午後が違う選手は、その曜日だけ逆の組の近い班に「ゲスト」で入ります。組んだ後は、選手をタップして選び「ここへ」で移動／他の選手をタップで入替／ピン留め（組み直しても動かない）／班の追加ができます。保存で選手サイトに反映されます。</div>'+
+  h+='<div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;line-height:1.6">選手の申告（5限がある曜日・遠方・希望）と、スタッフが設定した「曜日の指定」をもとに午前/午後へ振り分け（午前の日・午後の日が多い方が基本の組）、各組をFW/BK別に、直近60日の1セット重量（BP/SQ/DL）が近い人で班にします。曜日によって午前・午後が変わる選手（指定した曜日など）は、その曜日だけ逆の組の近い班に入ります＝曜日タブでその曜日の班に名前が出ます。組んだ後は、選手をタップして選び「ここへ」で移動／他の選手をタップで入替／ピン留め（組み直しても動かない）／班の追加ができます。保存で選手サイトに反映されます。</div>'+
     (!_tlogArchLoaded?'<div style="font-size:12px;color:var(--blue);background:var(--bg-primary);border-radius:8px;padding:8px 10px;margin-bottom:12px">'+ic('i-info',13)+' 過去60日のトレーニング記録を読み込み中…（「自動で組む」を押すと読み込み後に組みます）</div>':'');
 
   // 1. 組み方（振り分けモード・班の人数・FW/BK分離）
@@ -7477,17 +7566,18 @@ V.tgroup=function(){
       '<span style="font-size:11px;color:var(--text-secondary)">組んだ後に変えると、ピン留めした選手はそのままで組み直します</span>'+
     '</div></div>';
 
-  // 2. 申告一覧（折りたたみ）。並び=未回答→旧形式(要更新)→回答済(v2)→名前順＝声かけが要る選手を上に
-  var wgRank=function(p){var n=wgNorm(p.wg);return !n?0:(n.legacy?1:2);};
+  // 2. 申告一覧（折りたたみ）。並び=未回答→回答済→名前順＝声かけが要る選手を上に。「編集」で代理入力とスタッフの曜日指定
+  var wgRank=function(p){var n=wgNorm(p.wg);return (n&&n.answered)?1:0;};
   var answered=D.p.filter(function(p){return wgRank(p)>0;}).length;
-  var legacyCnt=D.p.filter(function(p){return wgRank(p)===1;}).length;
+  var ovCnt=D.p.filter(function(p){var n=wgNorm(p.wg);return !!(n&&n.hasOv);}).length;
   var unanswered=D.p.length-answered;
   var svOpen=window._tgSurveyOpen===true;
   h+='<div class="card" style="margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="tgToggleSurvey()">'+
-    '<div><div style="font-weight:800;font-size:14px">選手の申告一覧</div><div style="font-size:11px;color:var(--text-secondary);margin-top:2px">回答済 '+answered+'名'+(legacyCnt?'（うち旧形式・要更新 <span style="color:var(--amber);font-weight:700">'+legacyCnt+'名</span>）':'')+' / 未回答 <span style="color:'+(unanswered?'var(--red)':'var(--text-secondary)')+';font-weight:700">'+unanswered+'名</span></div></div>'+
-    '<span style="font-size:12px;color:var(--blue);font-weight:700">'+(svOpen?'閉じる':'一覧を開く/代理入力')+' '+ic(svOpen?'i-chevron-u':'i-chevron-d',13)+'</span></div>';
+    '<div><div style="font-weight:800;font-size:14px">選手の申告一覧</div><div style="font-size:11px;color:var(--text-secondary);margin-top:2px">回答済 '+answered+'名 / 未回答 <span style="color:'+(unanswered?'var(--red)':'var(--text-secondary)')+';font-weight:700">'+unanswered+'名</span>'+(ovCnt?' / 曜日の指定あり <span style="color:var(--purple);font-weight:700">'+ovCnt+'名</span>':'')+'</div></div>'+
+    '<span style="font-size:12px;color:var(--blue);font-weight:700">'+(svOpen?'閉じる':'一覧を開く/代理入力・曜日の指定')+' '+ic(svOpen?'i-chevron-u':'i-chevron-d',13)+'</span></div>';
   if(svOpen){
-    h+='<div style="margin-top:12px;border-top:1px solid var(--border-tertiary);padding-top:10px">';
+    h+='<div style="margin-top:12px;border-top:1px solid var(--border-tertiary);padding-top:10px">'+
+      '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px">選手は「5限がある曜日・遠方・希望」だけ答えます。「火曜だけ午後にしてほしい」のような相談は、ここの「編集」で曜日を指定してください（5限より優先・その曜日だけ逆の組の班に入ります）。</div>';
     D.p.slice().sort(function(a,b){return wgRank(a)-wgRank(b)||(a.name>b.name?1:-1);}).forEach(function(p){
       h+='<div class="log-row" style="align-items:center;gap:8px"><div style="flex:none">'+avH(p,30)+'</div>'+
         '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">'+escapeHtml(p.name)+'</div>'+
@@ -7523,40 +7613,52 @@ V.tgroup=function(){
     (st.generated?'<button class="btn" onclick="tgResetState()">'+ic('i-undo',13)+' リセット</button>':'')+
     ((st.pinned||[]).length?'<span style="font-size:11px;color:var(--maroon);font-weight:700;display:inline-flex;align-items:center;gap:3px">'+ic('i-pin',12,'var(--maroon)')+' ピン留め '+st.pinned.length+'名</span>':'')+'</div>';
 
-  // 5. 結果（班カード・未配置・ゲスト。選手をタップ→操作バー）
+  // 5. 結果（曜日タブ→その曜日の班カード・未配置・その曜日のゲスト未配置。選手をタップ→操作バー）
+  //    班カードには「その日いる人」（ホーム班の人＋その日のゲスト「火のみ」）を出し、その日逆の組へ行く人は薄く「→ 午後 C班」で残す（タップで通常の操作可）
   if(st.generated&&st.shifts.length){
     var TW=tgWeightsMap(D.p.map(function(p){return p.id;})); // 表示用の1セット重量（60日窓・実記録）
     var S=st.sel,pinSet={},pById={};
     (st.pinned||[]).forEach(function(x){pinSet[String(x)]=1;});
     D.p.forEach(function(p){pById[String(p.id)]=p;});
+    var isAmpm=st.mode!=='single',day=tgDay();
+    var DV=tgDayShifts(st.shifts,isAmpm?day:null);
+    if(isAmpm){
+      h+='<div class="card" style="padding:10px 12px;margin-bottom:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div><div style="font-size:12px;font-weight:800">表示する曜日</div><div style="font-size:10px;color:var(--text-secondary)">曜日で午前・午後が変わる選手は、その曜日の班に出ます</div></div><div style="width:200px">'+tgDayTabsHtml(day,'tgSetDay')+'</div></div>';
+    }
     st.shifts.forEach(function(sh,si){
+      var dv=DV[si];
       var accent=sh.key==='am'?'var(--blue)':sh.key==='pm'?'var(--purple)':'var(--maroon)';
-      var totalInShift=sh.groups.reduce(function(a,g){return a+g.length;},0);
-      var info=totalInShift+'名 / '+sh.groups.filter(function(g){return g.length;}).length+'班'+(sh.pool.length?' ・ 未配置'+sh.pool.length+'名':'')+((sh.guests||[]).length?' ・ ゲスト'+sh.guests.length+'件':'');
-      if(st.mode!=='single'){
-        h+='<div style="display:flex;align-items:center;gap:8px;margin:18px 0 8px"><span style="font-size:15px;font-weight:800;color:'+accent+'">'+escapeHtml(sh.label)+'組</span><span style="font-size:11px;color:var(--text-secondary)">'+info+'</span></div>';
+      var totalInShift=dv.groups.reduce(function(a,d){return a+d.here.length;},0);
+      var ugAll=(sh.guests||[]).filter(function(x){return x&&(x.gi==null||!(sh.groups[x.gi]||[]).length);});
+      var ugTxt=ugAll.length?' ・ <span style="color:var(--amber);font-weight:700">ゲスト未配置'+ugAll.length+'件（'+WG_DAYS.map(function(w){var c=ugAll.filter(function(x){return x.day===w.k;}).length;return c?w.label+c:'';}).filter(Boolean).join('・')+'）</span>':'';
+      var info=totalInShift+'名 / '+sh.groups.filter(function(g){return g.length;}).length+'班'+(sh.pool.length?' ・ 未配置'+sh.pool.length+'名':'')+ugTxt;
+      if(isAmpm){
+        h+='<div style="display:flex;align-items:center;gap:8px;margin:18px 0 8px"><span style="font-size:15px;font-weight:800;color:'+accent+'">'+escapeHtml(sh.label)+'組</span><span style="font-size:11px;color:var(--text-secondary);font-weight:700">'+tgDayLabel(day)+'曜</span><span style="font-size:11px;color:var(--text-secondary)">'+info+'</span></div>';
       }else{
         h+='<div style="margin:18px 0 8px;font-size:11px;color:var(--text-secondary)">'+info+'</div>';
       }
       h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px">';
       sh.groups.forEach(function(g,gi){
-        var sp=tgGroupSpread(g,TW),gx=[],drop=tgCanDrop(st,si,gi);
-        (sh.guests||[]).forEach(function(x,xi){if(x.gi===gi)gx.push(xi);});
+        var d=dv.groups[gi],herePids=d.here.map(function(x){return x.pid;});
+        var sp=tgGroupSpread(herePids,TW),drop=tgCanDrop(st,si,gi),guestN=d.here.filter(function(x){return x.guest;}).length;
         h+='<div class="card" style="padding:10px;border-top:3px solid '+accent+(drop?';box-shadow:0 0 0 2px var(--purple-bg)':'')+'">'+
           '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">'+
             '<span style="font-weight:800;font-size:13px;color:'+accent+'">'+String.fromCharCode(65+gi)+'班</span>'+tgUnitTag(tgGroupUnit(g),false)+
-            '<span style="font-size:10px;color:var(--text-secondary);font-weight:600">'+g.length+'名'+(gx.length?'＋ゲスト'+gx.length:'')+'</span>'+
+            '<span style="font-size:10px;color:var(--text-secondary);font-weight:600">'+d.here.length+'名'+(guestN?'（'+tgDayLabel(day)+'のみ'+guestN+'）':'')+'</span>'+
             (drop?'<button class="btn btn-sm btn-p" style="margin-left:auto;padding:2px 12px" onclick="tgMoveTo('+si+','+gi+')">ここへ</button>':'')+
           '</div>'+
-          (g.length>=2?'<div style="font-size:10px;color:var(--text-secondary);margin-bottom:6px">班内の最大差 '+tgSpreadTxt(sp)+'</div>':'');
+          (herePids.length>=2?'<div style="font-size:10px;color:var(--text-secondary);margin-bottom:6px">班内の最大差 '+tgSpreadTxt(sp)+'</div>':'');
         if(!g.length)h+='<div style="font-size:11px;color:var(--text-tertiary);padding:4px 0 6px">空の班'+(!S?'<button class="btn btn-sm btn-d" style="padding:1px 8px;margin-left:8px" onclick="tgDelGroup('+si+','+gi+')">削除</button>':'')+'</div>';
-        g.forEach(function(pid,sli){
-          var p=pById[String(pid)];if(!p)return;
-          h+=tgChipHtml(p,tgW(TW,pid),{sel:!!(S&&S.k==='m'&&S.si===si&&S.gi===gi&&S.sli===sli),onclick:'tgChipTap('+si+','+gi+','+sli+')',pinned:!!pinSet[String(pid)],reason:tgReasonBadge(pid)});
+        d.here.forEach(function(x){
+          var p=pById[String(x.pid)];if(!p)return;
+          if(x.guest)h+=tgGuestChipHtml(p,sh.guests[x.xi],tgW(TW,x.pid),!!(S&&S.k==='g'&&S.si===si&&S.xi===x.xi),'tgGuestTap('+si+','+x.xi+')');
+          else h+=tgChipHtml(p,tgW(TW,x.pid),{sel:!!(S&&S.k==='m'&&S.si===si&&S.gi===gi&&S.sli===x.sli),onclick:'tgChipTap('+si+','+gi+','+x.sli+')',pinned:!!pinSet[String(x.pid)],reason:tgReasonBadge(x.pid)});
         });
-        gx.forEach(function(xi){
-          var x=sh.guests[xi],gp=pById[String(x.pid)];if(!gp)return;
-          h+=tgGuestChipHtml(gp,x,tgW(TW,x.pid),!!(S&&S.k==='g'&&S.si===si&&S.xi===xi),'tgGuestTap('+si+','+xi+')');
+        d.away.forEach(function(x){
+          var p=pById[String(x.pid)];if(!p)return;
+          var to=st.shifts[x.si];
+          h+=tgChipHtml(p,tgW(TW,x.pid),{sel:!!(S&&S.k==='m'&&S.si===si&&S.gi===gi&&S.sli===x.sli),onclick:'tgChipTap('+si+','+gi+','+x.sli+')',pinned:!!pinSet[String(x.pid)],reason:tgReasonBadge(x.pid),dim:true,
+            note:tgDayLabel(day)+'曜は → '+escapeHtml((to&&to.label)||'')+' '+(x.gi!=null?String.fromCharCode(65+x.gi)+'班':'未配置')});
         });
         h+='</div>';
       });
@@ -7576,13 +7678,12 @@ V.tgroup=function(){
         });
         h+='</div></div>';
       }
-      // ゲスト未配置（記録なし・逆の組に同ユニットの班が無い等）
-      var ug=[];(sh.guests||[]).forEach(function(x,xi){if(x.gi==null)ug.push(xi);});
-      if(ug.length){
-        h+='<div class="card" style="margin-top:8px;padding:10px;background:var(--bg-primary)"><div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:6px">'+ic('i-info',12)+' ゲスト未配置（'+ug.length+'件）— タップして選び、その曜日に入る班の「ここへ」</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:0 8px">';
-        ug.forEach(function(xi){
-          var x=sh.guests[xi],gp=pById[String(x.pid)];if(!gp)return;
-          h+=tgGuestChipHtml(gp,x,tgW(TW,x.pid),!!(S&&S.k==='g'&&S.si===si&&S.xi===xi),'tgGuestTap('+si+','+xi+')');
+      // その曜日のゲスト未配置（記録なし・逆の組に同ユニットの班が無い等）
+      if(dv.unplaced.length){
+        h+='<div class="card" style="margin-top:8px;padding:10px;background:var(--bg-primary)"><div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:6px">'+ic('i-info',12)+' '+tgDayLabel(day)+'曜のゲスト未配置（'+dv.unplaced.length+'名）— タップして選び、この曜日に入る班の「ここへ」</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:0 8px">';
+        dv.unplaced.forEach(function(u){
+          var x=sh.guests[u.xi],gp=pById[String(u.pid)];if(!gp)return;
+          h+=tgGuestChipHtml(gp,x,tgW(TW,u.pid),!!(S&&S.k==='g'&&S.si===si&&S.xi===u.xi),'tgGuestTap('+si+','+u.xi+')');
         });
         h+='</div></div>';
       }
@@ -7595,27 +7696,56 @@ V.tgroup=function(){
   h+='</div>';
   $m().innerHTML=h;
 };
-// 選手のウエイト時間帯を代理編集（両方から入力可・選手側と同じ曜日別3択部品wgSegHTML('ewg')）
+// 選手のウエイト時間帯を代理編集: 申告（5限がある曜日・遠方・希望＝選手側と同じ項目）＋スタッフだけの「曜日の指定」（wgSegHTML 'ewg'）。
+// 開いた時点の値を window._ewgBase に控え、doSaveWg は「この画面で変えた側」だけを書く（開いている間の選手の再回答を巻き戻さない）。
 function goEditWg(pid){
   var p=D.p.find(function(x){return idEq(x.id,pid);});if(!p)return;
-  var n=wgNorm(p.wg);
+  var n=wgNorm(p.wg)||{f5:[],ov:{mon:'',tue:'',thu:''},hasOv:false,far:false,pref:null,answered:false};
+  window._ewgBase={pid:p.id,tok:String(newId()),f5:n.f5.slice(),far:n.far,pref:n.pref,ov:{mon:n.ov.mon||'',tue:n.ov.tue||'',thu:n.ov.thu||''}};
   var h='<div style="max-width:480px"><div class="form-box"><div class="form-title">'+escapeHtml(p.name)+' のウエイト時間帯</div>'+
-    (n&&n.legacy?'<div class="alert-card alert-warn" style="margin-bottom:10px">'+ic('i-warn',13)+' 旧形式（5限の曜日）の回答を変換して表示しています。確認して保存すると新形式になります。</div>':'')+
-    '<div class="fl"><label>曜日ごとの参加できる時間帯</label><div style="margin-top:4px">'+wgSegHTML('ewg',p.wg)+'</div></div>'+
-    '<div class="fl"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="ewg-far"'+(n&&n.far?' checked':'')+'> 大学から遠い（通学に時間がかかる）</label></div>'+
-    '<div class="fl"><label>「どちらでも」の日の希望</label><select class="ipt" id="ewg-pref"><option value=""'+(!(n&&n.pref)?' selected':'')+'>どちらでも</option><option value="am"'+(n&&n.pref==='am'?' selected':'')+'>午前がいい</option><option value="pm"'+(n&&n.pref==='pm'?' selected':'')+'>午後がいい</option></select></div>'+
+    '<input type="hidden" id="ewg-tok" value="'+window._ewgBase.tok+'">'+ // この編集画面の目印（保存完了時に、まだこの画面が表示中か確かめる）
+    (!n.answered?'<div class="alert-card alert-warn" style="margin-bottom:10px"><span style="flex:none">'+ic('i-warn',13)+'</span><span>未回答です。選手に聞いた内容を入れて保存すると回答済みになります（曜日の指定だけなら未回答のまま）。</span></div>':'')+
+    '<div class="fl"><label>月・火・木で5限がある曜日</label><div style="display:flex;gap:16px;margin-top:4px">'+
+      WG_DAYS.map(function(d){return '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="ewg-'+d.k+'"'+(n.f5.indexOf(d.k)>=0?' checked':'')+'> '+d.label+'</label>';}).join('')+'</div></div>'+
+    '<div class="fl"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="ewg-far"'+(n.far?' checked':'')+'> 大学から遠い（通学に時間がかかる）</label></div>'+
+    '<div class="fl"><label>時間帯の希望</label><select class="ipt" id="ewg-pref"><option value=""'+(!n.pref?' selected':'')+'>どちらでも</option><option value="am"'+(n.pref==='am'?' selected':'')+'>午前がいい</option><option value="pm"'+(n.pref==='pm'?' selected':'')+'>午後がいい</option></select></div>'+
+    (!n.answered?'<div class="fl"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="ewg-ans"> 選手に聞いた回答として記録する（5限なし・どちらでも等もそのまま回答済みにする）</label></div>':'')+
+    '<div class="fl" style="margin-top:14px;padding-top:10px;border-top:1px dashed var(--border-tertiary)"><label>曜日の指定（スタッフ用）</label>'+
+      '<div style="font-size:11px;color:var(--text-secondary);margin:2px 0 6px;line-height:1.5">選手から直接相談された時に。5限の有無より優先されます。午前の日・午後の日の多い方が基本の組になり（指定も5限も無い曜日は「時間帯の希望」で数える）、指定/5限で逆になる曜日だけ逆の組の班に入ります（例: 午前がいい＋火曜を午後に指定→基本は午前・火曜だけ午後）。</div>'+
+      wgSegHTML('ewg',n)+'</div>'+
     '</div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="popView()">キャンセル</button><button class="btn btn-p" onclick="doSaveWg('+p.id+',this)">保存</button></div></div>';
   pushView('時間帯を編集',h);
 }
-// 代理保存（v2形・選手側saveMyWgと同じ検証）。曜日の未選択は保存しない。
+// 代理保存: 画面を開いた時の値(_ewgBase)と比べ、申告(f5/far/pref)を変えた時（または未回答で「回答として記録」ON）だけ申告とupd=今を書き、
+// 指定(ov)を変えた時だけov/ovUpd=今を書く。触っていない側はサーバー最新(latest)の値を保つ＝updateFnは外で確定した値とlatestだけで決まる（純粋・再実行可）。
+// 指定が全て''ならov/ovUpdキーは書かない。一時形式(v:2)はこの保存で標準形になる
 function doSaveWg(pid,btnEl){
-  var sr=wgSegRead('ewg');
-  if(sr.missing.length){alert('曜日ごとに時間帯を選んでください（未選択: '+sr.missing.join('・')+'）');return;}
+  var p=D.p.find(function(x){return idEq(x.id,pid);});if(!p)return;
+  var bn=window._ewgBase&&idEq(window._ewgBase.pid,pid)?window._ewgBase:(wgNorm(p.wg)||{f5:[],ov:{},far:false,pref:null});
+  var f5=[];WG_DAYS.forEach(function(d){var el=document.getElementById('ewg-'+d.k);if(el&&el.checked)f5.push(d.k);});
   var far=!!(document.getElementById('ewg-far')&&document.getElementById('ewg-far').checked);
   var prefEl=document.getElementById('ewg-pref');var pref=prefEl?(prefEl.value||''):'';if(pref!=='am'&&pref!=='pm')pref=null;
+  var ansEl=document.getElementById('ewg-ans'),markAns=!!(ansEl&&ansEl.checked);
+  var tokEl=document.getElementById('ewg-tok'),tok=tokEl&&tokEl.value?String(tokEl.value):''; // 保存ボタンを押した編集画面の目印
+  var ov=wgSegRead('ewg');
+  var svChanged=markAns||f5.join(',')!==(bn.f5||[]).join(',')||far!==!!bn.far||pref!==(bn.pref||null);
+  var ovChanged=WG_DAYS.some(function(d){return ov[d.k]!==((bn.ov&&bn.ov[d.k])||'');});
   if(btnEl&&!guardSubmit(btnEl,'保存中…'))return;
-  var wg={v:2,days:sr.days,far:far,pref:pref,upd:new Date().toISOString()};
-  svSafeUpdate('p',function(latest){var t=latest.find(function(x){return idEq(x.id,pid);});if(t)t.wg=wg;return latest;},function(){popView();toast('保存しました');},function(){if(btnEl)releaseSubmit(btnEl);alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');});
+  var now=new Date().toISOString();
+  svSafeUpdate('p',function(latest){
+    var t=latest.find(function(x){return idEq(x.id,pid);});if(!t)return latest;
+    var cur=wgNorm(t.wg)||{f5:[],ov:{mon:'',tue:'',thu:''},far:false,pref:null,upd:null,ovUpd:null};
+    var wg=svChanged?{f5:f5.slice(),far:far,pref:pref,upd:now}:{f5:cur.f5.slice(),far:cur.far,pref:cur.pref,upd:cur.upd||null};
+    var nov=ovChanged?ov:cur.ov,novUpd=ovChanged?now:(cur.ovUpd||null);
+    if(WG_DAYS.some(function(d){return !!nov[d.k];})){wg.ov={mon:nov.mon||'',tue:nov.tue||'',thu:nov.thu||''};wg.ovUpd=novUpd;}
+    t.wg=wg;return latest;
+  },function(){
+    if(btnEl)releaseSubmit(btnEl);
+    // 保存した編集画面がまだ表示中の時だけ閉じる（保存中にキャンセル/戻るで離れて別の画面・別の選手の編集を開いていたら閉じない）
+    var cur=document.getElementById('ewg-tok');
+    if(tok&&cur&&String(cur.value)===tok){window._ewgBase=null;popView();toast('保存しました');}
+    else toast(p.name+' の時間帯を保存しました');
+  },function(){if(btnEl)releaseSubmit(btnEl);alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');});
 }
 
 // ============================================================

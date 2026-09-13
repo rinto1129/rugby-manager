@@ -2,7 +2,9 @@
 // 実行: jsc dev/prelude.js /tmp/staff.js dev/test_tgroup_algo.js
 // 仕様（dev/audit/PLAN_tgroup_v2.md #6〜#10/#15・2026-09-13改訂）:
 //  - 重量=tgLiftWeights（60日窓・アーカイブ込みtlogAll）。一部の種目だけでも自動に含め、記録ゼロはプール
-//  - 振分: ピン＞3日同じ=固定＞多い方=申告＞同数は希望＞遠方(午後)＞同ユニットの少ない組。ホームと逆の「〜のみ」の曜日はゲスト
+//  - 振分（2026-09-13再改訂・申告=5限の曜日＋far＋pref、スタッフの曜日指定=ov）: 曜日ごとに実効値v=days[d]（指定＞5限=午前）、''ならprefで数える。
+//    ピン＞午前の日・午後の日の多い方（理由=多い側に指定の日があれば'指定'・無ければ5限の日があれば'5限'・無ければ'希望'）＞同数なら遠方=午後＞
+//    同ユニットの少ない組=自動。ゲスト=実効値days[d]（prefではない）がホームと逆の曜日だけ
 //  - 班: FW/BK分離(既定)・強い順にシード→加えた後の班内最大差が最小の人を班サイズまで・端数1人は合流（大きく広がるなら分割/1人のまま）
 //  - ゲスト: 逆の組の同ユニット班のうち最も差が小さい班へ（記録ゼロは未配置）
 //  - ピン: 再計算で同じ班の核として残る（記録ゼロのピン選手は推定重量で相手を選ぶ）
@@ -63,41 +65,112 @@ ok('核[6,1]は同じ班のまま・強さが核の平均に近い3で埋まる'
 ok('全員が1回ずつ配置（重複・欠落なし）',[].concat.apply([],b5.groups).sort().join(',')==='1,2,3,4,5,6,7'&&b5.pool.length===0);
 ok('記録ゼロでもピンの核ならプールに行かない',tgBuildBucket([1,3],[[3]],W4,W4,tgMedians([1,3],W4),2).pool.length===0);
 
-// ============ 3. シフト振分（曜日別申告） ============
-print('--- tgAutoAssignShifts: 曜日別申告→ホーム組/ゲスト曜日 ---');
+// ============ 3. シフト振分（申告=5限の曜日/遠方/希望＋スタッフの曜日指定ov） ============
+print('--- tgAutoAssignShifts: 申告＋曜日指定→ホーム組/ゲスト曜日 ---');
+// 申告レコード p.wg={f5,far,pref,upd[,ov,ovUpd]}（updは相対日時＝固定日付は書かない）
+var UPD=new Date(Date.now()-3*86400000).toISOString();
+function wgRec(f5,far,pref,ov){var w={f5:f5,far:!!far,pref:pref||null,upd:UPD};if(ov){w.ov=ov;w.ovUpd=UPD;}return w;}
+// 数え方: 曜日ごとに実効値(指定＞5限=午前)、無ければ希望(pref)。午前の日/午後の日の多い方がホーム。
 D.p=[
-  {id:101,name:'a',position:'PR',wg:{v:2,days:{mon:'am',tue:'am',thu:'am'}}},
-  {id:102,name:'b',position:'PR',wg:{v:2,days:{mon:'pm',tue:'pm',thu:'pm'}}},
-  {id:103,name:'c',position:'LO',wg:{v:2,days:{mon:'am',tue:'am',thu:'pm'}}},
-  {id:104,name:'d',position:'LO',wg:{v:2,days:{mon:'pm',tue:'',thu:''}}},
-  {id:105,name:'e',position:'FL',wg:{v:2,days:{mon:'am',tue:'pm',thu:''},pref:'pm'}},
-  {id:106,name:'f',position:'FL',wg:{v:2,days:{mon:'',tue:'',thu:''},far:true}},
-  {id:107,name:'g',position:'SH',wg:{f5:['thu'],pref:null}},
-  {id:108,name:'h',position:'SH'},
-  {id:109,name:'i',position:'SO'},
-  {id:110,name:'j',position:'HO',wg:{v:2,days:{mon:'pm',tue:'pm',thu:'pm'}}}
+  {id:101,name:'a',position:'PR',wg:wgRec(['thu'],false,'pm')},                                   // 5限(木)＋午後希望 → 午前1(木5限):午後2(月火=希望)
+  {id:102,name:'b',position:'PR',wg:wgRec([],false,'pm')},                                        // 5限なし・午後希望 → 午後3(希望)
+  {id:103,name:'c',position:'LO',wg:wgRec([],true,null)},                                         // 5限なし・遠方 → 0:0同数→遠方
+  {id:104,name:'d',position:'LO',wg:wgRec([],false,'am',{mon:'',tue:'pm',thu:''})},               // 午前希望＋火だけ午後の指定 → 午前2(月木=希望):午後1(火=指定)
+  {id:105,name:'e',position:'FL',wg:wgRec(['mon'],false,null,{mon:'pm',tue:'pm',thu:'pm'})},      // 5限(月)だが指定3日とも午後 → 午後3(指定)
+  {id:106,name:'f',position:'FL',wg:wgRec(['mon'],true,'pm')},                                    // 5限(月)＋午後希望＋遠方 → 午前1(月5限):午後2(火木=希望)
+  {id:107,name:'g',position:'SH',wg:wgRec([],false,'pm',{mon:'am',tue:'',thu:''})},               // 午後希望＋月だけ午前の指定 → 午前1(月=指定):午後2(火木=希望)
+  {id:108,name:'h',position:'SH'},                                                                // 未回答
+  {id:109,name:'i',position:'SO'},                                                                // 未回答
+  {id:110,name:'j',position:'HO',wg:wgRec([],false,null,{mon:'pm',tue:'pm',thu:'pm'})},           // 指定3日とも午後（ピンでAM）
+  {id:111,name:'k',position:'CTB',wg:wgRec(['mon','thu'],false,null,{mon:'',tue:'pm',thu:''})},   // 5限(月・木)＋火だけ午後の指定 → 午前2(5限):午後1(指定)
+  {id:112,name:'l',position:'WTB',wg:{v:2,days:{mon:'am',tue:'pm',thu:'am'}}},                    // 一時形式（曜日別3択）→ f5=[月,木]・ov火pm と同じ
+  {id:113,name:'m',position:'FB',wg:wgRec(['tue'],false,'pm',{mon:'',tue:'pm',thu:''})},          // 5限(火)＋火を午後に指定＋午後希望 → 午後3(火=指定・月木=希望)
+  {id:114,name:'n',position:'No.8',wg:wgRec(['tue'],false,null)}                                  // 5限(火)（ピンでPM）
 ];
 var P6=D.p.map(function(p){return p.id;});
 var W6={};P6.forEach(function(pid){W6[String(pid)]={bench:100,squat:150,deadlift:180};});
-var as6=tgAutoAssignShifts(P6,W6,tgMedians(P6,W6),{'110':'am'});
+var as6=tgAutoAssignShifts(P6,W6,tgMedians(P6,W6),{'110':'am','114':'pm'});
 function inAm(pid){return as6.am.indexOf(pid)>=0;}
 function inPm(pid){return as6.pm.indexOf(pid)>=0;}
-ok('3日とも午前のみ→AM固定',inAm(101)&&as6.reason[101]==='固定');
-ok('3日とも午後のみ→PM固定',inPm(102)&&as6.reason[102]==='固定');
-ok('午前のみ2日>午後のみ1日→AM申告',inAm(103)&&as6.reason[103]==='申告');
-ok('午後のみ1日＋どちらでも2日→PM申告',inPm(104)&&as6.reason[104]==='申告');
-ok('午前のみ1対午後のみ1の同数→希望(PM)',inPm(105)&&as6.reason[105]==='希望');
-ok('0対0→遠方はPM',inPm(106)&&as6.reason[106]==='遠方');
-ok('旧形式(木5限)→木=午前のみ→AM申告',inAm(107)&&as6.reason[107]==='申告');
-ok('ピン留めは申告より優先して前回の組(AM)',inAm(110)&&as6.reason[110]==='ピン');
-ok('未回答2名は自動',as6.reason[108]==='自動'&&as6.reason[109]==='自動');
-ok('バランス: 108→PM(同ユニットBKが少ない)・109→AM(BK同数なら全体の少ない組)',inPm(108)&&inAm(109));
-ok('全員がどちらか一方だけ',P6.every(function(pid){return inAm(pid)!==inPm(pid);}));
 var gmap={};as6.guests.forEach(function(g){gmap[g.pid]=g;});
-ok('ゲスト: 103(AM)は木だけPM',gmap[103]&&gmap[103].home==='am'&&gmap[103].days.join(',')==='thu');
-ok('ゲスト: 105(PM)は月だけAM',gmap[105]&&gmap[105].home==='pm'&&gmap[105].days.join(',')==='mon');
-ok('ゲスト: ピンでAMにした110は午後のみ3日がゲスト',gmap[110]&&gmap[110].days.join(',')==='mon,tue,thu');
-ok('固定・どちらでもの人はゲストなし（計3名）',!gmap[101]&&!gmap[102]&&!gmap[104]&&!gmap[106]&&!gmap[107]&&!gmap[108]&&as6.guests.length===3);
+function gdays(g){return g?g.days.join(','):'';}
+ok('5限(木)＋午後希望→PM希望（午前1日:午後2日で午後が多い・多い側は希望の日だけ）',inPm(101)&&as6.reason[101]==='希望');
+ok('ゲスト: 101は5限の木だけAM（実効値=午前がホームと逆）',gmap[101]&&gmap[101].home==='pm'&&gdays(gmap[101])==='thu');
+ok('5限なし・午後希望→PM希望（午後3日）・ゲスト無し（希望はゲストを作らない）',inPm(102)&&as6.reason[102]==='希望'&&!gmap[102]);
+ok('5限なし・希望なし・遠方→PM遠方（0:0同数→遠方は午後）',inPm(103)&&as6.reason[103]==='遠方'&&!gmap[103]);
+ok('午前希望＋火だけ午後の指定→AM希望（午前2日:午後1日・多い午前側は希望の日だけ）',inAm(104)&&as6.reason[104]==='希望');
+ok('ゲスト: 104は指定の火だけPM {pid,home:am,days:[tue]}（希望の月・木はゲストにしない）',gmap[104]&&gmap[104].pid===104&&gmap[104].home==='am'&&gdays(gmap[104])==='tue');
+ok('5限(月)＋指定3日とも午後→PM指定（指定が5限より優先＝午後3日）',inPm(105)&&as6.reason[105]==='指定');
+ok('指定3日とも同じ人はゲスト無し（実効値が3日ともホームと同じ）',!gmap[105]);
+ok('5限(月)＋午後希望＋遠方→PM希望（午前1日:午後2日で決まる＝遠方は同数の時だけ）',inPm(106)&&as6.reason[106]==='希望');
+ok('ゲスト: 106は5限の月だけAM',gmap[106]&&gmap[106].home==='pm'&&gdays(gmap[106])==='mon');
+ok('午後希望＋月だけ午前の指定→PM希望（午前1日:午後2日）',inPm(107)&&as6.reason[107]==='希望');
+ok('ゲスト: 107は指定の月だけAM',gmap[107]&&gmap[107].home==='pm'&&gdays(gmap[107])==='mon');
+ok('ピンは指定より優先して前回の組(AM)',inAm(110)&&as6.reason[110]==='ピン');
+ok('ゲスト: ピンでAMにした110は指定の3日ともPMへ',gmap[110]&&gmap[110].home==='am'&&gdays(gmap[110])==='mon,tue,thu');
+ok('ピンは5限より優先して前回の組(PM)',inPm(114)&&as6.reason[114]==='ピン');
+ok('ゲスト: 午後ホームの114は5限の曜日(火)だけAMへ',gmap[114]&&gmap[114].home==='pm'&&gdays(gmap[114])==='tue');
+ok('5限(月・木)＋火だけ午後の指定→AM 5限（午前2日:午後1日・多い午前側は5限の日）',inAm(111)&&as6.reason[111]==='5限');
+ok('ゲスト: 111は指定の火だけPM',gmap[111]&&gmap[111].home==='am'&&gdays(gmap[111])==='tue');
+ok('一時形式{v:2,days:{月am,火pm,木am}}: am→5限・pm→指定と読む→AM 5限・火だけゲスト',inAm(112)&&as6.reason[112]==='5限'&&gmap[112]&&gdays(gmap[112])==='tue');
+ok('5限(火)＋火を午後に指定＋午後希望→PM指定（同じ曜日は指定が5限より優先・多い午後側に指定の日あり）',inPm(113)&&as6.reason[113]==='指定');
+ok('113はゲスト無し（火の実効値=午後=ホームと同じ・月木は希望なのでゲストにならない）',!gmap[113]);
+ok('未回答2名は自動',as6.reason[108]==='自動'&&as6.reason[109]==='自動');
+// 自動の前: AM=104(FW)/110(FW)/111(BK)/112(BK)＝BK2・計4／PM=101,102,103,105,106,114(FW)/107,113(BK)＝BK2・計8。強さ同じ→id順
+ok('バランス: 108→AM(BK2:2同数→全体の少ないAM)・109→PM(108が入ってBK3:2→BKの少ないPM)',inAm(108)&&inPm(109));
+ok('未回答（自動）の人はゲストなし',!gmap[108]&&!gmap[109]);
+ok('全員がどちらか一方だけ',P6.every(function(pid){return inAm(pid)!==inPm(pid);}));
+ok('ゲストは計8名（101/104/106/107/110/111/112/114）・102/103/105/113は無し',as6.guests.length===8&&[101,104,106,107,110,111,112,114].every(function(pid){return !!gmap[pid];})&&!gmap[102]&&!gmap[103]&&!gmap[105]&&!gmap[113]);
+ok('全員に理由が付く',P6.every(function(pid){return !!as6.reason[pid];}));
+
+print('--- tgAutoAssignShifts: 単独の振分（人数バランスに依存しない確認） ---');
+// one(): 1人だけで振分（自動になった場合はAM＝空の組同士・同数はAM）
+function one(pid,pin){var W={};W[String(pid)]={bench:100,squat:150,deadlift:180};return tgAutoAssignShifts([pid],W,tgMedians([pid],W),pin||{});}
+function chk(r,pid,sh,why,gd){
+  var inSh=r[sh].indexOf(pid)>=0,g=r.guests.filter(function(x){return x.pid===pid;});
+  var gOk=gd==null?g.length===0:(g.length===1&&g[0].home===sh&&g[0].days.join(',')===gd);
+  if(!(inSh&&r.reason[pid]===why&&gOk))print('    actual: am='+r.am+' pm='+r.pm+' reason='+r.reason[pid]+' guests='+JSON.stringify(r.guests));
+  return inSh&&r.reason[pid]===why&&gOk;
+}
+D.p.push({id:115,name:'o',position:'FB',wg:{ov:{mon:'',tue:'pm',thu:''},ovUpd:UPD}});                // 未回答＋指定だけ（updなし）
+D.p.push({id:116,name:'p',position:'FB',wg:wgRec([],true,'pm',{mon:'am',tue:'am',thu:'am'})});       // 指定3日とも午前＋午後希望＋遠方
+D.p.push({id:117,name:'q',position:'FB',wg:wgRec([],false,null)});                                    // 回答済だが5限なし・希望なし・近い
+D.p.push(
+  {id:121,position:'FB',wg:wgRec([],false,'am',{mon:'',tue:'pm',thu:''})},          // 例1 午前がいい＋火を午後に指定
+  {id:122,position:'FB',wg:wgRec(['thu'],false,'pm')},                              // 例2 午後がいい＋5限(木)
+  {id:123,position:'FB',wg:wgRec(['mon','thu'],false,null,{mon:'',tue:'pm',thu:''})}, // 例3 5限(月・木)＋火を午後に指定
+  {id:124,position:'FB',wg:wgRec(['tue'],false,'pm',{mon:'',tue:'pm',thu:''})},     // 例4 5限(火)＋火を午後に指定＋午後がいい
+  {id:125,position:'FB',wg:wgRec(['mon'],false,null,{mon:'pm',tue:'pm',thu:'pm'})}, // 例5 指定3日とも午後＋5限(月)
+  {id:126,position:'FB',wg:wgRec([],false,'pm')},                                   // 例6 午後がいいだけ
+  {id:127,position:'FB',wg:wgRec([],true,null)},                                    // 例7 遠方だけ
+  {id:128,position:'FB',wg:wgRec(['mon'],false,null)},                              // 例8 5限(月)だけ
+  {id:129,position:'FB',wg:wgRec([],false,null,{mon:'pm',tue:'pm',thu:'pm'})},      // 例9 指定3日とも午後（ピンでAM）
+  {id:130,position:'FB',wg:wgRec(['mon','thu'],false,null,{mon:'',tue:'',thu:'pm'})}, // 5限(月・木)＋木を午後に指定・近い
+  {id:131,position:'FB',wg:wgRec(['mon','thu'],true,null,{mon:'',tue:'',thu:'pm'})},  // 同上＋遠方
+  {id:132,position:'FB',wg:wgRec(['mon'],false,'pm',{mon:'',tue:'am',thu:''})},     // 5限(月)＋火を午前に指定＋午後がいい
+  {id:133,position:'FB',wg:wgRec(['mon'],false,'am')},                              // 5限(月)＋午前がいい
+  {id:134,position:'FB',wg:wgRec([],false,'am')}                                    // 午前がいいだけ（ピンでPM）
+);
+ok('例1 午前がいい＋火を午後に指定→AM希望（午前2(希望):午後1(指定)）・ゲスト火',chk(one(121),121,'am','希望','tue'));
+ok('例2 午後がいい＋5限(木)→PM希望（午前1(5限):午後2(希望)）・ゲスト木',chk(one(122),122,'pm','希望','thu'));
+ok('例3 5限(月・木)＋火を午後に指定→AM 5限（午前2(5限):午後1(指定)）・ゲスト火',chk(one(123),123,'am','5限','tue'));
+ok('例4 5限(火)＋火を午後に指定＋午後がいい→PM指定（火は指定が5限より優先→午後3）・ゲスト無し',chk(one(124),124,'pm','指定',null));
+ok('例5 指定3日とも午後＋5限(月)→PM指定（午後3(指定)）・ゲスト無し',chk(one(125),125,'pm','指定',null));
+ok('例6 午後がいいだけ→PM希望（午後3(希望)）・ゲスト無し',chk(one(126),126,'pm','希望',null));
+ok('例7 遠方だけ→PM遠方（0:0同数→遠方）・ゲスト無し',chk(one(127),127,'pm','遠方',null));
+ok('例8 5限(月)だけ→AM 5限（午前1:午後0・火木は希望なしで数えない）・ゲスト無し',chk(one(128),128,'am','5限',null));
+ok('例9 ピンAM＋指定3日とも午後→AMピン（ピン最優先）・指定の3日ともゲスト',chk(one(129,{'129':'am'}),129,'am','ピン','mon,tue,thu'));
+ok('5限(月・木)＋木を午後に指定・希望なし・近い→1:1同数→自動(AM)・木だけゲスト',chk(one(130),130,'am','自動','thu'));
+ok('5限(月・木)＋木を午後に指定＋遠方→1:1同数→PM遠方・5限の月だけゲスト',chk(one(131),131,'pm','遠方','mon'));
+ok('5限(月)＋火を午前に指定＋午後がいい→AM指定（午前2(5限+指定):午後1(希望)・多い側に指定の日があれば理由=指定）・ゲスト無し',chk(one(132),132,'am','指定',null));
+ok('5限(月)＋午前がいい→AM 5限（午前3(5限+希望)・指定が無く5限の日があれば理由=5限）・ゲスト無し',chk(one(133),133,'am','5限',null));
+ok('ピンPM＋午前がいいだけ→PMピン・ゲスト無し（希望(pref)はゲストを作らない）',chk(one(134,{'134':'pm'}),134,'pm','ピン',null));
+ok('未回答(updなし)＋火を午後に指定だけ→PM指定（午前0:午後1(指定)）・ゲスト無し（実効値は火だけ＝ホームと同じ）',chk(one(115),115,'pm','指定',null));
+ok('未回答＋指定だけでもwgNorm.answeredはfalse（指定はホーム決定に数えるが回答済みにはしない）',wgNorm(D.p.filter(function(p){return p.id===115;})[0].wg).answered===false);
+ok('指定3日とも午前＋午後希望＋遠方→AM指定（午前3(指定)・希望は指定の無い曜日だけ）・ゲスト無し',chk(one(116),116,'am','指定',null));
+ok('回答済で5限なし・希望なし・近い→0:0同数→自動・ゲスト無し',chk(one(117),117,'am','自動',null));
+ok('ピンは指定3日とも同じより優先→AM・指定の3日はゲスト',chk(one(105,{'105':'am'}),105,'am','ピン','mon,tue,thu'));
+ok('wgNormは入力を変更しない（105のwgはそのまま）',D.p.filter(function(p){return p.id===105;})[0].wg.f5.join(',')==='mon');
 
 // ============ 4. ゲスト配置 ============
 print('--- tgPlaceGuests: 逆の組の同ユニットで最も差が小さい班へ ---');
@@ -147,12 +220,13 @@ function mkLog(id,pid,ago,bp,sq,dl){
   if(dl!=null)r.push({exName:'デットリフト(スピード)',sets:[{weight:dl,reps:2}]});
   return {id:id,pid:pid,menuId:1,date:daysAgo(ago),ts:'2026-09-01T10:00:00.000Z',results:r};
 }
-var AM3={v:2,days:{mon:'am',tue:'am',thu:'am'}},PM3={v:2,days:{mon:'pm',tue:'pm',thu:'pm'}};
+// AM3=5限が3日ともある（→AM 5限）／PM3=5限なし・午後希望（→PM 希望）。2は指定3日とも午前（午後希望でも指定が勝つ）・6は遠方
+var AM3=wgRec(['mon','tue','thu'],false,null),PM3=wgRec([],false,'pm');
 D.p=[
-  {id:1,name:'F1',position:'PR',wg:AM3},{id:2,name:'F2',position:'HO',wg:AM3},
-  {id:3,name:'F3',position:'LO',wg:{v:2,days:{mon:'am',tue:'am',thu:'pm'}}},
-  {id:14,name:'F14',position:'FL',wg:{v:2,days:{mon:'am',tue:'am',thu:'am'}}},{id:15,name:'F15',position:'PR',wg:AM3},{id:16,name:'F16',position:'LO',wg:AM3},
-  {id:4,name:'F4',position:'FL',wg:PM3},{id:5,name:'F5',position:'PR',wg:PM3},{id:6,name:'F6',position:'No.8',wg:PM3},
+  {id:1,name:'F1',position:'PR',wg:AM3},{id:2,name:'F2',position:'HO',wg:wgRec([],false,'pm',{mon:'am',tue:'am',thu:'am'})},
+  {id:3,name:'F3',position:'LO',wg:wgRec(['mon','tue'],false,null,{mon:'',tue:'',thu:'pm'})},   // 5限(月・火)＋木だけ午後の指定
+  {id:14,name:'F14',position:'FL',wg:AM3},{id:15,name:'F15',position:'PR',wg:AM3},{id:16,name:'F16',position:'LO',wg:AM3},
+  {id:4,name:'F4',position:'FL',wg:PM3},{id:5,name:'F5',position:'PR',wg:PM3},{id:6,name:'F6',position:'No.8',wg:wgRec([],true,null)},
   {id:7,name:'B7',position:'SH',wg:AM3},{id:8,name:'B8',position:'SO',wg:AM3},{id:9,name:'B9',position:'CTB',wg:AM3},
   {id:10,name:'B10',position:'WTB',wg:PM3},{id:11,name:'B11',position:'FB',wg:PM3},
   {id:12,name:'B12',position:'CTB'},
@@ -186,21 +260,24 @@ ok('PM BK=[10,11]（11はアーカイブ(40日前)の記録で自動）',hasGrou
 ok('記録なし(12)はPMのプール（同ユニットBKが少ない組へ振分）',pm.pool.length===1&&pm.pool[0]===12&&am.pool.length===0);
 ok('班は強い順（AM FWは[1,2,3]が先）',sorted(am.groups[0])==='1,2,3');
 var g3=pm.guests.filter(function(x){return x.pid===3;})[0];
-ok('F3は木だけPMのFW班[4,5,6]へゲスト',g3&&g3.day==='thu'&&sorted(pm.groups[g3.gi])==='4,5,6');
-ok('理由: 固定/申告/自動',st._reason[1]==='固定'&&st._reason[3]==='申告'&&st._reason[12]==='自動');
+ok('F3は指定した木だけPMのFW班[4,5,6]へゲスト（gi付き）',g3&&g3.day==='thu'&&g3.gi!=null&&sorted(pm.groups[g3.gi])==='4,5,6');
+ok('ゲストは指定の曜日だけ（F3のゲストは木の1件・AM側にゲストは無い）',pm.guests.filter(function(x){return x.pid===3;}).length===1&&am.guests.length===0&&pm.guests.length===1);
+ok('理由: 5限/指定/希望/遠方/自動',st._reason[1]==='5限'&&st._reason[3]==='5限'&&st._reason[2]==='指定'&&st._reason[4]==='希望'&&st._reason[6]==='遠方'&&st._reason[12]==='自動');
 
-print('--- tgGenerate: ピンは再計算しても同じ班・申告が変わっても組を維持 ---');
+print('--- tgGenerate: ピンは再計算しても同じ班・申告/指定が変わっても組を維持 ---');
 var giA=am.groups.findIndex(function(g){return g.indexOf(1)>=0;}),giB=am.groups.findIndex(function(g){return g.indexOf(14)>=0;});
 am.groups[giB].splice(am.groups[giB].indexOf(14),1);am.groups[giA].push(14); // 手動で14を1の班へ
 st.pinned=[1,14];
-D.p.filter(function(p){return p.id===14;})[0].wg={v:2,days:{mon:'pm',tue:'pm',thu:'pm'}}; // 14の申告が午後のみに変わった
+D.p.filter(function(p){return p.id===14;})[0].wg=wgRec([],false,null,{mon:'pm',tue:'pm',thu:'pm'}); // 14がスタッフの指定で3日とも午後に変わった
 st.size=2;
 tgGenerate();
 st=window._tgState;am=st.shifts[0];pm=st.shifts[1];
 ok('ピン[1,14]は同じ班（班サイズ2）',hasGroup(am,'1,14'));
 ok('ピン無しは近い人で組み直し: [2,3]・[15,16]',hasGroup(am,'2,3')&&hasGroup(am,'15,16'));
-ok('14は申告(午後のみ)より前回の組(AM)を維持・理由=ピン',flat(am).indexOf(14)>=0&&st._reason[14]==='ピン');
-ok('ピン14の午後のみ3日はPMへゲスト',pm.guests.filter(function(x){return x.pid===14;}).length===3);
+ok('14は指定(3日とも午後)より前回の組(AM)を維持・理由=ピン',flat(am).indexOf(14)>=0&&st._reason[14]==='ピン');
+var g14=pm.guests.filter(function(x){return x.pid===14;});
+ok('ピン14の指定3日はPMへゲスト（月・火・木の3件）',g14.length===3&&g14.map(function(x){return x.day;}).sort().join(',')==='mon,thu,tue');
+ok('ピン14のゲストは全てPMのFW班にgi付きで入る',g14.every(function(x){return x.gi!=null&&tgGroupUnit(pm.groups[x.gi])==='FW';}));
 ok('サイズ2: PM FWは[4,5]と1人の[6]（合流すると差40kg）',hasGroup(pm,'4,5')&&hasGroup(pm,'6'));
 
 print('--- 記録なしを手動配置→自動ピン→再計算でも班に残る（推定重量で近い相手） ---');
