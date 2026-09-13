@@ -281,6 +281,13 @@ var RCAT_BG={ケア:'var(--blue-bg)',ROM改善:'var(--green-bg)',患部外トレ
 var RCAT_COLOR={ケア:'var(--blue)',ROM改善:'var(--green)',患部外トレーニング:'var(--amber)',トレーニング:'var(--red)',アジリティ:'var(--purple)',フィットネス:'var(--cyan-deep)',サポート:'var(--green-deep)',オフ:'var(--text-secondary)'};
 var PARTS=['頭部','頸部','肩','鎖骨','肘','手首','指','腰','股関節','大腿','膝','すね','足首','踵','アキレス腱','ふくらはぎ','足の甲','足趾','その他'];
 var POS=['PR','HO','LO','FL','No.8','SH','SO','CTB','WTB','FB'];
+// ポジション→ユニット 'FW'(PR/HO/LO/FL/No.8)|'BK'(SH/SO/CTB/WTB/FB)|null（未設定・未知）。player/staff/coach identical。
+// 新規コードのFW/BK判定はこれを使う（既存画面のローカルFW/BK配列と同じ定義）。
+function posUnit(pos){
+  if(pos==='PR'||pos==='HO'||pos==='LO'||pos==='FL'||pos==='No.8')return 'FW';
+  if(pos==='SH'||pos==='SO'||pos==='CTB'||pos==='WTB'||pos==='FB')return 'BK';
+  return null;
+}
 var RTP_LEVELS=[
   {k:'rest',label:'完全休養',color:'#DC2B2B',desc:'練習参加なし・リハビリのみ'},
   {k:'rehab',label:'リハビリのみ',color:'#F97316',desc:'別メニューでリハビリ'},
@@ -1233,13 +1240,12 @@ function insPhysical(){
         return insRowP(p.id,escapeHtml(p.position||'-')+'・'+escapeHtml(String(p.year||'-'))+'年','');
       }),20)});
   }
-  // FW/BK
-  var FW=['PR','HO','LO','FL','No.8'],BK=['SH','SO','CTB','WTB','FB'];
-  function grpB3(pos){
-    var vals=D.p.filter(function(p){return pos.indexOf(p.position)>=0;}).map(function(p){return getBestBIG3(p.id);}).filter(function(v){return v;});
+  // FW/BK（定義はposUnitに一本化）
+  function grpB3(unit){
+    var vals=D.p.filter(function(p){return posUnit(p.position)===unit;}).map(function(p){return getBestBIG3(p.id);}).filter(function(v){return v;});
     return vals.length?Math.round(vals.reduce(function(s,v){return s+v;},0)/vals.length):null;
   }
-  var fw=grpB3(FW),bk=grpB3(BK);
+  var fw=grpB3('FW'),bk=grpB3('BK');
   if(fw&&bk){
     out.push({lv:'info',t:'BIG3平均: FW '+fw+'kg / BK '+bk+'kg（差 '+Math.abs(fw-bk)+'kg）',
       d:(fw>=bk?'FWが上回っています。':'BKが上回っています。')+'ポジション特性を考慮しつつ、下のグラフで種目別の内訳を確認できます。'});

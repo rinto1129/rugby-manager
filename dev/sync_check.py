@@ -93,8 +93,12 @@ def extract_block(src, name, kind):
         m = re.search(r'(?m)^\s*var %s\s*=' % re.escape(name), src)
         if not m: return None
         # = の後の最初の { or [ から対応閉じまで＋直後の ; まで
-        m2 = re.search(r'[\{\[]', src[m.end():])
+        # スカラー値（var X=60; 等）は { / [ より先に ; が来る → その ; までを1ブロックとする
+        # （以前は後続の無関係な関数の { まで読み込み、後ろのコードの違いで誤ってNGになった）
+        m2 = re.search(r'[\{\[;]', src[m.end():])
         if not m2: return None
+        if m2.group(0) == ';':
+            return src[m.start():m.end() + m2.end()]
         openpos = m.end() + m2.start()
         opench = src[openpos]
         if opench == '[':

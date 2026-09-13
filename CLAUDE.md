@@ -54,11 +54,11 @@ apiKey: AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls
 
 ## データキー一覧（短いキー → 中身）
 4ファイルで一致が鉄則。全量（staffの`SK`定義=正典）:
-- `p` 選手 / `i` 怪我 / `r` リハビリ / `ph` フィジカル測定（正式な1RM等）/ `a` 欠席 / `f` コンディション（フィールドは rpe/sleep/duration/note/weight/durMin/mood/stress/soreness/sorenessParts/editedAt。**体重はfが正**・bcとは同日dedupでbc優先）
+- `p` 選手（`p.wg`=ウエイト時間帯の申告。v2={v:2,days:{mon,tue,thu:'am'|'pm'|''},far,pref,upd}／旧{f5,…}は読み側`wgNorm`で吸収・移行処理なし）/ `i` 怪我 / `r` リハビリ / `ph` フィジカル測定（正式な1RM等）/ `a` 欠席 / `f` コンディション（フィールドは rpe/sleep/duration/note/weight/durMin/mood/stress/soreness/sorenessParts/editedAt。**体重はfが正**・bcとは同日dedupでbc優先）
 - `chart` カルテ（怪我ごとの評価・SOAP・RTPレベル）/ `injcomm` 怪我コメント / `wc` 週次怪我チェック / `md` 試合日チェック（**試合の正典は`cal`の`type:'match'`イベント＝`evId`で紐づく。v2判定は`m.v===2`のみ。役割role='start'/'reserve'/'none'・背番号numは保存せずメンバー表`cal.squad`から`mdNum(m)`で派生・出場分minutes・RPE・睡眠h・疲労/筋肉痛(1-5)・パフォーマンス・怪我/攣り/脳震盪疑い(HIA)項目。旧レコード=role日本語文字列/fatiguePre・Post(1-6)/sleepTime・wakeTime/evId無しは表示互換のみ・編集は旧フォームのまま。詳細はP1a〜P5再設計プラン参照）
 - `rtpl` リハビリテンプレ / `rplan` リハビリ計画 / `rlog` リハビリ実施記録 / `rtest_tpl`・`rtest` 復帰テスト（テンプレ/結果）
 - `tape` テーピング予約 / `tapeslot` テーピング枠 / `taperec` テーピング施術記録 / `trainers` トレーナー
-- `tmenu` トレーニングメニュー / `tlog` トレーニング実施記録（古い分は`tla_<半期>`アーカイブdocへ移送=`tlaKey`）/ `texlist` 種目名履歴 / `e1rm` 推定1RM（正式な1RMとは別管理）/ `tdraft` トレーニング入力途中の下書き（選手ごと1件）/ `pp` PUSH/PULL交互状態 / `tgroup` グループ分け
+- `tmenu` トレーニングメニュー / `tlog` トレーニング実施記録（古い分は`tla_<半期>`アーカイブdocへ移送=`tlaKey`）/ `texlist` 種目名履歴 / `e1rm` 推定1RM（正式な1RMとは別管理）/ `tdraft` トレーニング入力途中の下書き（選手ごと1件）/ `pp` PUSH/PULL交互状態 / `tgroup` ウエイトグループ分け（直近5件の履歴・末尾=最新＝選手に公開。{mode,size,splitUnit,excluded,pinned,shifts:[{key,label,groups,guests:[{pid,day,gi}]}]}。1セット重量は保存せず`tgLiftWeights`で算出）
 - `bc` 体組成 / `msess` 測定会 / `phskip` 測定なし理由 / `std` ランク基準 / `gs`・`ms`・`gmap` GPS・試合スタッツ・GPS名前マップ
 - `ann` お知らせ / `cal` カレンダー（**試合イベント`type:'match'`に追加フィールド`opp`対戦相手/`ko`キックオフ/`venue`会場/`comp`公式戦or練習試合/`squad`メンバー表`[{pid,num}]`・`squadAt`。全て任意＝既存イベントは無いまま動く**）/ `offday` オフ日
 - ~~`matchsel` 試合メンバー選考~~ → **廃止（2026-09・SK/D外に除去済み。読み書き禁止。旧docはFirestoreに残置=exportAllJSON対象外）**。試合の出場メンバーは`cal.squad`が正典。
@@ -78,8 +78,9 @@ apiKey: AIzaSyBNBxVywJmZVb7wmWlZkppB0ESf02IPTls
 - rv機構（クラスA遷移演出・player/staff/trainer）: `.rv`素マーカー＋`_armReveal`（MutationObserver内でのみarm）＋`_visitedTabs`（タブ初回のみ）。**`.rv-armed`をrender文字列に直書き禁止**（onSnapshot再描画で画面全体が透明化）。メインタブ内の1回きりアニメは`still:!!_visitedTabs[curTab]`を渡す（サブ画面=showSub系は毎回アニメが仕様）。規約コメント（player 1347-1354付近）必読。
 - sRPE系（P7a）: `effDur(f)`（duration手動>durMin実測>当日tlog>0）/`sLoad(f)=rpe*effDur(f)`。`recorderName(rec)`（staff/trainer・authorId→現在名解決）。
 - 試合基盤系（P1a〜・player/staff/coach identical。trainerはA群のみ）: A群=`matchEvents()`（cal type:'match'をdate昇順）/`matchEventById(id)`（D.cal参照同一性でメモ化）/`matchEventByDate(date,pid?)`（同日複数はpidのsquad所属を優先）/`squadOf(ev)`/`squadNum(ev,pid)`/`squadRole(ev,pid)`（'start'1-15|'reserve'16+|null）/`matchEvLabel(ev)`（生文字列）/`matchEvTitle(ev)`（**escape済みHTML**+KO）/`matchEventKey(ev)`/`resolveMatchEvent(key,dateHint)`。B群=`mdBelongsTo(m,ev)`（**md↔試合の所属判定はこの1関数に一本化**。evIdが現存イベントに解決できればevId比較のみ、それ以外はdate一致＋同日複数はsquad所属優先）/`mdOf(pid,ev)`/`mdsOfEvent(ev)`/`mdsOfEventUniq(ev)`（pidごと最新1件・集計用）/`mdDupIn(latest,pid,ev)`（updateFn内の重複再判定用）/`mdIsV2(m)`/`mdRoleCode(m)`/`mdRoleLabel(m)`/`mdNum(m)`/`mdLoad(m)`（rpe×minutes・**旧mdはnull**）/`mdSleepStr(m)`/`mdFatigueStr(m)`/`mdInjuryLive(m)`・`mdHiaLive(m)`・`mdHia(m)`（**怪我判定とHIA判定は二重計上しないよう分離**。却下(approved:false)後は消える）/`injIsHia(inj)`/`hasCondOn(pid,dateS)`（fまたはmdがある日）/`pendingMatchChecks(pid,todayS,N)`/`matchChecksMissing(ev)`。goSquadEditor(staff限定・旧matchsel/goSelectMatchMembers系は完全撤去)がメンバー表(cal.squad)を編集する唯一の入口。詳細はdev/audit/PLAN_matchday_redesign.md参照。
+- ウエイトグループ分けv2（2026-09・player/staff identical）: `liftKeyOf(exName,estBase)`（種目→'squat'|'bench'|'deadlift'|null。estBase未設定なら種目名推定＝「デット」表記・変種除外。**トレーニング実行/種目追加/推定1RM記録`bestE1rmPerBase`もこれで補完**）／`posUnit(pos)`（'FW'|'BK'・coachも）／`wgNorm`・`wgDayShift`（申告v2の読み）／`tgLiftWeights(pid,logs)`（直近`TG_LIFT_DAYS`=60日のBP/SQ/DL 1セット重量。staffはアーカイブ込み`tlogAll()`）／`WG_DAYS`・`WG_CHOICES`・`wgSegHTML/wgSegPick/wgSegRead`（曜日別3択の入力部品）／`tgLiftTxt`・`tgDayLabel`。班分けアルゴリズム・手動編集・保存履歴はstaff専用（プラン=dev/audit/PLAN_tgroup_v2.md）。
 - **svSafeUpdateのupdateFnはFirestore競合で複数回実行されうる純粋関数として書く**（フラグ/配列はupdateFn先頭で初期化・newIdはupdateFn外で予約・DOM値はupdateFn外で読んだ変数を使う。手本=staff:doRejectInjury）。
-- 新規マークアップは**生hex/rgba禁止・var(--token)のみ**。`sync_check.py --residue`が違反>0でexit 1（機械ゲート）。共通関数はsync_manifest登録（identical 154＋variant 15）＝**網羅リストはsync_manifest.jsonが正典**。触ったら`sync_check.py`が緑になるまで全ファイル揃える（variantの意図的変更は`--update`）。`sync_check.py`はidentical名の同一ファイル内二重定義もNG検出する（P1a・機械ゲート）。
+- 新規マークアップは**生hex/rgba禁止・var(--token)のみ**。`sync_check.py --residue`が違反>0でexit 1（機械ゲート）。共通関数はsync_manifest登録（identical 168＋variant 15）＝**網羅リストはsync_manifest.jsonが正典**。触ったら`sync_check.py`が緑になるまで全ファイル揃える（variantの意図的変更は`--update`）。`sync_check.py`はidentical名の同一ファイル内二重定義もNG検出する（P1a・機械ゲート）。
 
 ## メイン要素のID（画面描画先）
 - staff: `main-ct`（`$m()` が返す）

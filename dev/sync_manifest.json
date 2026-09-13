@@ -1270,6 +1270,98 @@
         "trainer"
       ],
       "kind": "function"
+    },
+    "liftKeyOf": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "posUnit": {
+      "files": [
+        "player",
+        "staff",
+        "coach"
+      ],
+      "kind": "function"
+    },
+    "wgNorm": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "wgDayShift": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "tgLiftWeights": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "WG_DAYS": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "var"
+    },
+    "WG_CHOICES": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "var"
+    },
+    "wgSegHTML": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "wgSegPick": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "wgSegRead": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "TG_LIFT_DAYS": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "var"
+    },
+    "tgLiftTxt": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "tgDayLabel": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
     }
   },
   "variant": {

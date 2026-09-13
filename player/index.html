@@ -469,6 +469,30 @@ function getPlayer1RM(pid,estBase){
   if(!estBase)return null;
   return getBest(pid,estBase);
 }
+// ===== 基準種目の判定（ウエイトグループ分けv2 #11・player/staff identical） =====
+// 種目→'squat'|'bench'|'deadlift'|null。estBase明示が最優先（BIG3以外の明示値はnull）。未設定なら種目名から推定する
+// （メニューのestBase未設定でスクワット/デッドの推定重量・推定1RM自動記録が起きていなかった問題の根本対策）。
+// 名前推定: NFKC＋空白除去＋小文字化＋「デット」→「デッド」の表記ゆれ吸収。変種（フロント/ブルガリアン/ルーマニア/ダンベル/
+// インクライン/マシン等＝別種目・別負荷）は除外語でnull。「ベンチ」「デッド」単独は直後がカナ以外の時だけ（デッドバグ等の誤検出防止）。
+// 推定結果は種目名ごとにメモ化（種目名は数十種類・班分け画面で大量に呼ばれるため）。
+function liftKeyOf(exName,estBase){
+  if(estBase==='squat'||estBase==='bench'||estBase==='deadlift')return estBase;
+  if(estBase)return null;
+  var raw=String(exName==null?'':exName);
+  var memo=liftKeyOf._m||(liftKeyOf._m={});
+  if(Object.prototype.hasOwnProperty.call(memo,raw))return memo[raw];
+  var s=(raw.normalize?raw.normalize('NFKC'):raw).replace(/\s+/g,'').toLowerCase().replace(/デット/g,'デッド');
+  var key=null;
+  if(s.indexOf('スクワット')>=0||s.indexOf('スクワッド')>=0||s.indexOf('squat')>=0||s==='sq')key='squat';
+  else if(s.indexOf('ベンチプレス')>=0||/ベンチ(?![ァ-ヶー])/.test(s)||s.indexOf('benchpress')>=0||s==='bp')key='bench';
+  else if(s.indexOf('デッドリフト')>=0||/デッド(?![ァ-ヶー])/.test(s)||s.indexOf('deadlift')>=0||s==='dl')key='deadlift';
+  if(key){
+    var ng=['フロント','スプリット','ブルガリアン','ゴブレット','ルーマニア','スティッフ','片脚','片足','シングルレッグ','シングルアーム','ドロップ','ジャンプ','ダンベル','ケトル','インクライン','デクライン','スミス','ハック','マシン','ボックス','ボード','ピストル','シシー','オーバーヘッド','ランジ','ランドマイン','ザーチャー','ゼルチャー','ジェファーソン','トラップ','ヘックス','スモウ','スモー','相撲','ハーフ','クォーター','ブロック','ラック','エア','自重',
+      'front','split','bulgarian','goblet','romanian','rdl','stiff','singleleg','singlearm','jump','dumbbell','db','kettlebell','kb','incline','decline','smith','hack','machine','box','pistol','overhead','lunge','landmine','zercher','jefferson','trap','hex','sumo','half','quarter','block','rack','air'];
+    for(var i=0;i<ng.length;i++){if(s.indexOf(ng[i])>=0){key=null;break;}}
+  }
+  return (memo[raw]=key);
+}
 // ============================================================
 // ===== BIG3・体重基準エンジン（'std'設定＋ランク/帯判定） =====
 // ============================================================
@@ -2601,9 +2625,11 @@ mypage:function(){
   // プロフィール（身長・ウエイト時間帯）は設定サブ画面へ移設。マイページは導線のみ（Phase B）。
   var wg=(p.wg&&typeof p.wg==='object')?p.wg:{};
   var _htTxt=(p.height!=null&&p.height!=='')?escapeHtml(String(p.height))+'cm':'<span style="color:var(--red);font-weight:700">未設定</span>';
-  var _prefTxt=wg.pref==='am'?'午前希望':wg.pref==='pm'?'午後希望':'希望なし';
-  var _f5Txt=(wg.f5&&wg.f5.length)?wg.f5.map(function(k){return {mon:'月',tue:'火',thu:'木'}[k]||k;}).join('・'):'なし';
-  var _wgTxt=(p.wg&&p.wg.upd)?('5限 '+_f5Txt+'／'+_prefTxt):'<span style="color:var(--red);font-weight:700">未回答</span>';
+  // ウエイト時間帯: wgNorm経由で曜日別に要約（旧形式(f5)も変換して表示し「要更新」を添える）
+  var _nwg=wgNorm(p.wg);
+  var _wgTxt=_nwg?(WG_DAYS.map(function(d){var v=_nwg.days[d.k];return d.label+(v==='am'?'午前':v==='pm'?'午後':'どちらでも');}).join('・')+
+    (_nwg.pref?'／'+(_nwg.pref==='am'?'午前希望':'午後希望'):'')+
+    (_nwg.legacy?' <span style="color:var(--amber);font-weight:700">要更新</span>':'')):'<span style="color:var(--red);font-weight:700">未回答</span>';
   h+='<div class="card card-click" onclick="showProfileSettings()" style="margin-bottom:12px;display:flex;align-items:center;gap:12px;cursor:pointer">'+
     ic('i-user',18,'var(--maroon)')+
     '<div style="flex:1;min-width:0"><div class="kicker" style="margin-bottom:2px">PROFILE</div><div style="font-weight:800;font-size:14px">プロフィール設定</div>'+
@@ -5743,7 +5769,9 @@ function startTrainingFresh(menuId){
   _curTLog={
     id:newId(),pid:myPid,menuId:menuId,date:today,ts:new Date().toISOString(),
     results:(mn.exercises||[]).map(function(ex){
-      var oneRM=ex.estBase?getPlayer1RM(myPid,ex.estBase):null;
+      // ウエイトグループ分けv2 #11: メニューのestBase未設定でも種目名（ベンチ/スクワット/デッド）から補完＝推定重量・推定1RM自動記録をBP/SQ/DLで揃える
+      var eb=ex.estBase||liftKeyOf(ex.name,null);
+      var oneRM=eb?getPlayer1RM(myPid,eb):null;
       var estW=oneRM?estimateWeight(oneRM,ex.reps||1,ex.rir!=null?ex.rir:2):null;
       var isDisabled=disabled.some(function(d){return d.name===ex.name;});
       // 前回実績を取得
@@ -5762,7 +5790,7 @@ function startTrainingFresh(menuId){
         });
       }
       return{
-        exName:ex.name,estBase:ex.estBase,targetSets:ex.sets,targetReps:ex.reps,targetRir:ex.rir,
+        exName:ex.name,estBase:eb,targetSets:ex.sets,targetReps:ex.reps,targetRir:ex.rir,
         note:ex.note,videoUrl:ex.videoUrl,estWeight:estW,oneRM:oneRM,
         prevEx:prevEx?{sets:prevEx.sets,date:prevExDate}:null,
         sets:sets,skipped:isDisabled,skipReason:isDisabled?'申告済み（できない種目）':''
@@ -6313,14 +6341,17 @@ function computeTlogVolumes(results,pid,date,mode,recId,recTs){
   });
   return{results:results,totalVolume:totalVol,alerts:alerts,injurySkips:injurySkips,hasInjurySkip:injurySkips.length>0};
 }
-// セッション内の推定1RM: estBaseごとに全結果×全セット横断の最大値（weight&&repsのあるセットのみ・rir欠測は0扱い＝finishTraining/rebuild共通）。
+// セッション内の推定1RM: 基準種目ごとに全結果×全セット横断の最大値（weight&&repsのあるセットのみ・rir欠測は0扱い＝finishTraining/rebuild共通）。
+// 基準種目=estBase明示、未設定なら種目名から補完（liftKeyOf・ウエイトグループ分けv2 #11: estBase未設定の旧記録・下書きのSQ/DLも拾う）。
 // ※抑圧ゲート（現在値超過判定）は含まない。呼び出し側で getLatestE1RM と比較する。
 function bestE1rmPerBase(results){
   var best={};
   (results||[]).forEach(function(r){
-    if(r.skipped||!r.estBase)return;
+    if(r.skipped)return;
+    var base=r.estBase||liftKeyOf(r.exName,null);
+    if(!base)return;
     (r.sets||[]).forEach(function(s){
-      if(s.weight&&s.reps){var e=estimateOneRM(s.weight,s.reps,s.rir!=null?s.rir:0);if(e&&(!best[r.estBase]||e>best[r.estBase].e1rm))best[r.estBase]={e1rm:e,weight:s.weight,reps:s.reps,rir:s.rir};}
+      if(s.weight&&s.reps){var e=estimateOneRM(s.weight,s.reps,s.rir!=null?s.rir:0);if(e&&(!best[base]||e>best[base].e1rm))best[base]={e1rm:e,weight:s.weight,reps:s.reps,rir:s.rir};}
     });
   });
   return best;
@@ -6835,22 +6866,119 @@ function saveMyHeight(){
 }
 
 // ===== Phase 7: ウエイト時間帯アンケート（wg）=====
-// p.wg={f5:['mon'/'tue'/'thu'のsubset], far:bool, pref:'am'|'pm'|null, upd:ISO}
+// p.wg={f5:['mon'/'tue'/'thu'のsubset], far:bool, pref:'am'|'pm'|null, upd:ISO}（旧形式。v2形とその読み方はwgNorm参照）
 // 月火木の5限有無・遠方・時間帯希望を選手が自己申告。スタッフも代理編集可（V.tgroup）。学期替わりは選手が随時更新。
 var WG_DAYS=[{k:'mon',label:'月'},{k:'tue',label:'火'},{k:'thu',label:'木'}];
-function saveMyWg(){
-  var f5=[];
-  WG_DAYS.forEach(function(d){var el=document.getElementById('wg-'+d.k);if(el&&el.checked)f5.push(d.k);});
+// ===== ウエイトグループ分けv2 共通ヘルパー（player/staff identical・posUnitはcoachも） =====
+// ポジション→ユニット 'FW'(PR/HO/LO/FL/No.8)|'BK'(SH/SO/CTB/WTB/FB)|null（未設定・未知）。
+// 新規コードのFW/BK判定はこれを使う（既存画面のローカルFW/BK配列と同じ定義）。
+function posUnit(pos){
+  if(pos==='PR'||pos==='HO'||pos==='LO'||pos==='FL'||pos==='No.8')return 'FW';
+  if(pos==='SH'||pos==='SO'||pos==='CTB'||pos==='WTB'||pos==='FB')return 'BK';
+  return null;
+}
+// ウエイト時間帯申告(p.wg)をv2形へ正規化（読み側で旧形式を吸収＝移行処理は書かない・プラン#15/#16）。未回答はnull。
+// v2保存形: {v:2,days:{mon,tue,thu},far,pref,upd}。days値='am'(午前のみ)|'pm'(午後のみ)|''(どちらでも)。
+// 旧形式{f5:[曜日],far,pref,upd}: 5限の曜日→'am'・他→''（WG_DAYS外の水/金は破棄）・far/pref維持・legacy:true（「旧形式・要更新」表示用）。
+// 常に新しいオブジェクトを返す（入力は変更しない）。正規化済みを再度通しても同じ結果（冪等）。
+function wgNorm(wg){
+  if(!wg||typeof wg!=='object')return null;
+  var isV2=wg.v===2;
+  var src=(isV2&&wg.days&&typeof wg.days==='object')?wg.days:{};
+  var f5=(!isV2&&Array.isArray(wg.f5))?wg.f5:[];
+  var days={};
+  WG_DAYS.forEach(function(d){
+    var v=isV2?src[d.k]:(f5.indexOf(d.k)>=0?'am':'');
+    days[d.k]=(v==='am'||v==='pm')?v:'';
+  });
+  return {v:2,days:days,far:!!wg.far,pref:(wg.pref==='am'||wg.pref==='pm')?wg.pref:null,upd:wg.upd||null,legacy:!isV2||wg.legacy===true};
+}
+// 曜日キー('mon'|'tue'|'thu')の申告値='am'|'pm'|''（どちらでも・未回答・対象外曜日）。生のp.wgでもwgNorm済みでも可。
+function wgDayShift(wg,day){
+  var n=wgNorm(wg);
+  return (n&&n.days[day])||'';
+}
+// 班分け用の1セット重量{bench,squat,deadlift}（kg・無ければnull）。保存しない＝表示のたびtlogから算出（二次記録禁止）。
+// 直近TG_LIFT_DAYS(60)日で、その種目を含む「最新セッション」の最高セット重量。チームメニューのセッションを優先し、チームに無い種目だけ
+// 自主トレ(kind:'self')から拾う。種目判定はliftKeyOf（estBase明示＞種目名推定）。欠席・skipped・重量/回数0以下のセットは無視。
+// logs省略時はD.tlog（本体=直近15日分）。staffの班分けはアーカイブ込みtlogAll()を渡す（2026-09-13改訂: 15日窓は記録の空白期間に大半が記録なしになるため60日）。
+var TG_LIFT_DAYS=60;
+function tgLiftWeights(pid,logs){
+  var cut=toDateStr(new Date(Date.now()-TG_LIFT_DAYS*86400000));
+  var out={bench:null,squat:null,deadlift:null};
+  var sess=(logs||D.tlog||[]).filter(function(l){return l&&!l.absent&&idEq(l.pid,pid)&&typeof l.date==='string'&&l.date>=cut&&Array.isArray(l.results);});
+  sess.sort(function(a,b){return b.date.localeCompare(a.date)||String(b.ts||'').localeCompare(String(a.ts||''))||String(b.id).localeCompare(String(a.id));});
+  [false,true].forEach(function(wantSelf){
+    sess.forEach(function(l){
+      if((l.kind==='self')!==wantSelf)return;
+      var top={};
+      l.results.forEach(function(r){
+        var k=(r&&!r.skipped)?liftKeyOf(r.exName,r.estBase):null;
+        if(!k)return;
+        (r.sets||[]).forEach(function(s){
+          var w=parseFloat(s&&s.weight),n=parseFloat(s&&s.reps);
+          if(w>0&&n>0&&(top[k]==null||w>top[k]))top[k]=w;
+        });
+      });
+      Object.keys(top).forEach(function(k){if(out[k]==null)out[k]=top[k];});
+    });
+  });
+  return out;
+}
+// 1セット重量の短い表示「BP80 SQ120 DL140」（記録なしの種目は—）（player/staff identical）
+function tgLiftTxt(w){return [['bench','BP'],['squat','SQ'],['deadlift','DL']].map(function(x){return x[1]+(w&&w[x[0]]!=null?w[x[0]]:'—');}).join(' ');}
+function tgDayLabel(day){var d=WG_DAYS.find(function(x){return x.k===day;});return d?d.label:String(day);}
+// 曜日別3択（午前のみ/午後のみ/どちらでも）の入力部品（player/staff identical）。pfx='wg'(選手の設定画面)/'ewg'(スタッフ代理編集)。
+// 選択値はhidden input「pfx-曜日」に 'am'|'pm'|'any'|''(未選択)。保存形へはwgSegReadで'any'→''(どちらでも)に変換する。
+// 未回答の選手は何も選択しない（「どちらでも」を既定にすると確認せず保存されるため）。旧形式はwgNormの変換値を初期選択にする。
+var WG_CHOICES=[{v:'am',label:'午前のみ'},{v:'pm',label:'午後のみ'},{v:'any',label:'どちらでも'}];
+function wgSegHTML(pfx,wg){
+  var n=wgNorm(wg);
+  return WG_DAYS.map(function(d){
+    var cur=n?(n.days[d.k]||'any'):'';
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'+
+      '<span style="flex:none;width:22px;font-size:14px;font-weight:800">'+d.label+'</span>'+
+      '<div style="flex:1;display:flex;gap:5px">'+WG_CHOICES.map(function(c){
+        var on=cur===c.v;
+        return '<button type="button" class="btn btn-sm" id="'+pfx+'-'+d.k+'-'+c.v+'" aria-pressed="'+(on?'true':'false')+'" onclick="wgSegPick(\''+pfx+'\',\''+d.k+'\',\''+c.v+'\')" style="flex:1;padding:7px 4px;font-size:12px'+(on?';background:var(--maroon);border-color:var(--maroon);color:var(--white);font-weight:700':'')+'">'+c.label+'</button>';
+      }).join('')+'</div>'+
+      '<input type="hidden" id="'+pfx+'-'+d.k+'" value="'+cur+'"></div>';
+  }).join('');
+}
+function wgSegPick(pfx,day,v){
+  var hid=document.getElementById(pfx+'-'+day);if(hid)hid.value=v;
+  WG_CHOICES.forEach(function(c){
+    var b=document.getElementById(pfx+'-'+day+'-'+c.v);if(!b)return;
+    var on=c.v===v;
+    b.style.background=on?'var(--maroon)':'';b.style.borderColor=on?'var(--maroon)':'';b.style.color=on?'var(--white)':'';b.style.fontWeight=on?'700':'';
+    if(b.setAttribute)b.setAttribute('aria-pressed',on?'true':'false');
+  });
+}
+// 入力部品から保存用daysを読む → {days:{mon,tue,thu:'am'|'pm'|''}, missing:[未選択の曜日ラベル]}
+function wgSegRead(pfx){
+  var days={},missing=[];
+  WG_DAYS.forEach(function(d){
+    var el=document.getElementById(pfx+'-'+d.k);var v=el?el.value:'';
+    if(v==='am'||v==='pm')days[d.k]=v;
+    else{days[d.k]='';if(v!=='any')missing.push(d.label);}
+  });
+  return {days:days,missing:missing};
+}
+// 申告の保存（v2形{v:2,days,far,pref,upd}・svSafeUpdateでwgのみ更新＝旧形式はこの保存で消える）。曜日の未選択は保存しない。
+function saveMyWg(btnEl){
+  var sr=wgSegRead('wg');
+  if(sr.missing.length){alert('曜日ごとに時間帯を選んでください（未選択: '+sr.missing.join('・')+'）');return;}
   var farEl=document.getElementById('wg-far');var far=!!(farEl&&farEl.checked);
   var prefEl=document.getElementById('wg-pref');var pref=prefEl?(prefEl.value||''):'';
   if(pref!=='am'&&pref!=='pm')pref=null;
-  var wg={f5:f5,far:far,pref:pref,upd:new Date().toISOString()};
-  svSafeUpdate('p',function(latest){var me=latest.find(function(x){return idEq(x.id,myPid);});if(me)me.wg=wg;return latest;},function(){showProfileSettings();toast('ウエイト時間帯を保存しました');});
+  if(btnEl&&!guardSubmit(btnEl,'保存中…'))return;
+  var wg={v:2,days:sr.days,far:far,pref:pref,upd:new Date().toISOString()};
+  svSafeUpdate('p',function(latest){var me=latest.find(function(x){return idEq(x.id,myPid);});if(me)me.wg=wg;return latest;},function(){showProfileSettings();toast('ウエイト時間帯を保存しました');},function(){if(btnEl)releaseSubmit(btnEl);alert('保存できませんでした。電波の良い場所でもう一度お試しください。');});
 }
-// プロフィール設定サブ画面（身長＋ウエイト時間帯アンケート）。既存id(mh-input/wg-*)据え置きでsaveMyHeight/saveMyWgが無改修で動く。
+// プロフィール設定サブ画面（身長＋ウエイト時間帯アンケート）。身長=mh-input/saveMyHeight、時間帯=曜日別3択(wgSegHTML 'wg')/wg-far/wg-pref/saveMyWg。
 function showProfileSettings(){
   var p=D.p.find(function(x){return x.id===myPid;});if(!p)return;
-  var wg=(p.wg&&typeof p.wg==='object')?p.wg:{};
+  var nwg=wgNorm(p.wg); // 旧形式(f5)は変換値で初期表示＋注意を出す（保存でv2になる）
   var h='<div class="card" style="margin-bottom:12px">'+
     '<div style="display:flex;gap:8px;align-items:flex-end"><div style="flex:1"><label style="font-size:11px;color:var(--text-secondary)">身長（cm）</label>'+
     '<input id="mh-input" class="ipt" type="number" step="0.1" min="100" max="230" inputmode="decimal" placeholder="例：175" value="'+(p.height!=null&&p.height!==''?escapeHtml(String(p.height)):'')+'"></div>'+
@@ -6858,15 +6986,13 @@ function showProfileSettings(){
     '<div style="font-size:11px;color:var(--text-secondary);margin-top:8px">身長を登録すると、マイフィジカルで推奨体重帯やFFMI（除脂肪量指数）が表示されます。体重は体組成測定で自動記録されます。</div></div>';
   h+='<div class="card" style="margin-bottom:12px"><div class="kicker" style="margin-bottom:2px">WEIGHT SESSION</div>'+
     '<div style="font-weight:800;font-size:14px;margin-bottom:2px">ウエイト時間帯アンケート</div>'+
-    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">午前組／午後組の振り分けに使います。学期が替わったら更新してください。</div>'+
-    '<div style="font-size:12px;font-weight:700;margin-bottom:5px">月・火・木で5限がある曜日</div>'+
-    '<div style="display:flex;gap:16px;margin-bottom:12px">'+
-      WG_DAYS.map(function(d){return '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="wg-'+d.k+'"'+(((wg.f5||[]).indexOf(d.k)>=0)?' checked':'')+'> '+d.label+'</label>';}).join('')+
-    '</div>'+
-    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin-bottom:12px"><input type="checkbox" id="wg-far"'+(wg.far?' checked':'')+'> 大学から遠い（通学に時間がかかる）</label>'+
-    '<div style="font-size:12px;font-weight:700;margin-bottom:5px">時間帯の希望</div>'+
-    '<select id="wg-pref" class="ipt" style="margin-bottom:10px"><option value=""'+(!wg.pref?' selected':'')+'>どちらでも</option><option value="am"'+(wg.pref==='am'?' selected':'')+'>午前がいい</option><option value="pm"'+(wg.pref==='pm'?' selected':'')+'>午後がいい</option></select>'+
-    '<button class="btn btn-p" style="width:100%" onclick="saveMyWg()">時間帯を保存</button></div>';
+    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;line-height:1.6">曜日ごとに、ウエイトに参加できる時間帯を選んでください（例: 5限がある日→午前のみ）。午前組／午後組の振り分けに使います。学期が替わったら更新してください。</div>'+
+    (nwg&&nwg.legacy?'<div class="alert-card alert-warn" style="margin-bottom:10px;font-size:12px">'+ic('i-warn',13)+' 前の形式（5限の曜日）の回答を変換して表示しています。確認して「時間帯を保存」を押してください。</div>':'')+
+    wgSegHTML('wg',p.wg)+
+    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin:10px 0 12px"><input type="checkbox" id="wg-far"'+(nwg&&nwg.far?' checked':'')+'> 大学から遠い（通学に時間がかかる）</label>'+
+    '<div style="font-size:12px;font-weight:700;margin-bottom:5px">「どちらでも」の日の希望</div>'+
+    '<select id="wg-pref" class="ipt" style="margin-bottom:10px"><option value=""'+(!(nwg&&nwg.pref)?' selected':'')+'>どちらでも</option><option value="am"'+(nwg&&nwg.pref==='am'?' selected':'')+'>午前がいい</option><option value="pm"'+(nwg&&nwg.pref==='pm'?' selected':'')+'>午後がいい</option></select>'+
+    '<button class="btn btn-p" style="width:100%" onclick="saveMyWg(this)">時間帯を保存</button></div>';
   // PIN変更（現PIN確認→新PIN2回一致→svSafeUpdate('p')。平文比較=既存checkPIN/doSetupPINと同方式。忘れた場合はスタッフがpを編集）
   h+='<div class="card" style="margin-bottom:12px"><div class="kicker" style="margin-bottom:2px">SECURITY</div>'+
     '<div style="font-weight:800;font-size:14px;margin-bottom:8px">PIN変更</div>'+
@@ -6887,62 +7013,92 @@ function doChangePIN(){
   if(n1!==n2){alert('新しいPINが一致しません');return;}
   svSafeUpdate('p',function(latest){var me=latest.find(function(x){return idEq(x.id,myPid);});if(me)me.pin=n1;return latest;},function(){showProfileSettings();toast('PINを変更しました');});
 }
-// 自分の所属グループ情報を返す（tgroup最新レコードから。未設定/除外/未割当ならnull）
+// 自分の所属グループ情報（tgroup最新レコードから。除外/未割当ならnull）。
+// 互換: mode/shiftKey/shiftLabel/shiftIdx/groupLetter/members/mates＝ホームの班。guests=[{day,shiftKey,shiftLabel,shiftIdx,gi,groupLetter,members}]＝その曜日だけ入る班（v2）。
+// schedule=[{days,label:'月・火',shiftKey,shiftLabel,groupLetter,guest}]＝曜日ごとの行き先を同じ行き先でまとめたもの（午前/午後モードのみ）。未配置のゲスト(gi=null)は出さない。
 function myGroupInfo(){
   var recs=D.tgroup||[];
   if(!recs.length)return null;
   var rec=recs[recs.length-1];
   if(!rec||!rec.shifts||!rec.shifts.length)return null;
-  for(var si=0;si<rec.shifts.length;si++){
-    var sh=rec.shifts[si];var groups=sh.groups||[];
-    for(var gi=0;gi<groups.length;gi++){
-      var g=groups[gi]||[];
-      if(g.some(function(pid){return idEq(pid,myPid);})){
-        var mates=g.filter(function(pid){return !idEq(pid,myPid);}).map(function(pid){var pp=D.p.find(function(x){return idEq(x.id,pid);});return pp?pp.name:null;}).filter(Boolean);
-        return {mode:rec.mode,shiftKey:sh.key,shiftLabel:sh.label||'',shiftIdx:si,groupLetter:String.fromCharCode(65+gi),members:g.slice(),mates:mates};
-      }
-    }
+  var home=null,guests=[];
+  rec.shifts.forEach(function(sh,si){
+    (sh.groups||[]).forEach(function(g,gi){
+      if(!home&&(g||[]).some(function(pid){return idEq(pid,myPid);}))home={shiftKey:sh.key,shiftLabel:sh.label||'',shiftIdx:si,gi:gi,members:g.slice()};
+    });
+    (sh.guests||[]).forEach(function(x){
+      var g=(x&&x.gi!=null)?(sh.groups||[])[x.gi]:null;
+      if(g&&idEq(x.pid,myPid))guests.push({day:x.day,shiftKey:sh.key,shiftLabel:sh.label||'',shiftIdx:si,gi:x.gi,groupLetter:String.fromCharCode(65+x.gi),members:g.slice()});
+    });
+  });
+  if(!home&&!guests.length)return null;
+  var schedule=[];
+  if(rec.mode!=='single'){
+    WG_DAYS.forEach(function(d){
+      var gx=guests.filter(function(x){return x.day===d.k;})[0];
+      var t=gx?{shiftKey:gx.shiftKey,shiftLabel:gx.shiftLabel,groupLetter:gx.groupLetter,guest:true}:(home?{shiftKey:home.shiftKey,shiftLabel:home.shiftLabel,groupLetter:String.fromCharCode(65+home.gi),guest:false}:null);
+      if(!t)return;
+      var same=schedule.filter(function(s){return s.shiftKey===t.shiftKey&&s.groupLetter===t.groupLetter&&s.guest===t.guest;})[0];
+      if(same){same.days.push(d.k);same.label+='・'+d.label;}
+      else{t.days=[d.k];t.label=d.label;schedule.push(t);}
+    });
   }
-  return null;
+  var mates=home?home.members.filter(function(pid){return !idEq(pid,myPid);}).map(function(pid){var pp=D.p.find(function(x){return idEq(x.id,pid);});return pp?pp.name:null;}).filter(Boolean):[];
+  return {mode:rec.mode,shiftKey:home?home.shiftKey:null,shiftLabel:home?home.shiftLabel:'',shiftIdx:home?home.shiftIdx:null,
+    groupLetter:home?String.fromCharCode(65+home.gi):null,members:home?home.members:[],mates:mates,guests:guests,schedule:schedule};
 }
-// グループ表示カード（トレーニング/ホームで共用。未所属は''）。タップで全班一覧(showAllGroups)へ。
+// 曜日別の行き先の1行表示「月・火: 午前 A班 ／ 木: 午後 C班（ゲスト）」
+function myGroupScheduleTxt(info){
+  return (info&&info.schedule||[]).map(function(s){return escapeHtml(s.label)+': '+escapeHtml(s.shiftLabel)+' '+s.groupLetter+'班'+(s.guest?'（ゲスト）':'');}).join(' ／ ');
+}
+// グループ表示カード（トレーニングタブ。未所属は''）。班メンバーの1セット重量(BP/SQ/DL・直近の記録)と、曜日で組が変わる選手は曜日別の行き先。タップで全班一覧(showAllGroups)へ。
 function myGroupCardHtml(){
   var gi=myGroupInfo();
   if(!gi)return '';
   var isAmpm=gi.mode==='ampm';
-  var isAm=gi.shiftKey==='am';
-  var shiftChip=(isAmpm&&gi.shiftLabel)?'<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;background:'+(isAm?'var(--shift-am-a25)':'var(--shift-pm-a25)')+';color:var(--white);border:1px solid '+(isAm?'var(--shift-am-a55)':'var(--shift-pm-a55)')+'">'+escapeHtml(gi.shiftLabel)+'組</span>':'';
-  var members=gi.members||[];
+  var guestOnly=!gi.groupLetter,g0=guestOnly?gi.guests[0]:null; // ホームの班が無くゲストだけの時は最初のゲスト先を表示
+  var shiftKey=guestOnly?g0.shiftKey:gi.shiftKey,shiftLabel=guestOnly?g0.shiftLabel:gi.shiftLabel;
+  var letter=guestOnly?g0.groupLetter:gi.groupLetter,members=guestOnly?g0.members:(gi.members||[]);
+  var isAm=shiftKey==='am';
+  var shiftChip=(isAmpm&&shiftLabel)?'<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;background:'+(isAm?'var(--shift-am-a25)':'var(--shift-pm-a25)')+';color:var(--white);border:1px solid '+(isAm?'var(--shift-am-a55)':'var(--shift-pm-a55)')+'">'+escapeHtml(shiftLabel)+'組</span>':'';
   var avatars=members.map(function(pid,i){
     var pp=D.p.find(function(x){return idEq(x.id,pid);});if(!pp)return'';
     var isMe=idEq(pid,myPid);
     return '<div style="margin-left:'+(i?'-8px':'0')+';position:relative;z-index:'+(30-i)+';border-radius:50%;box-shadow:0 0 0 2px '+(isMe?'var(--rose)':'var(--black-a35)')+'">'+avH(pp,30)+'</div>';
   }).filter(Boolean).join('');
-  var names=members.map(function(pid){
+  var rows=members.map(function(pid){
     var pp=D.p.find(function(x){return idEq(x.id,pid);});if(!pp)return'';
     var isMe=idEq(pid,myPid);
     var posL=pp.position?'<span style="opacity:.65;font-size:9px">'+escapeHtml(POS_NUM[pp.position]||pp.position)+'</span> ':'';
-    return '<span style="font-size:11px;'+(isMe?'font-weight:800;color:var(--pink-soft)':'color:var(--white-a82)')+'">'+posL+escapeHtml(pp.name)+(isMe?'(自分)':'')+'</span>';
-  }).filter(Boolean).join('<span style="opacity:.4;color:var(--white);margin:0 2px">・</span>');
+    return '<div style="display:flex;align-items:baseline;gap:6px;min-width:0"><span style="font-size:11px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'+(isMe?'font-weight:800;color:var(--pink-soft)':'color:var(--white-a82)')+'">'+posL+escapeHtml(pp.name)+(isMe?'(自分)':'')+'</span>'+
+      '<span class="num" style="margin-left:auto;flex:none;font-size:10px;color:var(--white-a72);font-variant-numeric:tabular-nums">'+tgLiftTxt(tgLiftWeights(pid))+'</span></div>';
+  }).filter(Boolean).join('');
+  var sched=(isAmpm&&gi.guests.length&&gi.schedule.length)?'<div style="margin:0 0 9px;padding:6px 9px;border-radius:8px;background:var(--black-a35);font-size:11px;font-weight:700;color:var(--white);line-height:1.5">'+myGroupScheduleTxt(gi)+'</div>':'';
   return '<div class="card card-click" onclick="showAllGroups()" style="margin-bottom:14px;position:relative;overflow:hidden;cursor:pointer;background:linear-gradient(135deg,var(--maroon),var(--wine-d) 62%);border:1px solid var(--wine-a55);box-shadow:0 8px 24px -10px var(--wine-a75)">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">'+
       '<span style="font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--white-a72)">MY GROUP</span>'+shiftChip+'</div>'+
+    sched+
     '<div style="display:flex;align-items:center;gap:13px">'+
-      '<div class="num" style="font-size:30px;font-weight:900;color:var(--white);line-height:1;flex:none">'+gi.groupLetter+'班</div>'+
+      '<div class="num" style="font-size:30px;font-weight:900;color:var(--white);line-height:1;flex:none;text-align:center">'+letter+'班'+(guestOnly?'<div style="font-size:10px;font-weight:800;margin-top:4px;color:var(--white-a90)">ゲスト</div>':'')+'</div>'+
       '<div style="flex:1;min-width:0">'+
         (avatars?'<div style="display:flex;align-items:center;margin-bottom:5px">'+avatars+'</div>':'')+
-        '<div style="line-height:1.55">'+names+'</div>'+
+        '<div style="display:flex;flex-direction:column;gap:2px">'+rows+'</div>'+
       '</div>'+
       '<div style="flex:none;text-align:center;color:var(--white-a90)">'+ic('i-chevron-r',20)+'<div style="font-size:9px;font-weight:700;margin-top:-3px">全班を見る</div></div>'+
     '</div></div>';
 }
-// 全班のウエイトグループ編成を一覧表示（選手が全班閲覧）。戻り先は現在タブ。
+// 全班のウエイトグループ編成を一覧表示（選手が全班閲覧）。班メンバーの1セット重量・ゲスト（曜日）も表示。戻り先は現在タブ。
 function showAllGroups(){
   var recs=D.tgroup||[];var rec=recs.length?recs[recs.length-1]:null;
   var back=curTab||'home',backLbl=back==='training'?'トレーニングに戻る':'ホームに戻る';
   if(!rec||!rec.shifts||!rec.shifts.length){showSub('<div class="no">まだ編成がありません。スタッフが組むとここに表示されます。</div>',back,backLbl);return;}
+  var info=myGroupInfo();
   var h='<div class="kicker" style="margin-bottom:2px">WEIGHT GROUPS</div><div style="font-size:18px;font-weight:900;margin-bottom:2px">ウエイトグループ編成</div>'+
-    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:14px">'+fmt(rec.date)+' 更新'+(rec.mode==='single'?'':'（午前／午後シフト）')+'</div>';
+    '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">'+fmt(rec.date)+' 更新'+(rec.mode==='single'?'':'（午前／午後シフト）')+'</div>'+
+    '<div style="font-size:10px;color:var(--text-tertiary);margin-bottom:12px">各メンバーの数字は直近の記録の1セット重量（BP/SQ/DL・記録なしは—）</div>';
+  if(info&&info.guests.length&&info.schedule.length){
+    h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--maroon)"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:2px">あなたの行き先（曜日別）</div><div style="font-size:13px;font-weight:800">'+myGroupScheduleTxt(info)+'</div></div>';
+  }
   rec.shifts.forEach(function(sh){
     var groups=sh.groups||[];
     if(!groups.some(function(g){return g&&g.length;}))return;
@@ -6954,15 +7110,31 @@ function showAllGroups(){
       if(!g||!g.length)return;
       var letter=String.fromCharCode(65+gi);
       var isMyGroup=g.some(function(pid){return idEq(pid,myPid);});
-      h+='<div class="card" style="margin-bottom:8px'+(isMyGroup?';border:1.5px solid var(--maroon-vivid);box-shadow:0 0 12px -4px var(--maroon-vivid)':'')+'">'+
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:15px;font-weight:900">'+letter+'班</span>'+
+      var gGuests=(sh.guests||[]).filter(function(x){return x&&x.gi===gi;});
+      var myGuestDays=gGuests.filter(function(x){return idEq(x.pid,myPid);}).map(function(x){return tgDayLabel(x.day);});
+      var mine=isMyGroup||myGuestDays.length>0;
+      h+='<div class="card" style="margin-bottom:8px'+(mine?';border:1.5px solid var(--maroon-vivid);box-shadow:0 0 12px -4px var(--maroon-vivid)':'')+'">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap"><span style="font-size:15px;font-weight:900">'+letter+'班</span>'+
         (isMyGroup?'<span style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:99px;background:var(--maroon);color:var(--white)">MY</span>':'')+
-        '<span style="font-size:11px;color:var(--text-secondary);margin-left:auto">'+g.length+'名</span></div>'+
+        (myGuestDays.length?'<span style="font-size:10px;font-weight:800;padding:1px 8px;border-radius:99px;border:1px solid var(--maroon);color:var(--maroon)">MY（'+myGuestDays.join('・')+'・ゲスト）</span>':'')+
+        '<span style="font-size:11px;color:var(--text-secondary);margin-left:auto">'+g.length+'名'+(gGuests.length?'＋ゲスト'+gGuests.length:'')+'</span></div>'+
         '<div style="display:flex;flex-direction:column;gap:6px">'+g.map(function(pid){
           var pp=D.p.find(function(x){return idEq(x.id,pid);});if(!pp)return'';
           var isMe=idEq(pid,myPid);
-          return '<div style="display:flex;align-items:center;gap:8px">'+avH(pp,26)+'<span style="font-size:13px;font-weight:'+(isMe?'800':'600')+(isMe?';color:var(--maroon-vivid)':'')+'">'+escapeHtml(pp.name)+(isMe?'（自分）':'')+'</span><span style="font-size:10px;color:var(--text-secondary);margin-left:auto">'+escapeHtml(pp.position||'-')+'</span></div>';
-        }).filter(Boolean).join('')+'</div></div>';
+          return '<div style="display:flex;align-items:center;gap:8px">'+avH(pp,26)+
+            '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:'+(isMe?'800':'600')+(isMe?';color:var(--maroon-vivid)':'')+'">'+escapeHtml(pp.name)+(isMe?'（自分）':'')+'</div>'+
+            '<div class="num" style="font-size:10px;color:var(--text-secondary);font-variant-numeric:tabular-nums">'+tgLiftTxt(tgLiftWeights(pid))+'</div></div>'+
+            '<span style="font-size:10px;color:var(--text-secondary)">'+escapeHtml(pp.position||'-')+'</span></div>';
+        }).filter(Boolean).join('')+
+        gGuests.map(function(x){
+          var gp=D.p.find(function(y){return idEq(y.id,x.pid);});if(!gp)return'';
+          var isMe=idEq(x.pid,myPid);
+          return '<div style="display:flex;align-items:center;gap:8px;padding:4px 6px;border:1px dashed var(--border-tertiary);border-radius:8px">'+
+            '<span style="flex:none;font-size:10px;font-weight:800;color:var(--amber)">ゲスト（'+tgDayLabel(x.day)+'）</span>'+
+            '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:'+(isMe?'800':'600')+(isMe?';color:var(--maroon-vivid)':'')+'">'+escapeHtml(gp.name)+(isMe?'（自分）':'')+'</div>'+
+            '<div class="num" style="font-size:10px;color:var(--text-secondary);font-variant-numeric:tabular-nums">'+tgLiftTxt(tgLiftWeights(x.pid))+'</div></div></div>';
+        }).join('')+
+        '</div></div>';
     });
   });
   showSub(h,back,backLbl);
@@ -7040,7 +7212,7 @@ function startSelfWeightFresh(){
   renderTrainingExec(selfWeightMn());
 }
 // 実施中の記録に種目を追加（自主ウエイト用・Phase 4でチームメニュー中の追加にも使う共通実装）。
-// estBase自動判定: EST_BASESラベル一致 → 過去ログの同名種目 → null。前回実績もチーム開始時と同ロジックで引き継ぐ。
+// estBase自動判定: EST_BASESラベル一致 → 過去ログの同名種目 → 種目名推定（liftKeyOf・グループ分けv2 #11）→ null。前回実績もチーム開始時と同ロジックで引き継ぐ。
 function addTrainingEx(){
   if(!_curTLog)return;
   var el=document.getElementById('tr-add-ex');
@@ -7063,6 +7235,7 @@ function addTrainingEx(){
       if(f)eb=f.estBase;
     }
   }
+  if(!eb)eb=liftKeyOf(name,null); // 「バックスクワット」「デットリフト(スピード)」等のラベル不一致も種目名から補完
   var oneRM=eb?getPlayer1RM(myPid,eb):null;
   var prevEx=null,prevExDate='';
   for(var k=0;k<sortedPrevLogs.length;k++){
