@@ -400,14 +400,49 @@ T.training();
 ok('T.trainingにMY GROUP・A班',has(__els['main'].innerHTML,'MY GROUP')&&has(__els['main'].innerHTML,'A班'));
 subView=null;curTab='home';
 T.home();
-// P8b: グループカードはトレーニングタブへ移設＝ホームには出ない
-ok('T.homeにMY GROUPは出ない(P8b)',!has(__els['main'].innerHTML,'MY GROUP'));
+// P8b: ホームには出さない（2026-09-15 ユーザー判断で再確認）。自分の班はマイページで確認する
+ok('T.homeにMY GROUPは出ない',!has(__els['main'].innerHTML,'MY GROUP'));
+subView=null;curTab='mypage';T.mypage();
+ok('T.mypageにコンパクトなMY GROUP（A班・メンバー・全班一覧へ）',has(__els['main'].innerHTML,'id="mp-mygroup"')&&has(__els['main'].innerHTML,'A班')&&has(__els['main'].innerHTML,'メンバー: 山田 太郎・佐藤 次郎')&&has(__els['main'].innerHTML,'onclick="showAllGroups()"')&&!has(__els['main'].innerHTML,'一緒に'));
+ok('マイページではプロフィール設定の直後',__els['main'].innerHTML.indexOf('id="mp-mygroup"')>__els['main'].innerHTML.indexOf('プロフィール設定'));
+curTab='home';
 // tgroup未設定なら両画面ともグループカードなし（クラッシュしない）
 D.tgroup=[];
 subView=null;T.training();
 ok('未設定時 T.trainingにMY GROUPなし',!has(__els['main'].innerHTML,'MY GROUP'));
 subView=null;curTab='home';T.home();
 ok('未設定時 T.homeにMY GROUPなし',!has(__els['main'].innerHTML,'MY GROUP'));
+subView=null;curTab='mypage';T.mypage();
+ok('未設定時 T.mypageにMY GROUPなし',!has(__els['main'].innerHTML,'MY GROUP'));
+curTab='home';
+
+print('--- myGroupMiniHtml（マイページ）: 今日の曜日の行き先 ---');
+D.tgroup=[{id:16,ts:16,date:TODAY,by:'staff',mode:'ampm',excluded:[],shifts:[
+  {key:'am',label:'午前',groups:[[1,2],[3]],guests:[]},
+  {key:'pm',label:'午後',groups:[[10,11],[12,13]],guests:[{pid:1,day:'thu',gi:1}]}
+]}];
+D.p.push({id:12,name:'鈴木 十二',position:'SH',year:1},{id:13,name:'高橋 十三',position:'FB',year:1});
+var MON=new Date(2026,8,14),TUE=new Date(2026,8,15),WED=new Date(2026,8,16),THU=new Date(2026,8,17),SUN=new Date(2026,8,20);
+var hMon=myGroupMiniHtml(MON);
+ok('月曜: 「今日（月）」午前 A班・メンバー 山田 太郎',has(hMon,'今日（月）')&&has(hMon,'午前 A班')&&has(hMon,'メンバー: 山田 太郎')&&!has(hMon,'鈴木'));
+var hThu=myGroupMiniHtml(THU);
+ok('木曜（ゲスト日）: 「今日（木）」午後 B班・メンバー その班の2人',has(hThu,'今日（木）')&&has(hThu,'午後 B班')&&has(hThu,'メンバー: 鈴木 十二・高橋 十三')&&!has(hThu,'山田'));
+var hSun=myGroupMiniHtml(SUN);
+ok('日曜（ウエイト曜日でない）: 「あなたの班」午前 A班＋曜日別の行き先',has(hSun,'あなたの班')&&has(hSun,'午前 A班')&&has(hSun,'月・火: 午前 A班 ／ 木: 午後 B班'));
+ok('水曜も曜日の行き先ではなくふだんの班',has(myGroupMiniHtml(WED),'あなたの班'));
+ok('火曜: 今日の行き先があれば曜日別の行き先の行は出さない',has(myGroupMiniHtml(TUE),'今日（火）')&&!has(myGroupMiniHtml(TUE),'／'));
+D.tgroup=[{id:17,ts:17,date:TODAY,by:'staff',mode:'ampm',excluded:[],shifts:[
+  {key:'am',label:'午前',groups:[[1,2]],guests:[]},
+  {key:'pm',label:'午後',groups:[[10,11]],guests:[{pid:1,day:'tue',gi:null}]}
+]}];
+ok('班未定のゲスト日: 「今日（火）」午後（班未定）・メンバーは出ない',(function(){var x=myGroupMiniHtml(TUE);return has(x,'今日（火）')&&has(x,'午後 （班未定）')&&!has(x,'メンバー');})());
+D.tgroup=[{id:18,ts:18,date:TODAY,by:'staff',mode:'single',excluded:[],shifts:[{key:'all',label:'',groups:[[3],[1,2]]}]}];
+ok('分割なし(single): 曜日に関係なく「あなたの班」B班・組名なし',(function(){var x=myGroupMiniHtml(MON);return has(x,'あなたの班')&&has(x,'>B班<')&&!has(x,'今日（');})());
+D.tgroup=[{id:19,ts:19,date:TODAY,by:'staff',mode:'ampm',excluded:[1],shifts:[{key:'am',label:'午前',groups:[[2,3]]}]}];
+ok('班に入っていない → 空文字',myGroupMiniHtml(MON)==='');
+ok('escape: 名前は escapeHtml 済み',(function(){D.tgroup=[{id:20,ts:20,date:TODAY,by:'staff',mode:'single',shifts:[{key:'all',label:'',groups:[[1,99]]}]}];D.p.push({id:99,name:'<b>x</b>',position:'PR',year:1});var x=myGroupMiniHtml(SUN);D.p.pop();return has(x,'&lt;b&gt;x&lt;/b&gt;')&&!has(x,'<b>x</b>');})());
+D.p=D.p.filter(function(x){return x.id!==12&&x.id!==13;});
+D.tgroup=[];
 
 // ============ 7. 曜日別表示の共通ヘルパー（tgDayShifts / tgDefaultDay / tgIsDay / tgDayTabsHtml） ============
 print('--- tgDayShifts: その曜日の実際の班構成 ---');

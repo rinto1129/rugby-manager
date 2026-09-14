@@ -2786,6 +2786,7 @@ mypage:function(){
     '<div style="font-size:11px;color:var(--text-secondary);margin-top:3px">身長 '+_htTxt+' ・ '+_wgTxt+'</div></div>'+
     ic('i-chevron-r',18,'var(--text-tertiary)')+
   '</div>';
+  h+=myGroupMiniHtml(); // 自分のウエイトグループ（今日の行き先・メンバー・タップで全班一覧）。未所属なら出ない
   // 「今日やること」と試合日翌日アラートはホーム（ダッシュボード）へ移設済み
   if(myTapeRsvs.length){h+='<div class="card" style="margin-bottom:12px;border-left:3px solid var(--purple)"><div style="font-weight:600;margin-bottom:6px;color:var(--purple)">'+ic('i-tape',14)+' テーピング予約</div>';myTapeRsvs.forEach(function(rsv){h+='<div class="log-row"><div style="flex:1"><div style="font-weight:600">'+fmt(rsv.date)+' '+rsv.startTime+'〜'+rsv.endTime+'</div><div style="font-size:12px;color:var(--text-secondary)">'+rsv.parts.join('・')+(rsv.staff?' / 担当: '+rsv.staff:'')+'</div></div></div>';});h+='<button class="btn" style="width:100%;margin-top:6px;font-size:12px" onclick="go(\'tape\')">予約を管理する</button></div>';}
   // Individual announcements
@@ -7433,6 +7434,36 @@ function myGroupCardHtml(){
         '<div style="display:flex;flex-direction:column;gap:2px">'+rows+'</div>'+
       '</div>'+
       '<div style="flex:none;text-align:center;color:var(--white-a90)">'+ic('i-chevron-r',20)+'<div style="font-size:9px;font-weight:700;margin-top:-3px">全班を見る</div></div>'+
+    '</div></div>';
+}
+// マイページ用の自分のウエイトグループ（コンパクト1枚・未所属は''）。今日が月/火/木ならその曜日の実際の行き先（曜日で組が変わる人はその日の班）、
+// それ以外の日はふだんの班＋曜日別の行き先。班の仲間の名前を並べ、タップで全班一覧（showAllGroups）。now はテスト用
+function myGroupMiniHtml(now){
+  var gi=myGroupInfo();if(!gi)return '';
+  var wd=(now||new Date()).getDay(),dayK=wd===1?'mon':wd===2?'tue':wd===4?'thu':null;
+  var isAmpm=gi.mode!=='single';
+  var head,letter,shiftLabel,members;
+  var todayS=(isAmpm&&dayK)?gi.schedule.filter(function(x){return x.days.indexOf(dayK)>=0;})[0]:null;
+  if(todayS){
+    var gx=todayS.guest?gi.guests.filter(function(x){return x.day===dayK;})[0]:null;
+    head='今日（'+tgDayLabel(dayK)+'）';letter=todayS.groupLetter;shiftLabel=todayS.shiftLabel;members=gx?gx.members:gi.members;
+  }else if(gi.groupLetter){
+    head='あなたの班';letter=gi.groupLetter;shiftLabel=isAmpm?gi.shiftLabel:'';members=gi.members;
+  }else{
+    var g0=gi.guests.filter(function(x){return x.groupLetter;})[0];if(!g0)return '';
+    head='あなたの班';letter=g0.groupLetter;shiftLabel=g0.shiftLabel;members=g0.members;
+  }
+  var mates=(members||[]).filter(function(pid){return !idEq(pid,myPid);}).map(function(pid){var pp=D.p.find(function(x){return idEq(x.id,pid);});return pp?escapeHtml(pp.name):null;}).filter(Boolean);
+  var main=(isAmpm&&shiftLabel?escapeHtml(shiftLabel)+' ':'')+(letter?letter+'班':'（班未定）');
+  var sched=(isAmpm&&gi.guests.length&&gi.schedule.length&&!todayS)?'<div style="font-size:11px;color:var(--text-secondary);margin-top:3px">'+myGroupScheduleTxt(gi)+'</div>':'';
+  return '<div class="card card-click rv" id="mp-mygroup" onclick="showAllGroups()" style="margin-bottom:14px;border-left:3px solid var(--maroon);cursor:pointer">'+
+    '<div style="display:flex;align-items:center;gap:10px">'+
+      '<div style="flex:1;min-width:0"><div class="kicker" style="margin-bottom:2px">MY GROUP</div>'+
+        '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span style="font-size:11px;font-weight:700;color:var(--text-secondary)">'+head+'</span><span style="font-size:17px;font-weight:900">'+main+'</span></div>'+
+        (mates.length?'<div style="font-size:12px;color:var(--text-secondary);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">メンバー: '+mates.join('・')+'</div>':'')+
+        sched+
+      '</div>'+
+      '<div style="flex:none;text-align:center;color:var(--text-secondary)">'+ic('i-chevron-r',18)+'<div style="font-size:9px;font-weight:700;margin-top:-2px">全班</div></div>'+
     '</div></div>';
 }
 // 全班のウエイトグループ編成を一覧表示（選手が全班閲覧）。曜日タブ（月/火/木）でその曜日の実際の班を表示：曜日で組が変わる選手は
