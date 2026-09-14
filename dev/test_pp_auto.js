@@ -145,6 +145,7 @@ ok('統合(e1rm失敗): この経路でもppAutoFlipが走った',aI2.length===2
 ok('統合: alertなし（確定失敗時もトレ記録成立を邪魔しない）',__alerts.length===0);
 
 print('--- 日跨ぎ対応: ppNext（当日autoは実施タイプを凍結・翌日反転・手動は即時） ---');
+D.tlog=[]; // 前段の finishTraining で残った実施記録を消す（ppNext は実施記録でも補正するため）
 // A) auto当日 → 表示は当日実施タイプ(push)を維持（last.type=pullの逆）
 setPP([{id:1,type:'push',date:'2026-07-01',by:'staff'},{id:2,type:'pull',date:TODAY,by:'auto'}]);
 ok('auto当日: ppNextは当日実施タイプpushを凍結',ppNext()==='push');
@@ -166,5 +167,49 @@ ok('auto当日: 次ウエイト日は当日維持(isToday)',!!wdAuto&&wdAuto.isT
 setPP([{id:1,type:'push',date:'2026-07-01',by:'staff'},{id:2,type:'pull',date:TODAY,by:'staff'}]);
 var wdMan=ppNextWeightDay();
 ok('手動flip当日: 次ウエイト日は翌回へ前進(isToday=false)',!!wdMan&&wdMan.isToday===false&&wdMan.date===TOMORROW);
+
+print('--- カレンダーにウエイト予定が無い日（本番 2026-09 の漏れ） ---');
+var DA=function(n){var d=new Date();d.setDate(d.getDate()-n);return toDateStr(d);};
+// ppAutoFlip: 予定なし → PUSH/PULL メニューを2人以上が実施した時だけ確定
+D.cal=[];D.tlog=[];
+setPP([{id:1,type:'pull',date:'2026-08-31',by:'auto'}]);
+ppAutoFlip(teamLog({menuId:104}));drain();
+ok('予定なし・1人目の PULL 実施 → まだ確定しない',ppNow().length===1);
+D.tlog=[{id:'x1',pid:2,menuId:104,date:TODAY}];
+ppAutoFlip(teamLog({menuId:104}));drain();
+var n1=ppNow();
+ok('予定なし・2人目の PULL 実施 → 確定（次は PUSH）',n1.length===2&&n1[1].type==='push'&&n1[1].by==='auto');
+setPP([{id:1,type:'pull',date:'2026-08-31',by:'auto'}]);
+ppAutoFlip(teamLog({menuId:102}));drain();
+ok('予定なし・PUSH/PULL 以外のメニュー → 確定しない',ppNow().length===1);
+D.cal=[{id:1,date:TODAY,type:'off'}];
+ppAutoFlip(teamLog({menuId:104}));drain();
+ok('オフ日 → 確定しない',ppNow().length===1);
+D.cal=[];D.tlog=[];
+// ppNext: 自動確定が漏れた日を実施記録で補正（本番の再現: 8/31 auto(次PULL)→9/1 PULL・9/3 PUSH(24人+PULL1人)・9/14 PULL）
+setPP([{id:1,type:'push',date:'2026-08-28',by:'auto'},{id:2,type:'pull',date:DA(15),by:'auto'}]);
+D.tlog=[];
+[1,2,3].forEach(function(p){D.tlog.push({id:'a'+p,pid:p,menuId:104,date:DA(14)});});
+[1,2,3,4].forEach(function(p){D.tlog.push({id:'b'+p,pid:p,menuId:101,date:DA(12)});});
+D.tlog.push({id:'b9',pid:9,menuId:104,date:DA(12)});
+[1,2].forEach(function(p){D.tlog.push({id:'c'+p,pid:p,menuId:104,date:DA(1)});});
+ok('補正: 最後の実施が昨日の PULL → 今日は PUSH',ppNext()==='push');
+var cardF=ppCardHtml(false);
+ok('補正: カードの「前回」は実施記録の PULL',cardF.indexOf('前回: PULL')>=0&&cardF.indexOf('実施記録')>=0);
+D.tlog=D.tlog.filter(function(l){return l.date!==DA(1);});
+ok('補正: 最後が PUSH(多数)の日 → 次は PULL（同日の少数 PULL は無視）',ppNext()==='pull');
+D.tlog.push({id:'s1',pid:1,menuId:101,date:DA(0)});
+ok('予定なしで今日1人だけ → 数えない（直前の日で判定）',ppNext()==='pull');
+D.tlog.push({id:'s2',pid:2,menuId:101,date:DA(0)});
+ok('今日2人が PUSH を実施（未確定）→ 今日は PUSH のまま',ppNext()==='push');
+D.tlog=[{id:'k1',pid:1,menuId:104,date:DA(1),absent:true},{id:'k2',pid:2,menuId:104,date:DA(1),kind:'self'},{id:'k3',pid:3,menuId:104,date:DA(1)}];
+ok('欠席・自主トレは数えない',ppNext()==='pull');
+D.cal=[{id:1,date:DA(1),type:'weight'}];
+ok('予定のある日は1人でも数える',ppNext()==='push');
+D.cal=[];
+setPP([{id:1,type:'push',date:'2026-08-28',by:'auto'},{id:2,type:'pull',date:DA(1),by:'staff'}]);
+D.tlog=[{id:'m1',pid:1,menuId:104,date:DA(1)},{id:'m2',pid:2,menuId:104,date:DA(1)}];
+ok('スタッフの手動flipは同じ日の実施記録より優先',ppNext()==='pull');
+D.tlog=[];D.cal=[{id:1,date:TODAY,type:'weight'}];
 
 if(__fail===0)print('ALL PP-AUTO TESTS PASSED');else print(__fail+' TESTS FAILED');

@@ -72,7 +72,7 @@ D.ann=[{id:1,date:TODAY,text:'連絡',targetPid:1,readBy:[]}]; // ベルバッ�
 T.home();
 var hh=__els['main'].innerHTML;
 ok('ヒーローkickがTODAY: PUSH DAY',has(hh,'TODAY: PUSH DAY'));
-ok("ヒーローにgo('training')導線",has(hh,'hero tex-noise rv" onclick="go(\'training\')"'));
+ok("ヒーローは今日のメニューの入力へ直行(startTraining)",has(hh,'hero tex-noise rv" onclick="startTraining(\'101\')"'));
 ok('ベルバッジはstopPropagationでマイページ維持',has(hh,'event.stopPropagation();go(\'mypage\')'));
 // P8b: ppカードはホームからトレーニングタブへ移設
 ok('ppカードはホームに出ない(P8b)',!has(hh,'次のウエイト'));
@@ -99,5 +99,19 @@ subView=null;
 T.training();
 ok('pp空: ppカードなし',!has(__els['main'].innerHTML,'次のウエイト'));
 subView=null;curTab='home';
+
+print('--- タップでトレーニング入力へ（ppカード） ---');
+D.pp=[{id:1,type:'push',date:'2026-07-04',by:'staff'}];D.cal=[{id:1,date:TODAY,type:'practice'}];D.tlog=[];
+subView=null;curTab='training';T.training();
+th=__els['main'].innerHTML;
+ok('ppカード（非weight日）はタップで PUSH メニューの startTraining',has(th,'role="button" style="cursor:pointer" onclick="startTraining(\'101\')"')&&has(th,'「PUSHプログラム」を記録する'));
+var savedM=D.tmenu;D.tmenu=[{id:103,name:'汎用メニュー',scope:'all',exercises:[]}];
+subView=null;T.training();
+ok('スロットメニューが無ければタップ導線なし（カードだけ）',has(__els['main'].innerHTML,'次のウエイト')&&!has(__els['main'].innerHTML,'role="button" style="cursor:pointer" onclick="startTraining'));
+D.tmenu=savedM;
+D.cal=[{id:1,date:TODAY,type:'weight'}];D.tmenu=[{id:101,name:'他人専用PUSH',scope:99,ptype:'push',exercises:[]}];
+T.home();
+ok('ヒーロー: 配布対象外のメニューなら従来のトレーニングタブへ',has(__els['main'].innerHTML,'hero tex-noise rv" onclick="go(\'training\')"'));
+D.tmenu=savedM;subView=null;curTab='home';
 
 if(__fail===0)print('ALL TODAY-PROG TESTS PASSED');else print(__fail+' TESTS FAILED');

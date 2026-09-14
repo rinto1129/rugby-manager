@@ -1211,9 +1211,33 @@ function doEditInjComment(cid,iid,role){
 }
 function fmt(d){return d?d.replace(/-/g,'/'):'-';}
 // ===== ウエイトPUSH/PULL交互管理（pp）＝チーム全員共通・グローバル1列 =====
+// pp の最後の記録より後に PUSH/PULL メニュー（tmenu.ptype）が実施された最新の日とその種類（tlog からの追加読み・書き込みなし）。
+// 自動確定が漏れた日（カレンダーにウエイト予定が無い等）があっても表示を実施記録に合わせる。
+// その日の実施人数: カレンダーにその日のウエイト予定があれば1人以上、無ければ2人以上（1人の自主消化で全員の表示を変えない）。同日に両方あれば多い方・同数の日は数えない
+function ppSlotDoneAfter(after){
+  var slot={};(Array.isArray(D.tmenu)?D.tmenu:[]).forEach(function(m){if(m&&(m.ptype==='push'||m.ptype==='pull'))slot[String(m.id)]=m.ptype;});
+  if(!Object.keys(slot).length)return null;
+  var today=todayStr(),byDate={};
+  (Array.isArray(D.tlog)?D.tlog:[]).forEach(function(l){
+    if(!l||l.absent||l.kind==='self'||typeof l.date!=='string'||!(l.date>String(after||''))||l.date>today)return;
+    var t=slot[String(l.menuId)];if(!t)return;
+    var d=byDate[l.date]=byDate[l.date]||{push:{},pull:{}};d[t][String(l.pid)]=1;
+  });
+  var ds=Object.keys(byDate).sort();
+  for(var i=ds.length-1;i>=0;i--){
+    var c=byDate[ds[i]],np=Object.keys(c.push).length,nl=Object.keys(c.pull).length;
+    var need=(Array.isArray(D.cal)?D.cal:[]).some(function(e){return e&&e.type==='weight'&&e.date===ds[i];})?1:2;
+    if(np===nl||Math.max(np,nl)<need)continue;
+    return {date:ds[i],type:np>nl?'push':'pull'};
+  }
+  return null;
+}
 function ppNext(){
   var a=Array.isArray(D.pp)?D.pp:[]; if(!a.length)return null;
   var last=a[a.length-1]; var t=last&&last.type; if(t!=='push'&&t!=='pull')return null;
+  // pp の後に実施記録があればそれに従う（当日なら当日の種類・過去日なら反転）。スタッフの手動flip/開始は同日以前の実施記録より優先
+  var sd=ppSlotDoneAfter(last.date);
+  if(sd)return sd.date===todayStr()?sd.type:(sd.type==='push'?'pull':'push');
   // 当日の自動確定(by:auto)は表示上まだ当日実施タイプを見せ、翌日から反転（日跨ぎ対応）。手動flipは即時反映。
   if(last.by==='auto'&&last.date===todayStr())return t==='push'?'pull':'push';
   return t;
@@ -1253,6 +1277,8 @@ function ppCardHtml(showCtrl){
   var byLabel=lastRec.by==='trainer'?'トレーナー':lastRec.by==='auto'?'自動確定':'スタッフ';
   // 先頭1件=ppStartの開始記録。2件目以降の末尾は必ずflip記録＝「直前に実施済みになった側」はlastRec.typeの逆
   var metaTxt=D.pp.length>1?'前回: '+(lastRec.type==='push'?'PULL':'PUSH')+' '+ppDateLabel(lastRec.date)+'（'+byLabel+'）':'開始: '+ppDateLabel(lastRec.date)+'（'+byLabel+'）';
+  var sdone=ppSlotDoneAfter(lastRec.date);
+  if(sdone&&sdone.date!==todayStr())metaTxt='前回: '+sdone.type.toUpperCase()+' '+ppDateLabel(sdone.date)+'（実施記録）';
   var todayStrong=(wd&&wd.isToday)?'<div style="font-size:12px;font-weight:700;color:'+color+';margin-bottom:4px">今日は'+(isPush?'PUSH':'PULL')+'の日！</div>':'';
   var borderStyle=(wd&&wd.isToday)?'border:2px solid '+color+';':'';
   var ctrlHtml='';

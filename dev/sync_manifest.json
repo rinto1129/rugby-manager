@@ -1486,6 +1486,14 @@
         "staff"
       ],
       "kind": "function"
+    },
+    "ppSlotDoneAfter": {
+      "files": [
+        "player",
+        "staff",
+        "trainer"
+      ],
+      "kind": "function"
     }
   },
   "variant": {

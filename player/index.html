@@ -1781,9 +1781,33 @@ function markInjNotifRead(iid){
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 // ===== ウエイトPUSH/PULL交互管理（pp）＝チーム全員共通・グローバル1列（playerは表示のみ） =====
+// pp の最後の記録より後に PUSH/PULL メニュー（tmenu.ptype）が実施された最新の日とその種類（tlog からの追加読み・書き込みなし）。
+// 自動確定が漏れた日（カレンダーにウエイト予定が無い等）があっても表示を実施記録に合わせる。
+// その日の実施人数: カレンダーにその日のウエイト予定があれば1人以上、無ければ2人以上（1人の自主消化で全員の表示を変えない）。同日に両方あれば多い方・同数の日は数えない
+function ppSlotDoneAfter(after){
+  var slot={};(Array.isArray(D.tmenu)?D.tmenu:[]).forEach(function(m){if(m&&(m.ptype==='push'||m.ptype==='pull'))slot[String(m.id)]=m.ptype;});
+  if(!Object.keys(slot).length)return null;
+  var today=todayStr(),byDate={};
+  (Array.isArray(D.tlog)?D.tlog:[]).forEach(function(l){
+    if(!l||l.absent||l.kind==='self'||typeof l.date!=='string'||!(l.date>String(after||''))||l.date>today)return;
+    var t=slot[String(l.menuId)];if(!t)return;
+    var d=byDate[l.date]=byDate[l.date]||{push:{},pull:{}};d[t][String(l.pid)]=1;
+  });
+  var ds=Object.keys(byDate).sort();
+  for(var i=ds.length-1;i>=0;i--){
+    var c=byDate[ds[i]],np=Object.keys(c.push).length,nl=Object.keys(c.pull).length;
+    var need=(Array.isArray(D.cal)?D.cal:[]).some(function(e){return e&&e.type==='weight'&&e.date===ds[i];})?1:2;
+    if(np===nl||Math.max(np,nl)<need)continue;
+    return {date:ds[i],type:np>nl?'push':'pull'};
+  }
+  return null;
+}
 function ppNext(){
   var a=Array.isArray(D.pp)?D.pp:[]; if(!a.length)return null;
   var last=a[a.length-1]; var t=last&&last.type; if(t!=='push'&&t!=='pull')return null;
+  // pp の後に実施記録があればそれに従う（当日なら当日の種類・過去日なら反転）。スタッフの手動flip/開始は同日以前の実施記録より優先
+  var sd=ppSlotDoneAfter(last.date);
+  if(sd)return sd.date===todayStr()?sd.type:(sd.type==='push'?'pull':'push');
   // 当日の自動確定(by:auto)は表示上まだ当日実施タイプを見せ、翌日から反転（日跨ぎ対応）。手動flipは即時反映。
   if(last.by==='auto'&&last.date===todayStr())return t==='push'?'pull':'push';
   return t;
@@ -1822,6 +1846,8 @@ function ppCardHtml(showCtrl){
   var byLabel=lastRec.by==='trainer'?'トレーナー':lastRec.by==='auto'?'自動確定':'スタッフ';
   // 先頭1件=ppStartの開始記録。2件目以降の末尾は必ずflip記録＝「直前に実施済みになった側」はlastRec.typeの逆
   var metaTxt=D.pp.length>1?'前回: '+(lastRec.type==='push'?'PULL':'PUSH')+' '+ppDateLabel(lastRec.date)+'（'+byLabel+'）':'開始: '+ppDateLabel(lastRec.date)+'（'+byLabel+'）';
+  var sdone=ppSlotDoneAfter(lastRec.date);
+  if(sdone&&sdone.date!==todayStr())metaTxt='前回: '+sdone.type.toUpperCase()+' '+ppDateLabel(sdone.date)+'（実施記録）';
   var todayStrong=(wd&&wd.isToday)?'<div style="font-size:12px;font-weight:700;color:'+color+';margin-bottom:4px">今日は'+(isPush?'PUSH':'PULL')+'の日！</div>':'';
   var borderStyle=(wd&&wd.isToday)?'border:2px solid '+color+';':'';
   var ctrlHtml='';
@@ -1849,7 +1875,16 @@ function ppAutoFlip(log){
   var mn=(D.tmenu||[]).find(function(x){return idEq(x.id,log.menuId);});
   if(!mn||mn.scope!=='all')return;
   if(!Array.isArray(D.pp)||!D.pp.length)return;
-  if(!(D.cal||[]).some(function(e){return e&&e.type==='weight'&&e.date===today;}))return; // オフ日に1人が団体メニューを消化しただけで反転させない
+  // カレンダーにウエイト予定がある日は従来どおり。無い日（予定の未登録）は PUSH/PULL メニュー（ptype）の実施だけを合図にし、
+  // オフ日でなく当日そのメニューを2人以上が実施した時に確定する（1人の自主消化で全員の表示を反転させない）
+  var weightCal=(D.cal||[]).some(function(e){return e&&e.type==='weight'&&e.date===today;});
+  if(!weightCal){
+    if(mn.ptype!=='push'&&mn.ptype!=='pull')return;
+    if((D.cal||[]).some(function(e){return e&&e.type==='off'&&e.date===today;}))return;
+    var pids={};pids[String(log.pid)]=1;
+    (Array.isArray(D.tlog)?D.tlog:[]).forEach(function(l){if(l&&!l.absent&&l.kind!=='self'&&l.date===today&&idEq(l.menuId,mn.id))pids[String(l.pid)]=1;});
+    if(Object.keys(pids).length<2)return;
+  }
   svSafeUpdate('pp',function(latest){
     if(!Array.isArray(latest)||!latest.length)return latest;
     var last=latest[latest.length-1];
@@ -2465,7 +2500,8 @@ home:function(){
     else kick='FUKUOKA UNIV. RFC';
     var pnum=POS_NUM[me.position]||'';
     // 「TODAY: PUSH DAY」等のウエイト日ヒーローはタップでトレーニング画面へ直行、MATCH DAYは試合日チェックへ直行（ベルバッジはstopPropagationでマイページ維持）
-    var heroTap=kick.indexOf('TODAY:')===0?' onclick="go(\'training\')" style="cursor:pointer"':(kick==='MATCH DAY'?' onclick="showMatchForm(null,\'home\')" style="cursor:pointer"':'');
+    var heroSm=kick.indexOf('TODAY:')===0?ppMySlotMenu(ppNext()):null; // 今日の PUSH/PULL メニューがあればその入力へ直行
+    var heroTap=kick.indexOf('TODAY:')===0?(heroSm?' onclick="startTraining(\''+String(heroSm.id).replace(/[^0-9A-Za-z_-]/g,'')+'\')" style="cursor:pointer"':' onclick="go(\'training\')" style="cursor:pointer"'):(kick==='MATCH DAY'?' onclick="showMatchForm(null,\'home\')" style="cursor:pointer"':'');
     h+='<div class="hero tex-noise rv"'+heroTap+'>'+
       (pnum?'<span class="ghost-num" aria-hidden="true">'+pnum.split('·')[0]+'</span>':'')+
       '<div style="display:flex;align-items:center;gap:12px">'+avH(me,44)+
@@ -5699,6 +5735,20 @@ function getMyDisabledEx(){
   return (me&&me.disabledEx)?me.disabledEx:[];
 }
 
+// 次の PUSH/PULL のメニュー（自分に配布されているもの）。無ければ null
+function ppMySlotMenu(type){
+  if(type!=='push'&&type!=='pull')return null;
+  var sm=getSlotMenu(type);if(!sm)return null;
+  return getMyMenus().some(function(x){return idEq(x.id,sm.id);})?sm:null;
+}
+// 自動表示の PUSH/PULL カードをタップでそのメニューのトレーニング入力（出欠確認→実施）へ。メニューが無ければそのまま
+function ppCardTapWrap(cardH,type){
+  var sm=ppMySlotMenu(type);if(!sm||!cardH)return cardH||'';
+  var sid=String(sm.id).replace(/[^0-9A-Za-z_-]/g,'');
+  var hint='<div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-top:8px;display:flex;align-items:center;gap:4px">'+ic('i-dumbbell',12)+' タップして「'+escapeHtml(sm.name)+'」を記録する'+ic('i-chevron-r',12)+'</div>';
+  var body=cardH.slice(-6)==='</div>'?cardH.slice(0,-6)+hint+'</div>':cardH+hint;
+  return '<div role="button" style="cursor:pointer" onclick="startTraining(\''+sid+'\')">'+body+'</div>';
+}
 T.training=function(){
   subView=null;dCA();
   var menus=getMyMenus();
@@ -5736,7 +5786,7 @@ T.training=function(){
 
   // ppカード（P8b: ホームから移設。表示のみ＝flip/undoはstaff集約・実施時はppAutoFlipが自動送り）
   // 「今日のプログラム」カードが出ている日は同じ情報の二重掲示になるため出さない
-  if(!tpShown){var ppCardH=ppCardHtml(false);if(ppCardH)h+=ppCardH;}
+  if(!tpShown){var ppCardH=ppCardHtml(false);if(ppCardH)h+=ppCardTapWrap(ppCardH,tpType);}
 
   // 自分のグループ（午前/午後・強度班。Phase 7・未設定時は非表示）
   h+=myGroupCardHtml();
