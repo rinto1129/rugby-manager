@@ -595,6 +595,20 @@ function big3(r){return(r.squat||0)+(r.bench||0)+(r.deadlift||0);}
 function getLatest(pid,f){var rs=D.ph.filter(function(x){return idEq(x.pid,pid)&&x[f]!=null&&((f!=='bronco'&&f!=='downbronco')||x[f]>0);});if(!rs.length)return null;rs.sort(function(a,b){var d=(b.date||'').localeCompare(a.date||'');if(d)return d;var ia=String(b.inputAt||'').localeCompare(String(a.inputAt||''));if(ia)return ia;return String(b.id||'').localeCompare(String(a.id||''));});return rs[0][f];}
 function getBest(pid,f){var rs=D.ph.filter(function(x){return idEq(x.pid,pid)&&x[f]!=null&&((f!=='bronco'&&f!=='downbronco')||x[f]>0);});if(!rs.length)return null;return(f==='bronco'||f==='downbronco')?Math.min.apply(null,rs.map(function(x){return x[f];})):Math.max.apply(null,rs.map(function(x){return x[f];}));}
 function getBestBIG3(pid){var sq=getBest(pid,'squat')||0;var bp=getBest(pid,'bench')||0;var dl=getBest(pid,'deadlift')||0;return(sq||bp||dl)?(sq+bp+dl):null;}
+// 測定会の特設ページ（項目制）の読み系ヘルパー（player/staff/coach identical。書き系は player/staff のみ）
+// 項目カタログ（ph の固定列と1:1・player/staff/coach identical）。unit:'kg'|'time'（time=秒・小さいほど良い）
+var PH_ITEMS=[{k:'squat',label:'スクワット',short:'SQ',unit:'kg'},{k:'bench',label:'ベンチプレス',short:'BP',unit:'kg'},{k:'deadlift',label:'デッドリフト',short:'DL',unit:'kg'},{k:'chinning',label:'チンニング',short:'CN',unit:'kg'},{k:'clean',label:'クリーン',short:'CL',unit:'kg'},{k:'bronco',label:'ブロンコ',short:'BR',unit:'time'},{k:'downbronco',label:'ダウンブロンコ',short:'DB',unit:'time'}];
+function phItem(k){return PH_ITEMS.filter(function(x){return x.k===k;})[0]||null;}
+// 測定会の項目リスト（項目制の会だけ非空。カタログ外・重複は捨てる）。items 非空＝項目制（特設ページ・提出）
+function msessItems(s){
+  if(!s||!Array.isArray(s.items))return [];
+  var out=[];s.items.forEach(function(k){if(phItem(k)&&out.indexOf(k)<0)out.push(k);});
+  return out;
+}
+// 記録の項目 k に値があるか（kg は >0・time は秒 >0。0/null/未定義は無し）
+function phHasVal(r,k){var v=r?r[k]:null;return v!=null&&v>0;}
+// 項目ごとの測定日（項目制の記録は at[k]、無ければ記録の日付）
+function phDateOf(r,k){return (r&&r.at&&r.at[k])||(r&&r.date)||null;}
 function broncoFmt(sec){if(!sec&&sec!==0)return'-';var m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+String(s).padStart(2,'0')+'秒';}
 // フィットネス記録の時間表示: タイム記録(timeSec)なら分秒、従来の分記録(minutes)なら「N分」。無ければ空。3ファイル同一。
 function fitTimeStr(f){return f.timeSec!=null?broncoFmt(f.timeSec):(f.minutes!=null?f.minutes+'分':'');}

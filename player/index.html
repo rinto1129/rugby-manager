@@ -1355,6 +1355,7 @@ function getCurrentMSess(typeOpt){
 // 測定会への記録帰属判定（msessStatus と computeAllBadges で共通化・帰属ドリフト防止）。
 function phInMSess(r,s){
   if(idEq(r.msessId,s.id))return true;
+  if(msessItems(s).length)return false; // 項目制の会は msessId で紐づいた記録だけ（期間内の素の記録＝単発のブロンコ等を引き込まない。統合は特設ページ化の時点＝非項目制の判定で行う）
   return (r.msessId==null||r.msessId==='')&&r.date>=s.startDate&&r.date<=s.endDate;
 }
 // ブロンコ系判定は msessType(s)==='bronco'（mtype>fromCalType>名前 の順にフォールバック）。
@@ -1366,9 +1367,11 @@ function msessType(s){
   return'phys';
 }
 function msessStatus(s){
-  var isBronco=msessType(s)==='bronco';
+  var isBronco=msessType(s)==='bronco',ks=msessItems(s),itemMode=ks.length>0;
   function inSess(r){return phInMSess(r,s);}
-  var recs=(D.ph||[]).filter(function(r){return inSess(r)&&(!isBronco||r.bronco!=null);});
+  // 項目制の会: その会の項目に値か免除が1つ以上ある記録＝入力済み（非項目制は従来どおり。ブロンコ会は bronco!=null）
+  function hasAny(r){return ks.some(function(k){return phHasVal(r,k)||!!(r.ex&&r.ex[k]);});}
+  var recs=(D.ph||[]).filter(function(r){return inSess(r)&&(itemMode?hasAny(r):(!isBronco||r.bronco!=null));});
   var donePids=[...new Set(recs.map(function(r){return r.pid;}))];
   var isDone=function(pid){return donePids.some(function(d){return idEq(d,pid);});};
   var seen={},skips=[];
@@ -1378,7 +1381,116 @@ function msessStatus(s){
   });
   var skippedPids=skips.map(function(sk){return sk.pid;});
   var missedPids=(D.p||[]).filter(function(p){return!isDone(p.id)&&!skippedPids.some(function(sk){return idEq(sk,p.id);});}).map(function(p){return p.id;});
-  return{isBronco:isBronco,recs:recs,skips:skips,donePids:donePids,skippedPids:skippedPids,missedPids:missedPids};
+  var out={isBronco:isBronco,recs:recs,skips:skips,donePids:donePids,skippedPids:skippedPids,missedPids:missedPids};
+  // 項目制だけ提出状態を追加（done/skip/missed の意味は変えない＝皆勤賞・件数・督促は従来のまま）
+  if(itemMode){
+    out.items=ks;
+    out.submittedPids=[...new Set(recs.filter(function(r){return !!r.submitted;}).map(function(r){return r.pid;}))];
+    out.inProgressPids=donePids.filter(function(pid){return !out.submittedPids.some(function(x){return idEq(x,pid);});});
+  }
+  return out;
+}
+
+// ===== 測定会の特設ページ（項目制・プラン=dev/audit/PLAN_msess_page.md）共通ヘルパー =====
+// 項目カタログ（ph の固定列と1:1・player/staff/coach identical）。unit:'kg'|'time'（time=秒・小さいほど良い）
+var PH_ITEMS=[{k:'squat',label:'スクワット',short:'SQ',unit:'kg'},{k:'bench',label:'ベンチプレス',short:'BP',unit:'kg'},{k:'deadlift',label:'デッドリフト',short:'DL',unit:'kg'},{k:'chinning',label:'チンニング',short:'CN',unit:'kg'},{k:'clean',label:'クリーン',short:'CL',unit:'kg'},{k:'bronco',label:'ブロンコ',short:'BR',unit:'time'},{k:'downbronco',label:'ダウンブロンコ',short:'DB',unit:'time'}];
+function phItem(k){return PH_ITEMS.filter(function(x){return x.k===k;})[0]||null;}
+// 測定会の項目リスト（項目制の会だけ非空。カタログ外・重複は捨てる）。items 非空＝項目制（特設ページ・提出）
+function msessItems(s){
+  if(!s||!Array.isArray(s.items))return [];
+  var out=[];s.items.forEach(function(k){if(phItem(k)&&out.indexOf(k)<0)out.push(k);});
+  return out;
+}
+// 記録の項目 k に値があるか（kg は >0・time は秒 >0。0/null/未定義は無し）
+function phHasVal(r,k){var v=r?r[k]:null;return v!=null&&v>0;}
+// 項目ごとの測定日（項目制の記録は at[k]、無ければ記録の日付）
+function phDateOf(r,k){return (r&&r.at&&r.at[k])||(r&&r.date)||null;}
+// その会に属する選手の記録（全件・inputAt 降順→date 降順→id 降順）
+function phSessRecs(s,pid){
+  return (D.ph||[]).filter(function(r){return !!r&&idEq(r.pid,pid)&&phInMSess(r,s);}).sort(function(a,b){return String(b.inputAt||'').localeCompare(String(a.inputAt||''))||String(b.date||'').localeCompare(String(a.date||''))||String(b.id).localeCompare(String(a.id));});
+}
+function phSessRec(s,pid){return phSessRecs(s,pid)[0]||null;}
+// 進捗 → {items:[{k,val,at,ex,by,done}],doneN,total,complete,submitted,unmerged,rec,recs}。done=値あり or 免除。unmerged=記録が2件以上（統合前）
+function phSessProgress(s,pid){
+  var ks=msessItems(s),recs=phSessRecs(s,pid),r=recs[0]||null;
+  var items=ks.map(function(k){var has=phHasVal(r,k),ex=(r&&r.ex&&r.ex[k])||null;return {k:k,val:has?r[k]:null,at:has?phDateOf(r,k):null,ex:ex,by:(has&&r.by&&r.by[k])||null,done:has||!!ex};});
+  var doneN=items.filter(function(x){return x.done;}).length;
+  return {items:items,doneN:doneN,total:ks.length,complete:ks.length>0&&doneN===ks.length,submitted:!!(r&&r.submitted),unmerged:recs.length>1,rec:r,recs:recs};
+}
+// 「項目制の会が開いている」＝getCurrentMSess と同じ判定（未締切・開始日〜終了日+14日の猶予）で items 非空の会。期間内優先→開始日降順。無ければ null
+function msessOpenItemsAll(){
+  var today=todayStr();
+  var c=(D.msess||[]).filter(function(s){
+    if(!s||s.closed||!s.startDate||!s.endDate||!msessItems(s).length)return false;
+    if(s.startDate>today)return false;
+    return today<=toDateStr(new Date(new Date(s.endDate).getTime()+14*86400000));
+  });
+  c.sort(function(a,b){var ai=today<=a.endDate?1:0,bi=today<=b.endDate?1:0;if(ai!==bi)return bi-ai;return (b.startDate||'').localeCompare(a.startDate||'');});
+  return c;
+}
+function msessOpenItems(){return msessOpenItemsAll()[0]||null;}
+// keys（項目キーの配列）のどれかを測る開いている会。keys が空/未指定なら先頭。無ければ null（複数の会が同時に開いていても、測る項目に合う会へ振り分ける）
+function msessOpenFor(keys){
+  var all=msessOpenItemsAll();if(!all.length)return null;
+  if(!keys||!keys.length)return all[0];
+  return all.filter(function(s){var ks=msessItems(s);return keys.some(function(k){return ks.indexOf(k)>=0;});})[0]||null;
+}
+// latest 配列内のその会・その選手の記録（inputAt 最新の1件）。無ければ null
+function phSessFind(latest,s,pid){
+  var mine=(latest||[]).filter(function(r){return !!r&&idEq(r.pid,pid)&&phInMSess(r,s);});
+  mine.sort(function(a,b){return String(b.inputAt||'').localeCompare(String(a.inputAt||''))||String(b.date||'').localeCompare(String(a.date||''))||String(b.id).localeCompare(String(a.id));});
+  return mine[0]||null;
+}
+// 会の全項目に値か免除があるか（提出できる条件）
+function phSessComplete(r,ks){return !!r&&ks.length>0&&ks.every(function(k){return phHasVal(r,k)||!!(r.ex&&r.ex[k]);});}
+// 項目制の記録への書き込み（純粋: latest と o だけで結果が決まる＝svSafeUpdate の updateFn 内で再実行可）。
+// o={pid,sess,newId,now,date,by:'player'|'staff',set:{squat:150,…}=値を置き換える項目だけ（null/''/0 は値の削除）,ex:{bench:'理由'|null}=免除の設定/解除だけ}
+// 対象=その会に属する記録（複数なら inputAt 最新の1件。未統合は呼び出し側で止める）。無ければ newId で新規（date は会の期間内にクランプ＝PB判定の過去プールに自分が入らない）。
+// 値を入れた項目は免除を外し at/by を更新。免除した項目は値を消す。会の items 外のキーは無視（o.any=true ならカタログ内は保存）。
+// submitted は付けないが、値を消して未完了になったら外す（提出済み表示と督促の食い違い防止）。書くものが無ければ空の記録は作らない。editedAt は付けない（項目ごとの at/by が履歴）
+function phSessApply(latest,o){
+  var s=o.sess,ks=msessItems(s);
+  var r=phSessFind(latest,s,o.pid);
+  var d=String(o.date||'');
+  var okKey=function(k){return ks.indexOf(k)>=0||!!(o.any&&phItem(k));}; // any=会の項目外でもカタログ内なら保存（単発/一括入力の値を捨てない。進捗には数えない）
+  if(!r){
+    var will=Object.keys(o.set||{}).some(function(k){return okKey(k)&&parseFloat(o.set[k])>0;})||Object.keys(o.ex||{}).some(function(k){return ks.indexOf(k)>=0&&!!o.ex[k];});
+    if(!will)return latest;
+    var cd=d<s.startDate?s.startDate:(d>s.endDate?s.endDate:d);
+    r={id:o.newId,pid:o.pid,date:cd,squat:null,bench:null,deadlift:null,chinning:null,clean:null,bronco:null,downbronco:null,msessId:s.id,inputAt:o.now};
+    latest.push(r);
+  }
+  if(!r.at||typeof r.at!=='object'||Array.isArray(r.at))r.at={};
+  if(!r.by||typeof r.by!=='object'||Array.isArray(r.by))r.by={};
+  Object.keys(o.set||{}).forEach(function(k){
+    if(!okKey(k))return;
+    var v=parseFloat(o.set[k]);
+    if(!(v>0)){r[k]=null;delete r.at[k];delete r.by[k];return;}
+    r[k]=v;r.at[k]=d;r.by[k]=o.by==='player'?'player':'staff';
+    if(r.ex)delete r.ex[k];
+  });
+  Object.keys(o.ex||{}).forEach(function(k){
+    if(ks.indexOf(k)<0)return;
+    var reason=o.ex[k];
+    if(reason){r.ex=r.ex||{};r.ex[k]=String(reason);r[k]=null;delete r.at[k];delete r.by[k];}
+    else if(r.ex)delete r.ex[k];
+  });
+  if(r.ex&&!Object.keys(r.ex).length)delete r.ex;
+  if(r.submitted&&!phSessComplete(r,ks)){delete r.submitted;delete r.submittedAt;delete r.submittedBy;}
+  r.msessId=s.id;
+  r.inputAt=o.now;
+  return latest;
+}
+// 提出/取消（純粋）。on=true は全項目に値か免除がある時だけ立てる → {ok,missing:[項目キー]}。o={pid,sess,on,now,by}
+function phSessSubmit(latest,o){
+  var s=o.sess,ks=msessItems(s),r=phSessFind(latest,s,o.pid);
+  if(!r)return {ok:false,missing:ks.slice()};
+  if(o.on){
+    var missing=ks.filter(function(k){return !phHasVal(r,k)&&!(r.ex&&r.ex[k]);});
+    if(missing.length)return {ok:false,missing:missing};
+    r.submitted=true;r.submittedAt=o.now;r.submittedBy=o.by==='player'?'player':'staff';
+  }else{delete r.submitted;delete r.submittedAt;delete r.submittedBy;}
+  return {ok:true,missing:[]};
 }
 
 // ===== バッジ自動算出エンジン（derived・Firestore保存なし。player/staff md5同期） =====
@@ -1838,7 +1950,7 @@ function broncoRankCardHtml(binf,cfg){
   }else{
     h+='<div class="num" style="font-size:28px;color:var(--text-tertiary)">—</div>'+
       '<div style="margin-top:8px;font-size:12px;color:var(--text-secondary)">ブロンコを記録するとランクが判定されます</div>'+
-      '<button class="btn btn-sm" style="margin-top:6px" onclick="showPhysForm(\'bronco\')">タイムを記録する</button>';
+      '<button class="btn btn-sm" style="margin-top:6px" onclick="physEntry(\'bronco\')">タイムを記録する</button>';
   }
   h+='</div>';
   return h;
@@ -1926,6 +2038,7 @@ function todayTodoHtml(){
     todoItems.push({key:'cond',done:todayDone,label:'コンディション入力',icon:'condition',onclick:"go('condition')"});
   }
   if(isPickup)todoItems.push({key:'bc',done:bcDone,label:'体組成測定（本日対象）',icon:'bodycomp',onclick:"showBCForm()"});
+  mySessTodo().forEach(function(x){todoItems.push(x);}); // 項目制の測定会（開いている会ごと・期間内の日だけ・complete/提出で done）
   // 試合日チェック未入力（当日分は上のevToday分岐で表示済みのため除外・daysAgo>0のみ。onclickはevId版=showMatchForm(evKey,'home')）
   pendingMatchChecks(myPid,todayStr(),3).forEach(function(x){
     if(x.daysAgo===0)return;
@@ -2243,7 +2356,7 @@ function syncRehabTabState(){
 }
 function go(tab){
   if(needsPlayer(tab)&&!myPid){showPlayerSelect();return;}
-  curTab=tab;subView=null;dCA();
+  curTab=tab;subView=null;dCA();window._psOpen=null; // 測定会フォームの「変更」状態はタブ移動で消す
   _navAnim=true; // クラスA遷移演出: 直後のT[tab]()描画のmutationをobserverが消費する
   renderNav(); // 枠の入れ替え（怪我の有無）とハイライトを一度に反映
   T[tab]&&T[tab]();
@@ -2386,7 +2499,9 @@ home:function(){
   }
   // 自分の未入力通知（未締切セッション・測定会当日〜締切/猶予まで。記録なし申告済みなら消える）＝個人向けアラートはtodo直後
   if(myPid){
+    h+=mySessCardHtml(); // 項目制の会: 進行中カード（項目ごとの済/残・入力）。従来のアラートは非項目制の会だけ
     openMSessStatus.forEach(function(o){
+      if(msessItems(o.s).length)return;
       if(!o.st.missedPids.some(function(pid){return idEq(pid,myPid);}))return;
       var isBr=o.st.isBronco;
       h+='<div class="alert-card alert-warn rv" style="margin-bottom:8px;cursor:pointer" onclick="go(\'physical\')">'+ic(isBr?'i-run':'i-chart',15)+' 『'+escapeHtml(o.s.name)+'』の'+(isBr?'ブロンコ':'フィジカル')+'測定が未入力です！ → タップして入力</div>';
@@ -2871,9 +2986,9 @@ physical:function(){
   var lastPhysRec=D.ph.filter(function(r){return r.pid===myPid;}).sort(function(a,b){return b.date.localeCompare(a.date);})[0];
   $m().innerHTML='<button class="btn-back" onclick="go(\'mypage\')">← マイページ</button><div style="font-size:18px;font-weight:600;margin-bottom:14px">フィジカル測定</div>'+
   '<div class="grid2" style="margin-bottom:12px"><div class="mc"><div class="v" style="font-size:16px">'+(bSQ||'-')+'</div><div class="l">SQ Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bBP||'-')+'</div><div class="l">BP Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(bDL||'-')+'</div><div class="l">DL Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(getBest(myPid,'chinning')||'-')+'</div><div class="l">チンニング Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+(getBest(myPid,'clean')||'-')+'</div><div class="l">クリーン Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+broncoFmt(bBR)+'</div><div class="l">Bronco Best</div></div><div class="mc"><div class="v" style="font-size:16px">'+broncoFmt(bDB)+'</div><div class="l">ダウンブロンコ Best</div></div></div>'+
-  '<button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="showPhysForm()">'+ic('i-edit',13)+' 記録を入力する</button>'+
+  '<button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="physEntry()">'+ic('i-edit',13)+' 記録を入力する</button>'+
   (recs.length>=2?'<div class="chart-wrap"><canvas id="ch-ph"></canvas></div>':'')+
-  (recs.length?recs.map(function(r){return'<div class="log-row" style="flex-wrap:wrap;gap:4px"><div style="min-width:60px"><div style="color:var(--text-secondary)">'+fmt(r.date)+'</div>'+(r.inputAt?'<div style="font-size:10px;color:var(--text-secondary);opacity:.7">入力 '+fmtDateTime(r.inputAt)+(r.editedAt?' (修正済)':'')+'</div>':'')+'</div>'+(r.squat?'<span>SQ:'+r.squat+'</span>':'')+(r.bench?'<span>BP:'+r.bench+'</span>':'')+(r.deadlift?'<span>DL:'+r.deadlift+'</span>':'')+(r.chinning?'<span>チンニング:'+r.chinning+'</span>':'')+(r.clean?'<span>クリーン:'+r.clean+'</span>':'')+(r.bronco?'<span style="font-weight:600;color:var(--blue)">Bronco:'+broncoFmt(r.bronco)+'</span>':'')+(r.downbronco?'<span style="font-weight:600;color:var(--purple)">ダウンB:'+broncoFmt(r.downbronco)+'</span>':'')+'<div style="margin-left:auto;display:flex;gap:4px"><button class="btn btn-sm" style="width:auto" onclick="showEditPhysRec('+r.id+')">修正</button><button class="btn btn-sm btn-d" style="width:auto" onclick="delPhysRec('+r.id+')">削除</button></div></div>';}).join(''):'<div class="no">記録なし</div>');
+  (recs.length?recs.map(function(r){return'<div class="log-row" style="flex-wrap:wrap;gap:4px"><div style="min-width:60px"><div style="color:var(--text-secondary)">'+fmt(r.date)+'</div>'+(r.inputAt?'<div style="font-size:10px;color:var(--text-secondary);opacity:.7">入力 '+fmtDateTime(r.inputAt)+(r.editedAt?' (修正済)':'')+'</div>':'')+'</div>'+(r.squat?'<span>SQ:'+r.squat+'</span>':'')+(r.bench?'<span>BP:'+r.bench+'</span>':'')+(r.deadlift?'<span>DL:'+r.deadlift+'</span>':'')+(r.chinning?'<span>チンニング:'+r.chinning+'</span>':'')+(r.clean?'<span>クリーン:'+r.clean+'</span>':'')+(r.bronco?'<span style="font-weight:600;color:var(--blue)">Bronco:'+broncoFmt(r.bronco)+'</span>':'')+(r.downbronco?'<span style="font-weight:600;color:var(--purple)">ダウンB:'+broncoFmt(r.downbronco)+'</span>':'')+'<div style="margin-left:auto;display:flex;gap:4px">'+(function(){var _is=phItemSessOf(r);if(!_is)return '<button class="btn btn-sm" style="width:auto" onclick="showEditPhysRec('+r.id+')">修正</button><button class="btn btn-sm btn-d" style="width:auto" onclick="delPhysRec('+r.id+')">削除</button>';return '<span class="bd bd-b" style="font-size:9px;align-self:center">測定会</span>'+(r.submitted?'<span style="font-size:11px;color:var(--green);font-weight:700;align-self:center">確定</span>':'<button class="btn btn-sm" style="width:auto" onclick="showPhysSessForm(\''+String(_is.id).replace(/[^0-9A-Za-z_-]/g,'')+'\')">測定会で入力</button>');})()+'</div></div>';}).join(''):'<div class="no">記録なし</div>');
   if(recs.length>=2)setTimeout(function(){var s=recs.slice().reverse();var e=document.getElementById('ch-ph');if(!e)return;dC('ph');
     var ctx=e.getContext('2d');
     function grad(c1,c2){var g=ctx.createLinearGradient(0,0,0,220);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;}
@@ -3210,6 +3325,152 @@ function doCondition(btnEl){
 // 統合フォーム（BIG3＋チンニング＋クリーン＋ブロンコ）
 // mode==='bronco' でブロンコ単独入力（マイページのランクカードから）。それ以外は全種目フォーム。
 // 旧 showBroncoForm/showBroncoFormDirect/doBronco はこの mode 統合で撤去（P7d）。保存先は両モードとも 'ph'。
+// ===== 測定会の特設ページ（項目制）選手側（プラン=dev/audit/PLAN_msess_page.md フェーズ4）=====
+// 開いている項目制の会があれば、測定の入力はその会の項目だけを出す showPhysSessForm へ（無ければ従来の showPhysForm）
+// 入力の入口: 測る項目に合う項目制の会が開いていればその会の画面（複数の会が同時に開いていても振り分ける）。無ければ従来フォーム
+function physSessFor(mode){return mode==='bronco'?msessOpenFor(['bronco','downbronco']):(msessOpenFor(['squat','bench','deadlift','chinning','clean'])||msessOpenFor(null));}
+function physEntry(mode){
+  var s=physSessFor(mode);
+  if(s){showPhysSessForm(s.id);return;}
+  showPhysForm(mode);
+}
+// 記録が属する項目制の会（無ければ null）
+function phItemSessOf(r){return r?((D.msess||[]).find(function(s){return msessItems(s).length>0&&phInMSess(r,s);})||null):null;}
+// ホームの進行中カード（項目ごとの済/残・入力ボタン。提出済みは確定表示）。項目制の会が無い／測定なし申告済みなら ''
+function mySessCardHtml(){if(!myPid)return '';return msessOpenItemsAll().map(mySessCardOne).join('');}
+function mySessCardOne(s){
+  var st=msessStatus(s);
+  if(st.skippedPids.some(function(x){return idEq(x,myPid);}))return '';
+  var pg=phSessProgress(s,myPid),today=todayStr();
+  var chips=pg.items.map(function(x){
+    var it=phItem(x.k);
+    var col=x.ex?'var(--amber)':x.done?'var(--green)':'var(--text-tertiary)';
+    return '<span style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid '+col+';color:'+col+'">'+escapeHtml(it.short)+' '+(x.ex?'免除':x.done?(it.unit==='time'?broncoFmt(x.val):x.val):'—')+'</span>';
+  }).join(' ');
+  var inGrace=today>s.endDate;
+  var body;
+  if(pg.submitted)body='<div style="font-size:12px;color:var(--green);font-weight:700;margin-top:6px">'+ic('i-check-c',13,'var(--green)')+' 確定（スタッフ確認済み）</div>';
+  else body='<div style="display:flex;align-items:center;gap:8px;margin-top:8px"><span style="font-size:11px;color:var(--text-secondary)">'+pg.doneN+'/'+pg.total+' 項目'+(pg.complete?'（全項目入力済み・スタッフの確認待ち）':'')+(inGrace?'（測定期間は終了・締切まで入力できます）':'')+'</span><button class="btn btn-sm btn-p" style="margin-left:auto" onclick="showPhysSessForm(\''+String(s.id).replace(/[^0-9A-Za-z_-]/g,'')+'\')">'+ic('i-edit',12)+' '+(pg.doneN?'続きを入力':'入力する')+'</button></div>';
+  return '<div class="card rv" style="margin-bottom:12px;border-left:3px solid '+(pg.submitted?'var(--green)':'var(--maroon)')+'">'+
+    '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="kicker">MEASUREMENT</span><span style="font-size:13px;font-weight:800">'+escapeHtml(s.name)+'</span><span style="font-size:10px;color:var(--text-secondary)">'+fmt(s.startDate)+'〜'+fmt(s.endDate)+'</span></div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">'+chips+'</div>'+body+'</div>';
+}
+// 今日やることの行（開いている会ごと・会の期間内の日だけ。complete または提出で done）。無ければ []
+function mySessTodo(){
+  if(!myPid)return [];
+  var today=todayStr(),out=[];
+  msessOpenItemsAll().forEach(function(s){
+    if(today<s.startDate||today>s.endDate)return;
+    if(msessStatus(s).skippedPids.some(function(x){return idEq(x,myPid);}))return;
+    var pg=phSessProgress(s,myPid);
+    var rest=pg.items.filter(function(x){return !x.done;}).map(function(x){return phItem(x.k).short;});
+    out.push({key:'msess'+s.id,done:pg.complete||pg.submitted,label:'測定会: '+escapeHtml(s.name)+(rest.length?'（残り '+rest.join('・')+'）':'（入力済み）'),icon:'physical',onclick:"showPhysSessForm('"+String(s.id).replace(/[^0-9A-Za-z_-]/g,'')+"')"});
+  });
+  return out;
+}
+// 会の項目だけの入力画面。入力済みの項目は値・測定日・入力者を表示し「変更」で入力欄に切り替える（差分送信＝変えた項目だけ保存）。提出済み・免除は表示のみ
+function showPhysSessForm(sessId){
+  var s=(D.msess||[]).find(function(x){return idEq(x.id,sessId)&&msessItems(x).length>0;});
+  if(!s){showPhysForm();return;}
+  var pg=phSessProgress(s,myPid),today=todayStr();
+  var open=window._psOpen&&window._psOpen.sess===String(s.id)?window._psOpen.keys:{};
+  var ro=pg.submitted;
+  var h='<div style="font-size:18px;font-weight:600;margin:12px 0 4px">'+ic('i-edit',16,'var(--maroon)')+' '+escapeHtml(s.name)+'</div>'+
+    '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">'+fmt(s.startDate)+' 〜 '+fmt(s.endDate)+'。測った項目から順に入力できます。入れた値は保存した瞬間に反映され、全項目がそろったらスタッフが確認して確定します。空欄のままの項目は変わりません（消したい時はスタッフへ）。</div>';
+  if(ro)h+='<div class="alert-card alert-info" style="margin-bottom:12px"><span style="flex:none">'+ic('i-check-c',14)+'</span><span>この測定会の記録は<b>確定済み</b>です（スタッフ確認済み）。変更はスタッフに相談してください。</span></div>';
+  else if(pg.unmerged)h+='<div class="alert-card alert-warn" style="margin-bottom:12px"><span style="flex:none">'+ic('i-warn',14)+'</span><span>この測定会に記録が複数あります。スタッフがまとめるまで、この画面からは入力できません。</span></div>';
+  if(!ro&&!pg.unmerged)h+='<div class="form-box"><div class="form-title">測定日</div><input class="ipt" type="date" id="psf-date" value="'+today+'"></div>';
+  h+='<div class="form-box"><div class="form-title">項目（'+pg.doneN+'/'+pg.total+'）</div>';
+  pg.items.forEach(function(x){
+    var it=phItem(x.k),k=x.k,editable=!ro&&!pg.unmerged&&(!x.done||open[k]);
+    h+='<div style="padding:8px 0;border-bottom:0.5px solid var(--border-tertiary)"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-weight:700;font-size:13px;flex:1">'+escapeHtml(it.label)+(it.unit==='time'?'':'（kg）')+'</span>'+
+      (x.ex?'<span class="bd bd-a" style="font-size:9px">免除</span>':x.done?'<span class="bd bd-g" style="font-size:9px">入力済み</span>':'<span class="bd" style="font-size:9px">未入力</span>')+'</div>';
+    if(x.ex){h+='<div style="font-size:12px;color:var(--text-secondary)">スタッフの設定: '+escapeHtml(x.ex)+'（この項目は測らなくて大丈夫です）</div>';}
+    else if(editable){
+      if(it.unit==='time')h+='<div style="display:flex;align-items:center;gap:8px"><input class="ipt" type="number" id="psf-'+k+'-m" data-orig="'+(x.val>0?x.val:'')+'" placeholder="分" min="0" inputmode="numeric" style="width:80px" value="'+(x.val>0?Math.floor(x.val/60):'')+'"><span style="font-weight:600">分</span><input class="ipt" type="number" id="psf-'+k+'-s" placeholder="秒" min="0" max="59" inputmode="numeric" style="width:80px" value="'+(x.val>0?Math.round(x.val%60):'')+'"><span style="font-weight:600">秒</span></div>';
+      else h+='<input class="ipt" type="number" id="psf-'+k+'" data-orig="'+(x.val>0?x.val:'')+'" inputmode="decimal" step="0.5" placeholder="例: '+(k==='squat'?'150':k==='bench'?'100':k==='deadlift'?'180':'80')+'" value="'+(x.val>0?x.val:'')+'">';
+      if(x.done)h+='<div style="font-size:10px;color:var(--text-secondary);margin-top:3px">今の値: '+(it.unit==='time'?broncoFmt(x.val):x.val+'kg')+'（'+fmt(x.at)+'）。保存すると置き換わります。</div>';
+    }else{
+      h+='<div style="display:flex;align-items:center;gap:8px">'+(x.done?'<span class="num" style="font-size:18px;font-weight:800">'+(it.unit==='time'?broncoFmt(x.val):x.val+'<span style="font-size:11px;font-weight:600"> kg</span>')+'</span><span style="font-size:11px;color:var(--text-secondary)">'+fmt(x.at)+(x.by==='staff'?'・スタッフ入力':'')+'</span>':'<span style="font-size:12px;color:var(--text-tertiary)">未入力（スタッフが確認中）</span>')+
+        (ro||pg.unmerged?'':'<button class="btn btn-sm" style="width:auto;margin-left:auto" onclick="psOpen(\''+String(s.id).replace(/[^0-9A-Za-z_-]/g,'')+'\',\''+k+'\')">変更</button>')+'</div>';
+    }
+    h+='</div>';
+  });
+  h+='</div>';
+  if(!ro&&!pg.unmerged)h+='<button class="btn btn-p" style="width:100%" onclick="doPhysSess(\''+String(s.id).replace(/[^0-9A-Za-z_-]/g,'')+'\',this)">保存する</button>';
+  showSub('<div id="psf-root" data-sess="'+escapeHtml(String(s.id))+'">'+h+'</div>','physical','フィジカルに戻る');
+}
+// 今この会のフォームを表示しているか（psRestore の再描画判定＝別のサブ画面を上書きしない）
+function psShowing(sessId){var e=document.getElementById('psf-root');var v=e&&e.getAttribute?e.getAttribute('data-sess'):null;return v!=null&&String(v)===String(sessId);}
+function psOpen(sessId,k){var o=window._psOpen&&window._psOpen.sess===String(sessId)?window._psOpen:{sess:String(sessId),keys:{}};o.keys[k]=true;window._psOpen=o;showPhysSessForm(sessId);}
+// 保存: 入力欄に値があり、今の値と違う項目だけ phSessApply（by:'player'）。上書きはトーストで元に戻せる。保存後は NO SIDE 結果シート
+function doPhysSess(sessId,btnEl){
+  var s=(D.msess||[]).find(function(x){return idEq(x.id,sessId)&&msessItems(x).length>0;});if(!s)return;
+  var pg=phSessProgress(s,myPid);
+  if(pg.submitted||pg.unmerged){alert(pg.submitted?'確定済みの記録は変更できません。スタッフに相談してください。':'スタッフが記録をまとめるまで入力できません。');return;}
+  function v(id){var e=document.getElementById(id);return e?String(e.value||'').trim():'';}
+  var set={},prevs={};
+  pg.items.forEach(function(x){
+    if(x.ex)return;var it=phItem(x.k),val=null;
+    if(it.unit==='time'){var m=parseInt(v('psf-'+x.k+'-m'))||0,sc=parseInt(v('psf-'+x.k+'-s'))||0;val=(m||sc)?m*60+sc:null;}
+    else{var t=v('psf-'+x.k);val=t===''?null:parseFloat(t);}
+    if(!(val>0))return;
+    var oe=document.getElementById(it.unit==='time'?'psf-'+x.k+'-m':'psf-'+x.k),og=oe&&oe.getAttribute?oe.getAttribute('data-orig'):null;
+    if(x.done&&(x.val===val||(og!=null&&og!==''&&parseFloat(og)===val)))return; // 変えていない項目は送らない（差分送信。画面を開いた時の値のままなら、その間にスタッフが直した値を巻き戻さない）
+    set[x.k]=val;if(x.done)prevs[x.k]={val:x.val,at:x.at,by:x.by};
+  });
+  var keys=Object.keys(set);
+  if(!keys.length)return alert('入力された項目がありません（今の値と同じ項目は保存しません）');
+  var dateV=v('psf-date')||todayStr();if(!/^\d{4}-\d{2}-\d{2}$/.test(dateV))dateV=todayStr();
+  if(btnEl&&!guardSubmit(btnEl,'保存中…'))return;
+  // NO SIDE 結果シート用に保存前の状態を捕捉（doPhys と同じ）
+  var prevBR=getBest(myPid,'bronco'),prevDB=getBest(myPid,'downbronco');
+  var prevBest={squat:getBest(myPid,'squat'),bench:getBest(myPid,'bench'),deadlift:getBest(myPid,'deadlift'),chinning:getBest(myPid,'chinning'),clean:getBest(myPid,'clean'),bronco:prevBR,downbronco:prevDB};
+  var prevRank={};STD_LIFTS.forEach(function(l){var _pi=getLiftRankInfo(myPid,l.k);prevRank[l.k]=(_pi&&_pi.rank)?_pi.rank.label:null;});
+  var _pbi=getBroncoRankInfo(myPid);var prevBrRank=(_pbi&&_pbi.rank)?_pbi.rank.label:null;
+  var prevB3=getBestBIG3(myPid);
+  var ap={pid:myPid,sess:s,newId:newId(),now:new Date().toISOString(),date:dateV,by:'player',set:set},_blk=null;
+  svSafeUpdate('ph',function(latest){
+    _blk=null; // 確定/未統合はサーバー最新で再判定（画面が古いまま保存しても提出済みを書き換えない）
+    var mine=(latest||[]).filter(function(r){return !!r&&idEq(r.pid,myPid)&&phInMSess(r,s);});
+    if(mine.length>1){_blk='unmerged';return latest;}
+    if(mine[0]&&mine[0].submitted){_blk='submitted';return latest;}
+    return phSessApply(latest,ap);
+  },function(){
+    if(_blk){if(btnEl)releaseSubmit(btnEl);alert(_blk==='submitted'?'この記録はスタッフが確定済みのため変更できません。':'スタッフが記録をまとめるまで入力できません。');showPhysSessForm(s.id);return;}
+    window._psOpen=null;
+    var vals={squat:null,bench:null,deadlift:null,chinning:null,clean:null,bronco:null,downbronco:null};keys.forEach(function(k){vals[k]=set[k];});
+    var m=[];
+    if(set.squat&&prevBest.squat!=null&&set.squat>=prevBest.squat)m.push('SQ');
+    if(set.bench&&prevBest.bench!=null&&set.bench>=prevBest.bench)m.push('BP');
+    if(set.deadlift&&prevBest.deadlift!=null&&set.deadlift>=prevBest.deadlift)m.push('DL');
+    var broncoPB=(set.bronco&&prevBR&&set.bronco<prevBR),dbPB=(set.downbronco&&prevDB&&set.downbronco<prevDB);
+    showMeasureResult({vals:vals,prevBest:prevBest,prevRank:prevRank,prevBrRank:prevBrRank,prevB3:prevB3});
+    var over=Object.keys(prevs);
+    if(m.length)setTimeout(function(){pbFlash(m.join('・')+' 自己ベスト更新！');},350);
+    else if(broncoPB)setTimeout(function(){pbFlash('ブロンコ自己ベスト更新！ '+broncoFmt(prevBR)+' → '+broncoFmt(set.bronco));},350);
+    else if(dbPB)setTimeout(function(){pbFlash('ダウンブロンコ自己ベスト更新！ '+broncoFmt(prevDB)+' → '+broncoFmt(set.downbronco));},350);
+    else if(over.length)toast(over.map(function(k){var it=phItem(k);return it.short+' '+(it.unit==='time'?broncoFmt(prevs[k].val):prevs[k].val)+'→'+(it.unit==='time'?broncoFmt(set[k]):set[k]);}).join('・')+' に置き換えました','元に戻す',function(){psRestore(s.id,prevs);});
+    else toast('記録しました');
+  },function(){
+    if(btnEl)releaseSubmit(btnEl);
+    alert('保存できませんでした。電波の良い場所でもう一度お試しください。入力内容は残っています。');
+  });
+}
+// 上書きの取り消し（直前の値・測定日・入力者に戻す）
+function psRestore(sessId,prevs){
+  var s=(D.msess||[]).find(function(x){return idEq(x.id,sessId);});if(!s)return;
+  var now=new Date().toISOString(),_blk=false;
+  svSafeUpdate('ph',function(latest){
+    _blk=false;
+    var r=phSessFind(latest,s,myPid);if(!r)return latest;
+    if(r.submitted){_blk=true;return latest;} // 確定済みはサーバー最新で再判定
+    if(!r.at||typeof r.at!=='object'||Array.isArray(r.at))r.at={};if(!r.by||typeof r.by!=='object'||Array.isArray(r.by))r.by={};
+    Object.keys(prevs).forEach(function(k){var p=prevs[k];r[k]=p.val;if(p.at)r.at[k]=p.at;else delete r.at[k];if(p.by)r.by[k]=p.by;else delete r.by[k];});
+    r.inputAt=now;
+    return latest;
+  },function(){if(_blk){alert('この記録はスタッフが確定済みのため戻せません。');return;}toast('元に戻しました');if(psShowing(sessId))showPhysSessForm(sessId);},function(){alert('戻せませんでした。もう一度お試しください。');});
+}
 function showPhysForm(mode){
   var td=todayStr();
   var today=td;
@@ -3447,6 +3708,7 @@ function cancelAbsence(){
 // フィジカル測定の修正（選手側）
 function showEditPhysRec(phid){
   var rec=D.ph.find(function(r){return r.id===phid||String(r.id)===String(phid);});if(!rec)return;
+  var _is=phItemSessOf(rec);if(_is){if(rec.submitted)alert('『'+_is.name+'』の記録は確定済みです。変更はスタッフに相談してください。');else showPhysSessForm(_is.id);return;}
   var brM=rec.bronco?Math.floor(rec.bronco/60):0,brS=rec.bronco?Math.round(rec.bronco%60):0;
   var dbM=rec.downbronco?Math.floor(rec.downbronco/60):0,dbS=rec.downbronco?Math.round(rec.downbronco%60):0;
   showSub('<div style="font-size:18px;font-weight:600;margin:12px 0 14px">'+ic('i-dumbbell',16,'var(--maroon)')+' 記録を修正</div>'+
@@ -3532,6 +3794,8 @@ function delBC(bcid){
 }
 
 function delPhysRec(phid){
+  var _r=D.ph.find(function(r){return r.id===phid||String(r.id)===String(phid);}),_is=phItemSessOf(_r);
+  if(_is){alert('『'+_is.name+'』の記録は削除できません。測れなかった項目はスタッフに伝えてください。');return;}
   if(!confirm('この記録を削除しますか？\n（削除すると元に戻せません）'))return;
   var pid=parseInt(phid)||phid;
   var notFound=false;
@@ -4119,6 +4383,8 @@ T.ranking=function(){
 // mode==='bronco' 時はウエイト欄(pf-sq等)がDOMに無い → 直読みは null クラッシュ。pfv() で null安全に読む。
 function doPhys(btnEl,mode){
   var isBronco=(mode==='bronco');
+  var _os=physSessFor(isBronco?'bronco':undefined);
+  if(_os){toast('測定会「'+String(_os.name||'')+'」が始まっているので、その入力画面に切り替えました');showPhysSessForm(_os.id);return;} // 項目制の会が開いている間はその会の画面で（記録は選手×会で1件）
   function pfv(id){var e=document.getElementById(id);return e?e.value:'';}
   var sq=parseFloat(pfv('pf-sq'))||null,bp=parseFloat(pfv('pf-bp'))||null,dl=parseFloat(pfv('pf-dl'))||null,br=broncoFromInputs('pf-br-m','pf-br-s');
   var cn=parseFloat(pfv('pf-cn'))||null,cl=parseFloat(pfv('pf-cl'))||null;
@@ -4144,7 +4410,7 @@ function doPhys(btnEl,mode){
   var _pbi=getBroncoRankInfo(myPid);var prevBrRank=(_pbi&&_pbi.rank)?_pbi.rank.label:null;
   var prevB3=getBestBIG3(myPid);
   var curSess=getCurrentMSess(isBronco?'bronco':undefined); // ブロンコ回はブロンコ測定会のみに紐付け（フィジカル回同時開催時の誤紐づけ防止）
-  var newRec={id:newId(),pid:myPid,date:dateV,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br,downbronco:db,msessId:curSess?curSess.id:null,inputAt:new Date().toISOString()};
+  var newRec={id:newId(),pid:myPid,date:dateV,squat:sq,bench:bp,deadlift:dl,chinning:cn,clean:cl,bronco:br,downbronco:db,msessId:(curSess&&!msessItems(curSess).length)?curSess.id:null,inputAt:new Date().toISOString()}; // 項目制の会には素の記録を紐づけない（2件目＝未統合を作らない）
   svSafeSeq([{k:'ph',rec:newRec}],function(){
     // PB判定は保存前捕捉のprevBestで行う（P8レビュー④: 保存後getBestは新記録自身を含み初回でも必ずPB扱い＝シートの「初回」表示と矛盾していた）
     var m=[];

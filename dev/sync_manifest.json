@@ -1376,6 +1376,116 @@
         "staff"
       ],
       "kind": "function"
+    },
+    "PH_ITEMS": {
+      "files": [
+        "player",
+        "staff",
+        "coach"
+      ],
+      "kind": "var"
+    },
+    "phItem": {
+      "files": [
+        "player",
+        "staff",
+        "coach"
+      ],
+      "kind": "function"
+    },
+    "msessItems": {
+      "files": [
+        "player",
+        "staff",
+        "coach"
+      ],
+      "kind": "function"
+    },
+    "phHasVal": {
+      "files": [
+        "player",
+        "staff",
+        "coach"
+      ],
+      "kind": "function"
+    },
+    "phDateOf": {
+      "files": [
+        "player",
+        "staff",
+        "coach"
+      ],
+      "kind": "function"
+    },
+    "phSessRecs": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "phSessRec": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "phSessProgress": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "msessOpenItems": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "phSessFind": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "phSessApply": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "phSessSubmit": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "msessOpenItemsAll": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "msessOpenFor": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
+    },
+    "phSessComplete": {
+      "files": [
+        "player",
+        "staff"
+      ],
+      "kind": "function"
     }
   },
   "variant": {
